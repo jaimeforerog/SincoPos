@@ -25,7 +25,12 @@ public class PrecioService
 
         if (precioSuc != null)
         {
-            return new PrecioResuelto(precioSuc.PrecioVenta, precioSuc.PrecioMinimo, "Sucursal");
+            return new PrecioResuelto(
+                precioSuc.PrecioVenta,
+                precioSuc.PrecioMinimo,
+                "Sucursal",
+                precioSuc.OrigenDato
+            );
         }
 
         // 2. Precio base del producto
@@ -78,4 +83,4 @@ public class PrecioService
     }
 }
 
-public record PrecioResuelto(decimal PrecioVenta, decimal? PrecioMinimo, string Origen);
+public record PrecioResuelto(decimal PrecioVenta, decimal? PrecioMinimo, string Origen, string? OrigenDato = null);

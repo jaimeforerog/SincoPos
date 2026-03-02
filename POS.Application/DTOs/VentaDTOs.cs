@@ -80,13 +80,15 @@ public record CrearPrecioSucursalDto(
     Guid ProductoId,
     int SucursalId,
     decimal PrecioVenta,
-    decimal? PrecioMinimo
+    decimal? PrecioMinimo,
+    string? OrigenDato = null  // "Manual", "Migrado", "Importado", etc.
 );
 
 public record PrecioResueltoDto(
     decimal PrecioVenta,
     decimal? PrecioMinimo,
-    string Origen  // "Sucursal", "Producto", "Margen"
+    string Origen,  // "Sucursal", "Producto", "Margen"
+    string? OrigenDato = null  // "Manual", "Migrado", etc. (si viene de Sucursal)
 );
 
 // ─── Devoluciones ─────────────────────────────────────────

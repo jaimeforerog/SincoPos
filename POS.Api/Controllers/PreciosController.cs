@@ -40,7 +40,7 @@ public class PreciosController : ControllerBase
         try
         {
             var precio = await _precioService.ResolverPrecio(productoId, sucursalId);
-            return Ok(new PrecioResueltoDto(precio.PrecioVenta, precio.PrecioMinimo, precio.Origen));
+            return Ok(new PrecioResueltoDto(precio.PrecioVenta, precio.PrecioMinimo, precio.Origen, precio.OrigenDato));
         }
         catch (InvalidOperationException ex)
         {
@@ -74,6 +74,7 @@ public class PreciosController : ControllerBase
         {
             existente.PrecioVenta = dto.PrecioVenta;
             existente.PrecioMinimo = dto.PrecioMinimo;
+            existente.OrigenDato = dto.OrigenDato ?? existente.OrigenDato;
             // FechaModificacion y ModificadoPor se establecen automáticamente en SaveChangesAsync
         }
         else
@@ -83,7 +84,8 @@ public class PreciosController : ControllerBase
                 ProductoId = dto.ProductoId,
                 SucursalId = dto.SucursalId,
                 PrecioVenta = dto.PrecioVenta,
-                PrecioMinimo = dto.PrecioMinimo
+                PrecioMinimo = dto.PrecioMinimo,
+                OrigenDato = dto.OrigenDato ?? "Manual"
             };
             _context.PreciosSucursal.Add(existente);
         }

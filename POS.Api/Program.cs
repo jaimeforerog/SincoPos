@@ -18,6 +18,11 @@ builder.Services.AddScoped<POS.Application.Services.IProductoService, POS.Infras
 builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.PrecioService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.UsuarioService>();
+builder.Services.AddScoped<POS.Infrastructure.Services.MigracionLogService>();
+
+// GeoService (Países y Ciudades)
+builder.Services.AddHttpClient<POS.Infrastructure.Services.GeoService>();
+builder.Services.AddMemoryCache();
 
 // Activity Log Service (Singleton para Channel-based background processing)
 builder.Services.AddSingleton<POS.Application.Services.IActivityLogService, POS.Infrastructure.Services.ActivityLogService>();

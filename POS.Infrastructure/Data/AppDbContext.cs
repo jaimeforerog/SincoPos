@@ -34,6 +34,11 @@ public class AppDbContext : DbContext
     public DbSet<DetalleDevolucion> DetallesDevolucion => Set<DetalleDevolucion>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
+    public DbSet<Traslado> Traslados => Set<Traslado>();
+    public DbSet<DetalleTraslado> DetallesTraslado => Set<DetalleTraslado>();
+    public DbSet<OrdenCompra> OrdenesCompra => Set<OrdenCompra>();
+    public DbSet<DetalleOrdenCompra> DetallesOrdenCompra => Set<DetalleOrdenCompra>();
+    public DbSet<MigracionLog> MigracionesLog => Set<MigracionLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
