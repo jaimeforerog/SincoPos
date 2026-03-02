@@ -1,0 +1,12 @@
+{
+  "clientId": "pos-api",
+  "enabled": true,
+  "publicClient": true,
+  "directAccessGrantsEnabled": true,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": ["*"],
+  "webOrigins": ["*"],
+  "protocol": "openid-connect"
+}

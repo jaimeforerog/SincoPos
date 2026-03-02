@@ -1,0 +1,59 @@
+Usando la configuración de inicio de C:\Users\jaime.forero\RiderProjects\SincoPos\POS.Api\Properties\launchSettings.json...
+Compilando...
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5086
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\jaime.forero\RiderProjects\SincoPos\POS.Api
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+info: POS.Infrastructure.Services.ActivityLogService[0]
+      ActivityLog background processor iniciado
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (41ms) [Parameters=[@__fechaDesdeUtc_0='?' (DbType = DateTime), @__fechaHastaUtc_1='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT v."Id", v."Activo", v.caja_id, v.cambio, v.cliente_id, v."CreadoPor", v.descuento, v.estado, v."FechaCreacion", v."FechaModificacion", v.fecha_venta, v.impuestos, v.metodo_pago, v."ModificadoPor", v.monto_pagado, v.numero_venta, v.observaciones, v.subtotal, v.sucursal_id, v.total, v.usuario_id, d."Id", d.cantidad, d.costo_unitario, d.descuento, d.monto_impuesto, d.nombre_producto, d.porcentaje_impuesto, d.precio_unitario, d.producto_id, d.subtotal, d.venta_id
+      FROM public.ventas AS v
+      LEFT JOIN public.detalle_ventas AS d ON v."Id" = d.venta_id
+      WHERE v.fecha_venta >= @__fechaDesdeUtc_0 AND v.fecha_venta <= @__fechaHastaUtc_1
+      ORDER BY v."Id"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."Activo", s.cantidad, s.costo_promedio, s."CreadoPor", s."FechaCreacion", s."FechaModificacion", s."ModificadoPor", s.producto_id, s.stock_minimo, s.sucursal_id, s.ultima_actualizacion, p.id, p.activo, p.categoria_id, p.codigo_barras, p."CreadoPor", p.descripcion, p.fecha_creacion, p.fecha_modificacion, p.impuesto_id, p."ModificadoPor", p.nombre, p.precio_costo, p.precio_venta, c."Id", c.activo, c."CreadoPor", c.descripcion, c."FechaCreacion", c."FechaModificacion", c.margen_ganancia, c."ModificadoPor", c.nombre, s0."Id", s0.activo, s0.ciudad, s0."CreadoPor", s0.direccion, s0.email, s0.fecha_creacion, s0."FechaModificacion", s0.metodo_costeo, s0."ModificadoPor", s0.nombre, s0.telefono
+      FROM public.stock AS s
+      INNER JOIN public.productos AS p ON s.producto_id = p.id
+      INNER JOIN public.categorias AS c ON p.categoria_id = c."Id"
+      INNER JOIN public.sucursales AS s0 ON s.sucursal_id = s0."Id"
+      WHERE s.cantidad > 0.0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (25ms) [Parameters=[@p0='?', @p1='?' (DbType = Object), @p2='?' (DbType = Object), @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime), @p7='?', @p8='?', @p9='?' (DbType = Object), @p10='?' (DbType = Int32), @p11='?' (DbType = Int32), @p12='?', @p13='?', @p14='?', @p15='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO public.activity_logs (accion, datos_anteriores, datos_nuevos, descripcion, entidad_id, entidad_nombre, fecha_hora, ip_address, mensaje_error, metadatos, sucursal_id, tipo, tipo_entidad, user_agent, usuario_email, usuario_id)
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15)
+      RETURNING id, exitosa;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[@p0='?', @p1='?' (DbType = Object), @p2='?' (DbType = Object), @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime), @p7='?', @p8='?', @p9='?' (DbType = Object), @p10='?' (DbType = Int32), @p11='?' (DbType = Int32), @p12='?', @p13='?', @p14='?', @p15='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO public.activity_logs (accion, datos_anteriores, datos_nuevos, descripcion, entidad_id, entidad_nombre, fecha_hora, ip_address, mensaje_error, metadatos, sucursal_id, tipo, tipo_entidad, user_agent, usuario_email, usuario_id)
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15)
+      RETURNING id, exitosa;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@__cajaId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT c."Id", c.abierta_por_usuario_id, c.activo, c."CreadoPor", c.estado, c.fecha_apertura, c.fecha_cierre, c.fecha_creacion, c."FechaModificacion", c."ModificadoPor", c.monto_actual, c.monto_apertura, c.nombre, c.sucursal_id, s."Id", s.activo, s.ciudad, s."CreadoPor", s.direccion, s.email, s.fecha_creacion, s."FechaModificacion", s.metodo_costeo, s."ModificadoPor", s.nombre, s.telefono
+      FROM public.cajas AS c
+      INNER JOIN public.sucursales AS s ON c.sucursal_id = s."Id"
+      WHERE c."Id" = @__cajaId_0
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[@__cajaId_0='?' (DbType = Int32), @__fechaDesdeUtc_Value_1='?' (DbType = DateTime), @__fechaHastaUtc_Value_2='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT v."Id", v."Activo", v.caja_id, v.cambio, v.cliente_id, v."CreadoPor", v.descuento, v.estado, v."FechaCreacion", v."FechaModificacion", v.fecha_venta, v.impuestos, v.metodo_pago, v."ModificadoPor", v.monto_pagado, v.numero_venta, v.observaciones, v.subtotal, v.sucursal_id, v.total, v.usuario_id, t."Id", d."Id", d.cantidad, d.costo_unitario, d.descuento, d.monto_impuesto, d.nombre_producto, d.porcentaje_impuesto, d.precio_unitario, d.producto_id, d.subtotal, d.venta_id, t.activo, t.ciudad, t."CreadoPor", t.direccion, t.email, t.external_id, t.fecha_creacion, t.fecha_modificacion, t.identificacion, t."ModificadoPor", t.nombre, t.origen_datos, t.telefono, t.tipo_identificacion, t.tipo_tercero
+      FROM public.ventas AS v
+      LEFT JOIN public.terceros AS t ON v.cliente_id = t."Id"
+      LEFT JOIN public.detalle_ventas AS d ON v."Id" = d.venta_id
+      WHERE v.caja_id = @__cajaId_0 AND v.fecha_venta >= @__fechaDesdeUtc_Value_1 AND v.fecha_venta <= @__fechaHastaUtc_Value_2
+      ORDER BY v.fecha_venta DESC, v."Id", t."Id"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[@p0='?', @p1='?' (DbType = Object), @p2='?' (DbType = Object), @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime), @p7='?', @p8='?', @p9='?' (DbType = Object), @p10='?' (DbType = Int32), @p11='?' (DbType = Int32), @p12='?', @p13='?', @p14='?', @p15='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO public.activity_logs (accion, datos_anteriores, datos_nuevos, descripcion, entidad_id, entidad_nombre, fecha_hora, ip_address, mensaje_error, metadatos, sucursal_id, tipo, tipo_entidad, user_agent, usuario_email, usuario_id)
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15)
+      RETURNING id, exitosa;

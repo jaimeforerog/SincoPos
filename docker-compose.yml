@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # PostgreSQL para la aplicación POS
+  postgres-pos:
+    image: postgres:16-alpine
+    container_name: sincopos-db
+    environment:
+      POSTGRES_DB: sincopos
+      POSTGRES_USER: posuser
+      POSTGRES_PASSWORD: pospass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_pos_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - sincopos-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U posuser -d sincopos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keycloak Authentication Server (usa PostgreSQL local del host)
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: sincopos-keycloak
+    command: start-dev
+    environment:
+      # Admin credentials
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+      # Database configuration - Apunta a PostgreSQL LOCAL
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://host.docker.internal:5432/keycloak
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgrade
+
+      # HTTP settings
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+
+      # Proxy settings for development
+      KC_PROXY: edge
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # POS API (opcional - para desarrollo completo)
+  # Descomenta cuando quieras levantar toda la stack
+  # pos-api:
+  #   build:
+  #     context: .
+  #     dockerfile: POS.Api/Dockerfile
+  #   container_name: sincopos-api
+  #   environment:
+  #     ASPNETCORE_ENVIRONMENT: Development
+  #     ASPNETCORE_URLS: http://+:5000
+  #     ConnectionStrings__DefaultConnection: "Host=postgres-pos;Database=sincopos;Username=posuser;Password=pospass123"
+  #     ConnectionStrings__MartenConnection: "Host=postgres-pos;Database=sincopos;Username=posuser;Password=pospass123"
+  #     Authentication__Authority: http://keycloak:8080/realms/sincopos
+  #     Authentication__Audience: pos-api
+  #   ports:
+  #     - "5000:5000"
+  #   depends_on:
+  #     postgres-pos:
+  #       condition: service_healthy
+  #     keycloak:
+  #       condition: service_healthy
+  #   networks:
+  #     - sincopos-network
+
+networks:
+  sincopos-network:
+    driver: bridge
+
+volumes:
+  postgres_pos_data:

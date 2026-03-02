@@ -1,0 +1,173 @@
+using Microsoft.EntityFrameworkCore;
+using POS.Infrastructure.Data;
+using POS.Infrastructure.Data.Entities;
+
+namespace POS.Infrastructure.Services;
+
+/// <summary>
+/// Servicio de costeo que implementa los metodos:
+/// - PromedioPonderado: (stockActual * costoAnterior + cantidadNueva * costoNuevo) / total
+/// - PEPS (FIFO): consume lotes del mas antiguo al mas reciente
+/// - UEPS (LIFO): consume lotes del mas reciente al mas antiguo
+/// </summary>
+public class CosteoService
+{
+    private readonly AppDbContext _context;
+
+    public CosteoService(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    /// <summary>
+    /// Registrar un lote al recibir mercancia
+    /// </summary>
+    public Task RegistrarLoteEntrada(Guid productoId, int sucursalId,
+        decimal cantidad, decimal costoUnitario, decimal porcentajeImpuesto, decimal montoImpuestoUnitario, 
+        string? referencia, int? terceroId)
+    {
+        var lote = new LoteInventario
+        {
+            ProductoId = productoId,
+            SucursalId = sucursalId,
+            CantidadInicial = cantidad,
+            CantidadDisponible = cantidad,
+            CostoUnitario = costoUnitario,
+            PorcentajeImpuesto = porcentajeImpuesto,
+            MontoImpuestoUnitario = montoImpuestoUnitario,
+            Referencia = referencia,
+            TerceroId = terceroId,
+            FechaEntrada = DateTime.UtcNow
+        };
+        _context.LotesInventario.Add(lote);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Calcular y actualizar el costo en stock segun el metodo de la sucursal
+    /// </summary>
+    public async Task ActualizarCostoEntrada(Stock stock, decimal cantidadNueva,
+        decimal costoUnitario, MetodoCosteo metodo)
+    {
+        switch (metodo)
+        {
+            case MetodoCosteo.PromedioPonderado:
+                var costoTotalAnterior = stock.Cantidad * stock.CostoPromedio;
+                var costoEntrada = cantidadNueva * costoUnitario;
+                var cantidadTotal = stock.Cantidad + cantidadNueva;
+                stock.CostoPromedio = cantidadTotal > 0
+                    ? (costoTotalAnterior + costoEntrada) / cantidadTotal
+                    : costoUnitario;
+                break;
+
+            case MetodoCosteo.PEPS: // FIFO - costo promedio se recalcula de lotes disponibles
+            case MetodoCosteo.UEPS: // LIFO - igual, costo promedio es referencial
+                stock.CostoPromedio = await CalcularCostoPromedioDesdelotes(
+                    stock.ProductoId, stock.SucursalId, cantidadNueva, costoUnitario);
+                break;
+        }
+
+        stock.Cantidad += cantidadNueva;
+        stock.UltimaActualizacion = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Consumir stock segun el metodo de la sucursal.
+    /// Retorna el costo total de las unidades consumidas.
+    /// </summary>
+    public async Task<(decimal costoTotal, decimal costoUnitarioPromedio)> ConsumirStock(
+        Guid productoId, int sucursalId, decimal cantidad, MetodoCosteo metodo)
+    {
+        switch (metodo)
+        {
+            case MetodoCosteo.PEPS: // FIFO - del mas antiguo al mas reciente
+                return await ConsumirLotes(productoId, sucursalId, cantidad, ordenAscendente: true);
+
+            case MetodoCosteo.UEPS: // LIFO - del mas reciente al mas antiguo
+                return await ConsumirLotes(productoId, sucursalId, cantidad, ordenAscendente: false);
+
+            case MetodoCosteo.PromedioPonderado:
+            default:
+                // Usa costo promedio del stock
+                var stock = await _context.Stock
+                    .FirstAsync(s => s.ProductoId == productoId && s.SucursalId == sucursalId);
+                var costo = cantidad * stock.CostoPromedio;
+                // Tambien consumir lotes proporcionalmente (para mantener consistencia)
+                await ConsumirLotesProporcional(productoId, sucursalId, cantidad);
+                return (costo, stock.CostoPromedio);
+        }
+    }
+
+    /// <summary>
+    /// FIFO/LIFO: consumir de lotes especificos
+    /// </summary>
+    private async Task<(decimal costoTotal, decimal costoUnitarioPromedio)> ConsumirLotes(
+        Guid productoId, int sucursalId, decimal cantidadAConsumir, bool ordenAscendente)
+    {
+        var lotesQuery = _context.LotesInventario
+            .Where(l => l.ProductoId == productoId
+                     && l.SucursalId == sucursalId
+                     && l.CantidadDisponible > 0);
+
+        var lotes = ordenAscendente
+            ? await lotesQuery.OrderBy(l => l.FechaEntrada).ToListAsync()        // FIFO
+            : await lotesQuery.OrderByDescending(l => l.FechaEntrada).ToListAsync(); // LIFO
+
+        decimal costoTotal = 0;
+        decimal cantidadRestante = cantidadAConsumir;
+
+        foreach (var lote in lotes)
+        {
+            if (cantidadRestante <= 0) break;
+
+            var cantidadDelLote = Math.Min(lote.CantidadDisponible, cantidadRestante);
+            costoTotal += cantidadDelLote * lote.CostoUnitario;
+            lote.CantidadDisponible -= cantidadDelLote;
+            cantidadRestante -= cantidadDelLote;
+        }
+
+        var costoUnitario = cantidadAConsumir > 0 ? costoTotal / cantidadAConsumir : 0;
+        return (costoTotal, costoUnitario);
+    }
+
+    /// <summary>
+    /// Para PromedioPonderado/UltimaCompra: consumir lotes proporcionalmente (FIFO por defecto)
+    /// </summary>
+    private async Task ConsumirLotesProporcional(Guid productoId, int sucursalId, decimal cantidad)
+    {
+        var lotes = await _context.LotesInventario
+            .Where(l => l.ProductoId == productoId
+                     && l.SucursalId == sucursalId
+                     && l.CantidadDisponible > 0)
+            .OrderBy(l => l.FechaEntrada)
+            .ToListAsync();
+
+        decimal restante = cantidad;
+        foreach (var lote in lotes)
+        {
+            if (restante <= 0) break;
+            var consumir = Math.Min(lote.CantidadDisponible, restante);
+            lote.CantidadDisponible -= consumir;
+            restante -= consumir;
+        }
+    }
+
+    /// <summary>
+    /// Recalcular costo promedio ponderado desde lotes disponibles
+    /// </summary>
+    private async Task<decimal> CalcularCostoPromedioDesdelotes(
+        Guid productoId, int sucursalId, decimal cantidadNueva, decimal costoNuevo)
+    {
+        var lotes = await _context.LotesInventario
+            .Where(l => l.ProductoId == productoId
+                     && l.SucursalId == sucursalId
+                     && l.CantidadDisponible > 0)
+            .ToListAsync();
+
+        decimal totalCosto = lotes.Sum(l => l.CantidadDisponible * l.CostoUnitario)
+                           + (cantidadNueva * costoNuevo);
+        decimal totalCantidad = lotes.Sum(l => l.CantidadDisponible) + cantidadNueva;
+
+        return totalCantidad > 0 ? totalCosto / totalCantidad : costoNuevo;
+    }
+}
