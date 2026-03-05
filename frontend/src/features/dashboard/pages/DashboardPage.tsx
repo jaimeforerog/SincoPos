@@ -23,12 +23,12 @@ const formatCurrency = (value: number) => {
 };
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { activeSucursalId } = useAuth();
 
   // Cargar datos del dashboard
   const { data: dashboard, isLoading, error } = useQuery({
-    queryKey: ['dashboard', user?.sucursalId],
-    queryFn: () => reportesApi.dashboard({ sucursalId: user?.sucursalId }),
+    queryKey: ['dashboard', activeSucursalId],
+    queryFn: () => reportesApi.dashboard({ sucursalId: activeSucursalId }),
     refetchInterval: 60000, // Refrescar cada 60 segundos
   });
 

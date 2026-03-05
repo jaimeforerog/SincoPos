@@ -27,11 +27,11 @@ interface Props {
 }
 
 export function AjusteInventarioDialog({ open, onClose, onSuccess }: Props) {
-  const { user } = useAuth();
+  const { activeSucursalId } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
   const [productoId, setProductoId] = useState<string>('');
-  const [sucursalId, setSucursalId] = useState<number>(user?.sucursalId || 0);
+  const [sucursalId, setSucursalId] = useState<number>(activeSucursalId || 0);
   const [cantidadNueva, setCantidadNueva] = useState<string>('');
   const [observaciones, setObservaciones] = useState<string>('');
 
@@ -74,7 +74,7 @@ export function AjusteInventarioDialog({ open, onClose, onSuccess }: Props) {
 
   const handleClose = () => {
     setProductoId('');
-    setSucursalId(user?.sucursalId || 0);
+    setSucursalId(activeSucursalId || 0);
     setCantidadNueva('');
     setObservaciones('');
     onClose();

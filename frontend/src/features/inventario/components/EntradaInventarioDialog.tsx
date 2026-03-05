@@ -25,11 +25,11 @@ interface Props {
 }
 
 export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
-  const { user } = useAuth();
+  const { activeSucursalId } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
   const [productoId, setProductoId] = useState<string>('');
-  const [sucursalId, setSucursalId] = useState<number>(user?.sucursalId || 0);
+  const [sucursalId, setSucursalId] = useState<number>(activeSucursalId || 0);
   const [cantidad, setCantidad] = useState<string>('');
   const [costoUnitario, setCostoUnitario] = useState<string>('');
   const [porcentajeImpuesto, setPorcentajeImpuesto] = useState<string>('0');
@@ -74,7 +74,7 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
 
   const handleClose = () => {
     setProductoId('');
-    setSucursalId(user?.sucursalId || 0);
+    setSucursalId(activeSucursalId || 0);
     setCantidad('');
     setCostoUnitario('');
     setPorcentajeImpuesto('0');

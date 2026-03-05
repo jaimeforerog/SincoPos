@@ -25,16 +25,16 @@ interface SeleccionarCajaDialogProps {
 }
 
 export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogProps) {
-  const { user } = useAuth();
+  const { activeSucursalId } = useAuth();
   const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
 
-  // Auto-seleccionar sucursal del usuario si tiene una asignada
+  // Auto-seleccionar la sucursal activa del usuario
   useEffect(() => {
-    if (user?.sucursalId && !selectedSucursalId && open) {
-      setSelectedSucursalId(user.sucursalId);
+    if (activeSucursalId && !selectedSucursalId && open) {
+      setSelectedSucursalId(activeSucursalId);
     }
-  }, [user, selectedSucursalId, open]);
+  }, [activeSucursalId, selectedSucursalId, open]);
 
   // Cargar sucursales
   const { data: sucursales = [], isLoading: loadingSucursales } = useQuery({

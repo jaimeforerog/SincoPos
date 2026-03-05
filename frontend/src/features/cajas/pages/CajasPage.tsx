@@ -28,7 +28,7 @@ import { CerrarCajaDialog } from '../components/CerrarCajaDialog';
 import type { CajaDTO } from '@/types/api';
 
 export function CajasPage() {
-  const { user } = useAuth();
+  const { activeSucursalId } = useAuth();
   const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
   const [abrirDialogOpen, setAbrirDialogOpen] = useState(false);
   const [cerrarDialogOpen, setCerrarDialogOpen] = useState(false);
@@ -40,12 +40,12 @@ export function CajasPage() {
     queryFn: () => sucursalesApi.getAll(true),
   });
 
-  // Auto-seleccionar la sucursal del usuario si tiene una asignada
+  // Auto-seleccionar la sucursal activa del usuario
   useEffect(() => {
-    if (user?.sucursalId && !selectedSucursalId) {
-      setSelectedSucursalId(user.sucursalId);
+    if (activeSucursalId && !selectedSucursalId) {
+      setSelectedSucursalId(activeSucursalId);
     }
-  }, [user, selectedSucursalId]);
+  }, [activeSucursalId, selectedSucursalId]);
 
   const { data: cajas = [], isLoading } = useQuery({
     queryKey: ['cajas', selectedSucursalId],

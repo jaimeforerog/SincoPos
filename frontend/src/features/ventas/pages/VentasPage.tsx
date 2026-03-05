@@ -45,11 +45,11 @@ const getDaysAgo = (days: number): string => {
 };
 
 export function VentasPage() {
-  const { user } = useAuth();
+  const { activeSucursalId } = useAuth();
   const [selectedVenta, setSelectedVenta] = useState<VentaDTO | null>(null);
   const [detalleOpen, setDetalleOpen] = useState(false);
   const [filtroSucursal, setFiltroSucursal] = useState<number | ''>(
-    user?.sucursalId || ''
+    activeSucursalId || ''
   );
   const [filtroEstado, setFiltroEstado] = useState<string>('');
   const [fechaDesde, setFechaDesde] = useState<string>(getDaysAgo(5)); // 5 días atrás

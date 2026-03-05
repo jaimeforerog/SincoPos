@@ -19,7 +19,7 @@ import type { ProductoDTO, CrearVentaDTO, VentaDTO } from '@/types/api';
 
 export function POSPage() {
   const { enqueueSnackbar } = useSnackbar();
-  const { user, isCajero } = useAuth();
+  const { user, isCajero, activeSucursalId } = useAuth();
 
   // Cargar cajas abiertas
   const { data: _cajasAbiertas = [] } = useCajasAbiertas();
@@ -38,8 +38,8 @@ export function POSPage() {
 
   // SIEMPRE mostrar diálogo de selección al entrar
   useEffect(() => {
-    // Verificar que el usuario tenga sucursal asignada
-    if (!user?.sucursalId) {
+    // Verificar que el usuario tenga sucursal activa asignada
+    if (!activeSucursalId) {
       enqueueSnackbar('No tienes una sucursal asignada. Contacta al administrador.', {
         variant: 'error',
       });
@@ -48,7 +48,7 @@ export function POSPage() {
 
     // Siempre mostrar el diálogo de selección de caja al entrar
     setShowSeleccionarCaja(true);
-  }, [user, enqueueSnackbar]);
+  }, [activeSucursalId, enqueueSnackbar]);
 
   // Handler para seleccionar caja
   const handleSelectCaja = (cajaId: number) => {
@@ -132,7 +132,7 @@ export function POSPage() {
 
   // Handler para agregar producto con validación de stock y precio de sucursal
   const handleSelectProduct = async (producto: ProductoDTO) => {
-    if (!user?.sucursalId) {
+    if (!activeSucursalId) {
       enqueueSnackbar('No tienes sucursal asignada', { variant: 'error' });
       return;
     }
@@ -144,7 +144,7 @@ export function POSPage() {
       // Consultar stock disponible
       const stock = await inventarioApi.getStock({
         productoId: producto.id,
-        sucursalId: user.sucursalId,
+        sucursalId: activeSucursalId,
       });
 
       if (stock.length === 0 || stock[0].cantidad <= 0) {
@@ -168,7 +168,7 @@ export function POSPage() {
       // Resolver precio de la sucursal
       let precioSucursal: number | undefined = undefined;
       try {
-        const precioResuelto = await preciosApi.resolver(producto.id, user.sucursalId);
+        const precioResuelto = await preciosApi.resolver(producto.id, activeSucursalId);
 
         if (precioResuelto && precioResuelto.precioVenta > 0) {
           precioSucursal = precioResuelto.precioVenta;
@@ -200,7 +200,7 @@ export function POSPage() {
 
   // Handler para actualizar cantidad con validación de stock
   const handleUpdateQuantity = async (productoId: string, nuevaCantidad: number) => {
-    if (!user?.sucursalId) {
+    if (!activeSucursalId) {
       enqueueSnackbar('No tienes sucursal asignada', { variant: 'error' });
       return;
     }
@@ -217,7 +217,7 @@ export function POSPage() {
       const { inventarioApi } = await import('@/api/inventario');
       const stock = await inventarioApi.getStock({
         productoId,
-        sucursalId: user.sucursalId,
+        sucursalId: activeSucursalId,
       });
 
       if (stock.length === 0 || nuevaCantidad > stock[0].cantidad) {
@@ -263,7 +263,7 @@ export function POSPage() {
       return;
     }
 
-    if (!user?.sucursalId) {
+    if (!activeSucursalId) {
       enqueueSnackbar('No tienes una sucursal asignada', { variant: 'error' });
       return;
     }
@@ -328,7 +328,7 @@ export function POSPage() {
 
     // Construir DTO
     const crearVentaDto: CrearVentaDTO = {
-      sucursalId: user.sucursalId!,
+      sucursalId: activeSucursalId!,
       cajaId: selectedCajaId!,
       clienteId: selectedClienteId || undefined,
       metodoPago: metodoPago,

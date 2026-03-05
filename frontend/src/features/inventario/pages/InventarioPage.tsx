@@ -61,10 +61,10 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export function InventarioPage() {
-  const { user, isSupervisor } = useAuth();
+  const { isSupervisor, activeSucursalId } = useAuth();
   const esSupervisor = isSupervisor();
   const [tabValue, setTabValue] = useState(0);
-  const [sucursalId, setSucursalId] = useState<number | ''>(user?.sucursalId || '');
+  const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
   const [soloConStock, setSoloConStock] = useState(false);
 
   // Dialogs

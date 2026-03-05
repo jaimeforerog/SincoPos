@@ -25,7 +25,7 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { activeSucursalId } = useAuth();
 
   const { data: productos = [], isLoading } = useQuery({
     queryKey: ['productos', debouncedSearch],
@@ -37,22 +37,22 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
     enabled: true,
   });
 
-  // Cargar inventario para la sucursal del usuario
+  // Cargar inventario para la sucursal activa
   const { data: inventarios = [] } = useQuery({
-    queryKey: ['inventario', user?.sucursalId],
+    queryKey: ['inventario', activeSucursalId],
     queryFn: () =>
       inventarioApi.getStock({
-        sucursalId: user?.sucursalId,
+        sucursalId: activeSucursalId,
       }),
-    enabled: !!user?.sucursalId,
+    enabled: !!activeSucursalId,
   });
 
   // Resolver precios de todos los productos activos para la sucursal (una sola llamada)
   // Incluye fallback a Costo × Margen, igual que al agregar al carrito
   const { data: preciosResueltos = [] } = useQuery({
-    queryKey: ['precios-resueltos', user?.sucursalId],
-    queryFn: () => preciosApi.resolverLote(user!.sucursalId),
-    enabled: !!user?.sucursalId,
+    queryKey: ['precios-resueltos', activeSucursalId],
+    queryFn: () => preciosApi.resolverLote(activeSucursalId!),
+    enabled: !!activeSucursalId,
     staleTime: 30_000,
   });
 
