@@ -1,0 +1,141 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  NODE_VERSION: '20'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/sincopos-api
+
+jobs:
+  # ── Backend: build + integration tests ──────────────────────────────────────
+  backend:
+    name: Backend (build + tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore SincoPos.sln
+
+      - name: Build
+        run: dotnet build SincoPos.sln --no-restore --configuration Release
+
+      - name: Run integration tests
+        run: >
+          dotnet test tests/POS.IntegrationTests/POS.IntegrationTests.csproj
+          --no-restore
+          --configuration Release
+          --logger "github"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage
+        env:
+          # Testcontainers levanta su propio PostgreSQL en Docker
+          TESTCONTAINERS_RYUK_DISABLED: false
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/**/coverage.cobertura.xml
+          retention-days: 7
+
+  # ── Frontend: lint + build ───────────────────────────────────────────────────
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build (production)
+        working-directory: frontend
+        run: npm run build
+        env:
+          # Variables de entorno para el build de producción
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.sincopos.com' }}
+          VITE_KEYCLOAK_URL: ${{ vars.VITE_KEYCLOAK_URL || 'https://auth.sincopos.com' }}
+          VITE_KEYCLOAK_REALM: ${{ vars.VITE_KEYCLOAK_REALM || 'sincopos' }}
+          VITE_KEYCLOAK_CLIENT_ID: ${{ vars.VITE_KEYCLOAK_CLIENT_ID || 'sincopos-frontend' }}
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 7
+
+  # ── Docker: build + push a ghcr.io (solo en push a main) ────────────────────
+  docker:
+    name: Docker (build + push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: POS.Api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
