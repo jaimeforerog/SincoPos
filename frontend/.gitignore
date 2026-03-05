@@ -1,4 +1,4 @@
-# Logs
+# ── Logs ────────────────────────────────────────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -7,12 +7,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# ── Dependencias y build ─────────────────────────────────────────────────────
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# ── Variables de entorno (NUNCA al repo) ────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Cobertura y tests ────────────────────────────────────────────────────────
+coverage/
+
+# ── Editor ───────────────────────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,3 +31,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ── Claude Code ──────────────────────────────────────────────────────────────
+.claude/

@@ -1,5 +1,43 @@
+# ── .NET / ASP.NET Core ─────────────────────────────────────────────────────
 bin/
 obj/
 /packages/
-riderModule.iml
 /_ReSharper.Caches/
+*.user
+*.suo
+*.DotSettings.user
+riderModule.iml
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# ── Variables de entorno (NUNCA al repo) ────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── IDE / Editores ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.sln.DotSettings.user
+
+# ── Claude Code ─────────────────────────────────────────────────────────────
+.claude/
+
+# ── Frontend ────────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# ── Docker ──────────────────────────────────────────────────────────────────
+.dockerignore.local
+
+# ── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
