@@ -203,6 +203,9 @@ namespace POS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("SucursalId", "Estado")
+                        .HasDatabaseName("ix_cajas_sucursal_estado");
+
                     b.HasIndex("SucursalId", "Nombre")
                         .IsUnique()
                         .HasDatabaseName("ix_cajas_sucursal_nombre");
@@ -221,6 +224,10 @@ namespace POS.Infrastructure.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("boolean")
                         .HasColumnName("activo");
+
+                    b.Property<int?>("CategoriaPadreId")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoria_padre_id");
 
                     b.Property<string>("CreadoPor")
                         .IsRequired()
@@ -247,13 +254,30 @@ namespace POS.Infrastructure.Migrations
                     b.Property<string>("ModificadoPor")
                         .HasColumnType("text");
 
+                    b.Property<int>("Nivel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("nivel");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nombre");
 
+                    b.Property<string>("RutaCompleta")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasDefaultValue("")
+                        .HasColumnName("ruta_completa");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoriaPadreId")
+                        .HasDatabaseName("ix_categorias_categoria_padre_id");
 
                     b.ToTable("categorias", "public");
                 });
@@ -307,6 +331,133 @@ namespace POS.Infrastructure.Migrations
                     b.HasIndex("ProductoId");
 
                     b.ToTable("detalle_devolucion", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleOrdenCompra", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CantidadRecibida")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cantidad_recibida");
+
+                    b.Property<decimal>("CantidadSolicitada")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cantidad_solicitada");
+
+                    b.Property<decimal>("MontoImpuesto")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("monto_impuesto");
+
+                    b.Property<string>("NombreImpuesto")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre_impuesto");
+
+                    b.Property<string>("NombreProducto")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nombre_producto");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<int>("OrdenCompraId")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden_compra_id");
+
+                    b.Property<decimal>("PorcentajeImpuesto")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)")
+                        .HasColumnName("porcentaje_impuesto");
+
+                    b.Property<decimal>("PrecioUnitario")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("precio_unitario");
+
+                    b.Property<Guid>("ProductoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("producto_id");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("subtotal");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrdenCompraId");
+
+                    b.HasIndex("ProductoId");
+
+                    b.ToTable("detalle_ordenes_compra", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleTraslado", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CantidadRecibida")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cantidad_recibida");
+
+                    b.Property<decimal>("CantidadSolicitada")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cantidad_solicitada");
+
+                    b.Property<decimal>("CostoTotal")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("costo_total");
+
+                    b.Property<decimal>("CostoUnitario")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("costo_unitario");
+
+                    b.Property<string>("NombreProducto")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nombre_producto");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<Guid>("ProductoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("producto_id");
+
+                    b.Property<int>("TrasladoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("traslado_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductoId");
+
+                    b.HasIndex("TrasladoId");
+
+                    b.ToTable("detalle_traslados", "public");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleVenta", b =>
@@ -368,9 +519,11 @@ namespace POS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductoId");
+                    b.HasIndex("ProductoId")
+                        .HasDatabaseName("ix_detalle_ventas_producto_id");
 
-                    b.HasIndex("VentaId");
+                    b.HasIndex("VentaId")
+                        .HasDatabaseName("ix_detalle_ventas_venta_id");
 
                     b.ToTable("detalle_ventas", "public");
                 });
@@ -456,9 +609,29 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("AplicaSobreBase")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("CodigoCuentaContable")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("CodigoPais")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasDefaultValue("CO");
+
                     b.Property<string>("CreadoPor")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
@@ -471,12 +644,21 @@ namespace POS.Infrastructure.Migrations
 
                     b.Property<string>("Nombre")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<decimal>("Porcentaje")
-                        .HasPrecision(5, 4)
-                        .HasColumnType("numeric(5,4)");
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<int>("Tipo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<decimal?>("ValorFijo")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
 
@@ -487,28 +669,72 @@ namespace POS.Infrastructure.Migrations
                         {
                             Id = 1,
                             Activo = true,
+                            AplicaSobreBase = true,
+                            CodigoCuentaContable = "2408",
+                            CodigoPais = "CO",
                             CreadoPor = "",
+                            Descripcion = "Bienes y servicios exentos de IVA",
                             FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "Exento 0%",
-                            Porcentaje = 0.00m
+                            Porcentaje = 0.00m,
+                            Tipo = 0
                         },
                         new
                         {
                             Id = 2,
                             Activo = true,
+                            AplicaSobreBase = true,
+                            CodigoCuentaContable = "2408",
+                            CodigoPais = "CO",
                             CreadoPor = "",
+                            Descripcion = "IVA tarifa diferencial 5%",
                             FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "IVA 5%",
-                            Porcentaje = 0.05m
+                            Porcentaje = 0.05m,
+                            Tipo = 0
                         },
                         new
                         {
                             Id = 3,
                             Activo = true,
+                            AplicaSobreBase = true,
+                            CodigoCuentaContable = "2408",
+                            CodigoPais = "CO",
                             CreadoPor = "",
+                            Descripcion = "IVA tarifa general 19%",
                             FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "IVA 19%",
-                            Porcentaje = 0.19m
+                            Porcentaje = 0.19m,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Activo = true,
+                            AplicaSobreBase = false,
+                            CodigoCuentaContable = "2412",
+                            CodigoPais = "CO",
+                            CreadoPor = "",
+                            Descripcion = "INC restaurantes, bares, cafeterías (Art. 512-1 ET)",
+                            FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "INC 8%",
+                            Porcentaje = 0.08m,
+                            Tipo = 1
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Activo = true,
+                            AplicaSobreBase = false,
+                            CodigoCuentaContable = "2424",
+                            CodigoPais = "CO",
+                            CreadoPor = "",
+                            Descripcion = "Impuesto bolsas plásticas 2026 (Ley 1819/2016)",
+                            FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "Bolsa $66",
+                            Porcentaje = 0.00m,
+                            Tipo = 3,
+                            ValorFijo = 66m
                         });
                 });
 
@@ -588,10 +814,79 @@ namespace POS.Infrastructure.Migrations
 
                     b.HasIndex("TerceroId");
 
+                    b.HasIndex("ProductoId", "SucursalId", "CantidadDisponible")
+                        .HasDatabaseName("ix_lotes_disponibles")
+                        .HasFilter("cantidad_disponible > 0");
+
                     b.HasIndex("ProductoId", "SucursalId", "FechaEntrada")
                         .HasDatabaseName("ix_lotes_producto_sucursal_fecha");
 
                     b.ToTable("lotes_inventario", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.MigracionLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AplicadoPor")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("aplicado_por");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<long>("DuracionMs")
+                        .HasColumnType("bigint")
+                        .HasColumnName("duracion_ms");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaAplicacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_aplicacion");
+
+                    b.Property<string>("MigracionId")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("migracion_id");
+
+                    b.Property<string>("Notas")
+                        .HasColumnType("text")
+                        .HasColumnName("notas");
+
+                    b.Property<string>("ProductVersion")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("product_version");
+
+                    b.Property<string>("SqlEjecutado")
+                        .HasColumnType("text")
+                        .HasColumnName("sql_ejecutado");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaAplicacion")
+                        .HasDatabaseName("IX_migraciones_log_fecha_aplicacion");
+
+                    b.HasIndex("MigracionId")
+                        .HasDatabaseName("IX_migraciones_log_migracion_id");
+
+                    b.ToTable("migraciones_log", "public");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.MovimientoInventario", b =>
@@ -679,6 +974,121 @@ namespace POS.Infrastructure.Migrations
                     b.ToTable("movimientos_inventario", "public");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.OrdenCompra", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("AprobadoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("aprobado_por_usuario_id");
+
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime?>("FechaAprobacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_aprobacion");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaEntregaEsperada")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_entrega_esperada");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaOrden")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_orden");
+
+                    b.Property<DateTime?>("FechaRecepcion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_recepcion");
+
+                    b.Property<decimal>("Impuestos")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("impuestos");
+
+                    b.Property<string>("ModificadoPor")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotivoRechazo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_rechazo");
+
+                    b.Property<string>("NumeroOrden")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("numero_orden");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<int>("ProveedorId")
+                        .HasColumnType("integer")
+                        .HasColumnName("proveedor_id");
+
+                    b.Property<int?>("RecibidoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("recibido_por_usuario_id");
+
+                    b.Property<bool>("RequiereFacturaElectronica")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requiere_factura_electronica");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("subtotal");
+
+                    b.Property<int>("SucursalId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sucursal_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaOrden")
+                        .HasDatabaseName("ix_ordenes_compra_fecha");
+
+                    b.HasIndex("NumeroOrden")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ordenes_compra_numero");
+
+                    b.HasIndex("ProveedorId", "FechaOrden")
+                        .HasDatabaseName("ix_ordenes_compra_proveedor_fecha");
+
+                    b.HasIndex("SucursalId", "Estado")
+                        .HasDatabaseName("ix_ordenes_compra_sucursal_estado");
+
+                    b.ToTable("ordenes_compra", "public");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.PrecioSucursal", b =>
                 {
                     b.Property<int>("Id")
@@ -703,6 +1113,9 @@ namespace POS.Infrastructure.Migrations
                     b.Property<string>("ModificadoPor")
                         .HasColumnType("text");
 
+                    b.Property<string>("OrigenDato")
+                        .HasColumnType("text");
+
                     b.Property<decimal?>("PrecioMinimo")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -723,7 +1136,8 @@ namespace POS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SucursalId");
+                    b.HasIndex("SucursalId")
+                        .HasDatabaseName("ix_precios_sucursal_sucursal_id");
 
                     b.HasIndex("ProductoId", "SucursalId")
                         .IsUnique()
@@ -761,6 +1175,9 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("descripcion");
 
+                    b.Property<bool>("EsAlimentoUltraprocesado")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_creacion");
@@ -768,6 +1185,16 @@ namespace POS.Infrastructure.Migrations
                     b.Property<DateTime?>("FechaModificacion")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_modificacion");
+
+                    b.Property<decimal?>("GramosAzucarPor100ml")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("UnidadMedida")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasDefaultValue("94")
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("unidad_medida");
 
                     b.Property<int?>("ImpuestoId")
                         .HasColumnType("integer")
@@ -794,7 +1221,12 @@ namespace POS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CategoriaId");
+                    b.HasIndex("Activo")
+                        .HasDatabaseName("ix_productos_activo")
+                        .HasFilter("activo = true");
+
+                    b.HasIndex("CategoriaId")
+                        .HasDatabaseName("ix_productos_categoria_id");
 
                     b.HasIndex("CodigoBarras")
                         .IsUnique()
@@ -803,6 +1235,118 @@ namespace POS.Infrastructure.Migrations
                     b.HasIndex("ImpuestoId");
 
                     b.ToTable("productos", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.RetencionRegla", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<decimal>("BaseMinUVT")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasDefaultValue(4m);
+
+                    b.Property<string>("CodigoCuentaContable")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("CodigoMunicipio")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModificadoPor")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PerfilComprador")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PerfilVendedor")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal>("Porcentaje")
+                        .HasPrecision(8, 6)
+                        .HasColumnType("numeric(8,6)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("retenciones_reglas", "public");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Activo = true,
+                            BaseMinUVT = 4m,
+                            CodigoCuentaContable = "1355",
+                            CreadoPor = "",
+                            FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "ReteFuente Compras 2.5%",
+                            PerfilComprador = "GRAN_CONTRIBUYENTE",
+                            PerfilVendedor = "REGIMEN_ORDINARIO",
+                            Porcentaje = 0.025m,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Activo = false,
+                            BaseMinUVT = 0m,
+                            CodigoCuentaContable = "1355",
+                            CreadoPor = "",
+                            FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "ReteFuente Honorarios 11%",
+                            PerfilComprador = "GRAN_CONTRIBUYENTE",
+                            PerfilVendedor = "REGIMEN_ORDINARIO",
+                            Porcentaje = 0.11m,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Activo = true,
+                            BaseMinUVT = 0m,
+                            CodigoCuentaContable = "1356",
+                            CodigoMunicipio = "11001",
+                            CreadoPor = "",
+                            FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "ReteICA Bogotá 0.966%",
+                            PerfilComprador = "GRAN_CONTRIBUYENTE",
+                            PerfilVendedor = "REGIMEN_ORDINARIO",
+                            Porcentaje = 0.00966m,
+                            Tipo = 1
+                        });
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Stock", b =>
@@ -884,6 +1428,12 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("ciudad");
 
+                    b.Property<string>("CodigoMunicipio")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CodigoPais")
+                        .HasColumnType("text");
+
                     b.Property<string>("CreadoPor")
                         .IsRequired()
                         .HasColumnType("text");
@@ -920,10 +1470,20 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("nombre");
 
+                    b.Property<string>("NombrePais")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PerfilTributario")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Telefono")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("telefono");
+
+                    b.Property<decimal>("ValorUVT")
+                        .HasColumnType("numeric");
 
                     b.HasKey("Id");
 
@@ -951,9 +1511,24 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("ciudad");
 
+                    b.Property<string>("CodigoDepartamento")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("codigo_departamento");
+
+                    b.Property<string>("CodigoMunicipio")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("codigo_municipio");
+
                     b.Property<string>("CreadoPor")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("DigitoVerificacion")
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)")
+                        .HasColumnName("digito_verificacion");
 
                     b.Property<string>("Direccion")
                         .HasMaxLength(300)
@@ -964,6 +1539,24 @@ namespace POS.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("email");
+
+                    b.Property<bool>("EsAutorretenedor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_autorretenedor");
+
+                    b.Property<bool>("EsGranContribuyente")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_gran_contribuyente");
+
+                    b.Property<bool>("EsResponsableIVA")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_responsable_iva");
 
                     b.Property<string>("ExternalId")
                         .HasMaxLength(100)
@@ -999,6 +1592,14 @@ namespace POS.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("origen_datos");
 
+                    b.Property<string>("PerfilTributario")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("REGIMEN_COMUN")
+                        .HasColumnName("perfil_tributario");
+
                     b.Property<string>("Telefono")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -1014,6 +1615,10 @@ namespace POS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Activo")
+                        .HasDatabaseName("ix_terceros_activo")
+                        .HasFilter("activo = true");
+
                     b.HasIndex("ExternalId")
                         .HasDatabaseName("ix_terceros_external_id")
                         .HasFilter("external_id IS NOT NULL");
@@ -1022,7 +1627,138 @@ namespace POS.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_terceros_identificacion");
 
+                    b.HasIndex("TipoTercero")
+                        .HasDatabaseName("ix_terceros_tipo_tercero");
+
                     b.ToTable("terceros", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.TerceroActividad", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodigoCIIU")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("codigo_ciiu");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("EsPrincipal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_principal");
+
+                    b.Property<int>("TerceroId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tercero_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TerceroId", "CodigoCIIU")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tercero_actividades_tercero_ciiu");
+
+                    b.ToTable("tercero_actividades", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Traslado", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaEnvio")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_envio");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaRecepcion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_recepcion");
+
+                    b.Property<DateTime>("FechaTraslado")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_traslado");
+
+                    b.Property<string>("ModificadoPor")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotivoRechazo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_rechazo");
+
+                    b.Property<string>("NumeroTraslado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("numero_traslado");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<int?>("RecibidoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("recibido_por_usuario_id");
+
+                    b.Property<int>("SucursalDestinoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sucursal_destino_id");
+
+                    b.Property<int>("SucursalOrigenId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sucursal_origen_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaTraslado")
+                        .HasDatabaseName("ix_traslados_fecha");
+
+                    b.HasIndex("NumeroTraslado")
+                        .IsUnique()
+                        .HasDatabaseName("ix_traslados_numero");
+
+                    b.HasIndex("SucursalDestinoId", "Estado")
+                        .HasDatabaseName("ix_traslados_destino_estado");
+
+                    b.HasIndex("SucursalOrigenId", "Estado")
+                        .HasDatabaseName("ix_traslados_origen_estado");
+
+                    b.HasIndex("SucursalOrigenId", "FechaTraslado")
+                        .HasDatabaseName("ix_traslados_origen_fecha");
+
+                    b.ToTable("traslados", "public");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Usuario", b =>
@@ -1183,6 +1919,9 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("observaciones");
 
+                    b.Property<bool>("RequiereFacturaElectronica")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("Subtotal")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -1205,7 +1944,12 @@ namespace POS.Infrastructure.Migrations
 
                     b.HasIndex("CajaId");
 
-                    b.HasIndex("ClienteId");
+                    b.HasIndex("ClienteId")
+                        .HasDatabaseName("ix_ventas_cliente_id")
+                        .HasFilter("cliente_id IS NOT NULL");
+
+                    b.HasIndex("Estado")
+                        .HasDatabaseName("ix_ventas_estado");
 
                     b.HasIndex("FechaVenta")
                         .HasDatabaseName("ix_ventas_fecha");
@@ -1248,6 +1992,16 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("Sucursal");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Categoria", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Categoria", "CategoriaPadre")
+                        .WithMany("SubCategorias")
+                        .HasForeignKey("CategoriaPadreId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CategoriaPadre");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleDevolucion", b =>
                 {
                     b.HasOne("POS.Infrastructure.Data.Entities.DevolucionVenta", "DevolucionVenta")
@@ -1265,6 +2019,44 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("DevolucionVenta");
 
                     b.Navigation("Producto");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleOrdenCompra", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.OrdenCompra", "OrdenCompra")
+                        .WithMany("Detalles")
+                        .HasForeignKey("OrdenCompraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("POS.Infrastructure.Data.Entities.Producto", "Producto")
+                        .WithMany()
+                        .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrdenCompra");
+
+                    b.Navigation("Producto");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleTraslado", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Producto", "Producto")
+                        .WithMany()
+                        .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("POS.Infrastructure.Data.Entities.Traslado", "Traslado")
+                        .WithMany("Detalles")
+                        .HasForeignKey("TrasladoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Producto");
+
+                    b.Navigation("Traslado");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleVenta", b =>
@@ -1356,6 +2148,25 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("Tercero");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.OrdenCompra", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Tercero", "Proveedor")
+                        .WithMany()
+                        .HasForeignKey("ProveedorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "Sucursal")
+                        .WithMany()
+                        .HasForeignKey("SucursalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Proveedor");
+
+                    b.Navigation("Sucursal");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.PrecioSucursal", b =>
                 {
                     b.HasOne("POS.Infrastructure.Data.Entities.Producto", "Producto")
@@ -1412,6 +2223,36 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("Sucursal");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.TerceroActividad", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Tercero", "Tercero")
+                        .WithMany("Actividades")
+                        .HasForeignKey("TerceroId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tercero");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Traslado", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "SucursalDestino")
+                        .WithMany()
+                        .HasForeignKey("SucursalDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "SucursalOrigen")
+                        .WithMany()
+                        .HasForeignKey("SucursalOrigenId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SucursalDestino");
+
+                    b.Navigation("SucursalOrigen");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Usuario", b =>
                 {
                     b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "SucursalDefault")
@@ -1451,6 +2292,8 @@ namespace POS.Infrastructure.Migrations
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Categoria", b =>
                 {
                     b.Navigation("Productos");
+
+                    b.Navigation("SubCategorias");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DevolucionVenta", b =>
@@ -1461,6 +2304,21 @@ namespace POS.Infrastructure.Migrations
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Impuesto", b =>
                 {
                     b.Navigation("Productos");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.OrdenCompra", b =>
+                {
+                    b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Tercero", b =>
+                {
+                    b.Navigation("Actividades");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Traslado", b =>
+                {
+                    b.Navigation("Detalles");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Venta", b =>

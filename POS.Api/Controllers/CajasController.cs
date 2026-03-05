@@ -33,9 +33,15 @@ public class CajasController : ControllerBase
     }
 
     /// <summary>
-    /// Crear una nueva caja
+    /// Crear una nueva caja en una sucursal. El nombre debe ser único dentro de la sucursal.
     /// </summary>
+    /// <response code="201">Caja creada en estado Cerrada.</response>
+    /// <response code="400">Sucursal inexistente o validación fallida.</response>
+    /// <response code="409">Ya existe una caja con ese nombre en la sucursal.</response>
     [HttpPost]
+    [ProducesResponseType(typeof(CajaDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CajaDto>> CrearCaja(
         CrearCajaDto dto,
         [FromServices] IValidator<CrearCajaDto> validator)
@@ -81,9 +87,11 @@ public class CajasController : ControllerBase
     }
 
     /// <summary>
-    /// Obtener una caja por ID
+    /// Obtener una caja por ID.
     /// </summary>
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(CajaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CajaDto>> ObtenerCaja(int id)
     {
         var caja = await _context.Cajas
@@ -97,9 +105,10 @@ public class CajasController : ControllerBase
     }
 
     /// <summary>
-    /// Listar cajas (opcionalmente filtrar por sucursal)
+    /// Listar cajas. Por defecto solo muestra cajas activas.
     /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(List<CajaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<CajaDto>>> ObtenerCajas(
         [FromQuery] int? sucursalId = null,
         [FromQuery] bool incluirInactivas = false)
@@ -124,9 +133,54 @@ public class CajasController : ControllerBase
     }
 
     /// <summary>
-    /// Abrir una caja (iniciar turno)
+    /// Obtener las cajas abiertas de la sucursal asignada al usuario autenticado.
+    /// Útil para que el cajero seleccione su caja al iniciar el POS.
     /// </summary>
+    [HttpGet("mis-abiertas")]
+    [Authorize(Policy = "Cajero")]
+    [ProducesResponseType(typeof(List<CajaDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<CajaDto>>> ObtenerMisCajasAbiertas()
+    {
+        // Obtener el usuario autenticado
+        var keycloakId = User.GetKeycloakId();
+        var email = User.GetEmail();
+
+        if (string.IsNullOrEmpty(keycloakId) || string.IsNullOrEmpty(email))
+            return BadRequest(new { error = "Usuario no autenticado correctamente" });
+
+        // Buscar el usuario en la base de datos
+        var usuario = await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.KeycloakId == keycloakId || u.Email == email);
+
+        if (usuario == null || !usuario.SucursalDefaultId.HasValue)
+            return Ok(new List<CajaDto>()); // Usuario sin sucursal asignada = sin cajas
+
+        // Obtener cajas abiertas de la sucursal del usuario
+        var cajas = await _context.Cajas
+            .Include(c => c.Sucursal)
+            .Where(c => c.SucursalId == usuario.SucursalDefaultId.Value
+                     && c.Estado == EstadoCaja.Abierta
+                     && c.Activo)
+            .OrderBy(c => c.Nombre)
+            .Select(c => MapToDto(c, c.Sucursal.Nombre))
+            .ToListAsync();
+
+        return Ok(cajas);
+    }
+
+    /// <summary>
+    /// Abrir una caja (iniciar turno). Registra el monto de apertura y el usuario que abre.
+    /// </summary>
+    /// <response code="200">Caja abierta exitosamente.</response>
+    /// <response code="404">Caja no encontrada.</response>
+    /// <response code="409">Caja ya está abierta.</response>
+    /// <response code="400">Caja inactiva u otro error.</response>
     [HttpPost("{id:int}/abrir")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> AbrirCaja(
         int id,
         AbrirCajaDto dto,
@@ -197,9 +251,16 @@ public class CajasController : ControllerBase
     }
 
     /// <summary>
-    /// Cerrar una caja (fin de turno con cuadre)
+    /// Cerrar una caja (fin de turno con cuadre).
+    /// Retorna la diferencia entre el monto real contado y el monto esperado (apertura + ventas efectivo).
     /// </summary>
+    /// <response code="200">Caja cerrada. Retorna montoEsperado, montoReal, diferencia y cuadra (bool).</response>
+    /// <response code="404">Caja no encontrada.</response>
+    /// <response code="409">Caja ya está cerrada.</response>
     [HttpPost("{id:int}/cerrar")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult> CerrarCaja(
         int id,
         CerrarCajaDto dto,
@@ -269,9 +330,15 @@ public class CajasController : ControllerBase
     }
 
     /// <summary>
-    /// Desactivar una caja (soft delete)
+    /// Desactivar una caja (soft delete). No se puede desactivar una caja abierta.
     /// </summary>
+    /// <response code="204">Desactivada exitosamente.</response>
+    /// <response code="404">Caja no encontrada.</response>
+    /// <response code="409">Caja abierta — debe cerrarse primero.</response>
     [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult> DesactivarCaja(int id)
     {
         var caja = await _context.Cajas.FindAsync(id);

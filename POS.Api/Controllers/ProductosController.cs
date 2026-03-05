@@ -23,10 +23,16 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Crear un nuevo producto
+    /// Crear un nuevo producto.
     /// </summary>
+    /// <response code="201">Producto creado.</response>
+    /// <response code="400">Validación fallida.</response>
+    /// <response code="409">Ya existe un producto con el mismo código de barras.</response>
     [HttpPost]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(ProductoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ProductoDto>> CrearProducto(
         CrearProductoDto dto,
         [FromServices] IValidator<CrearProductoDto> validator)
@@ -49,9 +55,11 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Obtener un producto por ID
+    /// Obtener un producto por ID.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(ProductoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductoDto>> ObtenerProducto(Guid id)
     {
         var producto = await _productoService.ObtenerPorIdAsync(id);
@@ -61,9 +69,11 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Buscar producto por codigo de barras
+    /// Buscar producto por código de barras.
     /// </summary>
     [HttpGet("codigo/{codigoBarras}")]
+    [ProducesResponseType(typeof(ProductoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductoDto>> ObtenerPorCodigoBarras(string codigoBarras)
     {
         var producto = await _productoService.ObtenerPorCodigoBarrasAsync(codigoBarras);
@@ -73,9 +83,10 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Listar productos
+    /// Listar y buscar productos con filtros opcionales.
     /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(List<ProductoDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ProductoDto>>> ObtenerProductos(
         [FromQuery] string? query = null,
         [FromQuery] int? categoriaId = null,
@@ -86,10 +97,13 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Actualizar un producto
+    /// Actualizar un producto.
     /// </summary>
     [HttpPut("{id:guid}")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> ActualizarProducto(Guid id, ActualizarProductoDto dto)
     {
         var (success, error) = await _productoService.ActualizarAsync(id, dto);
@@ -101,10 +115,13 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Desactivar un producto (soft delete)
+    /// Desactivar un producto (soft delete). El producto deja de aparecer en búsquedas.
     /// </summary>
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> DesactivarProducto(Guid id, [FromQuery] string? motivo)
     {
         var (success, error) = await _productoService.DesactivarAsync(id, motivo);

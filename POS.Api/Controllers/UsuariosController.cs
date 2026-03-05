@@ -91,18 +91,26 @@ public class UsuariosController : ControllerBase
         if (string.IsNullOrEmpty(keycloakId))
             return Unauthorized("No se pudo identificar al usuario");
 
+        var email = User.GetEmail() ?? "unknown@sincopos.com";
+        var nombreCompleto = User.GetNombreCompleto() ?? email;
+        var keycloakRoles = User.GetRoles().ToList();
+
+        // Solo actualizar rol si Keycloak reporta roles; si no, pasar null para evitar
+        // degradar un rol existente cuando la lectura de claims falla
+        var rolKeycloak = keycloakRoles.Count > 0
+            ? DeterminarRolPrincipal(keycloakRoles)
+            : null;
+
+        _logger.LogInformation(
+            "ObtenerPerfil: keycloakId={Id}, rolesKeycloak=[{Roles}], rolDeterminado={Rol}",
+            keycloakId, string.Join(",", keycloakRoles), rolKeycloak ?? "(sin rol)");
+
+        await _usuarioService.ObtenerOCrearUsuarioAsync(keycloakId, email, nombreCompleto, rolKeycloak);
+
+        // Re-cargar con propiedades de navegación (SucursalDefault)
         var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(keycloakId);
         if (usuario == null)
-        {
-            // Auto-crear usuario si no existe
-            var email = User.GetEmail() ?? "unknown@sincopos.com";
-            var nombreCompleto = User.GetNombreCompleto() ?? email;
-            var roles = User.GetRoles().ToList();
-            var rol = DeterminarRolPrincipal(roles);
-
-            usuario = await _usuarioService.ObtenerOCrearUsuarioAsync(
-                keycloakId, email, nombreCompleto, rol);
-        }
+            return StatusCode(500, "Error al obtener perfil de usuario");
 
         var permisos = ObtenerPermisosPorRol(usuario.Rol);
 
@@ -183,6 +191,28 @@ public class UsuariosController : ControllerBase
         _logger.LogInformation(
             "Usuario {Email} cambió su sucursal default a {SucursalId}",
             usuario.Email, dto.SucursalId);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Asignar sucursal default a un usuario (Admin)
+    /// </summary>
+    [HttpPut("{id}/sucursal")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> ActualizarSucursalUsuario(int id, [FromBody] ActualizarSucursalDefaultDto dto)
+    {
+        var usuario = await _usuarioService.ObtenerPorIdAsync(id);
+        if (usuario == null)
+            return NotFound($"Usuario con ID {id} no encontrado");
+
+        var actualizado = await _usuarioService.ActualizarSucursalDefaultAsync(id, dto.SucursalId);
+        if (!actualizado)
+            return BadRequest("No se pudo actualizar la sucursal. Verifique que existe y está activa.");
+
+        _logger.LogInformation(
+            "Admin {Email} asignó sucursal {SucursalId} a usuario {UsuarioEmail}",
+            User.GetEmail(), dto.SucursalId, usuario.Email);
 
         return NoContent();
     }

@@ -16,7 +16,7 @@ public class CrearProductoValidator : AbstractValidator<CrearProductoDto>
             .MaximumLength(200);
 
         RuleFor(x => x.PrecioVenta)
-            .GreaterThan(0).WithMessage("El precio de venta debe ser mayor a 0.");
+            .GreaterThanOrEqualTo(0).WithMessage("El precio de venta no puede ser negativo.");
 
         RuleFor(x => x.CategoriaId)
             .GreaterThan(0).WithMessage("La categoria es obligatoria.");
@@ -24,9 +24,10 @@ public class CrearProductoValidator : AbstractValidator<CrearProductoDto>
         RuleFor(x => x.PrecioCosto)
             .GreaterThanOrEqualTo(0).WithMessage("El precio de costo no puede ser negativo.");
 
-        RuleFor(x => x)
-            .Must(x => x.PrecioVenta >= x.PrecioCosto)
-            .WithMessage("El precio de venta no puede ser menor al precio de costo.");
+        // Comentado: El precio de venta se maneja por sucursal, puede ser 0 en el producto base
+        // RuleFor(x => x)
+        //     .Must(x => x.PrecioVenta >= x.PrecioCosto)
+        //     .WithMessage("El precio de venta no puede ser menor al precio de costo.");
     }
 }
 
@@ -39,7 +40,7 @@ public class ActualizarProductoValidator : AbstractValidator<ActualizarProductoD
             .MaximumLength(200);
 
         RuleFor(x => x.PrecioVenta)
-            .GreaterThan(0).WithMessage("El precio de venta debe ser mayor a 0.");
+            .GreaterThanOrEqualTo(0).WithMessage("El precio de venta no puede ser negativo.");
 
         RuleFor(x => x.PrecioCosto)
             .GreaterThanOrEqualTo(0).WithMessage("El precio de costo no puede ser negativo.");

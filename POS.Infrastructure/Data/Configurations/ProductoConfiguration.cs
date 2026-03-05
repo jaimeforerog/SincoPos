@@ -56,10 +56,23 @@ public class ProductoConfiguration : IEntityTypeConfiguration<Producto>
             .IsRequired()
             .HasColumnName("categoria_id");
 
+        builder.HasIndex(p => p.Activo)
+            .HasDatabaseName("ix_productos_activo")
+            .HasFilter("activo = true");
+
+        builder.HasIndex(p => p.CategoriaId)
+            .HasDatabaseName("ix_productos_categoria_id");
+
         builder.HasOne(p => p.Categoria)
             .WithMany(c => c.Productos)
             .HasForeignKey(p => p.CategoriaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(p => p.UnidadMedida)
+            .IsRequired()
+            .HasMaxLength(10)
+            .HasDefaultValue("94")
+            .HasColumnName("unidad_medida");
 
         builder.Property(p => p.ImpuestoId)
             .HasColumnName("impuesto_id");
@@ -95,5 +108,28 @@ public class CategoriaConfiguration : IEntityTypeConfiguration<Categoria>
             .HasPrecision(5, 2)
             .HasDefaultValue(0.30m)
             .HasColumnName("margen_ganancia");
+
+        // Jerarquía
+        builder.Property(c => c.CategoriaPadreId)
+            .HasColumnName("categoria_padre_id");
+
+        builder.Property(c => c.Nivel)
+            .HasDefaultValue(0)
+            .HasColumnName("nivel");
+
+        builder.Property(c => c.RutaCompleta)
+            .HasMaxLength(500)
+            .HasDefaultValue(string.Empty)
+            .HasColumnName("ruta_completa");
+
+        // Relación auto-referencial (categoría padre)
+        builder.HasOne(c => c.CategoriaPadre)
+            .WithMany(c => c.SubCategorias)
+            .HasForeignKey(c => c.CategoriaPadreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Índice para búsquedas por padre
+        builder.HasIndex(c => c.CategoriaPadreId)
+            .HasDatabaseName("ix_categorias_categoria_padre_id");
     }
 }

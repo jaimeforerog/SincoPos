@@ -217,6 +217,73 @@ public class InventarioAggregate
         return evento;
     }
 
+    /// <summary>
+    /// Registra salida por traslado a otra sucursal
+    /// </summary>
+    public TrasladoSalidaRegistrado RegistrarSalidaTraslado(
+        decimal cantidad,
+        decimal costoUnitario,
+        int sucursalDestinoId,
+        string numeroTraslado,
+        string? observaciones,
+        int? usuarioId)
+    {
+        if (cantidad <= 0)
+            throw new InvalidOperationException("La cantidad debe ser mayor a cero");
+
+        if (Cantidad < cantidad)
+            throw new InvalidOperationException($"Stock insuficiente. Disponible: {Cantidad}, Solicitado: {cantidad}");
+
+        var evento = new TrasladoSalidaRegistrado
+        {
+            ProductoId = this.ProductoId,
+            SucursalOrigenId = this.SucursalId,
+            SucursalDestinoId = sucursalDestinoId,
+            NumeroTraslado = numeroTraslado,
+            Cantidad = cantidad,
+            CostoUnitario = costoUnitario,
+            CostoTotal = cantidad * costoUnitario,
+            Observaciones = observaciones,
+            UsuarioId = usuarioId,
+            Timestamp = DateTime.UtcNow
+        };
+
+        Apply(evento);
+        return evento;
+    }
+
+    /// <summary>
+    /// Registra entrada por traslado desde otra sucursal
+    /// </summary>
+    public TrasladoEntradaRegistrado RegistrarEntradaTraslado(
+        decimal cantidadRecibida,
+        decimal costoUnitario,
+        int sucursalOrigenId,
+        string numeroTraslado,
+        string? observaciones,
+        int? usuarioId)
+    {
+        if (cantidadRecibida <= 0)
+            throw new InvalidOperationException("La cantidad recibida debe ser mayor a cero");
+
+        var evento = new TrasladoEntradaRegistrado
+        {
+            ProductoId = this.ProductoId,
+            SucursalOrigenId = sucursalOrigenId,
+            SucursalDestinoId = this.SucursalId,
+            NumeroTraslado = numeroTraslado,
+            CantidadRecibida = cantidadRecibida,
+            CostoUnitario = costoUnitario,
+            CostoTotal = cantidadRecibida * costoUnitario,
+            Observaciones = observaciones,
+            UsuarioId = usuarioId,
+            Timestamp = DateTime.UtcNow
+        };
+
+        Apply(evento);
+        return evento;
+    }
+
     // ─── Apply: Marten los invoca al rehidratar desde eventos ───
 
     public void Apply(EntradaCompraRegistrada e)
@@ -256,6 +323,29 @@ public class InventarioAggregate
     public void Apply(StockMinimoActualizado e)
     {
         StockMinimo = e.StockMinimoNuevo;
+    }
+
+    public void Apply(TrasladoSalidaRegistrado e)
+    {
+        Cantidad -= e.Cantidad;
+    }
+
+    public void Apply(TrasladoEntradaRegistrado e)
+    {
+        // Actualizar cantidad
+        var cantidadAnterior = Cantidad;
+        Cantidad += e.CantidadRecibida;
+
+        // Recalcular costo promedio
+        var costoTotalAnterior = cantidadAnterior * CostoPromedio;
+        var costoEntrada = e.CantidadRecibida * e.CostoUnitario;
+        var cantidadTotal = Cantidad;
+        CostoPromedio = cantidadTotal > 0
+            ? (costoTotalAnterior + costoEntrada) / cantidadTotal
+            : e.CostoUnitario;
+
+        // Agregar lote
+        _lotes.Add(new LoteInterno(e.CantidadRecibida, e.CostoUnitario, DateTime.UtcNow));
     }
 
     // ─── Lote interno (para reconstruccion de estado) ───

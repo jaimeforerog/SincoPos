@@ -85,3 +85,33 @@ public class StockMinimoActualizado : BaseEvent
     public decimal StockMinimoAnterior { get; set; }
     public decimal StockMinimoNuevo { get; set; }
 }
+
+/// <summary>
+/// Registra la salida de productos de la sucursal origen por traslado
+/// </summary>
+public class TrasladoSalidaRegistrado : BaseEvent
+{
+    public Guid ProductoId { get; set; }
+    public int SucursalOrigenId { get; set; }
+    public int SucursalDestinoId { get; set; }
+    public string NumeroTraslado { get; set; } = string.Empty;
+    public decimal Cantidad { get; set; }
+    public decimal CostoUnitario { get; set; }
+    public decimal CostoTotal { get; set; }
+    public string? Observaciones { get; set; }
+}
+
+/// <summary>
+/// Registra la entrada de productos en la sucursal destino por traslado
+/// </summary>
+public class TrasladoEntradaRegistrado : BaseEvent
+{
+    public Guid ProductoId { get; set; }
+    public int SucursalOrigenId { get; set; }
+    public int SucursalDestinoId { get; set; }
+    public string NumeroTraslado { get; set; } = string.Empty;
+    public decimal CantidadRecibida { get; set; }
+    public decimal CostoUnitario { get; set; }  // Del origen
+    public decimal CostoTotal { get; set; }
+    public string? Observaciones { get; set; }
+}

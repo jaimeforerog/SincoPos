@@ -14,28 +14,34 @@ namespace POS.Api.Controllers;
 [Route("api/[controller]")]
 public class InventarioController : ControllerBase
 {
-    private readonly Marten.IDocumentSession _session;
+    private readonly IInventarioService _inventarioService;
     private readonly AppDbContext _context;
+    private readonly Marten.IDocumentSession _session;
     private readonly ILogger<InventarioController> _logger;
-    private readonly IActivityLogService _activityLogService;
 
     public InventarioController(
-        Marten.IDocumentSession session,
+        IInventarioService inventarioService,
         AppDbContext context,
-        ILogger<InventarioController> logger,
-        IActivityLogService activityLogService)
+        Marten.IDocumentSession session,
+        ILogger<InventarioController> logger)
     {
-        _session = session;
+        _inventarioService = inventarioService;
         _context = context;
+        _session = session;
         _logger = logger;
-        _activityLogService = activityLogService;
     }
 
     /// <summary>
-    /// Registrar entrada de mercancia (compra a proveedor)
+    /// Registrar entrada de mercancía (compra a proveedor).
+    /// Emite evento <c>EntradaCompraRegistrada</c> al Event Store y actualiza el stock
+    /// usando el método de costeo configurado (FIFO/LIFO/Promedio).
     /// </summary>
+    /// <response code="200">Entrada registrada. Retorna el estado actualizado del stock.</response>
+    /// <response code="400">Validación fallida (proveedor inexistente, cantidad ≤ 0, etc.).</response>
     [HttpPost("entrada")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> RegistrarEntrada(
         EntradaInventarioDto dto,
         [FromServices] IValidator<EntradaInventarioDto> validator)
@@ -49,112 +55,20 @@ public class InventarioController : ControllerBase
             return BadRequest(new { errors });
         }
 
-        // Verificar que producto existe
-        var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == dto.ProductoId);
-        if (producto == null)
-            return BadRequest(new { error = "Producto no encontrado." });
-
-        // Verificar sucursal
-        var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
-        if (sucursal == null)
-            return BadRequest(new { error = "Sucursal no encontrada." });
-
-        // Verificar proveedor si se proporciona
-        string? nombreTercero = null;
-        if (dto.TerceroId.HasValue)
-        {
-            var tercero = await _context.Terceros.FindAsync(dto.TerceroId.Value);
-            if (tercero == null)
-                return BadRequest(new { error = "Tercero (proveedor) no encontrado." });
-            nombreTercero = tercero.Nombre;
-        }
-
-        // Stream ID deterministic por producto+sucursal
-        var streamId = InventarioAggregate.GenerarStreamId(dto.ProductoId, dto.SucursalId);
-
-        // Intentar cargar aggregate existente o crear nuevo
-        var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-
-        // Calcular monto del impuesto
-        var costoTotal = dto.Cantidad * dto.CostoUnitario;
-        var montoImpuesto = costoTotal * (dto.PorcentajeImpuesto / 100m);
-
-        object evento;
-        if (aggregate == null)
-        {
-            var (newAggregate, newEvento) = InventarioAggregate.RegistrarEntrada(
-                streamId, dto.ProductoId, dto.SucursalId,
-                dto.Cantidad, dto.CostoUnitario,
-                dto.PorcentajeImpuesto, montoImpuesto,
-                dto.TerceroId, nombreTercero,
-                dto.Referencia, dto.Observaciones,
-                usuarioId: 1, sucursalUsuarioId: dto.SucursalId);
-            aggregate = newAggregate;
-            evento = newEvento;
-            _session.Events.StartStream<InventarioAggregate>(streamId, evento);
-        }
-        else
-        {
-            evento = aggregate.AgregarEntrada(
-                dto.Cantidad, dto.CostoUnitario,
-                dto.TerceroId, nombreTercero,
-                dto.Referencia, dto.Observaciones,
-                usuarioId: 1);
-            _session.Events.Append(streamId, evento);
-        }
-
-        await _session.SaveChangesAsync();
-
-        _logger.LogInformation(
-            "Entrada registrada via Event Sourcing. Producto: {ProductoId}, Sucursal: {SucursalId}, Cantidad: {Cantidad}",
-            dto.ProductoId, dto.SucursalId, dto.Cantidad);
-
-        // Leer stock actualizado (la projection ya lo actualizo)
-        var stock = await _context.Stock
-            .FirstOrDefaultAsync(s => s.ProductoId == dto.ProductoId && s.SucursalId == dto.SucursalId);
-
-        // Activity Log
-        await _activityLogService.LogActivityAsync(new ActivityLogDto(
-            Accion: "EntradaInventario",
-            Tipo: TipoActividad.Inventario,
-            Descripcion: $"Entrada de mercancía: {producto.Nombre} x {dto.Cantidad}. Costo unitario: ${dto.CostoUnitario:N2}. Proveedor: {nombreTercero ?? "N/A"}",
-            SucursalId: dto.SucursalId,
-            TipoEntidad: "Inventario",
-            EntidadId: $"{dto.ProductoId}_{dto.SucursalId}",
-            EntidadNombre: producto.Nombre,
-            DatosNuevos: new
-            {
-                ProductoId = dto.ProductoId,
-                NombreProducto = producto.Nombre,
-                Cantidad = dto.Cantidad,
-                CostoUnitario = dto.CostoUnitario,
-                CostoTotal = costoTotal,
-                PorcentajeImpuesto = dto.PorcentajeImpuesto,
-                MontoImpuesto = montoImpuesto,
-                TerceroId = dto.TerceroId,
-                NombreTercero = nombreTercero,
-                Referencia = dto.Referencia,
-                Observaciones = dto.Observaciones,
-                StockActual = stock?.Cantidad ?? dto.Cantidad,
-                CostoPromedio = stock?.CostoPromedio ?? dto.CostoUnitario
-            }
-        ));
-
-        return Ok(new
-        {
-            mensaje = "Entrada de mercancia registrada.",
-            metodoCosteo = sucursal.MetodoCosteo.ToString(),
-            stockActual = stock?.Cantidad ?? dto.Cantidad,
-            costoPromedio = stock?.CostoPromedio ?? dto.CostoUnitario,
-            eventosTotales = aggregate.Lotes.Count
-        });
+        var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
+        var (resultado, error) = await _inventarioService.RegistrarEntradaAsync(dto, email);
+        return error != null ? BadRequest(new { error }) : Ok(resultado);
     }
 
     /// <summary>
-    /// Registrar devolucion de mercancia a proveedor
+    /// Registrar devolución de mercancía a proveedor. Descuenta stock del lote correspondiente.
     /// </summary>
+    /// <response code="200">Devolución registrada.</response>
+    /// <response code="400">Stock insuficiente u otro error de negocio.</response>
     [HttpPost("devolucion-proveedor")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> DevolucionProveedor(
         DevolucionProveedorDto dto,
         [FromServices] IValidator<DevolucionProveedorDto> validator)
@@ -168,77 +82,20 @@ public class InventarioController : ControllerBase
             return BadRequest(new { errors });
         }
 
-        var tercero = await _context.Terceros.FindAsync(dto.TerceroId);
-        if (tercero == null)
-            return BadRequest(new { error = "Proveedor no encontrado." });
-
-        var streamId = InventarioAggregate.GenerarStreamId(dto.ProductoId, dto.SucursalId);
-        var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-
-        if (aggregate == null)
-            return BadRequest(new { error = "No existe inventario para este producto en esta sucursal." });
-
-        try
-        {
-            var evento = aggregate.RegistrarDevolucion(
-                dto.Cantidad, dto.TerceroId,
-                tercero.Nombre, dto.Referencia,
-                dto.Observaciones, usuarioId: 1);
-
-            _session.Events.Append(streamId, evento);
-            await _session.SaveChangesAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-
-        var stock = await _context.Stock
-            .FirstOrDefaultAsync(s => s.ProductoId == dto.ProductoId && s.SucursalId == dto.SucursalId);
-
-        var producto = await _context.Productos.FindAsync(dto.ProductoId);
-
-        _logger.LogInformation(
-            "Devolucion registrada via Event Sourcing. Producto: {ProductoId}, Proveedor: {Proveedor}, Cantidad: {Cantidad}",
-            dto.ProductoId, tercero.Nombre, dto.Cantidad);
-
-        // Activity Log
-        await _activityLogService.LogActivityAsync(new ActivityLogDto(
-            Accion: "DevolucionProveedor",
-            Tipo: TipoActividad.Inventario,
-            Descripcion: $"Devolución a proveedor: {producto?.Nombre ?? "Producto"} x {dto.Cantidad}. Proveedor: {tercero.Nombre}",
-            SucursalId: dto.SucursalId,
-            TipoEntidad: "Inventario",
-            EntidadId: $"{dto.ProductoId}_{dto.SucursalId}",
-            EntidadNombre: producto?.Nombre,
-            DatosNuevos: new
-            {
-                ProductoId = dto.ProductoId,
-                NombreProducto = producto?.Nombre,
-                CantidadDevuelta = dto.Cantidad,
-                TerceroId = dto.TerceroId,
-                NombreTercero = tercero.Nombre,
-                Referencia = dto.Referencia,
-                Observaciones = dto.Observaciones,
-                StockActual = stock?.Cantidad ?? 0,
-                CostoPromedio = stock?.CostoPromedio ?? 0
-            }
-        ));
-
-        return Ok(new
-        {
-            mensaje = "Devolucion a proveedor registrada.",
-            cantidadDevuelta = dto.Cantidad,
-            stockActual = stock?.Cantidad ?? 0,
-            costoPromedio = stock?.CostoPromedio ?? 0
-        });
+        var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
+        var (resultado, error) = await _inventarioService.DevolucionProveedorAsync(dto, email);
+        return error != null ? BadRequest(new { error }) : Ok(resultado);
     }
 
     /// <summary>
-    /// Ajustar inventario manualmente (conteo fisico)
+    /// Ajustar inventario manualmente (conteo físico). La diferencia puede ser positiva o negativa.
     /// </summary>
+    /// <response code="200">Ajuste registrado.</response>
+    /// <response code="400">Producto/sucursal inexistente u otro error.</response>
     [HttpPost("ajuste")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> AjustarInventario(
         AjusteInventarioDto dto,
         [FromServices] IValidator<AjusteInventarioDto> validator)
@@ -252,127 +109,42 @@ public class InventarioController : ControllerBase
             return BadRequest(new { errors });
         }
 
-        var streamId = InventarioAggregate.GenerarStreamId(dto.ProductoId, dto.SucursalId);
-        var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-
-        decimal cantidadAnterior;
-
-        if (aggregate == null)
-        {
-            // Primera vez — crear stream con una entrada de ajuste
-            cantidadAnterior = 0;
-            var ajusteEvento = new POS.Domain.Events.Inventario.AjusteInventarioRegistrado
-            {
-                ProductoId = dto.ProductoId,
-                SucursalId = dto.SucursalId,
-                CantidadAnterior = 0,
-                CantidadNueva = dto.CantidadNueva,
-                Diferencia = dto.CantidadNueva,
-                EsPositivo = true,
-                CostoUnitario = 0,
-                CostoTotal = 0,
-                Observaciones = dto.Observaciones ?? $"Ajuste manual inicial: 0 → {dto.CantidadNueva}",
-                UsuarioId = 1
-            };
-            _session.Events.StartStream<InventarioAggregate>(streamId, ajusteEvento);
-        }
-        else
-        {
-            cantidadAnterior = aggregate.Cantidad;
-            try
-            {
-                var evento = aggregate.RegistrarAjuste(dto.CantidadNueva, dto.Observaciones, usuarioId: 1);
-                _session.Events.Append(streamId, evento);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-        }
-
-        await _session.SaveChangesAsync();
-
-        var producto = await _context.Productos.FindAsync(dto.ProductoId);
-        var diferencia = dto.CantidadNueva - cantidadAnterior;
-
-        _logger.LogInformation(
-            "Ajuste registrado via Event Sourcing. Producto: {ProductoId}, Anterior: {Anterior}, Nuevo: {Nuevo}",
-            dto.ProductoId, cantidadAnterior, dto.CantidadNueva);
-
-        // Activity Log
-        await _activityLogService.LogActivityAsync(new ActivityLogDto(
-            Accion: "AjusteInventario",
-            Tipo: TipoActividad.Inventario,
-            Descripcion: $"Ajuste de inventario: {producto?.Nombre ?? "Producto"}. De {cantidadAnterior} a {dto.CantidadNueva} (Diferencia: {diferencia:+#;-#;0}). Motivo: {dto.Observaciones ?? "No especificado"}",
-            SucursalId: dto.SucursalId,
-            TipoEntidad: "Inventario",
-            EntidadId: $"{dto.ProductoId}_{dto.SucursalId}",
-            EntidadNombre: producto?.Nombre,
-            DatosAnteriores: new
-            {
-                CantidadAnterior = cantidadAnterior
-            },
-            DatosNuevos: new
-            {
-                ProductoId = dto.ProductoId,
-                NombreProducto = producto?.Nombre,
-                CantidadNueva = dto.CantidadNueva,
-                Diferencia = diferencia,
-                Observaciones = dto.Observaciones
-            }
-        ));
-
-        return Ok(new
-        {
-            mensaje = "Ajuste de inventario registrado.",
-            cantidadAnterior,
-            cantidadNueva = dto.CantidadNueva,
-            diferencia
-        });
+        var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
+        var (resultado, error) = await _inventarioService.AjustarInventarioAsync(dto, email);
+        return error != null ? BadRequest(new { error }) : Ok(resultado);
     }
 
     /// <summary>
-    /// Actualizar stock minimo de un producto en una sucursal
+    /// Actualizar stock mínimo de un producto en una sucursal.
+    /// El sistema alertará cuando el stock actual sea ≤ este valor.
     /// </summary>
+    /// <response code="200">Stock mínimo actualizado.</response>
+    /// <response code="404">No existe stock para este producto en esta sucursal.</response>
     [HttpPut("stock-minimo")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> ActualizarStockMinimo(
         [FromQuery] Guid productoId,
         [FromQuery] int sucursalId,
         [FromQuery] decimal stockMinimo)
     {
-        if (stockMinimo < 0)
-            return BadRequest(new { error = "El stock minimo no puede ser negativo." });
-
-        var streamId = InventarioAggregate.GenerarStreamId(productoId, sucursalId);
-        var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-
-        if (aggregate == null)
-            return NotFound(new { error = "No existe inventario para este producto en esta sucursal." });
-
-        try
-        {
-            var evento = aggregate.ActualizarStockMinimo(stockMinimo, usuarioId: 1);
-            _session.Events.Append(streamId, evento);
-            await _session.SaveChangesAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-
-        _logger.LogInformation("Stock minimo actualizado via Event Sourcing. Producto: {P}, Sucursal: {S}, Minimo: {M}",
-            productoId, sucursalId, stockMinimo);
-
+        var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
+        var (success, error) = await _inventarioService.ActualizarStockMinimoAsync(productoId, sucursalId, stockMinimo, email);
+        if (!success) return error == "NOT_FOUND" ? NotFound(new { error = "No existe inventario para este producto en esta sucursal." }) : BadRequest(new { error });
         return Ok(new { mensaje = "Stock minimo actualizado.", stockMinimo });
     }
 
-    // ─── Endpoints de lectura (EF Core + Marten queries) ───
+    // ─── Endpoints de lectura ───
 
     /// <summary>
-    /// Consultar stock actual (por sucursal o todos)
+    /// Consultar stock actual (por sucursal, producto o ambos).
     /// </summary>
+    /// <param name="sucursalId">Filtrar por sucursal. Null = todas.</param>
+    /// <param name="productoId">Filtrar por producto específico.</param>
+    /// <param name="soloConStock">Si true, excluye registros con cantidad = 0.</param>
     [HttpGet]
+    [ProducesResponseType(typeof(List<StockDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<StockDto>>> ObtenerStock(
         [FromQuery] int? sucursalId = null,
         [FromQuery] Guid? productoId = null,
@@ -385,10 +157,8 @@ public class InventarioController : ControllerBase
 
         if (sucursalId.HasValue)
             query = query.Where(s => s.SucursalId == sucursalId.Value);
-
         if (productoId.HasValue)
             query = query.Where(s => s.ProductoId == productoId.Value);
-
         if (soloConStock)
             query = query.Where(s => s.Cantidad > 0);
 
@@ -405,9 +175,10 @@ public class InventarioController : ControllerBase
     }
 
     /// <summary>
-    /// Productos con stock por debajo del minimo
+    /// Productos con stock por debajo del mínimo configurado. Usado por el dashboard de alertas.
     /// </summary>
     [HttpGet("alertas")]
+    [ProducesResponseType(typeof(List<AlertaStockDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<AlertaStockDto>>> ObtenerAlertas(
         [FromQuery] int? sucursalId = null)
     {
@@ -432,15 +203,22 @@ public class InventarioController : ControllerBase
     }
 
     /// <summary>
-    /// Historial de movimientos de inventario (desde Event Store de Marten)
+    /// Historial de movimientos de inventario desde el Event Store de Marten.
     /// </summary>
+    /// <remarks>
+    /// Tipos de movimiento posibles: <c>EntradaCompra</c>, <c>DevolucionProveedor</c>,
+    /// <c>AjustePositivo</c>, <c>AjusteNegativo</c>, <c>SalidaVenta</c>,
+    /// <c>StockMinimoActualizado</c>, <c>TrasladoSalida</c>, <c>TrasladoEntrada</c>.<br/>
+    /// Los movimientos provienen del Event Store (Marten), no de la tabla EF Core.
+    /// </remarks>
+    /// <param name="limite">Máximo de resultados. Default 50.</param>
     [HttpGet("movimientos")]
+    [ProducesResponseType(typeof(List<MovimientoInventarioDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<MovimientoInventarioDto>>> ObtenerMovimientos(
         [FromQuery] int? sucursalId = null,
         [FromQuery] Guid? productoId = null,
         [FromQuery] int limite = 50)
     {
-        // Buscar streams de inventario relevantes desde la tabla stock
         var stockQuery = _context.Stock.AsQueryable();
         if (sucursalId.HasValue)
             stockQuery = stockQuery.Where(s => s.SucursalId == sucursalId.Value);
@@ -448,7 +226,6 @@ public class InventarioController : ControllerBase
             stockQuery = stockQuery.Where(s => s.ProductoId == productoId.Value);
 
         var stockRecords = await stockQuery.ToListAsync();
-
         var movimientos = new List<MovimientoInventarioDto>();
 
         foreach (var sr in stockRecords)
@@ -480,7 +257,7 @@ public class InventarioController : ControllerBase
                             (int)e.Version, devolucion.ProductoId, prod?.Nombre ?? "",
                             devolucion.SucursalId, suc?.Nombre ?? "",
                             "DevolucionProveedor", devolucion.Cantidad, devolucion.CostoUnitario,
-                            devolucion.CostoTotal, 0, 0, // Devs usually reverse tax, simplifying to 0 for now
+                            devolucion.CostoTotal, 0, 0,
                             devolucion.Referencia, devolucion.Observaciones,
                             devolucion.TerceroId, devolucion.NombreTercero,
                             e.Timestamp.UtcDateTime);
@@ -492,7 +269,7 @@ public class InventarioController : ControllerBase
                             ajuste.SucursalId, suc?.Nombre ?? "",
                             ajuste.EsPositivo ? "AjustePositivo" : "AjusteNegativo",
                             Math.Abs(ajuste.Diferencia), ajuste.CostoUnitario,
-                            ajuste.CostoTotal, 0, 0, 
+                            ajuste.CostoTotal, 0, 0,
                             null, ajuste.Observaciones,
                             null, null,
                             e.Timestamp.UtcDateTime);
@@ -532,9 +309,10 @@ public class InventarioController : ControllerBase
     }
 
     /// <summary>
-    /// [DEBUG] Consultar lotes de inventario
+    /// [DEBUG] Consultar lotes de inventario (FIFO/LIFO). Útil para diagnóstico de costeo.
     /// </summary>
     [HttpGet("lotes")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult> ObtenerLotes(
         [FromQuery] Guid? productoId = null,
         [FromQuery] int? sucursalId = null)
@@ -543,7 +321,6 @@ public class InventarioController : ControllerBase
 
         if (productoId.HasValue)
             query = query.Where(l => l.ProductoId == productoId.Value);
-
         if (sucursalId.HasValue)
             query = query.Where(l => l.SucursalId == sucursalId.Value);
 

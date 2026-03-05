@@ -12,6 +12,35 @@ public class Tercero : EntidadAuditable
     public string? Ciudad { get; set; }
     public OrigenDatos OrigenDatos { get; set; } = OrigenDatos.Local;
     public string? ExternalId { get; set; }
+
+    /// <summary>
+    /// Perfil tributario del tercero (comprador/proveedor).
+    /// El Tax Engine usa este valor para evaluar la matriz de retenciones.
+    /// Valores: GRAN_CONTRIBUYENTE | REGIMEN_COMUN | REGIMEN_SIMPLE | PERSONA_NATURAL
+    /// </summary>
+    public string PerfilTributario { get; set; } = "REGIMEN_COMUN";
+
+    // ── Campos fiscales enriquecidos ──────────────────────────────────────────
+    /// <summary>Dígito de Verificación (módulo 11 DIAN). Solo NIT.</summary>
+    public string? DigitoVerificacion { get; set; }
+
+    public string? CodigoDepartamento { get; set; }  // "11" = Bogotá
+    public string? CodigoMunicipio { get; set; }     // "11001" = Bogotá DC
+    public bool EsGranContribuyente { get; set; } = false;
+    public bool EsAutorretenedor { get; set; } = false;
+    public bool EsResponsableIVA { get; set; } = false;
+
+    public ICollection<TerceroActividad> Actividades { get; set; } = new List<TerceroActividad>();
+}
+
+public class TerceroActividad
+{
+    public int Id { get; set; }
+    public int TerceroId { get; set; }
+    public string CodigoCIIU { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
+    public bool EsPrincipal { get; set; } = false;
+    public Tercero Tercero { get; set; } = null!;
 }
 
 public enum TipoIdentificacion

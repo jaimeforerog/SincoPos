@@ -54,6 +54,11 @@ public class LoteInventarioConfiguration : IEntityTypeConfiguration<LoteInventar
         builder.HasIndex(l => new { l.ProductoId, l.SucursalId, l.FechaEntrada })
             .HasDatabaseName("ix_lotes_producto_sucursal_fecha");
 
+        // Partial index: solo lotes con stock disponible (FIFO/LIFO query crítica)
+        builder.HasIndex(l => new { l.ProductoId, l.SucursalId, l.CantidadDisponible })
+            .HasDatabaseName("ix_lotes_disponibles")
+            .HasFilter("cantidad_disponible > 0");
+
         builder.HasOne(l => l.Producto)
             .WithMany()
             .HasForeignKey(l => l.ProductoId)

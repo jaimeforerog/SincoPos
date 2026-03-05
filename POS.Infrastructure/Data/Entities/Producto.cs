@@ -12,6 +12,26 @@ public class Producto
     public decimal PrecioCosto { get; set; }
     public bool Activo { get; set; } = true;
 
+    // ── Impuestos Saludables (Ley 2277/2022) ──────────────────────────────────
+    /// <summary>
+    /// Marca como alimento ultraprocesado. El TaxEngine aplica la tarifa
+    /// del impuesto saludable vigente sobre la base imponible.
+    /// </summary>
+    /// <summary>
+    /// Unidad de medida DIAN (UN/ECE). Ej: "94"=Unidad, "KGM"=Kg, "LTR"=Litro.
+    /// Requerida en factura electrónica.
+    /// </summary>
+    public string UnidadMedida { get; set; } = "94"; // 94 = Unidad (default)
+
+    public bool EsAlimentoUltraprocesado { get; set; } = false;
+
+    /// <summary>
+    /// Solo para bebidas azucaradas: contenido de azúcar en g/100ml.
+    /// El TaxEngine consulta la tabla de tramos DIAN para calcular el impuesto.
+    /// Null = no aplica.
+    /// </summary>
+    public decimal? GramosAzucarPor100ml { get; set; }
+
     // Auditoría
     public string CreadoPor { get; set; } = string.Empty;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
@@ -29,6 +49,13 @@ public class Categoria : EntidadAuditable
     public string? Descripcion { get; set; }
     public decimal MargenGanancia { get; set; } = 0.30m; // 30% default
 
+    // Jerarquía
+    public int? CategoriaPadreId { get; set; }
+    public int Nivel { get; set; } = 0; // 0 = raíz, 1 = subcategoría, etc.
+    public string RutaCompleta { get; set; } = string.Empty; // "Alimentos > Granos > Arroz"
+
     // Navegacion
+    public Categoria? CategoriaPadre { get; set; }
+    public ICollection<Categoria> SubCategorias { get; set; } = new List<Categoria>();
     public ICollection<Producto> Productos { get; set; } = new List<Producto>();
 }

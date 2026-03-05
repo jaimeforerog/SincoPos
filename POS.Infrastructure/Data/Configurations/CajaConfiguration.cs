@@ -57,5 +57,9 @@ public class CajaConfiguration : IEntityTypeConfiguration<Caja>
         builder.HasIndex(c => new { c.SucursalId, c.Nombre })
             .IsUnique()
             .HasDatabaseName("ix_cajas_sucursal_nombre");
+
+        // Consulta de cajas abiertas por sucursal (POS)
+        builder.HasIndex(c => new { c.SucursalId, c.Estado })
+            .HasDatabaseName("ix_cajas_sucursal_estado");
     }
 }

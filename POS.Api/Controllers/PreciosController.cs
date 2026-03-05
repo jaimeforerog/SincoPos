@@ -30,10 +30,50 @@ public class PreciosController : ControllerBase
     }
 
     /// <summary>
-    /// Consultar precio resuelto de un producto en una sucursal.
-    /// Prioridad: PrecioSucursal → Producto.PrecioVenta → Costo × (1 + Margen)
+    /// Listar precios configurados explícitamente para una sucursal (tabla <c>precios_sucursal</c>).
+    /// No incluye precios resueltos por cascada — solo los registros existentes en la tabla.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(List<PrecioSucursalDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<PrecioSucursalDto>>> ListarPorSucursal([FromQuery] int sucursalId)
+    {
+        var precios = await _context.PreciosSucursal
+            .Where(p => p.SucursalId == sucursalId)
+            .Select(p => new PrecioSucursalDto(
+                p.Id, p.ProductoId, p.Producto.Nombre,
+                p.SucursalId, p.Sucursal.Nombre,
+                p.PrecioVenta, p.PrecioMinimo, p.FechaModificacion))
+            .ToListAsync();
+
+        return Ok(precios);
+    }
+
+    /// <summary>
+    /// Resolver precios de TODOS los productos activos para una sucursal en una sola llamada (batch).
+    /// Usa 3 queries en total — sin N+1. Ideal para cargar el catálogo POS al abrir el turno.
+    /// </summary>
+    /// <remarks>
+    /// Cascada de resolución para cada producto:<br/>
+    /// 1. <c>PrecioSucursal</c> específico de esta sucursal<br/>
+    /// 2. <c>Producto.PrecioVenta</c> (precio base del catálogo)<br/>
+    /// 3. <c>Costo × (1 + MargenCategoria)</c> (calculado)<br/>
+    /// El campo <c>Origen</c> en la respuesta indica qué nivel aplicó: "Sucursal" | "Producto" | "Margen".
+    /// </remarks>
+    [HttpGet("resolver-lote")]
+    [ProducesResponseType(typeof(List<PrecioResueltoLoteItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<PrecioResueltoLoteItemDto>>> ResolverPrecioLote([FromQuery] int sucursalId)
+    {
+        var items = await _precioService.ResolverPrecioLote(sucursalId);
+        return Ok(items.Select(i => new PrecioResueltoLoteItemDto(i.ProductoId, i.PrecioVenta, i.PrecioMinimo, i.Origen)));
+    }
+
+    /// <summary>
+    /// Consultar precio resuelto de un único producto en una sucursal.
+    /// Para cargar múltiples productos en el POS, use <c>/resolver-lote</c>.
     /// </summary>
     [HttpGet("resolver")]
+    [ProducesResponseType(typeof(PrecioResueltoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PrecioResueltoDto>> ConsultarPrecio(
         [FromQuery] Guid productoId, [FromQuery] int sucursalId)
     {
@@ -49,10 +89,15 @@ public class PreciosController : ControllerBase
     }
 
     /// <summary>
-    /// Crear o actualizar precio de un producto en una sucursal.
+    /// Crear o actualizar precio de un producto en una sucursal (upsert).
+    /// Si ya existe un precio para ese producto+sucursal, lo actualiza.
     /// </summary>
+    /// <response code="200">Precio creado o actualizado.</response>
+    /// <response code="400">Producto o sucursal no encontrados, o precio inválido.</response>
     [HttpPost]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(PrecioSucursalDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PrecioSucursalDto>> CrearPrecioSucursal(
         [FromBody] CrearPrecioSucursalDto dto)
     {
@@ -102,9 +147,13 @@ public class PreciosController : ControllerBase
     }
 
     /// <summary>
-    /// Listar todos los precios por sucursal de un producto.
+    /// Listar todos los precios configurados por sucursal para un producto específico.
     /// </summary>
+    /// <response code="200">Lista de precios por sucursal (puede estar vacía si no hay precios configurados).</response>
+    /// <response code="404">Producto no encontrado.</response>
     [HttpGet("producto/{productoId:guid}")]
+    [ProducesResponseType(typeof(List<PrecioSucursalDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<PrecioSucursalDto>>> ListarPreciosProducto(Guid productoId)
     {
         var producto = await _context.Productos.FindAsync(productoId);

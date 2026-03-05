@@ -14,6 +14,12 @@ namespace POS.IntegrationTests;
 public class PosAuthCollection : ICollectionFixture<AuthenticatedWebApplicationFactory> { }
 
 /// <summary>
+/// xUnit Collection para tests con autenticación que deben ejecutarse secuencialmente
+/// </summary>
+[CollectionDefinition("POS-Auth-Sequential", DisableParallelization = true)]
+public class PosAuthSequentialCollection : ICollectionFixture<AuthenticatedWebApplicationFactory> { }
+
+/// <summary>
 /// Factory extendida que soporta autenticación de prueba para tests de auditoría.
 /// </summary>
 public class AuthenticatedWebApplicationFactory : CustomWebApplicationFactory
@@ -43,17 +49,20 @@ public class AuthenticatedWebApplicationFactory : CustomWebApplicationFactory
                     .AddAuthenticationSchemes(TestAuthHandler.SchemeName)
                     .Build();
 
-                // Políticas de roles
+                // Políticas de roles con verificación de rol
                 options.AddPolicy("Admin", policy => policy
                     .RequireAuthenticatedUser()
+                    .RequireRole("admin") // Verificar rol admin
                     .AddAuthenticationSchemes(TestAuthHandler.SchemeName));
 
                 options.AddPolicy("Supervisor", policy => policy
                     .RequireAuthenticatedUser()
+                    .RequireRole("supervisor", "admin") // Supervisor o Admin
                     .AddAuthenticationSchemes(TestAuthHandler.SchemeName));
 
                 options.AddPolicy("Cajero", policy => policy
                     .RequireAuthenticatedUser()
+                    .RequireRole("cajero", "supervisor", "admin") // Cajero, Supervisor o Admin
                     .AddAuthenticationSchemes(TestAuthHandler.SchemeName));
             });
         });

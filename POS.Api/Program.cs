@@ -19,6 +19,11 @@ builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.PrecioService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.UsuarioService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.MigracionLogService>();
+builder.Services.AddScoped<POS.Infrastructure.Services.ITaxEngine, POS.Infrastructure.Services.TaxEngine>();
+builder.Services.AddScoped<POS.Application.Services.IVentaService, POS.Infrastructure.Services.VentaService>();
+builder.Services.AddScoped<POS.Application.Services.ICompraService, POS.Infrastructure.Services.CompraService>();
+builder.Services.AddScoped<POS.Application.Services.ITrasladoService, POS.Infrastructure.Services.TrasladoService>();
+builder.Services.AddScoped<POS.Application.Services.IInventarioService, POS.Infrastructure.Services.InventarioService>();
 
 // GeoService (Países y Ciudades)
 builder.Services.AddHttpClient<POS.Infrastructure.Services.GeoService>();
@@ -33,132 +38,170 @@ builder.Services.AddMartenStore(
     builder.Environment.IsDevelopment());
 
 // API
-builder.Services.AddControllers(options =>
-{
-    // En desarrollo: ignorar autenticación/autorización
-    if (builder.Environment.IsDevelopment())
-    {
-        options.Filters.Add<POS.Api.Filters.AllowAnonymousFilter>();
-    }
-});
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "SincoPos API",
+        Version = "v1",
+        Description = """
+            API del sistema de Punto de Venta SincoPos.
+
+            **Roles de acceso** (de mayor a menor permiso):
+            - `Admin` → acceso total
+            - `Supervisor` → gestión de inventario, compras, traslados, devoluciones
+            - `Cajero` → ventas, consultas
+            - `Vendedor` → solo lectura de productos y precios
+
+            Autenticación vía **Keycloak** (JWT Bearer). Realm: `sincopos`.
+            """
+    });
+
+    // XML comments generados por el compilador
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+        c.IncludeXmlComments(xmlPath);
+
+    // JWT security definition
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Token JWT de Keycloak. Obtener en http://localhost:8080/realms/sincopos"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<POS.Application.Validators.CrearProductoValidator>();
 
-// Authentication & Authorization
-if (builder.Environment.IsDevelopment())
+// Authentication & Authorization — Keycloak JWT Bearer
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+.AddJwtBearer(options =>
 {
-    // En desarrollo: esquema de autenticación que permite todo
-    builder.Services.AddAuthentication("DevScheme")
-        .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, POS.Api.Auth.DevAuthenticationHandler>("DevScheme", null);
+    var authConfig = builder.Configuration.GetSection("Authentication");
+    options.Authority = authConfig["Authority"];
+    options.Audience = authConfig["Audience"];
+    options.RequireHttpsMetadata = authConfig.GetValue<bool>("RequireHttpsMetadata");
 
-    builder.Services.AddAuthorization(options =>
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        // En desarrollo: permitir todo
-        options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-            .RequireAssertion(_ => true)
-            .Build();
+        ValidateIssuer = authConfig.GetValue<bool>("ValidateIssuer"),
+        ValidateAudience = authConfig.GetValue<bool>("ValidateAudience"),
+        ValidateLifetime = authConfig.GetValue<bool>("ValidateLifetime"),
+        ValidateIssuerSigningKey = true,
+        ClockSkew = TimeSpan.FromMinutes(5),
+        RoleClaimType = ClaimTypes.Role
+    };
 
-        // Definir las políticas para que no falle
-        options.AddPolicy("Admin", policy => policy.RequireAssertion(_ => true));
-        options.AddPolicy("Supervisor", policy => policy.RequireAssertion(_ => true));
-        options.AddPolicy("Cajero", policy => policy.RequireAssertion(_ => true));
-        options.AddPolicy("Vendedor", policy => policy.RequireAssertion(_ => true));
-    });
-}
-else
-{
-    // PRODUCCION: Azure AD B2C
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    options.Events = new JwtBearerEvents
     {
-        var authConfig = builder.Configuration.GetSection("Authentication");
-        options.Authority = authConfig["Authority"];
-        options.Audience = authConfig["Audience"];
-        options.RequireHttpsMetadata = authConfig.GetValue<bool>("RequireHttpsMetadata");
-
-        options.TokenValidationParameters = new TokenValidationParameters
+        OnAuthenticationFailed = context =>
         {
-            ValidateIssuer = authConfig.GetValue<bool>("ValidateIssuer"),
-            ValidateAudience = authConfig.GetValue<bool>("ValidateAudience"),
-            ValidateLifetime = authConfig.GetValue<bool>("ValidateLifetime"),
-            ValidateIssuerSigningKey = true,
-            ClockSkew = TimeSpan.FromMinutes(5),
-            RoleClaimType = ClaimTypes.Role  // Usar ClaimTypes.Role ya que mapeamos manualmente en OnTokenValidated
-        };
-
-        // Eventos para debugging
-        options.Events = new JwtBearerEvents
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(context.Exception, "Authentication failed: {Error}", context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
         {
-            OnAuthenticationFailed = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogError(context.Exception, "Authentication failed: {Error}", context.Exception.Message);
-                return Task.CompletedTask;
-            },
-            OnTokenValidated = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
 
-                // Mapear roles de Keycloak a claims de .NET
-                if (context.Principal?.Identity is ClaimsIdentity identity)
+            // Mapear roles de Keycloak a ClaimTypes.Role de .NET
+            // Keycloak puede enviar roles de dos formas según el JWT handler:
+            //   1. JwtSecurityTokenHandler: claim "realm_access" con JSON string {"roles":["admin",...]}
+            //   2. JsonWebTokenHandler (.NET 8+): claims directos "realm_access.roles" = "admin"
+            if (context.Principal?.Identity is ClaimsIdentity identity)
+            {
+                var allClaims = context.Principal.Claims.ToList();
+                var rolesAdded = 0;
+
+                // Formato 1: realm_access como JSON string (JwtSecurityTokenHandler)
+                var realmAccessClaim = allClaims.FirstOrDefault(c =>
+                    c.Type == "realm_access" ||
+                    c.Type.EndsWith("/realm_access"));
+
+                if (realmAccessClaim != null && !string.IsNullOrEmpty(realmAccessClaim.Value))
                 {
-                    // Buscar el claim que contiene realm_access como JSON
-                    var allClaims = context.Principal.Claims.ToList();
-
-                    // Intentar diferentes nombres de claim que Keycloak podría usar
-                    var realmAccessClaim = allClaims.FirstOrDefault(c =>
-                        c.Type == "realm_access" ||
-                        c.Type.EndsWith("/realm_access"));
-
-                    if (realmAccessClaim != null && !string.IsNullOrEmpty(realmAccessClaim.Value))
+                    try
                     {
-                        try
+                        var realmAccess = System.Text.Json.JsonDocument.Parse(realmAccessClaim.Value);
+                        if (realmAccess.RootElement.TryGetProperty("roles", out var rolesElement))
                         {
-                            var realmAccess = System.Text.Json.JsonDocument.Parse(realmAccessClaim.Value);
-                            if (realmAccess.RootElement.TryGetProperty("roles", out var rolesElement))
+                            foreach (var role in rolesElement.EnumerateArray())
                             {
-                                foreach (var role in rolesElement.EnumerateArray())
+                                var roleName = role.GetString();
+                                if (!string.IsNullOrEmpty(roleName))
                                 {
-                                    var roleName = role.GetString();
-                                    if (!string.IsNullOrEmpty(roleName))
-                                    {
-                                        identity.AddClaim(new Claim(ClaimTypes.Role, roleName));
-                                        logger.LogInformation("Added role: {Role}", roleName);
-                                    }
+                                    identity.AddClaim(new Claim(ClaimTypes.Role, roleName));
+                                    rolesAdded++;
                                 }
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            logger.LogWarning(ex, "Failed to parse realm_access claim");
-                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        logger.LogWarning("realm_access claim not found. Available claims: {Claims}",
-                            string.Join(", ", allClaims.Select(c => c.Type)));
+                        logger.LogWarning(ex, "Failed to parse realm_access JSON claim");
                     }
                 }
 
-                var claims = context.Principal?.Claims.Select(c => $"{c.Type}: {c.Value}");
-                logger.LogInformation("Token validated. Final claims: {Claims}", string.Join(", ", claims ?? Array.Empty<string>()));
-                return Task.CompletedTask;
-            }
-        };
-    });
+                // Formato 2: realm_access.roles como claims directos (JsonWebTokenHandler / .NET 9+)
+                var directRoleClaims = allClaims
+                    .Where(c => c.Type == "realm_access.roles")
+                    .ToList();
 
-    builder.Services.AddAuthorization(options =>
-    {
-        // Políticas basadas en roles (Azure AD B2C en producción)
-        options.AddPolicy("Admin", policy => policy.RequireRole("admin"));
-        options.AddPolicy("Supervisor", policy => policy.RequireRole("admin", "supervisor"));
-        options.AddPolicy("Cajero", policy => policy.RequireRole("admin", "supervisor", "cajero"));
-        options.AddPolicy("Vendedor", policy => policy.RequireRole("admin", "supervisor", "cajero", "vendedor"));
-    });
-}
+                foreach (var roleClaim in directRoleClaims)
+                {
+                    if (!string.IsNullOrEmpty(roleClaim.Value))
+                    {
+                        identity.AddClaim(new Claim(ClaimTypes.Role, roleClaim.Value));
+                        rolesAdded++;
+                    }
+                }
+
+                if (rolesAdded == 0)
+                {
+                    logger.LogWarning(
+                        "No roles found in Keycloak token. Available claim types: {Claims}",
+                        string.Join(", ", allClaims.Select(c => c.Type).Distinct()));
+                }
+                else
+                {
+                    logger.LogInformation("Mapped {Count} roles from Keycloak token", rolesAdded);
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => policy.RequireRole("admin"));
+    options.AddPolicy("Supervisor", policy => policy.RequireRole("admin", "supervisor"));
+    options.AddPolicy("Cajero", policy => policy.RequireRole("admin", "supervisor", "cajero"));
+    options.AddPolicy("Vendedor", policy => policy.RequireRole("admin", "supervisor", "cajero", "vendedor"));
+});
 
 // CORS - RESTRINGIR EN PRODUCCION
 if (builder.Environment.IsDevelopment())

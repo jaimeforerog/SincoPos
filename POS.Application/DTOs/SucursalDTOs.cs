@@ -3,6 +3,8 @@ namespace POS.Application.DTOs;
 public record CrearSucursalDto(
     string Nombre,
     string? Direccion,
+    string? CodigoPais,
+    string? NombrePais,
     string? Ciudad,
     string? Telefono,
     string? Email,
@@ -12,6 +14,8 @@ public record CrearSucursalDto(
 public record ActualizarSucursalDto(
     string Nombre,
     string? Direccion,
+    string? CodigoPais,
+    string? NombrePais,
     string? Ciudad,
     string? Telefono,
     string? Email,
@@ -22,6 +26,8 @@ public record SucursalDto(
     int Id,
     string Nombre,
     string? Direccion,
+    string? CodigoPais,
+    string? NombrePais,
     string? Ciudad,
     string? Telefono,
     string? Email,

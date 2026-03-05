@@ -38,7 +38,8 @@ public record VentaDto(
     decimal? Cambio,
     string? Observaciones,
     DateTime FechaVenta,
-    List<DetalleVentaDto> Detalles
+    List<DetalleVentaDto> Detalles,
+    bool RequiereFacturaElectronica = false
 );
 
 public record DetalleVentaDto(
@@ -89,6 +90,13 @@ public record PrecioResueltoDto(
     decimal? PrecioMinimo,
     string Origen,  // "Sucursal", "Producto", "Margen"
     string? OrigenDato = null  // "Manual", "Migrado", etc. (si viene de Sucursal)
+);
+
+public record PrecioResueltoLoteItemDto(
+    Guid ProductoId,
+    decimal PrecioVenta,
+    decimal? PrecioMinimo,
+    string Origen
 );
 
 // ─── Devoluciones ─────────────────────────────────────────

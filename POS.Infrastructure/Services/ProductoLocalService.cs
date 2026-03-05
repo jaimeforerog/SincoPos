@@ -15,39 +15,45 @@ public class ProductoLocalService : IProductoService
 {
     private readonly AppDbContext _context;
 
-    public ProductoLocalService(AppDbContext context)
-    {
-        _context = context;
-    }
+    public ProductoLocalService(AppDbContext context) => _context = context;
 
-    public async Task<ProductoDto?> ObtenerPorIdAsync(Guid id)
-    {
-        return await _context.Productos
+    // ── Projection helper ─────────────────────────────────────────────────────
+
+    private static ProductoDto ToDto(Producto p) => new(
+        p.Id, p.CodigoBarras, p.Nombre, p.Descripcion,
+        p.CategoriaId, p.PrecioVenta, p.PrecioCosto,
+        p.Activo, p.FechaCreacion,
+        // Tax Engine fields
+        p.ImpuestoId,
+        p.Impuesto?.Nombre,
+        p.Impuesto?.Tipo.ToString(),
+        p.Impuesto?.Porcentaje,
+        p.EsAlimentoUltraprocesado,
+        p.GramosAzucarPor100ml,
+        p.UnidadMedida
+    );
+
+    // ── Queries ───────────────────────────────────────────────────────────────
+
+    public async Task<ProductoDto?> ObtenerPorIdAsync(Guid id) =>
+        await _context.Productos
+            .Include(p => p.Impuesto)
             .Where(p => p.Id == id)
-            .Select(p => new ProductoDto(
-                p.Id, p.CodigoBarras, p.Nombre, p.Descripcion,
-                p.CategoriaId, p.PrecioVenta, p.PrecioCosto,
-                p.Activo, p.FechaCreacion))
+            .Select(p => ToDto(p))
             .FirstOrDefaultAsync();
-    }
 
-    public async Task<ProductoDto?> ObtenerPorCodigoBarrasAsync(string codigoBarras)
-    {
-        return await _context.Productos
+    public async Task<ProductoDto?> ObtenerPorCodigoBarrasAsync(string codigoBarras) =>
+        await _context.Productos
+            .Include(p => p.Impuesto)
             .Where(p => p.CodigoBarras == codigoBarras)
-            .Select(p => new ProductoDto(
-                p.Id, p.CodigoBarras, p.Nombre, p.Descripcion,
-                p.CategoriaId, p.PrecioVenta, p.PrecioCosto,
-                p.Activo, p.FechaCreacion))
+            .Select(p => ToDto(p))
             .FirstOrDefaultAsync();
-    }
 
     public async Task<List<ProductoDto>> BuscarAsync(string? query, int? categoriaId, bool incluirInactivos)
     {
-        var q = _context.Productos.AsQueryable();
+        var q = _context.Productos.Include(p => p.Impuesto).AsQueryable();
 
-        if (!incluirInactivos)
-            q = q.Where(p => p.Activo);
+        if (!incluirInactivos) q = q.Where(p => p.Activo);
 
         if (!string.IsNullOrWhiteSpace(query))
             q = q.Where(p => p.Nombre.Contains(query) ||
@@ -57,28 +63,28 @@ public class ProductoLocalService : IProductoService
         if (categoriaId.HasValue)
             q = q.Where(p => p.CategoriaId == categoriaId.Value);
 
-        return await q
-            .OrderBy(p => p.Nombre)
-            .Select(p => new ProductoDto(
-                p.Id, p.CodigoBarras, p.Nombre, p.Descripcion,
-                p.CategoriaId, p.PrecioVenta, p.PrecioCosto,
-                p.Activo, p.FechaCreacion))
-            .ToListAsync();
+        var productos = await q.OrderBy(p => p.Nombre).ToListAsync();
+        return productos.Select(ToDto).ToList();
     }
+
+    // ── Commands ──────────────────────────────────────────────────────────────
 
     public async Task<(ProductoDto? Result, string? Error)> CrearAsync(CrearProductoDto dto)
     {
-        // Validar codigo unico
-        var existe = await _context.Productos
-            .AnyAsync(p => p.CodigoBarras == dto.CodigoBarras);
+        var existe = await _context.Productos.AnyAsync(p => p.CodigoBarras == dto.CodigoBarras);
         if (existe)
-            return (null, "El codigo de barras ya existe.");
+            return (null, $"El código de barras '{dto.CodigoBarras}' ya está registrado en otro producto.");
 
-        // Validar categoria
-        var categoriaExiste = await _context.Categorias
-            .AnyAsync(c => c.Id == dto.CategoriaId && c.Activo);
+        var categoriaExiste = await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId && c.Activo);
         if (!categoriaExiste)
-            return (null, "La categoria no existe o esta inactiva.");
+            return (null, "La categoría especificada no existe o está inactiva.");
+
+        if (dto.ImpuestoId.HasValue)
+        {
+            var impuestoExiste = await _context.Impuestos.AnyAsync(i => i.Id == dto.ImpuestoId && i.Activo);
+            if (!impuestoExiste)
+                return (null, $"El impuesto con Id {dto.ImpuestoId} no existe o está inactivo.");
+        }
 
         var producto = new Producto
         {
@@ -89,6 +95,10 @@ public class ProductoLocalService : IProductoService
             CategoriaId = dto.CategoriaId,
             PrecioVenta = dto.PrecioVenta,
             PrecioCosto = dto.PrecioCosto,
+            ImpuestoId = dto.ImpuestoId,
+            EsAlimentoUltraprocesado = dto.EsAlimentoUltraprocesado,
+            GramosAzucarPor100ml = dto.GramosAzucarPor100ml,
+            UnidadMedida = dto.UnidadMedida,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         };
@@ -96,28 +106,31 @@ public class ProductoLocalService : IProductoService
         _context.Productos.Add(producto);
         await _context.SaveChangesAsync();
 
-        var result = new ProductoDto(
-            producto.Id, producto.CodigoBarras, producto.Nombre,
-            producto.Descripcion, producto.CategoriaId,
-            producto.PrecioVenta, producto.PrecioCosto,
-            producto.Activo, producto.FechaCreacion);
-
-        return (result, null);
+        await _context.Entry(producto).Reference(p => p.Impuesto).LoadAsync();
+        return (ToDto(producto), null);
     }
 
     public async Task<(bool Success, string? Error)> ActualizarAsync(Guid id, ActualizarProductoDto dto)
     {
         var producto = await _context.Productos.FindAsync(id);
-        if (producto == null)
-            return (false, $"Producto {id} no encontrado.");
+        if (producto == null) return (false, $"Producto {id} no encontrado.");
+        if (!producto.Activo) return (false, "No se puede actualizar un producto inactivo.");
 
-        if (!producto.Activo)
-            return (false, "No se puede actualizar un producto inactivo.");
+        if (dto.ImpuestoId.HasValue)
+        {
+            var impuestoExiste = await _context.Impuestos.AnyAsync(i => i.Id == dto.ImpuestoId && i.Activo);
+            if (!impuestoExiste)
+                return (false, $"El impuesto con Id {dto.ImpuestoId} no existe o está inactivo.");
+        }
 
         producto.Nombre = dto.Nombre;
         producto.Descripcion = dto.Descripcion;
         producto.PrecioVenta = dto.PrecioVenta;
         producto.PrecioCosto = dto.PrecioCosto;
+        producto.ImpuestoId = dto.ImpuestoId;
+        producto.EsAlimentoUltraprocesado = dto.EsAlimentoUltraprocesado;
+        producto.GramosAzucarPor100ml = dto.GramosAzucarPor100ml;
+        producto.UnidadMedida = dto.UnidadMedida;
         producto.FechaModificacion = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -127,11 +140,8 @@ public class ProductoLocalService : IProductoService
     public async Task<(bool Success, string? Error)> DesactivarAsync(Guid id, string? motivo)
     {
         var producto = await _context.Productos.FindAsync(id);
-        if (producto == null)
-            return (false, $"Producto {id} no encontrado.");
-
-        if (!producto.Activo)
-            return (false, "El producto ya esta inactivo.");
+        if (producto == null) return (false, $"Producto {id} no encontrado.");
+        if (!producto.Activo) return (false, "El producto ya esta inactivo.");
 
         producto.Activo = false;
         producto.FechaModificacion = DateTime.UtcNow;

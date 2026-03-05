@@ -21,6 +21,12 @@ public class Venta : EntidadAuditable
     public string? Observaciones { get; set; }
     public DateTime FechaVenta { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Flag activado por el TaxEngine cuando Total > 5 UVT.
+    /// Indica que la transacción requiere factura electrónica según DIAN.
+    /// </summary>
+    public bool RequiereFacturaElectronica { get; set; } = false;
+
     // Navegacion
     public Sucursal Sucursal { get; set; } = null!;
     public Caja Caja { get; set; } = null!;

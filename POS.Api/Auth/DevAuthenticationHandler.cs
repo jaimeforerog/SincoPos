@@ -22,8 +22,11 @@ public class DevAuthenticationHandler : AuthenticationHandler<AuthenticationSche
     {
         var claims = new[]
         {
+            new Claim(ClaimTypes.NameIdentifier, "dev-user-1"), // Keycloak ID
+            new Claim("sub", "dev-user-1"), // Subject (alternativo)
             new Claim(ClaimTypes.Name, "DevUser"),
             new Claim(ClaimTypes.Email, "dev@sincopos.com"),
+            new Claim("email", "dev@sincopos.com"), // Email claim alternativo
             new Claim(ClaimTypes.Role, "admin"),
             new Claim(ClaimTypes.Role, "supervisor"),
             new Claim(ClaimTypes.Role, "cajero"),

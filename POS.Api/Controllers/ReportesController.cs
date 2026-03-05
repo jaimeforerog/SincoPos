@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
@@ -7,6 +8,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ReportesController : ControllerBase
@@ -21,9 +23,12 @@ public class ReportesController : ControllerBase
     }
 
     /// <summary>
-    /// Reporte de ventas por período
+    /// Reporte de ventas por período: totales, utilidad, ticket promedio, por método de pago y por día.
     /// </summary>
+    /// <param name="metodoPago">0 = Efectivo, 1 = Tarjeta, 2 = Transferencia. Null = todos.</param>
     [HttpGet("ventas")]
+    [ProducesResponseType(typeof(ReporteVentasDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ReporteVentasDto>> ObtenerReporteVentas(
         [FromQuery] DateTime fechaDesde,
         [FromQuery] DateTime fechaHasta,
@@ -110,9 +115,10 @@ public class ReportesController : ControllerBase
     }
 
     /// <summary>
-    /// Reporte de inventario valorizado
+    /// Reporte de inventario valorizado: costo total, valor de venta y utilidad potencial por producto.
     /// </summary>
     [HttpGet("inventario-valorizado")]
+    [ProducesResponseType(typeof(ReporteInventarioValorizadoDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ReporteInventarioValorizadoDto>> ObtenerInventarioValorizado(
         [FromQuery] int? sucursalId = null,
         [FromQuery] int? categoriaId = null,
@@ -194,9 +200,12 @@ public class ReportesController : ControllerBase
     }
 
     /// <summary>
-    /// Reporte de movimientos de caja
+    /// Reporte de movimientos de caja: ventas por método de pago, totales y cuadre.
+    /// Para cajas abiertas, si no se especifican fechas usa desde la apertura hasta ahora.
     /// </summary>
     [HttpGet("caja/{cajaId}")]
+    [ProducesResponseType(typeof(ReporteCajaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ReporteCajaDto>> ObtenerReporteCaja(
         int cajaId,
         [FromQuery] DateTime? fechaDesde = null,
@@ -311,5 +320,231 @@ public class ReportesController : ControllerBase
         ));
 
         return Ok(reporte);
+    }
+
+    /// <summary>
+    /// Dashboard con métricas del día actual (zona horaria Colombia), top 5 productos y alertas de stock.
+    /// </summary>
+    [HttpGet("dashboard")]
+    [ProducesResponseType(typeof(DashboardDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<DashboardDto>> ObtenerDashboard(
+        [FromQuery] int? sucursalId = null)
+    {
+        // Usar zona horaria de Colombia (IANA en Linux, Windows ID en Windows)
+        var colombiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "SA Pacific Standard Time" : "America/Bogota");
+        var ahoraEnColombia = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, colombiaTimeZone);
+        var hoy = ahoraEnColombia.Date;
+        var ayer = hoy.AddDays(-1);
+
+        // Convertir a UTC para consultar la base de datos
+        var hoyUtc = TimeZoneInfo.ConvertTimeToUtc(hoy, colombiaTimeZone);
+        var mañanaUtc = TimeZoneInfo.ConvertTimeToUtc(hoy.AddDays(1), colombiaTimeZone);
+        var ayerUtc = TimeZoneInfo.ConvertTimeToUtc(ayer, colombiaTimeZone);
+
+        // ── Métricas del Día ──
+        var ventasHoyQuery = _context.Ventas
+            .Include(v => v.Detalles)
+            .Where(v => v.FechaVenta >= hoyUtc && v.FechaVenta < mañanaUtc);
+
+        var ventasAyerQuery = _context.Ventas
+            .Include(v => v.Detalles)
+            .Where(v => v.FechaVenta >= ayerUtc && v.FechaVenta < hoyUtc);
+
+        if (sucursalId.HasValue)
+        {
+            ventasHoyQuery = ventasHoyQuery.Where(v => v.SucursalId == sucursalId.Value);
+            ventasAyerQuery = ventasAyerQuery.Where(v => v.SucursalId == sucursalId.Value);
+        }
+
+        var ventasHoy = await ventasHoyQuery.ToListAsync();
+        var ventasAyer = await ventasAyerQuery.ToListAsync();
+
+        var totalHoy = ventasHoy.Sum(v => v.Total);
+        var totalAyer = ventasAyer.Sum(v => v.Total);
+        var porcentajeCambio = totalAyer > 0 ? ((totalHoy - totalAyer) / totalAyer) * 100 : 0;
+
+        var cantidadVentas = ventasHoy.Count;
+        var productosVendidos = ventasHoy.Sum(v => v.Detalles.Sum(d => d.Cantidad));
+        var clientesAtendidos = ventasHoy.Where(v => v.ClienteId.HasValue)
+            .Select(v => v.ClienteId!.Value).Distinct().Count();
+        var ticketPromedio = cantidadVentas > 0 ? totalHoy / cantidadVentas : 0;
+
+        var costoHoy = ventasHoy.Sum(v => v.Detalles.Sum(d => d.CostoUnitario * d.Cantidad));
+        var utilidadHoy = totalHoy - costoHoy;
+        var margenPromedio = totalHoy > 0 ? (utilidadHoy / totalHoy) * 100 : 0;
+
+        var metricas = new MetricasDelDiaDto(
+            totalHoy,
+            totalAyer,
+            porcentajeCambio,
+            cantidadVentas,
+            (int)productosVendidos,
+            clientesAtendidos,
+            ticketPromedio,
+            utilidadHoy,
+            margenPromedio
+        );
+
+        // ── Ventas por Hora ──
+        var ventasPorHora = ventasHoy
+            .GroupBy(v => TimeZoneInfo.ConvertTimeFromUtc(v.FechaVenta, colombiaTimeZone).Hour)
+            .Select(g => new VentaPorHoraDto(
+                g.Key,
+                g.Sum(v => v.Total),
+                g.Count()
+            ))
+            .OrderBy(v => v.Hora)
+            .ToList();
+
+        // ── Top 5 Productos Más Vendidos ──
+        var detallesHoy = ventasHoy.SelectMany(v => v.Detalles).ToList();
+        var productoIdsTop = detallesHoy.Select(d => d.ProductoId).Distinct().ToList();
+        var codigosBarras = await _context.Productos
+            .Where(p => productoIdsTop.Contains(p.Id))
+            .Select(p => new { p.Id, p.CodigoBarras, p.Categoria!.Nombre })
+            .ToDictionaryAsync(p => p.Id);
+
+        var topProductos = detallesHoy
+            .GroupBy(d => new { d.ProductoId, d.NombreProducto })
+            .Select(g =>
+            {
+                codigosBarras.TryGetValue(g.Key.ProductoId, out var prod);
+                var totalVtas = g.Sum(d => d.Subtotal);
+                var utilidad = g.Sum(d => (d.PrecioUnitario - d.CostoUnitario) * d.Cantidad);
+                return new TopProductoDto(
+                    g.Key.ProductoId,
+                    prod?.CodigoBarras ?? "",
+                    g.Key.NombreProducto,
+                    prod?.Nombre,
+                    (int)g.Sum(d => d.Cantidad),
+                    totalVtas,
+                    utilidad,
+                    totalVtas > 0 ? (utilidad / totalVtas) * 100 : 0
+                );
+            })
+            .OrderByDescending(p => p.CantidadVendida)
+            .Take(5)
+            .ToList();
+
+        // ── Alertas de Stock Bajo ──
+        var stockQuery = _context.Stock
+            .Include(s => s.Producto)
+            .Include(s => s.Sucursal)
+            .Where(s => s.Cantidad <= 10); // Alertar cuando hay 10 o menos unidades
+
+        if (sucursalId.HasValue)
+            stockQuery = stockQuery.Where(s => s.SucursalId == sucursalId.Value);
+
+        var alertasStock = await stockQuery
+            .OrderBy(s => s.Cantidad)
+            .Take(10)
+            .Select(s => new AlertaStockDto(
+                s.ProductoId,
+                s.Producto.Nombre,
+                s.Producto.CodigoBarras,
+                s.SucursalId,
+                s.Sucursal.Nombre,
+                s.Cantidad,
+                5 // StockMinimo default de 5 unidades
+            ))
+            .ToListAsync();
+
+        var dashboard = new DashboardDto(
+            metricas,
+            ventasPorHora,
+            topProductos,
+            alertasStock
+        );
+
+        // Activity log
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ConsultarDashboard",
+            Tipo: TipoActividad.Sistema,
+            Descripcion: $"Dashboard consultado. Ventas hoy: ${totalHoy:N2}, Productos vendidos: {productosVendidos}",
+            SucursalId: sucursalId,
+            TipoEntidad: "Reporte",
+            EntidadId: "dashboard",
+            EntidadNombre: "Dashboard",
+            DatosNuevos: new { sucursalId, totalHoy, cantidadVentas }
+        ));
+
+        return Ok(dashboard);
+    }
+
+    /// <summary>
+    /// Top productos más vendidos en un período, ordenados por cantidad vendida.
+    /// </summary>
+    /// <param name="limite">Número máximo de productos a retornar. Default 10.</param>
+    [HttpGet("top-productos")]
+    [ProducesResponseType(typeof(List<TopProductoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<TopProductoDto>>> ObtenerTopProductos(
+        [FromQuery] DateTime fechaDesde,
+        [FromQuery] DateTime fechaHasta,
+        [FromQuery] int? sucursalId = null,
+        [FromQuery] int limite = 10)
+    {
+        // Validar fechas
+        if (fechaDesde > fechaHasta)
+            return BadRequest("La fecha desde no puede ser mayor que la fecha hasta.");
+
+        // Convertir a UTC
+        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde, DateTimeKind.Utc);
+        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta, DateTimeKind.Utc);
+
+        // Query de ventas
+        var ventasQuery = _context.Ventas
+            .Include(v => v.Detalles)
+            .Where(v => v.FechaVenta >= fechaDesdeUtc && v.FechaVenta <= fechaHastaUtc);
+
+        if (sucursalId.HasValue)
+            ventasQuery = ventasQuery.Where(v => v.SucursalId == sucursalId.Value);
+
+        var ventas = await ventasQuery.ToListAsync();
+
+        // Agrupar por producto
+        var detalles = ventas.SelectMany(v => v.Detalles).ToList();
+        var productoIds = detalles.Select(d => d.ProductoId).Distinct().ToList();
+        var codigosBarras = await _context.Productos
+            .Where(p => productoIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.CodigoBarras, CategoriaNombre = p.Categoria!.Nombre })
+            .ToDictionaryAsync(p => p.Id);
+
+        var topProductos = detalles
+            .GroupBy(d => new { d.ProductoId, d.NombreProducto })
+            .Select(g =>
+            {
+                codigosBarras.TryGetValue(g.Key.ProductoId, out var prod);
+                var totalVtas = g.Sum(d => d.Subtotal);
+                var utilidad = g.Sum(d => (d.PrecioUnitario - d.CostoUnitario) * d.Cantidad);
+                return new TopProductoDto(
+                    g.Key.ProductoId,
+                    prod?.CodigoBarras ?? "",
+                    g.Key.NombreProducto,
+                    prod?.CategoriaNombre,
+                    (int)g.Sum(d => d.Cantidad),
+                    totalVtas,
+                    utilidad,
+                    totalVtas > 0 ? (utilidad / totalVtas) * 100 : 0
+                );
+            })
+            .OrderByDescending(p => p.CantidadVendida)
+            .Take(limite)
+            .ToList();
+
+        // Activity log
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ConsultarTopProductos",
+            Tipo: TipoActividad.Sistema,
+            Descripcion: $"Top productos: {fechaDesde:yyyy-MM-dd} a {fechaHasta:yyyy-MM-dd}. Top 1: {topProductos.FirstOrDefault()?.Nombre}",
+            SucursalId: sucursalId,
+            TipoEntidad: "Reporte",
+            EntidadId: "top-productos",
+            EntidadNombre: "Top Productos",
+            DatosNuevos: new { fechaDesde, fechaHasta, sucursalId, limite }
+        ));
+
+        return Ok(topProductos);
     }
 }

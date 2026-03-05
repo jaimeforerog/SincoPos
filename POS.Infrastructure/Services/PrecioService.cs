@@ -58,6 +58,43 @@ public class PrecioService
     }
 
     /// <summary>
+    /// Resuelve precios para TODOS los productos activos de una sucursal en una sola consulta.
+    /// Usa la misma cascada: PrecioSucursal → Producto.PrecioVenta → Costo × (1 + Margen).
+    /// Diseñado para el POS: evita N+1 al mostrar la lista de productos.
+    /// </summary>
+    public async Task<List<PrecioResueltoLoteItem>> ResolverPrecioLote(int sucursalId)
+    {
+        var productos = await _context.Productos
+            .Include(p => p.Categoria)
+            .Where(p => p.Activo)
+            .ToListAsync();
+
+        var ids = productos.Select(p => p.Id).ToList();
+
+        var preciosSuc = await _context.PreciosSucursal
+            .Where(p => p.SucursalId == sucursalId && ids.Contains(p.ProductoId))
+            .ToDictionaryAsync(p => p.ProductoId);
+
+        var stocks = await _context.Stock
+            .Where(s => s.SucursalId == sucursalId && ids.Contains(s.ProductoId))
+            .ToDictionaryAsync(s => s.ProductoId);
+
+        return productos.Select(producto =>
+        {
+            if (preciosSuc.TryGetValue(producto.Id, out var ps))
+                return new PrecioResueltoLoteItem(producto.Id, ps.PrecioVenta, ps.PrecioMinimo, "Sucursal");
+
+            if (producto.PrecioVenta > 0)
+                return new PrecioResueltoLoteItem(producto.Id, producto.PrecioVenta, null, "Producto");
+
+            var costo = stocks.TryGetValue(producto.Id, out var s) ? s.CostoPromedio : producto.PrecioCosto;
+            var margen = producto.Categoria?.MargenGanancia ?? 0m;
+            var precioCalc = Math.Round(costo * (1 + margen), 2);
+            return new PrecioResueltoLoteItem(producto.Id, precioCalc, costo, "Margen");
+        }).ToList();
+    }
+
+    /// <summary>
     /// Valida que el precio solicitado no sea menor al minimo permitido.
     /// </summary>
     public async Task<(bool valido, string? error)> ValidarPrecio(
@@ -84,3 +121,4 @@ public class PrecioService
 }
 
 public record PrecioResuelto(decimal PrecioVenta, decimal? PrecioMinimo, string Origen, string? OrigenDato = null);
+public record PrecioResueltoLoteItem(Guid ProductoId, decimal PrecioVenta, decimal? PrecioMinimo, string Origen);

@@ -6,6 +6,7 @@ using POS.Domain.Events.Inventario;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 using POS.Infrastructure.Services;
+using EFC = Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions;
 
 namespace POS.Infrastructure.Projections;
 
@@ -55,6 +56,14 @@ public class InventarioProjection : IProjection
                 case StockMinimoActualizado minimo:
                     await ProcesarStockMinimo(context, minimo, @event.Timestamp.UtcDateTime);
                     break;
+
+                case TrasladoSalidaRegistrado trasladoSalida:
+                    await ProcesarSalidaTraslado(context, costeoService, trasladoSalida, @event.Timestamp.UtcDateTime);
+                    break;
+
+                case TrasladoEntradaRegistrado trasladoEntrada:
+                    await ProcesarEntradaTraslado(context, costeoService, trasladoEntrada, @event.Timestamp.UtcDateTime);
+                    break;
             }
         }
 
@@ -62,13 +71,9 @@ public class InventarioProjection : IProjection
     }
 
     private static Task<Stock?> BuscarStock(AppDbContext context, Guid productoId, int sucursalId)
-    {
-        // Usar LINQ en memoria para evitar colision FirstOrDefaultAsync de Marten/EF Core
-        var stockList = context.Stock.AsEnumerable()
-            .Where(s => s.ProductoId == productoId && s.SucursalId == sucursalId)
-            .ToList();
-        return Task.FromResult(stockList.FirstOrDefault());
-    }
+        // EFC alias evita colisión de nombres con las extensiones IQueryable de Marten
+        => EFC.FirstOrDefaultAsync(context.Stock
+            .Where(s => s.ProductoId == productoId && s.SucursalId == sucursalId));
 
     private async Task ProcesarEntrada(AppDbContext context, CosteoService costeoService,
         EntradaCompraRegistrada e)
@@ -170,5 +175,113 @@ public class InventarioProjection : IProjection
             stock.StockMinimo = e.StockMinimoNuevo;
             stock.UltimaActualizacion = timestamp;
         }
+    }
+
+    private async Task ProcesarSalidaTraslado(AppDbContext context, CosteoService _,
+        TrasladoSalidaRegistrado e, DateTime timestamp)
+    {
+        var stock = await BuscarStock(context, e.ProductoId, e.SucursalOrigenId);
+
+        if (stock == null) return;
+
+        var sucursal = await context.Sucursales.FindAsync(e.SucursalOrigenId);
+        if (sucursal == null) return;
+
+        // Consumir lotes según método de costeo — query SQL con ORDER BY traducible
+        var baseQuery = context.LotesInventario
+            .Where(l => l.ProductoId == e.ProductoId
+                && l.SucursalId == e.SucursalOrigenId
+                && l.CantidadDisponible > 0);
+
+        var lotes = sucursal.MetodoCosteo == MetodoCosteo.UEPS
+            ? await EFC.ToListAsync(baseQuery.OrderByDescending(l => l.FechaEntrada))
+            : await EFC.ToListAsync(baseQuery.OrderBy(l => l.FechaEntrada));
+
+        var cantidadRestante = e.Cantidad;
+        foreach (var lote in lotes)
+        {
+            if (cantidadRestante <= 0) break;
+
+            var consumir = Math.Min(lote.CantidadDisponible, cantidadRestante);
+            lote.CantidadDisponible -= consumir;
+            cantidadRestante -= consumir;
+        }
+
+        stock.Cantidad -= e.Cantidad;
+        stock.UltimaActualizacion = timestamp;
+
+        // Registrar movimiento
+        context.MovimientosInventario.Add(new MovimientoInventario
+        {
+            ProductoId = e.ProductoId,
+            SucursalId = e.SucursalOrigenId,
+            TipoMovimiento = TipoMovimiento.TransferenciaSalida,
+            Cantidad = e.Cantidad,
+            CostoUnitario = e.CostoUnitario,
+            CostoTotal = e.CostoTotal,
+            Referencia = e.NumeroTraslado,
+            SucursalDestinoId = e.SucursalDestinoId,
+            Observaciones = e.Observaciones,
+            UsuarioId = e.UsuarioId ?? 0,
+            FechaMovimiento = timestamp
+        });
+    }
+
+    private async Task ProcesarEntradaTraslado(AppDbContext context, CosteoService costeoService,
+        TrasladoEntradaRegistrado e, DateTime timestamp)
+    {
+        var stock = await BuscarStock(context, e.ProductoId, e.SucursalDestinoId);
+
+        if (stock == null)
+        {
+            stock = new Stock
+            {
+                ProductoId = e.ProductoId,
+                SucursalId = e.SucursalDestinoId,
+                Cantidad = 0,
+                StockMinimo = 0,
+                CostoPromedio = 0
+            };
+            context.Stock.Add(stock);
+        }
+
+        // Crear lote de entrada
+        context.LotesInventario.Add(new LoteInventario
+        {
+            ProductoId = e.ProductoId,
+            SucursalId = e.SucursalDestinoId,
+            CantidadInicial = e.CantidadRecibida,
+            CantidadDisponible = e.CantidadRecibida,
+            CostoUnitario = e.CostoUnitario,
+            PorcentajeImpuesto = 0,
+            MontoImpuestoUnitario = 0,
+            Referencia = e.NumeroTraslado,
+            FechaEntrada = timestamp
+        });
+
+        // Actualizar stock y costo promedio
+        var cantidadAnterior = stock.Cantidad;
+        var costoAnterior = stock.CostoPromedio;
+        stock.Cantidad += e.CantidadRecibida;
+        stock.CostoPromedio = stock.Cantidad > 0
+            ? (cantidadAnterior * costoAnterior + e.CostoTotal) / stock.Cantidad
+            : e.CostoUnitario;
+        stock.UltimaActualizacion = timestamp;
+
+        // Registrar movimiento
+        context.MovimientosInventario.Add(new MovimientoInventario
+        {
+            ProductoId = e.ProductoId,
+            SucursalId = e.SucursalDestinoId,
+            TipoMovimiento = TipoMovimiento.TransferenciaEntrada,
+            Cantidad = e.CantidadRecibida,
+            CostoUnitario = e.CostoUnitario,
+            CostoTotal = e.CostoTotal,
+            Referencia = e.NumeroTraslado,
+            SucursalDestinoId = e.SucursalOrigenId,  // De dónde vino
+            Observaciones = e.Observaciones,
+            UsuarioId = e.UsuarioId ?? 0,
+            FechaMovimiento = timestamp
+        });
     }
 }

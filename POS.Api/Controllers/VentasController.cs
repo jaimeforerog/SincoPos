@@ -1,11 +1,9 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Application.Validators;
-using POS.Domain.Aggregates;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 using POS.Infrastructure.Services;
@@ -17,239 +15,55 @@ namespace POS.Api.Controllers;
 [Route("api/[controller]")]
 public class VentasController : ControllerBase
 {
+    private readonly IVentaService _ventaService;
     private readonly AppDbContext _context;
-    private readonly Marten.IDocumentSession _session;
-    private readonly PrecioService _precioService;
-    private readonly CosteoService _costeoService;
     private readonly ILogger<VentasController> _logger;
-    private readonly IActivityLogService _activityLogService;
 
     public VentasController(
+        IVentaService ventaService,
         AppDbContext context,
-        Marten.IDocumentSession session,
-        PrecioService precioService,
-        CosteoService costeoService,
-        ILogger<VentasController> logger,
-        IActivityLogService activityLogService)
+        ILogger<VentasController> logger)
     {
+        _ventaService = ventaService;
         _context = context;
-        _session = session;
-        _precioService = precioService;
-        _costeoService = costeoService;
         _logger = logger;
-        _activityLogService = activityLogService;
     }
 
     /// <summary>
     /// Crear una venta completa.
-    /// Valida caja, resuelve precios, consume inventario via ES, y registra la venta.
+    /// Valida caja abierta, resuelve precios (cascada sucursal → producto → margen),
+    /// aplica TaxEngine, consume stock via Event Sourcing y registra la venta.
     /// </summary>
+    /// <remarks>
+    /// El campo <c>precioUnitario</c> en cada línea es opcional. Si se omite (null),
+    /// el sistema resuelve el precio configurado para la sucursal.<br/>
+    /// <c>metodoPago</c>: 0 = Efectivo, 1 = Tarjeta, 2 = Transferencia.<br/>
+    /// <c>montoPagado</c> debe ser &gt;= total de la venta.
+    /// </remarks>
+    /// <response code="200">Venta creada exitosamente con su VentaDto completo.</response>
+    /// <response code="400">Caja cerrada, stock insuficiente, precio inválido u otro error de negocio.</response>
     [HttpPost]
     [Authorize(Policy = "Cajero")]
+    [ProducesResponseType(typeof(VentaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<VentaDto>> CrearVenta([FromBody] CrearVentaDto dto)
     {
-        // Validar
-        var validator = new CrearVentaValidator();
-        var validResult = await validator.ValidateAsync(dto);
+        var validResult = await new CrearVentaValidator().ValidateAsync(dto);
         if (!validResult.IsValid)
             return BadRequest(validResult.Errors.Select(e => e.ErrorMessage));
 
-        // Verificar caja abierta
-        var caja = await _context.Cajas
-            .FirstOrDefaultAsync(c => c.Id == dto.CajaId && c.SucursalId == dto.SucursalId);
-        if (caja == null)
-            return BadRequest("Caja no encontrada en esta sucursal.");
-        if (caja.Estado != EstadoCaja.Abierta)
-            return BadRequest("La caja no esta abierta.");
-
-        // Obtener sucursal para metodo de costeo
-        var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
-        if (sucursal == null)
-            return BadRequest("Sucursal no encontrada.");
-
-        // Verificar cliente (si aplica)
-        string? nombreCliente = null;
-        if (dto.ClienteId.HasValue)
-        {
-            var cliente = await _context.Terceros.FindAsync(dto.ClienteId.Value);
-            if (cliente == null) return BadRequest("Cliente no encontrado.");
-            nombreCliente = cliente.Nombre;
-        }
-
-        // Generar numero de venta
-        var ultimaVenta = await _context.Ventas
-            .Where(v => v.SucursalId == dto.SucursalId)
-            .OrderByDescending(v => v.Id)
-            .Select(v => v.NumeroVenta)
-            .FirstOrDefaultAsync();
-        var consecutivo = 1;
-        if (ultimaVenta != null && ultimaVenta.Contains('-'))
-        {
-            int.TryParse(ultimaVenta.Split('-').Last(), out consecutivo);
-            consecutivo++;
-        }
-        var numeroVenta = $"V-{consecutivo:D6}";
-
-        // Procesar cada linea
-        var detalles = new List<DetalleVenta>();
-        decimal subtotal = 0;
-        decimal descuentoTotal = 0;
-        decimal totalImpuestos = 0;
-
-        foreach (var linea in dto.Lineas)
-        {
-            // Obtener producto con su impuesto
-            var producto = await _context.Productos
-                .Include(p => p.Impuesto)
-                .FirstOrDefaultAsync(p => p.Id == linea.ProductoId);
-
-            if (producto == null)
-                return BadRequest($"Producto {linea.ProductoId} no encontrado.");
-            if (!producto.Activo)
-                return BadRequest($"Producto {producto.Nombre} esta inactivo.");
-
-            // Verificar stock
-            var stock = await _context.Stock
-                .FirstOrDefaultAsync(s => s.ProductoId == linea.ProductoId
-                    && s.SucursalId == dto.SucursalId);
-            if (stock == null || stock.Cantidad < linea.Cantidad)
-                return BadRequest($"Stock insuficiente para {producto.Nombre}. " +
-                    $"Disponible: {stock?.Cantidad ?? 0}, Solicitado: {linea.Cantidad}");
-
-            // Resolver precio
-            decimal precioUnitario;
-            if (linea.PrecioUnitario.HasValue)
-            {
-                // Precio manual — validar que no este por debajo del minimo
-                var (valido, error) = await _precioService.ValidarPrecio(
-                    linea.ProductoId, dto.SucursalId, linea.PrecioUnitario.Value);
-                if (!valido) return BadRequest(error);
-                precioUnitario = linea.PrecioUnitario.Value;
-            }
-            else
-            {
-                // Resolver automaticamente
-                var precio = await _precioService.ResolverPrecio(linea.ProductoId, dto.SucursalId);
-                precioUnitario = precio.PrecioVenta;
-            }
-
-            // Calculo de impuestos
-            decimal porcentajeImpuesto = producto.Impuesto?.Porcentaje ?? 0;
-            decimal montoImpuesto = precioUnitario * linea.Cantidad * porcentajeImpuesto;
-            totalImpuestos += montoImpuesto;
-
-            // Consumir inventario via Event Sourcing
-            var streamId = InventarioAggregate.GenerarStreamId(linea.ProductoId, dto.SucursalId);
-            var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-            if (aggregate == null)
-                return BadRequest($"No hay registro de inventario para {producto.Nombre}.");
-
-            var eventoVenta = aggregate.RegistrarSalidaVenta(
-                linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta, null);
-            _session.Events.Append(streamId, eventoVenta);
-
-            // Consumir stock con metodo de costeo
-            var (costoTotal, costoUnitario) = await _costeoService.ConsumirStock(
-                linea.ProductoId, dto.SucursalId, linea.Cantidad, sucursal.MetodoCosteo);
-
-            // Actualizar stock en EF Core
-            stock.Cantidad -= linea.Cantidad;
-            stock.UltimaActualizacion = DateTime.UtcNow;
-
-            // Crear detalle
-            var lineaSubtotal = (precioUnitario * linea.Cantidad) - linea.Descuento;
-            var detalle = new DetalleVenta
-            {
-                ProductoId = linea.ProductoId,
-                NombreProducto = producto.Nombre,
-                Cantidad = linea.Cantidad,
-                PrecioUnitario = precioUnitario,
-                CostoUnitario = costoUnitario,
-                Descuento = linea.Descuento,
-                PorcentajeImpuesto = porcentajeImpuesto,
-                MontoImpuesto = montoImpuesto,
-                Subtotal = lineaSubtotal
-            };
-            detalles.Add(detalle);
-
-            subtotal += precioUnitario * linea.Cantidad;
-            descuentoTotal += linea.Descuento;
-        }
-
-        var total = subtotal - descuentoTotal + totalImpuestos;
-        var cambio = dto.MontoPagado.HasValue ? dto.MontoPagado.Value - total : (decimal?)null;
-
-        if (dto.MontoPagado.HasValue && dto.MontoPagado.Value < total)
-            return BadRequest($"Monto pagado ({dto.MontoPagado.Value}) es menor al total ({total}).");
-
-        // Crear venta
-        var venta = new Venta
-        {
-            NumeroVenta = numeroVenta,
-            SucursalId = dto.SucursalId,
-            CajaId = dto.CajaId,
-            ClienteId = dto.ClienteId,
-            Subtotal = subtotal,
-            Descuento = descuentoTotal,
-            Impuestos = totalImpuestos,
-            Total = total,
-            Estado = EstadoVenta.Completada,
-            MetodoPago = (MetodoPago)dto.MetodoPago,
-            MontoPagado = dto.MontoPagado,
-            Cambio = cambio,
-            Observaciones = dto.Observaciones,
-            FechaVenta = DateTime.UtcNow,
-            Detalles = detalles
-        };
-        _context.Ventas.Add(venta);
-
-        // Actualizar monto de caja
-        caja.MontoActual += total;
-
-        // Guardar todo
-        await _session.SaveChangesAsync();
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Venta {NumeroVenta} completada. Total: {Total}, Items: {Items}",
-            numeroVenta, total, detalles.Count);
-
-        // Activity Log
-        await _activityLogService.LogActivityAsync(new ActivityLogDto(
-            Accion: "CrearVenta",
-            Tipo: TipoActividad.Venta,
-            Descripcion: $"Venta {numeroVenta} creada. Total: ${total:N2}, Items: {detalles.Count}",
-            SucursalId: dto.SucursalId,
-            TipoEntidad: "Venta",
-            EntidadId: venta.Id.ToString(),
-            EntidadNombre: numeroVenta,
-            DatosNuevos: new
-            {
-                NumeroVenta = numeroVenta,
-                Total = total,
-                Subtotal = subtotal,
-                Descuento = descuentoTotal,
-                Impuestos = totalImpuestos,
-                MetodoPago = ((MetodoPago)dto.MetodoPago).ToString(),
-                CantidadItems = detalles.Count,
-                ClienteId = dto.ClienteId,
-                CajaId = dto.CajaId,
-                Productos = detalles.Select(d => new {
-                    d.ProductoId,
-                    d.NombreProducto,
-                    d.Cantidad,
-                    d.PrecioUnitario,
-                    d.Subtotal
-                })
-            }
-        ));
-
-        return Ok(MapToDto(venta, sucursal.Nombre, caja.Nombre, nombreCliente));
+        var (venta, error) = await _ventaService.CrearVentaAsync(dto);
+        return error != null ? BadRequest(new { error }) : Ok(venta);
     }
 
     /// <summary>
     /// Obtener detalle de una venta por ID.
     /// </summary>
+    /// <response code="200">VentaDto con líneas de detalle.</response>
+    /// <response code="404">Venta no encontrada.</response>
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(VentaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<VentaDto>> ObtenerVenta(int id)
     {
         var venta = await _context.Ventas
@@ -261,13 +75,20 @@ public class VentasController : ControllerBase
 
         if (venta == null) return NotFound();
 
-        return Ok(MapToDto(venta, venta.Sucursal.Nombre, venta.Caja.Nombre, venta.Cliente?.Nombre));
+        return Ok(VentaService.MapToDto(venta, venta.Sucursal.Nombre, venta.Caja.Nombre, venta.Cliente?.Nombre));
     }
 
     /// <summary>
-    /// Listar ventas con filtros.
+    /// Listar ventas con filtros opcionales.
     /// </summary>
+    /// <param name="sucursalId">Filtrar por sucursal. Null = todas las sucursales.</param>
+    /// <param name="cajaId">Filtrar por caja específica.</param>
+    /// <param name="desde">Fecha de inicio del período (UTC).</param>
+    /// <param name="hasta">Fecha fin del período (UTC).</param>
+    /// <param name="estado">0 = Completada, 1 = Anulada, 2 = Devuelta. Null = todos.</param>
+    /// <param name="limite">Máximo de resultados. Default 50.</param>
     [HttpGet]
+    [ProducesResponseType(typeof(List<VentaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<VentaDto>>> ListarVentas(
         [FromQuery] int? sucursalId = null,
         [FromQuery] int? cajaId = null,
@@ -295,112 +116,40 @@ public class VentasController : ControllerBase
             .ToListAsync();
 
         return Ok(ventas.Select(v =>
-            MapToDto(v, v.Sucursal.Nombre, v.Caja.Nombre, v.Cliente?.Nombre)));
+            VentaService.MapToDto(v, v.Sucursal.Nombre, v.Caja.Nombre, v.Cliente?.Nombre)));
     }
 
     /// <summary>
-    /// Anular una venta. Revierte el stock via Event Sourcing.
+    /// Anular una venta. Revierte el stock consumido via Event Sourcing y descuenta de la caja.
     /// </summary>
+    /// <param name="id">ID de la venta a anular.</param>
+    /// <param name="motivo">Motivo opcional de la anulación (queda en el log de auditoría).</param>
+    /// <response code="200">Venta anulada. Stock revertido.</response>
+    /// <response code="404">Venta no encontrada.</response>
+    /// <response code="400">Venta ya anulada u otro error de negocio.</response>
     [HttpPost("{id:int}/anular")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> AnularVenta(int id, [FromQuery] string? motivo = null)
     {
-        var venta = await _context.Ventas
-            .Include(v => v.Detalles)
-            .FirstOrDefaultAsync(v => v.Id == id);
-
-        if (venta == null) return NotFound();
-        if (venta.Estado == EstadoVenta.Anulada)
-            return BadRequest("La venta ya esta anulada.");
-
-        var sucursal = await _context.Sucursales.FindAsync(venta.SucursalId);
-
-        // Revertir cada linea
-        foreach (var detalle in venta.Detalles)
+        var (success, error) = await _ventaService.AnularVentaAsync(id, motivo);
+        if (!success)
         {
-            // Registrar entrada de devolucion en ES
-            var streamId = InventarioAggregate.GenerarStreamId(detalle.ProductoId, venta.SucursalId);
-            var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-
-            if (aggregate != null)
-            {
-                var entradaEvento = aggregate.AgregarEntrada(
-                    detalle.Cantidad, detalle.CostoUnitario,
-                    null, null, $"Anulacion venta {venta.NumeroVenta}",
-                    motivo ?? "Venta anulada", null);
-                _session.Events.Append(streamId, entradaEvento);
-            }
-
-            // Registrar lote de entrada y actualizar stock
-            var montoImpuestoUnitario = detalle.Cantidad > 0
-                ? detalle.MontoImpuesto / detalle.Cantidad
-                : 0;
-            await _costeoService.RegistrarLoteEntrada(
-                detalle.ProductoId, venta.SucursalId,
-                detalle.Cantidad, detalle.CostoUnitario,
-                detalle.PorcentajeImpuesto, montoImpuestoUnitario,
-                $"Anulacion {venta.NumeroVenta}", null);
-
-            var stock = await _context.Stock
-                .FirstOrDefaultAsync(s => s.ProductoId == detalle.ProductoId
-                    && s.SucursalId == venta.SucursalId);
-            if (stock != null)
-            {
-                await _costeoService.ActualizarCostoEntrada(
-                    stock, detalle.Cantidad, detalle.CostoUnitario, sucursal!.MetodoCosteo);
-            }
+            if (error == "NOT_FOUND") return NotFound();
+            return BadRequest(new { error });
         }
-
-        // Marcar venta como anulada
-        venta.Estado = EstadoVenta.Anulada;
-        venta.Observaciones = $"{venta.Observaciones} | ANULADA: {motivo ?? "Sin motivo"}";
-
-        // Revertir monto de caja
-        var caja = await _context.Cajas.FindAsync(venta.CajaId);
-        if (caja != null)
-            caja.MontoActual -= venta.Total;
-
-        await _session.SaveChangesAsync();
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Venta {NumeroVenta} anulada. Motivo: {Motivo}",
-            venta.NumeroVenta, motivo);
-
-        // Activity Log
-        await _activityLogService.LogActivityAsync(new ActivityLogDto(
-            Accion: "AnularVenta",
-            Tipo: TipoActividad.Venta,
-            Descripcion: $"Venta {venta.NumeroVenta} anulada. Motivo: {motivo ?? "Sin motivo"}. Total revertido: ${venta.Total:N2}",
-            SucursalId: venta.SucursalId,
-            TipoEntidad: "Venta",
-            EntidadId: id.ToString(),
-            EntidadNombre: venta.NumeroVenta,
-            DatosAnteriores: new
-            {
-                Estado = "Completada",
-                Total = venta.Total,
-                CantidadItems = venta.Detalles.Count
-            },
-            DatosNuevos: new
-            {
-                Estado = "Anulada",
-                Motivo = motivo ?? "Sin motivo",
-                ItemsRevertidos = venta.Detalles.Select(d => new {
-                    d.ProductoId,
-                    d.NombreProducto,
-                    d.Cantidad
-                })
-            }
-        ));
-
-        return Ok(new { mensaje = $"Venta {venta.NumeroVenta} anulada", stockRevertido = true });
+        return Ok(new { mensaje = "Venta anulada", stockRevertido = true });
     }
 
     /// <summary>
-    /// Resumen de ventas por periodo/sucursal.
+    /// Resumen agregado de ventas: totales, costo, ganancia y margen por período/sucursal.
+    /// Solo incluye ventas en estado Completada.
     /// </summary>
     [HttpGet("resumen")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(ResumenVentaDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ResumenVentaDto>> ObtenerResumen(
         [FromQuery] int? sucursalId = null,
         [FromQuery] DateTime? desde = null,
@@ -428,228 +177,44 @@ public class VentasController : ControllerBase
 
     /// <summary>
     /// Crear devolución parcial de productos de una venta.
-    /// Permite devolver solo algunos productos sin anular toda la venta.
+    /// Reintegra el stock vía Event Sourcing y ajusta el monto de la caja.
+    /// Se permiten múltiples devoluciones sobre la misma venta hasta agotar las cantidades originales.
     /// </summary>
+    /// <response code="200">Devolución registrada con DevolucionVentaDto completo.</response>
+    /// <response code="404">Venta no encontrada.</response>
+    /// <response code="400">Cantidades superan lo vendido, línea ya devuelta u otro error.</response>
     [HttpPost("{ventaId:int}/devolucion-parcial")]
     [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(DevolucionVentaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<DevolucionVentaDto>> CrearDevolucionParcial(
         int ventaId,
         [FromBody] CrearDevolucionParcialDto dto)
     {
-        // Validar DTO
-        var validator = new CrearDevolucionParcialValidator();
-        var validResult = await validator.ValidateAsync(dto);
+        var validResult = await new CrearDevolucionParcialValidator().ValidateAsync(dto);
         if (!validResult.IsValid)
             return BadRequest(validResult.Errors.Select(e => e.ErrorMessage));
 
-        // Cargar venta con detalles
-        var venta = await _context.Ventas
-            .Include(v => v.Detalles)
-            .FirstOrDefaultAsync(v => v.Id == ventaId);
-
-        if (venta == null)
-            return NotFound("Venta no encontrada.");
-
-        // Validación: Solo ventas completadas pueden tener devoluciones
-        if (venta.Estado != EstadoVenta.Completada)
-            return BadRequest("Solo se pueden hacer devoluciones de ventas completadas.");
-
-        // Validación: Límite de tiempo (30 días)
-        var diasTranscurridos = (DateTime.UtcNow - venta.FechaVenta).TotalDays;
-        if (diasTranscurridos > 30)
-            return BadRequest($"La venta tiene {Math.Floor(diasTranscurridos)} días. Solo se permiten devoluciones dentro de 30 días.");
-
-        // Cargar devoluciones anteriores de esta venta
-        var devolucionesAnteriores = await _context.DevolucionesVenta
-            .Include(d => d.Detalles)
-            .Where(d => d.VentaId == ventaId)
-            .ToListAsync();
-
-        // Validar cada línea de devolución
-        var detallesDevolucion = new List<DetalleDevolucion>();
-        decimal totalDevuelto = 0;
-
-        foreach (var linea in dto.Lineas)
-        {
-            // Verificar que el producto esté en la venta original
-            var detalleOriginal = venta.Detalles.FirstOrDefault(d => d.ProductoId == linea.ProductoId);
-            if (detalleOriginal == null)
-                return BadRequest($"El producto {linea.ProductoId} no está en la venta original.");
-
-            // Calcular cantidad ya devuelta de este producto
-            var cantidadYaDevuelta = devolucionesAnteriores
-                .SelectMany(d => d.Detalles)
-                .Where(dd => dd.ProductoId == linea.ProductoId)
-                .Sum(dd => dd.CantidadDevuelta);
-
-            // Validar que no se exceda la cantidad vendida
-            var cantidadDisponibleParaDevolver = detalleOriginal.Cantidad - cantidadYaDevuelta;
-            if (linea.Cantidad > cantidadDisponibleParaDevolver)
-                return BadRequest(
-                    $"No se puede devolver {linea.Cantidad} unidades del producto {detalleOriginal.NombreProducto}. " +
-                    $"Vendido: {detalleOriginal.Cantidad}, Ya devuelto: {cantidadYaDevuelta}, Disponible: {cantidadDisponibleParaDevolver}");
-
-            // Calcular subtotal devuelto (proporcional)
-            var subtotalDevuelto = (detalleOriginal.PrecioUnitario * linea.Cantidad);
-            totalDevuelto += subtotalDevuelto;
-
-            // Crear detalle de devolución
-            var detalleDevolucion = new DetalleDevolucion
-            {
-                ProductoId = linea.ProductoId,
-                NombreProducto = detalleOriginal.NombreProducto,
-                CantidadDevuelta = linea.Cantidad,
-                PrecioUnitario = detalleOriginal.PrecioUnitario,
-                CostoUnitario = detalleOriginal.CostoUnitario,
-                SubtotalDevuelto = subtotalDevuelto
-            };
-
-            detallesDevolucion.Add(detalleDevolucion);
-        }
-
-        // Generar número de devolución
-        var ultimaDevolucion = await _context.DevolucionesVenta
-            .OrderByDescending(d => d.Id)
-            .Select(d => d.NumeroDevolucion)
-            .FirstOrDefaultAsync();
-
-        var consecutivo = 1;
-        if (ultimaDevolucion != null && ultimaDevolucion.Contains('-'))
-        {
-            int.TryParse(ultimaDevolucion.Split('-').Last(), out consecutivo);
-            consecutivo++;
-        }
-        var numeroDevolucion = $"DEV-{consecutivo:D6}";
-
-        // Cargar sucursal para método de costeo
-        var sucursal = await _context.Sucursales.FindAsync(venta.SucursalId);
-        if (sucursal == null)
-            return BadRequest("Sucursal no encontrada.");
-
-        // Procesar cada línea de devolución: restaurar inventario
-        foreach (var detalleDevolucion in detallesDevolucion)
-        {
-            var detalleOriginal = venta.Detalles.First(d => d.ProductoId == detalleDevolucion.ProductoId);
-
-            // Event Sourcing: Registrar entrada por devolución
-            var streamId = InventarioAggregate.GenerarStreamId(
-                detalleDevolucion.ProductoId, venta.SucursalId);
-            var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-
-            if (aggregate != null)
-            {
-                var eventoEntrada = aggregate.AgregarEntrada(
-                    detalleDevolucion.CantidadDevuelta,
-                    detalleDevolucion.CostoUnitario,  // Costo original de la venta
-                    null, null,
-                    $"Devolución {numeroDevolucion}",
-                    dto.Motivo,
-                    null);
-                _session.Events.Append(streamId, eventoEntrada);
-            }
-
-            // Registrar lote de entrada
-            var montoImpuestoUnitario = detalleOriginal.Cantidad > 0
-                ? detalleOriginal.MontoImpuesto / detalleOriginal.Cantidad
-                : 0;
-
-            await _costeoService.RegistrarLoteEntrada(
-                detalleDevolucion.ProductoId,
-                venta.SucursalId,
-                detalleDevolucion.CantidadDevuelta,
-                detalleDevolucion.CostoUnitario,
-                detalleOriginal.PorcentajeImpuesto,
-                montoImpuestoUnitario,
-                $"Devolución {numeroDevolucion}",
-                null);
-
-            // Actualizar stock
-            var stock = await _context.Stock.FirstOrDefaultAsync(
-                s => s.ProductoId == detalleDevolucion.ProductoId && s.SucursalId == venta.SucursalId);
-
-            if (stock != null)
-            {
-                await _costeoService.ActualizarCostoEntrada(
-                    stock,
-                    detalleDevolucion.CantidadDevuelta,
-                    detalleDevolucion.CostoUnitario,
-                    sucursal.MetodoCosteo);
-            }
-        }
-
-        // Obtener usuario actual (si está disponible)
         var emailUsuario = User.FindFirst("email")?.Value ?? User.Identity?.Name;
-        int? usuarioId = null;
-        if (!string.IsNullOrEmpty(emailUsuario))
+
+        var (devolucion, error) = await _ventaService.CrearDevolucionParcialAsync(ventaId, dto, emailUsuario);
+        if (devolucion == null)
         {
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == emailUsuario);
-            usuarioId = usuario?.Id;
+            if (error == "NOT_FOUND") return NotFound("Venta no encontrada.");
+            return BadRequest(new { error });
         }
-
-        // Crear registro de devolución
-        var devolucion = new DevolucionVenta
-        {
-            VentaId = ventaId,
-            NumeroDevolucion = numeroDevolucion,
-            Motivo = dto.Motivo,
-            TotalDevuelto = totalDevuelto,
-            FechaDevolucion = DateTime.UtcNow,
-            AutorizadoPorUsuarioId = usuarioId,
-            Detalles = detallesDevolucion
-        };
-
-        _context.DevolucionesVenta.Add(devolucion);
-
-        // Ajustar monto de caja
-        var caja = await _context.Cajas.FindAsync(venta.CajaId);
-        if (caja != null)
-        {
-            caja.MontoActual -= totalDevuelto;
-        }
-
-        // Guardar cambios
-        await _session.SaveChangesAsync();  // Marten (Event Sourcing)
-        await _context.SaveChangesAsync();   // EF Core
-
-        _logger.LogInformation(
-            "Devolución parcial {NumeroDevolucion} creada para venta {NumeroVenta}. Total devuelto: {Total}",
-            numeroDevolucion, venta.NumeroVenta, totalDevuelto);
-
-        // Activity Log
-        await _activityLogService.LogActivityAsync(new ActivityLogDto(
-            Accion: "DevolucionParcial",
-            Tipo: TipoActividad.Venta,
-            Descripcion: $"Devolución parcial {numeroDevolucion} de venta {venta.NumeroVenta}. " +
-                        $"Total devuelto: ${totalDevuelto:N2}, Items: {detallesDevolucion.Count}",
-            SucursalId: venta.SucursalId,
-            TipoEntidad: "DevolucionVenta",
-            EntidadId: devolucion.Id.ToString(),
-            EntidadNombre: numeroDevolucion,
-            DatosNuevos: new
-            {
-                NumeroDevolucion = numeroDevolucion,
-                VentaId = ventaId,
-                NumeroVenta = venta.NumeroVenta,
-                Motivo = dto.Motivo,
-                TotalDevuelto = totalDevuelto,
-                AutorizadoPor = emailUsuario,
-                Productos = detallesDevolucion.Select(d => new
-                {
-                    d.ProductoId,
-                    d.NombreProducto,
-                    d.CantidadDevuelta,
-                    d.SubtotalDevuelto
-                })
-            }
-        ));
-
-        return Ok(MapDevolucionToDto(devolucion, venta.NumeroVenta, emailUsuario));
+        return Ok(devolucion);
     }
 
     /// <summary>
     /// Obtener todas las devoluciones de una venta específica.
     /// </summary>
+    /// <response code="200">Lista de devoluciones (puede ser vacía si no hay devoluciones).</response>
+    /// <response code="404">Venta no encontrada.</response>
     [HttpGet("{ventaId:int}/devoluciones")]
+    [ProducesResponseType(typeof(List<DevolucionVentaDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<DevolucionVentaDto>>> ObtenerDevolucionesPorVenta(int ventaId)
     {
         var venta = await _context.Ventas.FindAsync(ventaId);
@@ -672,7 +237,7 @@ public class VentasController : ControllerBase
                 autorizadoPor = usuario?.Email;
             }
 
-            resultado.Add(MapDevolucionToDto(devolucion, venta.NumeroVenta, autorizadoPor));
+            resultado.Add(VentaService.MapDevolucionToDto(devolucion, venta.NumeroVenta, autorizadoPor));
         }
 
         return Ok(resultado);
@@ -681,7 +246,11 @@ public class VentasController : ControllerBase
     /// <summary>
     /// Obtener detalle de una devolución específica.
     /// </summary>
+    /// <response code="200">DevolucionVentaDto con líneas y datos de autorización.</response>
+    /// <response code="404">Devolución no encontrada.</response>
     [HttpGet("devoluciones/{devolucionId:int}")]
+    [ProducesResponseType(typeof(DevolucionVentaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DevolucionVentaDto>> ObtenerDevolucion(int devolucionId)
     {
         var devolucion = await _context.DevolucionesVenta
@@ -699,53 +268,6 @@ public class VentasController : ControllerBase
             autorizadoPor = usuario?.Email;
         }
 
-        return Ok(MapDevolucionToDto(devolucion, devolucion.Venta.NumeroVenta, autorizadoPor));
+        return Ok(VentaService.MapDevolucionToDto(devolucion, devolucion.Venta.NumeroVenta, autorizadoPor));
     }
-
-    // ─── Mappers ───────────────────────────────────────
-
-    private static VentaDto MapToDto(Venta v, string sucNombre, string cajaNombre, string? clienteNombre) =>
-        new(
-            v.Id, v.NumeroVenta,
-            v.SucursalId, sucNombre,
-            v.CajaId, cajaNombre,
-            v.ClienteId, clienteNombre,
-            v.Subtotal, v.Descuento, v.Impuestos, v.Total,
-            v.Estado.ToString(), v.MetodoPago.ToString(),
-            v.MontoPagado, v.Cambio,
-            v.Observaciones, v.FechaVenta,
-            v.Detalles.Select(d =>
-            {
-                var margen = d.PrecioUnitario > 0
-                    ? Math.Round((d.PrecioUnitario - d.CostoUnitario) / d.PrecioUnitario * 100, 2)
-                    : 0;
-                return new DetalleVentaDto(
-                    d.Id, d.ProductoId, d.NombreProducto,
-                    d.Cantidad, d.PrecioUnitario, d.CostoUnitario,
-                    d.Descuento, d.PorcentajeImpuesto, d.MontoImpuesto,
-                    d.Subtotal, margen);
-            }).ToList()
-        );
-
-    private static DevolucionVentaDto MapDevolucionToDto(
-        DevolucionVenta d, string numeroVenta, string? autorizadoPor) =>
-        new(
-            d.Id,
-            d.VentaId,
-            numeroVenta,
-            d.NumeroDevolucion,
-            d.Motivo,
-            d.TotalDevuelto,
-            d.FechaDevolucion,
-            autorizadoPor,
-            d.Detalles.Select(dd => new DetalleDevolucionDto(
-                dd.Id,
-                dd.ProductoId,
-                dd.NombreProducto,
-                dd.CantidadDevuelta,
-                dd.PrecioUnitario,
-                dd.CostoUnitario,
-                dd.SubtotalDevuelto
-            )).ToList()
-        );
 }

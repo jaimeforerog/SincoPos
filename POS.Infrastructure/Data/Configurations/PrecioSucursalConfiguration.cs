@@ -27,6 +27,10 @@ public class PrecioSucursalConfiguration : IEntityTypeConfiguration<PrecioSucurs
             .IsUnique()
             .HasDatabaseName("ix_precios_sucursal_producto_sucursal");
 
+        // Batch price resolver consulta por sucursal_id con producto_id IN (...)
+        builder.HasIndex(p => p.SucursalId)
+            .HasDatabaseName("ix_precios_sucursal_sucursal_id");
+
         builder.HasOne(p => p.Producto)
             .WithMany()
             .HasForeignKey(p => p.ProductoId)

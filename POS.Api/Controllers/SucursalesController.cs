@@ -54,6 +54,8 @@ public class SucursalesController : ControllerBase
         {
             Nombre = dto.Nombre,
             Direccion = dto.Direccion,
+            CodigoPais = dto.CodigoPais ?? "CO",
+            NombrePais = dto.NombrePais ?? "Colombia",
             Ciudad = dto.Ciudad,
             Telefono = dto.Telefono,
             Email = dto.Email,
@@ -69,6 +71,7 @@ public class SucursalesController : ControllerBase
 
         var result = new SucursalDto(
             sucursal.Id, sucursal.Nombre, sucursal.Direccion,
+            sucursal.CodigoPais, sucursal.NombrePais,
             sucursal.Ciudad, sucursal.Telefono, sucursal.Email,
             sucursal.MetodoCosteo.ToString(), sucursal.Activo, sucursal.FechaCreacion);
 
@@ -84,7 +87,7 @@ public class SucursalesController : ControllerBase
         var sucursal = await _context.Sucursales
             .Where(s => s.Id == id)
             .Select(s => new SucursalDto(
-                s.Id, s.Nombre, s.Direccion, s.Ciudad,
+                s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
                 s.Telefono, s.Email, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
             .FirstOrDefaultAsync();
 
@@ -101,6 +104,9 @@ public class SucursalesController : ControllerBase
     public async Task<ActionResult<List<SucursalDto>>> ObtenerSucursales(
         [FromQuery] bool incluirInactivas = false)
     {
+        // DEBUG: Log para ver qué IDs devuelve la base de datos
+        _logger.LogWarning("=== CONSULTANDO SUCURSALES ===");
+
         var query = _context.Sucursales.AsQueryable();
 
         if (!incluirInactivas)
@@ -109,11 +115,70 @@ public class SucursalesController : ControllerBase
         var sucursales = await query
             .OrderBy(s => s.Nombre)
             .Select(s => new SucursalDto(
-                s.Id, s.Nombre, s.Direccion, s.Ciudad,
+                s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
                 s.Telefono, s.Email, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
             .ToListAsync();
 
+        // DEBUG: Log los IDs que se van a devolver
+        _logger.LogWarning("Sucursales encontradas: {Count}", sucursales.Count);
+        foreach (var s in sucursales)
+        {
+            _logger.LogWarning("  ID: {Id}, Nombre: {Nombre}", s.Id, s.Nombre);
+        }
+
         return Ok(sucursales);
+    }
+
+    /// <summary>
+    /// Endpoint de prueba con SQL directo
+    /// </summary>
+    [HttpGet("test-raw")]
+    public async Task<ActionResult> TestRawSql()
+    {
+        var connection = _context.Database.GetDbConnection();
+        await connection.OpenAsync();
+
+        // Verificar base de datos actual
+        using var dbCommand = connection.CreateCommand();
+        dbCommand.CommandText = "SELECT current_database(), current_schema(), version()";
+        var dbInfo = new {
+            Database = "",
+            Schema = "",
+            Version = ""
+        };
+
+        using (var dbReader = await dbCommand.ExecuteReaderAsync())
+        {
+            if (await dbReader.ReadAsync())
+            {
+                dbInfo = new {
+                    Database = dbReader.GetString(0),
+                    Schema = dbReader.GetString(1),
+                    Version = dbReader.GetString(2)
+                };
+            }
+        }
+
+        // Query sucursales
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT \"Id\", nombre, activo FROM public.sucursales ORDER BY \"Id\"";
+
+        var results = new List<object>();
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            results.Add(new {
+                Id = reader.GetInt32(0),
+                Nombre = reader.GetString(1),
+                Activo = reader.GetBoolean(2)
+            });
+        }
+
+        return Ok(new {
+            ConnectionInfo = dbInfo,
+            ConnectionString = _context.Database.GetConnectionString(),
+            Sucursales = results
+        });
     }
 
     /// <summary>
@@ -147,6 +212,8 @@ public class SucursalesController : ControllerBase
 
         sucursal.Nombre = dto.Nombre;
         sucursal.Direccion = dto.Direccion;
+        sucursal.CodigoPais = dto.CodigoPais;
+        sucursal.NombrePais = dto.NombrePais;
         sucursal.Ciudad = dto.Ciudad;
         sucursal.Telefono = dto.Telefono;
         sucursal.Email = dto.Email;

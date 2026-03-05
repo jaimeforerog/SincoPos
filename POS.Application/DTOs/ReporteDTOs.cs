@@ -105,3 +105,41 @@ public record ReporteCajaQueryDto(
     DateTime? FechaDesde = null,
     DateTime? FechaHasta = null
 );
+
+// ─── Dashboard ─────────────────────────────────────────
+
+public record DashboardDto(
+    MetricasDelDiaDto MetricasDelDia,
+    List<VentaPorHoraDto> VentasPorHora,
+    List<TopProductoDto> TopProductos,
+    List<AlertaStockDto> AlertasStock
+);
+
+public record MetricasDelDiaDto(
+    decimal VentasTotales,
+    decimal VentasAyer,
+    decimal PorcentajeCambio,
+    int CantidadVentas,
+    int ProductosVendidos,
+    int ClientesAtendidos,
+    decimal TicketPromedio,
+    decimal UtilidadDelDia,
+    decimal MargenPromedio
+);
+
+public record VentaPorHoraDto(
+    int Hora,
+    decimal Total,
+    int Cantidad
+);
+
+public record TopProductoDto(
+    Guid ProductoId,
+    string CodigoBarras,
+    string Nombre,
+    string? Categoria,
+    int CantidadVendida,
+    decimal TotalVentas,
+    decimal Utilidad,
+    decimal MargenPorcentaje
+);

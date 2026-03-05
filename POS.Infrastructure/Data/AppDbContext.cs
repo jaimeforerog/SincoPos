@@ -23,11 +23,13 @@ public class AppDbContext : DbContext
     public DbSet<Sucursal> Sucursales => Set<Sucursal>();
     public DbSet<Caja> Cajas => Set<Caja>();
     public DbSet<Tercero> Terceros => Set<Tercero>();
+    public DbSet<TerceroActividad> TerceroActividades => Set<TerceroActividad>();
     public DbSet<Stock> Stock => Set<Stock>();
     public DbSet<MovimientoInventario> MovimientosInventario => Set<MovimientoInventario>();
     public DbSet<LoteInventario> LotesInventario => Set<LoteInventario>();
     public DbSet<PrecioSucursal> PreciosSucursal => Set<PrecioSucursal>();
     public DbSet<Impuesto> Impuestos => Set<Impuesto>();
+    public DbSet<RetencionRegla> RetencionesReglas => Set<RetencionRegla>();
     public DbSet<Venta> Ventas => Set<Venta>();
     public DbSet<DetalleVenta> DetalleVentas => Set<DetalleVenta>();
     public DbSet<DevolucionVenta> DevolucionesVenta => Set<DevolucionVenta>();

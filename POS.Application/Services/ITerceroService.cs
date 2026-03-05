@@ -14,4 +14,13 @@ public interface ITerceroService
     Task<(TerceroDto? Result, string? Error)> CrearAsync(CrearTerceroDto dto);
     Task<(bool Success, string? Error)> ActualizarAsync(int id, ActualizarTerceroDto dto);
     Task<(bool Success, string? Error)> DesactivarAsync(int id);
+
+    // Actividades CIIU
+    Task<(TerceroActividadDto? Result, string? Error)> AgregarActividadAsync(int terceroId, AgregarActividadDto dto);
+    Task<(bool Success, string? Error)> EliminarActividadAsync(int terceroId, int actividadId);
+    Task<(bool Success, string? Error)> EstablecerPrincipalAsync(int terceroId, int actividadId);
+
+    // Importación Excel
+    Task<ResultadoImportacionTercerosDto> ImportarDesdeExcelAsync(Stream stream);
+    byte[] GenerarPlantillaExcel();
 }

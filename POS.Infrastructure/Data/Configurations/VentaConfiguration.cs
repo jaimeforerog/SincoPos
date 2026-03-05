@@ -41,6 +41,10 @@ public class VentaConfiguration : IEntityTypeConfiguration<Venta>
 
         builder.HasIndex(v => v.FechaVenta).HasDatabaseName("ix_ventas_fecha");
         builder.HasIndex(v => new { v.SucursalId, v.FechaVenta }).HasDatabaseName("ix_ventas_sucursal_fecha");
+        builder.HasIndex(v => v.Estado).HasDatabaseName("ix_ventas_estado");
+        builder.HasIndex(v => v.ClienteId)
+            .HasDatabaseName("ix_ventas_cliente_id")
+            .HasFilter("cliente_id IS NOT NULL");
 
         builder.HasOne(v => v.Sucursal)
             .WithMany()
@@ -82,6 +86,9 @@ public class DetalleVentaConfiguration : IEntityTypeConfiguration<DetalleVenta>
         builder.Property(d => d.PorcentajeImpuesto).HasPrecision(5, 4).HasColumnName("porcentaje_impuesto");
         builder.Property(d => d.MontoImpuesto).HasPrecision(18, 2).HasColumnName("monto_impuesto");
         builder.Property(d => d.Subtotal).HasPrecision(18, 2).HasColumnName("subtotal");
+
+        builder.HasIndex(d => d.VentaId).HasDatabaseName("ix_detalle_ventas_venta_id");
+        builder.HasIndex(d => d.ProductoId).HasDatabaseName("ix_detalle_ventas_producto_id");
 
         builder.HasOne(d => d.Venta)
             .WithMany(v => v.Detalles)
