@@ -20,7 +20,8 @@ public class UsuarioService
     }
 
     /// <summary>
-    /// Obtiene o crea un usuario basado en los claims de Keycloak
+    /// Obtiene o crea un usuario basado en los claims de Keycloak.
+    /// Si el usuario es nuevo y tiene SucursalDefaultId, la agrega automáticamente a UsuarioSucursales.
     /// </summary>
     public async Task<Usuario> ObtenerOCrearUsuarioAsync(
         string keycloakId,
@@ -29,17 +30,17 @@ public class UsuarioService
         string? rol = null)
     {
         var usuario = await _context.Usuarios
+            .Include(u => u.Sucursales)
             .FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
 
         if (usuario == null)
         {
-            // Crear nuevo usuario
             usuario = new Usuario
             {
                 KeycloakId = keycloakId,
                 Email = email,
                 NombreCompleto = nombreCompleto ?? email,
-                Rol = rol ?? Roles.Vendedor, // Rol por defecto
+                Rol = rol ?? Roles.Vendedor,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow
             };
@@ -53,10 +54,8 @@ public class UsuarioService
         }
         else
         {
-            // Actualizar último acceso
             usuario.UltimoAcceso = DateTime.UtcNow;
 
-            // Actualizar rol si cambió en Keycloak
             if (!string.IsNullOrEmpty(rol) && usuario.Rol != rol)
             {
                 _logger.LogInformation(
@@ -66,6 +65,17 @@ public class UsuarioService
                 usuario.FechaModificacion = DateTime.UtcNow;
             }
 
+            // Si tiene sucursal default pero no está en la tabla pivot, agregarla
+            if (usuario.SucursalDefaultId.HasValue &&
+                !usuario.Sucursales.Any(us => us.SucursalId == usuario.SucursalDefaultId.Value))
+            {
+                _context.UsuarioSucursales.Add(new UsuarioSucursal
+                {
+                    UsuarioId = usuario.Id,
+                    SucursalId = usuario.SucursalDefaultId.Value
+                });
+            }
+
             await _context.SaveChangesAsync();
         }
 
@@ -73,12 +83,13 @@ public class UsuarioService
     }
 
     /// <summary>
-    /// Obtiene un usuario por su ID de Keycloak
+    /// Obtiene un usuario por su ID de Keycloak, incluyendo sucursales asignadas
     /// </summary>
     public async Task<Usuario?> ObtenerPorKeycloakIdAsync(string keycloakId)
     {
         return await _context.Usuarios
             .Include(u => u.SucursalDefault)
+            .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal)
             .FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
     }
 
@@ -87,23 +98,71 @@ public class UsuarioService
     /// </summary>
     public async Task<bool> ActualizarSucursalDefaultAsync(int usuarioId, int sucursalId)
     {
-        var usuario = await _context.Usuarios.FindAsync(usuarioId);
+        var usuario = await _context.Usuarios
+            .Include(u => u.Sucursales)
+            .FirstOrDefaultAsync(u => u.Id == usuarioId);
         if (usuario == null)
             return false;
 
-        // Verificar que la sucursal existe
         var sucursalExiste = await _context.Sucursales.AnyAsync(s => s.Id == sucursalId && s.Activo);
         if (!sucursalExiste)
             return false;
 
         usuario.SucursalDefaultId = sucursalId;
-        await _context.SaveChangesAsync();
 
+        // Asegurar que la sucursal default esté en la tabla pivot
+        if (!usuario.Sucursales.Any(us => us.SucursalId == sucursalId))
+        {
+            _context.UsuarioSucursales.Add(new UsuarioSucursal
+            {
+                UsuarioId = usuarioId,
+                SucursalId = sucursalId
+            });
+        }
+
+        await _context.SaveChangesAsync();
         return true;
     }
 
     /// <summary>
-    /// Obtiene todos los usuarios con filtros opcionales
+    /// Asigna múltiples sucursales a un usuario (reemplaza las existentes)
+    /// </summary>
+    public async Task AsignarSucursalesAsync(int usuarioId, List<int> sucursalIds)
+    {
+        var usuario = await _context.Usuarios
+            .Include(u => u.Sucursales)
+            .FirstOrDefaultAsync(u => u.Id == usuarioId);
+
+        if (usuario == null)
+            throw new KeyNotFoundException($"Usuario {usuarioId} no encontrado");
+
+        // Eliminar asignaciones existentes
+        _context.UsuarioSucursales.RemoveRange(usuario.Sucursales);
+
+        // Insertar nuevas (solo sucursales activas)
+        var sucursalesValidas = await _context.Sucursales
+            .Where(s => sucursalIds.Contains(s.Id) && s.Activo)
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        foreach (var sid in sucursalesValidas)
+        {
+            _context.UsuarioSucursales.Add(new UsuarioSucursal
+            {
+                UsuarioId = usuarioId,
+                SucursalId = sid
+            });
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Sucursales asignadas a usuario {UsuarioId}: [{SucursalIds}]",
+            usuarioId, string.Join(",", sucursalesValidas));
+    }
+
+    /// <summary>
+    /// Obtiene todos los usuarios con filtros opcionales, incluyendo sucursales asignadas
     /// </summary>
     public async Task<List<Usuario>> ListarUsuariosAsync(
         string? busqueda = null,
@@ -113,9 +172,9 @@ public class UsuarioService
     {
         var query = _context.Usuarios
             .Include(u => u.SucursalDefault)
+            .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal)
             .AsQueryable();
 
-        // Filtro por búsqueda (nombre o email)
         if (!string.IsNullOrWhiteSpace(busqueda))
         {
             query = query.Where(u =>
@@ -123,22 +182,21 @@ public class UsuarioService
                 u.Email.Contains(busqueda));
         }
 
-        // Filtro por rol
         if (!string.IsNullOrWhiteSpace(rol))
         {
             query = query.Where(u => u.Rol == rol);
         }
 
-        // Filtro por estado activo
         if (activo.HasValue)
         {
             query = query.Where(u => u.Activo == activo.Value);
         }
 
-        // Filtro por sucursal
         if (sucursalId.HasValue)
         {
-            query = query.Where(u => u.SucursalDefaultId == sucursalId.Value);
+            query = query.Where(u =>
+                u.SucursalDefaultId == sucursalId.Value ||
+                u.Sucursales.Any(us => us.SucursalId == sucursalId.Value));
         }
 
         return await query
@@ -147,12 +205,13 @@ public class UsuarioService
     }
 
     /// <summary>
-    /// Obtiene un usuario por su ID
+    /// Obtiene un usuario por su ID, incluyendo sucursales asignadas
     /// </summary>
     public async Task<Usuario?> ObtenerPorIdAsync(int id)
     {
         return await _context.Usuarios
             .Include(u => u.SucursalDefault)
+            .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 

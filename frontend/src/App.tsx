@@ -30,6 +30,7 @@ import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import ImpuestosPage from './features/impuestos/pages/ImpuestosPage';
 import { TercerosPage } from './features/terceros/pages';
 import { UsuariosPage } from './features/usuarios/pages/UsuariosPage';
+import AuditoriaPage from './features/auditoria/pages/AuditoriaPage';
 import { theme } from './theme/theme';
 
 const queryClient = new QueryClient({
@@ -130,6 +131,14 @@ function App() {
                     element={
                       <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
                         <TercerosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="auditoria"
+                    element={
+                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                        <AuditoriaPage />
                       </ProtectedRoute>
                     }
                   />

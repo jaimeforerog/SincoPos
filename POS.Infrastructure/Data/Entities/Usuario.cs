@@ -28,6 +28,7 @@ public class Usuario : EntidadAuditable
 
     // Navegación
     public Sucursal? SucursalDefault { get; set; }
+    public ICollection<UsuarioSucursal> Sucursales { get; set; } = new List<UsuarioSucursal>();
 }
 
 /// <summary>

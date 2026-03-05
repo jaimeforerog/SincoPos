@@ -1844,6 +1844,24 @@ namespace POS.Infrastructure.Migrations
                     b.ToTable("usuarios", "public");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.UsuarioSucursal", b =>
+                {
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<int>("SucursalId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sucursal_id");
+
+                    b.HasKey("UsuarioId", "SucursalId");
+
+                    b.HasIndex("SucursalId")
+                        .HasDatabaseName("ix_usuario_sucursales_sucursal_id");
+
+                    b.ToTable("usuario_sucursales", "public");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Venta", b =>
                 {
                     b.Property<int>("Id")
@@ -2261,6 +2279,27 @@ namespace POS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("SucursalDefault");
+
+                    b.Navigation("Sucursales");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.UsuarioSucursal", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "Sucursal")
+                        .WithMany()
+                        .HasForeignKey("SucursalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("POS.Infrastructure.Data.Entities.Usuario", "Usuario")
+                        .WithMany("Sucursales")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sucursal");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Venta", b =>

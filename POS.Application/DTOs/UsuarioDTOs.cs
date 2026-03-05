@@ -1,6 +1,11 @@
 namespace POS.Application.DTOs;
 
 /// <summary>
+/// Resumen de sucursal para listas de asignación
+/// </summary>
+public record SucursalResumenDto(int Id, string Nombre);
+
+/// <summary>
 /// DTO para información completa del usuario
 /// </summary>
 public record UsuarioDto(
@@ -17,7 +22,8 @@ public record UsuarioDto(
     DateTime? UltimoAcceso,
     string CreadoPor,
     DateTime? FechaModificacion,
-    string? ModificadoPor
+    string? ModificadoPor,
+    List<SucursalResumenDto> SucursalesAsignadas
 );
 
 /// <summary>
@@ -32,8 +38,14 @@ public record PerfilUsuarioDto(
     int? SucursalDefaultId,
     string? SucursalDefaultNombre,
     DateTime? UltimoAcceso,
-    IEnumerable<string> Permisos
+    IEnumerable<string> Permisos,
+    List<SucursalResumenDto> SucursalesAsignadas
 );
+
+/// <summary>
+/// DTO para asignar múltiples sucursales a un usuario
+/// </summary>
+public record AsignarSucursalesDto(List<int> SucursalIds);
 
 /// <summary>
 /// DTO para actualizar sucursal default del usuario

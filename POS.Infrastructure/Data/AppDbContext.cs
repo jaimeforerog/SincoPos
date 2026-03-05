@@ -41,6 +41,7 @@ public class AppDbContext : DbContext
     public DbSet<OrdenCompra> OrdenesCompra => Set<OrdenCompra>();
     public DbSet<DetalleOrdenCompra> DetallesOrdenCompra => Set<DetalleOrdenCompra>();
     public DbSet<MigracionLog> MigracionesLog => Set<MigracionLog>();
+    public DbSet<UsuarioSucursal> UsuarioSucursales => Set<UsuarioSucursal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

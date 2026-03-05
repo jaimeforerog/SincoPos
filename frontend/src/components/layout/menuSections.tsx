@@ -8,6 +8,7 @@ import {
   KeyboardReturn,
   Assessment,
   Settings,
+  ManageSearch,
 } from '@mui/icons-material';
 import { MenuSection } from './MenuSection';
 
@@ -79,6 +80,12 @@ export const menuSections: MenuSection[] = [
         text: 'Reportes',
         icon: <Assessment />,
         path: '/reportes',
+        roles: ['supervisor', 'admin'],
+      },
+      {
+        text: 'Auditoría',
+        icon: <ManageSearch />,
+        path: '/auditoria',
         roles: ['supervisor', 'admin'],
       },
     ],

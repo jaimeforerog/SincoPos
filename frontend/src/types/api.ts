@@ -424,6 +424,11 @@ export interface ResultadoImportacionTercerosDTO {
   filas: ResultadoFilaTerceroDTO[];
 }
 
+export interface SucursalResumenDTO {
+  id: number;
+  nombre: string;
+}
+
 export interface UserInfo {
   id: string;
   username: string;
@@ -432,6 +437,7 @@ export interface UserInfo {
   roles: string[];
   sucursalId?: number;
   sucursalNombre?: string;
+  sucursalesDisponibles: SucursalResumenDTO[];
 }
 
 // ============================================
@@ -788,4 +794,56 @@ export interface RechazarTrasladoDTO {
 
 export interface CancelarTrasladoDTO {
   motivo: string;
+}
+
+// ── Auditoría ──────────────────────────────────────────────────────────────
+
+export interface ActivityLogFullDTO {
+  id: number;
+  usuarioEmail: string;
+  usuarioId?: number;
+  fechaHora: string;
+  accion: string;
+  tipo: number;
+  tipoNombre: string;
+  sucursalId?: number;
+  nombreSucursal?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  tipoEntidad?: string;
+  entidadId?: string;
+  entidadNombre?: string;
+  descripcion?: string;
+  datosAnteriores?: string;
+  datosNuevos?: string;
+  metadatos?: string;
+  exitosa: boolean;
+  mensajeError?: string;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface DashboardActivityDTO {
+  fecha: string;
+  totalAcciones: number;
+  accionesExitosas: number;
+  accionesFallidas: number;
+  accionesPorTipo: Record<string, number>;
+  actividadesRecientes: ActividadRecienteDTO[];
+}
+
+export interface ActividadRecienteDTO {
+  id: number;
+  usuarioEmail: string;
+  fechaHora: string;
+  accion: string;
+  tipoNombre: string;
+  descripcion?: string;
+  exitosa: boolean;
 }

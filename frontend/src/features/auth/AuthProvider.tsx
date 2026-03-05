@@ -68,6 +68,7 @@ function AuthInitializer({ children }: { children: ReactNode }) {
             roles,
             sucursalId: undefined,
             sucursalNombre: undefined,
+            sucursalesDisponibles: [],
           });
         }
       } else {

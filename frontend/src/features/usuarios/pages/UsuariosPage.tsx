@@ -26,12 +26,16 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from '@mui/material';
 import {
   Search,
   StoreMallDirectory,
   CheckCircle,
   Cancel,
+  Domain,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
@@ -58,7 +62,7 @@ function formatFecha(fecha?: string): string {
   });
 }
 
-// ─── Diálogo Asignar Sucursal ─────────────────────────────────────────────────
+// ─── Diálogo Asignar Sucursal Default ────────────────────────────────────────
 interface AsignarSucursalDialogProps {
   usuario: UsuarioDto | null;
   sucursales: SucursalDTO[];
@@ -74,7 +78,7 @@ function AsignarSucursalDialog({ usuario, sucursales, onClose, onConfirm, loadin
 
   return (
     <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Asignar Sucursal</DialogTitle>
+      <DialogTitle>Asignar Sucursal Default</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Usuario: <strong>{usuario.nombreCompleto}</strong> ({usuario.email})
@@ -101,6 +105,74 @@ function AsignarSucursalDialog({ usuario, sucursales, onClose, onConfirm, loadin
           variant="contained"
           onClick={() => sucursalId !== '' && onConfirm(sucursalId as number)}
           disabled={sucursalId === '' || loading}
+        >
+          {loading ? <CircularProgress size={20} /> : 'Guardar'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// ─── Diálogo Asignar Múltiples Sucursales ────────────────────────────────────
+interface AsignarSucursalesDialogProps {
+  usuario: UsuarioDto | null;
+  sucursales: SucursalDTO[];
+  onClose: () => void;
+  onConfirm: (sucursalIds: number[]) => void;
+  loading: boolean;
+}
+
+function AsignarSucursalesDialog({ usuario, sucursales, onClose, onConfirm, loading }: AsignarSucursalesDialogProps) {
+  const [selected, setSelected] = useState<Set<number>>(
+    () => new Set(usuario?.sucursalesAsignadas?.map(s => s.id) ?? [])
+  );
+
+  if (!usuario) return null;
+
+  const toggle = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Sucursales asignadas</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Usuario: <strong>{usuario.nombreCompleto}</strong> ({usuario.email})
+        </Typography>
+        <FormGroup>
+          {sucursales.map((s) => (
+            <FormControlLabel
+              key={s.id}
+              control={
+                <Checkbox
+                  checked={selected.has(s.id)}
+                  onChange={() => toggle(s.id)}
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {s.nombre}
+                  {s.id === usuario.sucursalDefaultId && (
+                    <Chip label="default" size="small" variant="outlined" />
+                  )}
+                </Box>
+              }
+            />
+          ))}
+        </FormGroup>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
+        <Button
+          variant="contained"
+          onClick={() => onConfirm(Array.from(selected))}
+          disabled={loading}
         >
           {loading ? <CircularProgress size={20} /> : 'Guardar'}
         </Button>
@@ -167,6 +239,7 @@ export function UsuariosPage() {
 
   // Diálogos
   const [usuarioSucursal, setUsuarioSucursal] = useState<UsuarioDto | null>(null);
+  const [usuarioSucursales, setUsuarioSucursales] = useState<UsuarioDto | null>(null);
   const [usuarioEstado, setUsuarioEstado] = useState<UsuarioDto | null>(null);
 
   // Queries
@@ -192,7 +265,6 @@ export function UsuariosPage() {
       enqueueSnackbar('Sucursal asignada correctamente', { variant: 'success' });
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       setUsuarioSucursal(null);
-      // Si el usuario actualizado es el usuario actual, refrescar el perfil en el store
       if (currentUser && String(id) === currentUser.id) {
         const perfil = await usuariosApi.me();
         setUser(perfil);
@@ -200,6 +272,23 @@ export function UsuariosPage() {
     },
     onError: () => {
       enqueueSnackbar('Error al asignar sucursal', { variant: 'error' });
+    },
+  });
+
+  const mutSucursales = useMutation({
+    mutationFn: ({ id, sucursalIds }: { id: number; sucursalIds: number[] }) =>
+      usuariosApi.asignarSucursales(id, sucursalIds),
+    onSuccess: async (_, { id }) => {
+      enqueueSnackbar('Sucursales asignadas correctamente', { variant: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      setUsuarioSucursales(null);
+      if (currentUser && String(id) === currentUser.id) {
+        const perfil = await usuariosApi.me();
+        setUser(perfil);
+      }
+    },
+    onError: () => {
+      enqueueSnackbar('Error al asignar sucursales', { variant: 'error' });
     },
   });
 
@@ -283,7 +372,7 @@ export function UsuariosPage() {
               <TableCell>Nombre</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Rol</TableCell>
-              <TableCell>Sucursal</TableCell>
+              <TableCell>Sucursales</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Último acceso</TableCell>
               <TableCell align="center">Acciones</TableCell>
@@ -305,6 +394,9 @@ export function UsuariosPage() {
             ) : (
               usuarios.map((u) => {
                 const rolInfo = ROL_LABELS[u.rol.toLowerCase()] ?? { label: u.rol, color: 'default' as const };
+                const sucursalesAsignadas = u.sucursalesAsignadas ?? [];
+                const visibles = sucursalesAsignadas.slice(0, 2);
+                const extra = sucursalesAsignadas.length - 2;
                 return (
                   <TableRow key={u.id} hover>
                     <TableCell sx={{ fontWeight: 500 }}>{u.nombreCompleto}</TableCell>
@@ -313,9 +405,26 @@ export function UsuariosPage() {
                       <Chip label={rolInfo.label} color={rolInfo.color} size="small" />
                     </TableCell>
                     <TableCell>
-                      {u.sucursalDefaultNombre ?? (
-                        <Typography variant="caption" color="text.disabled">Sin sucursal</Typography>
-                      )}
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        {sucursalesAsignadas.length === 0 ? (
+                          <Typography variant="caption" color="text.disabled">Sin sucursal</Typography>
+                        ) : (
+                          <>
+                            {visibles.map(s => (
+                              <Chip
+                                key={s.id}
+                                label={s.nombre}
+                                size="small"
+                                variant={s.id === u.sucursalDefaultId ? 'filled' : 'outlined'}
+                                color={s.id === u.sucursalDefaultId ? 'primary' : 'default'}
+                              />
+                            ))}
+                            {extra > 0 && (
+                              <Chip label={`+${extra}`} size="small" variant="outlined" />
+                            )}
+                          </>
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -329,9 +438,14 @@ export function UsuariosPage() {
                       {formatFecha(u.ultimoAcceso)}
                     </TableCell>
                     <TableCell align="center">
-                      <Tooltip title="Asignar sucursal">
+                      <Tooltip title="Asignar sucursal default">
                         <IconButton size="small" onClick={() => setUsuarioSucursal(u)}>
                           <StoreMallDirectory fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Gestionar sucursales asignadas">
+                        <IconButton size="small" onClick={() => setUsuarioSucursales(u)}>
+                          <Domain fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title={u.activo ? 'Desactivar usuario' : 'Activar usuario'}>
@@ -352,7 +466,7 @@ export function UsuariosPage() {
         </Table>
       </TableContainer>
 
-      {/* Diálogo asignar sucursal */}
+      {/* Diálogo asignar sucursal default */}
       {usuarioSucursal && (
         <AsignarSucursalDialog
           usuario={usuarioSucursal}
@@ -360,6 +474,17 @@ export function UsuariosPage() {
           onClose={() => setUsuarioSucursal(null)}
           onConfirm={(sucursalId) => mutSucursal.mutate({ id: usuarioSucursal.id, sucursalId })}
           loading={mutSucursal.isPending}
+        />
+      )}
+
+      {/* Diálogo gestionar múltiples sucursales */}
+      {usuarioSucursales && (
+        <AsignarSucursalesDialog
+          usuario={usuarioSucursales}
+          sucursales={sucursales}
+          onClose={() => setUsuarioSucursales(null)}
+          onConfirm={(sucursalIds) => mutSucursales.mutate({ id: usuarioSucursales.id, sucursalIds })}
+          loading={mutSucursales.isPending}
         />
       )}
 

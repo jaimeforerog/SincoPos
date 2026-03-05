@@ -9,6 +9,7 @@ import {
   Receipt,
   AdminPanelSettings,
   TuneOutlined,
+  ManageSearch,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfigCard } from '../components/ConfigCard';
@@ -91,6 +92,15 @@ const configModules: ConfigModule[] = [
     icon: <AdminPanelSettings fontSize="large" />,
     path: '/usuarios',
     roles: ['admin'],
+    category: 'sistema',
+  },
+  {
+    id: 'auditoria',
+    title: 'Auditoría',
+    description: 'Registro de actividades del sistema: acciones por usuario, fecha y tipo',
+    icon: <ManageSearch fontSize="large" />,
+    path: '/auditoria',
+    roles: ['supervisor', 'admin'],
     category: 'sistema',
   },
   {

@@ -14,6 +14,7 @@ import {
   useTheme,
   useMediaQuery,
   ListItemIcon,
+  Select,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -22,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuth as useOidcAuth } from 'react-oidc-context';
+import { useAuthStore } from '@/stores/auth.store';
 import { APP_NAME } from '@/utils/constants';
 import { MenuSection } from './MenuSection';
 import { menuSections } from './menuSections';
@@ -36,6 +38,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const oidcAuth = useOidcAuth();
+  const { activeSucursalId, setActiveSucursal } = useAuthStore();
 
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
@@ -103,9 +106,30 @@ export function AppLayout() {
             <MenuIcon />
           </IconButton>
 
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {user?.sucursalNombre || 'Sin sucursal'}
-          </Typography>
+          {user && user.sucursalesDisponibles.length > 1 ? (
+            <Select
+              value={activeSucursalId ?? ''}
+              onChange={(e) => setActiveSucursal(Number(e.target.value))}
+              variant="standard"
+              disableUnderline
+              sx={{
+                color: 'white',
+                flexGrow: 1,
+                fontWeight: 600,
+                fontSize: '1.25rem',
+                '& .MuiSvgIcon-root': { color: 'white' },
+                '& .MuiSelect-select': { py: 0 },
+              }}
+            >
+              {user.sucursalesDisponibles.map((s) => (
+                <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
+              ))}
+            </Select>
+          ) : (
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              {user?.sucursalNombre || 'Sin sucursal'}
+            </Typography>
+          )}
 
           <IconButton
             onClick={handleProfileMenuOpen}

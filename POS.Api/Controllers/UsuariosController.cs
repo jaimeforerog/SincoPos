@@ -33,15 +33,6 @@ public class UsuariosController : ControllerBase
     /// <summary>
     /// Listar todos los usuarios con filtros opcionales
     /// </summary>
-    /// <remarks>
-    /// Requiere rol Admin o Supervisor.
-    ///
-    /// Filtros disponibles:
-    /// - busqueda: Buscar por nombre o email
-    /// - rol: Filtrar por rol específico (admin, supervisor, cajero, vendedor)
-    /// - activo: Filtrar por estado activo (true/false)
-    /// - sucursalId: Filtrar por sucursal default
-    /// </remarks>
     [HttpGet]
     [Authorize(Policy = "Supervisor")]
     public async Task<ActionResult<List<UsuarioDto>>> ListarUsuarios(
@@ -53,22 +44,7 @@ public class UsuariosController : ControllerBase
         var usuarios = await _usuarioService.ListarUsuariosAsync(
             busqueda, rol, activo, sucursalId);
 
-        var dtos = usuarios.Select(u => new UsuarioDto(
-            u.Id,
-            u.KeycloakId,
-            u.Email,
-            u.NombreCompleto,
-            u.Telefono,
-            u.Rol,
-            u.SucursalDefaultId,
-            u.SucursalDefault?.Nombre,
-            u.Activo,
-            u.FechaCreacion,
-            u.UltimoAcceso,
-            u.CreadoPor,
-            u.FechaModificacion,
-            u.ModificadoPor
-        )).ToList();
+        var dtos = usuarios.Select(ToDto).ToList();
 
         _logger.LogInformation(
             "Usuario {Email} listó {Count} usuarios con filtros: busqueda={Busqueda}, rol={Rol}, activo={Activo}",
@@ -80,10 +56,6 @@ public class UsuariosController : ControllerBase
     /// <summary>
     /// Obtener perfil del usuario actual
     /// </summary>
-    /// <remarks>
-    /// Retorna información del usuario autenticado actualmente.
-    /// Incluye permisos basados en el rol.
-    /// </remarks>
     [HttpGet("me")]
     public async Task<ActionResult<PerfilUsuarioDto>> ObtenerPerfil()
     {
@@ -95,8 +67,6 @@ public class UsuariosController : ControllerBase
         var nombreCompleto = User.GetNombreCompleto() ?? email;
         var keycloakRoles = User.GetRoles().ToList();
 
-        // Solo actualizar rol si Keycloak reporta roles; si no, pasar null para evitar
-        // degradar un rol existente cuando la lectura de claims falla
         var rolKeycloak = keycloakRoles.Count > 0
             ? DeterminarRolPrincipal(keycloakRoles)
             : null;
@@ -107,12 +77,14 @@ public class UsuariosController : ControllerBase
 
         await _usuarioService.ObtenerOCrearUsuarioAsync(keycloakId, email, nombreCompleto, rolKeycloak);
 
-        // Re-cargar con propiedades de navegación (SucursalDefault)
         var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(keycloakId);
         if (usuario == null)
             return StatusCode(500, "Error al obtener perfil de usuario");
 
         var permisos = ObtenerPermisosPorRol(usuario.Rol);
+        var sucursalesAsignadas = usuario.Sucursales
+            .Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre))
+            .ToList();
 
         var dto = new PerfilUsuarioDto(
             usuario.Id,
@@ -123,7 +95,8 @@ public class UsuariosController : ControllerBase
             usuario.SucursalDefaultId,
             usuario.SucursalDefault?.Nombre,
             usuario.UltimoAcceso,
-            permisos
+            permisos,
+            sucursalesAsignadas
         );
 
         return Ok(dto);
@@ -132,10 +105,6 @@ public class UsuariosController : ControllerBase
     /// <summary>
     /// Obtener usuario por ID
     /// </summary>
-    /// <remarks>
-    /// Requiere rol Admin.
-    /// Retorna información completa de un usuario específico.
-    /// </remarks>
     [HttpGet("{id}")]
     [Authorize(Policy = "Admin")]
     public async Task<ActionResult<UsuarioDto>> ObtenerUsuario(int id)
@@ -144,33 +113,12 @@ public class UsuariosController : ControllerBase
         if (usuario == null)
             return NotFound($"Usuario con ID {id} no encontrado");
 
-        var dto = new UsuarioDto(
-            usuario.Id,
-            usuario.KeycloakId,
-            usuario.Email,
-            usuario.NombreCompleto,
-            usuario.Telefono,
-            usuario.Rol,
-            usuario.SucursalDefaultId,
-            usuario.SucursalDefault?.Nombre,
-            usuario.Activo,
-            usuario.FechaCreacion,
-            usuario.UltimoAcceso,
-            usuario.CreadoPor,
-            usuario.FechaModificacion,
-            usuario.ModificadoPor
-        );
-
-        return Ok(dto);
+        return Ok(ToDto(usuario));
     }
 
     /// <summary>
     /// Actualizar sucursal default del usuario actual
     /// </summary>
-    /// <remarks>
-    /// Permite al usuario cambiar su sucursal por defecto.
-    /// Útil para usuarios que trabajan en múltiples sucursales.
-    /// </remarks>
     [HttpPut("me/sucursal")]
     public async Task<IActionResult> ActualizarMiSucursal([FromBody] ActualizarSucursalDefaultDto dto)
     {
@@ -218,17 +166,35 @@ public class UsuariosController : ControllerBase
     }
 
     /// <summary>
+    /// Asignar múltiples sucursales a un usuario (Admin)
+    /// </summary>
+    [HttpPut("{id}/sucursales")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> AsignarSucursales(int id, [FromBody] AsignarSucursalesDto dto)
+    {
+        var usuario = await _usuarioService.ObtenerPorIdAsync(id);
+        if (usuario == null)
+            return NotFound($"Usuario con ID {id} no encontrado");
+
+        try
+        {
+            await _usuarioService.AsignarSucursalesAsync(id, dto.SucursalIds);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+
+        _logger.LogInformation(
+            "Admin {Email} asignó {Count} sucursales a usuario {UsuarioEmail}",
+            User.GetEmail(), dto.SucursalIds.Count, usuario.Email);
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// Activar o desactivar un usuario
     /// </summary>
-    /// <remarks>
-    /// Requiere rol Admin.
-    ///
-    /// Permite activar o desactivar usuarios del sistema.
-    /// Los usuarios desactivados no podrán iniciar sesión.
-    ///
-    /// NOTA: Esto NO desactiva al usuario en Keycloak, solo en la aplicación.
-    /// Para desactivar completamente, también debe hacerse en Keycloak.
-    /// </remarks>
     [HttpPut("{id}/estado")]
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoUsuarioDto dto)
@@ -237,7 +203,6 @@ public class UsuariosController : ControllerBase
         if (usuario == null)
             return NotFound($"Usuario con ID {id} no encontrado");
 
-        // Prevenir que el admin se desactive a sí mismo
         var keycloakIdActual = User.GetKeycloakId();
         if (usuario.KeycloakId == keycloakIdActual && !dto.Activo)
         {
@@ -253,7 +218,6 @@ public class UsuariosController : ControllerBase
             "Admin {Email} cambió estado de usuario {UsuarioEmail} a {Estado}. Motivo: {Motivo}",
             User.GetEmail(), usuario.Email, dto.Activo ? "Activo" : "Inactivo", dto.Motivo ?? "No especificado");
 
-        // Activity Log
         await _activityLogService.LogActivityAsync(new ActivityLogDto(
             Accion: "CambiarEstadoUsuario",
             Tipo: TipoActividad.Usuario,
@@ -281,15 +245,6 @@ public class UsuariosController : ControllerBase
     /// <summary>
     /// Obtener estadísticas de usuarios
     /// </summary>
-    /// <remarks>
-    /// Requiere rol Admin.
-    ///
-    /// Retorna información estadística sobre los usuarios:
-    /// - Total de usuarios activos/inactivos
-    /// - Distribución por rol
-    /// - Usuarios conectados recientemente
-    /// - Usuarios creados recientemente
-    /// </remarks>
     [HttpGet("estadisticas")]
     [Authorize(Policy = "Admin")]
     public async Task<ActionResult<EstadisticasUsuariosDto>> ObtenerEstadisticas()
@@ -318,10 +273,26 @@ public class UsuariosController : ControllerBase
         return Ok(dto);
     }
 
-    /// <summary>
-    /// Determina el rol principal basado en los roles de Keycloak
-    /// Prioridad: admin > supervisor > cajero > vendedor
-    /// </summary>
+    // ── Helpers ─────────────────────────────────────────────────────────────────
+
+    private static UsuarioDto ToDto(Usuario u) => new(
+        u.Id,
+        u.KeycloakId,
+        u.Email,
+        u.NombreCompleto,
+        u.Telefono,
+        u.Rol,
+        u.SucursalDefaultId,
+        u.SucursalDefault?.Nombre,
+        u.Activo,
+        u.FechaCreacion,
+        u.UltimoAcceso,
+        u.CreadoPor,
+        u.FechaModificacion,
+        u.ModificadoPor,
+        u.Sucursales.Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre)).ToList()
+    );
+
     private static string DeterminarRolPrincipal(List<string> roles)
     {
         if (roles.Any(r => r.Equals(Roles.Admin, StringComparison.OrdinalIgnoreCase)))
@@ -336,9 +307,6 @@ public class UsuariosController : ControllerBase
         return Roles.Vendedor;
     }
 
-    /// <summary>
-    /// Retorna los permisos basados en el rol del usuario
-    /// </summary>
     private static IEnumerable<string> ObtenerPermisosPorRol(string rol)
     {
         return rol.ToLower() switch

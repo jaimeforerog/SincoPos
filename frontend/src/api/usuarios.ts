@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { UserInfo } from '@/types/api';
+import type { UserInfo, SucursalResumenDTO } from '@/types/api';
 
 // Tipo del DTO que devuelve el backend
 interface PerfilUsuarioBackend {
@@ -12,6 +12,7 @@ interface PerfilUsuarioBackend {
   sucursalDefaultNombre?: string;
   ultimoAcceso?: string;
   permisos: string[];
+  sucursalesAsignadas: SucursalResumenDTO[];
 }
 
 export interface UsuarioDto {
@@ -26,6 +27,7 @@ export interface UsuarioDto {
   activo: boolean;
   fechaCreacion: string;
   ultimoAcceso?: string;
+  sucursalesAsignadas: SucursalResumenDTO[];
 }
 
 export interface FiltrosUsuario {
@@ -47,6 +49,7 @@ export const usuariosApi = {
       roles: [d.rol],
       sucursalId: d.sucursalDefaultId,
       sucursalNombre: d.sucursalDefaultNombre,
+      sucursalesDisponibles: d.sucursalesAsignadas ?? [],
     };
   },
 
@@ -63,6 +66,10 @@ export const usuariosApi = {
 
   actualizarMiSucursal: async (sucursalId: number): Promise<void> => {
     await apiClient.put('/api/usuarios/me/sucursal', { sucursalId });
+  },
+
+  asignarSucursales: async (id: number, sucursalIds: number[]): Promise<void> => {
+    await apiClient.put(`/api/usuarios/${id}/sucursales`, { sucursalIds });
   },
 
   cambiarEstado: async (id: number, activo: boolean, motivo?: string): Promise<void> => {
