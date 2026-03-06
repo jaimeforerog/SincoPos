@@ -47,6 +47,19 @@ builder.Services.AddMartenStore(
     builder.Configuration,
     builder.Environment.IsDevelopment());
 
+// Output Cache para catálogos (categorías, impuestos, sucursales, geografía)
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("Catalogo5m", b => b
+        .Expire(TimeSpan.FromMinutes(5))
+        .SetVaryByQuery(Array.Empty<string>())
+        .Tag("catalogo"));
+    options.AddPolicy("Catalogo1h", b => b
+        .Expire(TimeSpan.FromHours(1))
+        .SetVaryByQuery(Array.Empty<string>())
+        .Tag("catalogo"));
+});
+
 // SignalR
 builder.Services.AddSignalR();
 builder.Services.AddScoped<POS.Application.Services.INotificationService,
@@ -255,6 +268,7 @@ app.UseHttpsRedirection();
 // PRODUCCION: Azure AD B2C
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseOutputCache();
 app.MapControllers();
 app.MapHub<POS.Api.Hubs.NotificationHub>("/hubs/notificaciones");
 

@@ -93,6 +93,18 @@ public class VentaService : IVentaService
             if (cliente != null) perfilComprador = cliente.PerfilTributario;
         }
 
+        // Pre-cargar productos y stocks en lote (elimina N+1)
+        var productoIds = dto.Lineas.Select(l => l.ProductoId).Distinct().ToList();
+
+        var productosMap = await _context.Productos
+            .Include(p => p.Impuesto)
+            .Where(p => productoIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var stocksMap = await _context.Stock
+            .Where(s => productoIds.Contains(s.ProductoId) && s.SucursalId == dto.SucursalId)
+            .ToDictionaryAsync(s => s.ProductoId);
+
         // Procesar cada linea con el TaxEngine
         var detalles = new List<DetalleVenta>();
         var stocksVerificar = new List<(Stock stock, string nombre)>();
@@ -103,21 +115,14 @@ public class VentaService : IVentaService
 
         foreach (var linea in dto.Lineas)
         {
-            // Obtener producto con su impuesto
-            var producto = await _context.Productos
-                .Include(p => p.Impuesto)
-                .FirstOrDefaultAsync(p => p.Id == linea.ProductoId);
-
-            if (producto == null)
+            // Obtener producto con su impuesto (desde cache en memoria)
+            if (!productosMap.TryGetValue(linea.ProductoId, out var producto))
                 return (null, $"Producto {linea.ProductoId} no encontrado.");
             if (!producto.Activo)
                 return (null, $"Producto {producto.Nombre} esta inactivo.");
 
-            // Verificar stock
-            var stock = await _context.Stock
-                .FirstOrDefaultAsync(s => s.ProductoId == linea.ProductoId
-                    && s.SucursalId == dto.SucursalId);
-            if (stock == null || stock.Cantidad < linea.Cantidad)
+            // Verificar stock (desde cache en memoria)
+            if (!stocksMap.TryGetValue(linea.ProductoId, out var stock) || stock.Cantidad < linea.Cantidad)
                 return (null, $"Stock insuficiente para {producto.Nombre}. " +
                     $"Disponible: {stock?.Cantidad ?? 0}, Solicitado: {linea.Cantidad}");
 

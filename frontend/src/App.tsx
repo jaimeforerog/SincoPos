@@ -1,7 +1,8 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline, LinearProgress, Box } from '@mui/material';
 import { SnackbarProvider } from 'notistack';
 import { AuthProvider } from './features/auth/AuthProvider';
 import { LoginPage } from './features/auth/pages/LoginPage';
@@ -9,31 +10,41 @@ import { CallbackPage } from './features/auth/pages/CallbackPage';
 import { UnauthorizedPage } from './features/auth/pages/UnauthorizedPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
-import {
-  ReporteVentasPage,
-  ReporteInventarioPage,
-  ReporteCajaPage,
-} from './features/reportes/pages';
-import { DevolucionesPage } from './features/devoluciones/pages';
-import { InventarioPage } from './features/inventario/pages';
-import { SucursalesPage } from './features/sucursales/pages/SucursalesPage';
-import { TrasladosPage } from './features/traslados/pages/TrasladosPage';
-import { POSPage } from './features/pos/pages/POSPage';
-import { CajasPage } from './features/cajas/pages/CajasPage';
-import { VentasPage } from './features/ventas/pages/VentasPage';
-import { ProductosPage } from './features/productos/pages/ProductosPage';
-import { PreciosPage } from './features/precios/pages/PreciosPage';
-import { CategoriasPage } from './features/categorias/pages/CategoriasPage';
-import { ConfiguracionPage } from './features/configuracion/pages/ConfiguracionPage';
-import { ComprasPage } from './features/compras/pages/ComprasPage';
-import { DashboardPage } from './features/dashboard/pages/DashboardPage';
-import ImpuestosPage from './features/impuestos/pages/ImpuestosPage';
-import { TercerosPage } from './features/terceros/pages';
-import { UsuariosPage } from './features/usuarios/pages/UsuariosPage';
-import AuditoriaPage from './features/auditoria/pages/AuditoriaPage';
-import { ConfiguracionEmisorPage } from './features/facturacion/pages/ConfiguracionEmisorPage';
-import { DocumentosElectronicosPage } from './features/facturacion/pages/DocumentosElectronicosPage';
 import { theme } from './theme/theme';
+
+// Rutas críticas — carga inmediata
+import { DashboardPage } from './features/dashboard/pages/DashboardPage';
+import { POSPage } from './features/pos/pages/POSPage';
+import { VentasPage } from './features/ventas/pages/VentasPage';
+import { CajasPage } from './features/cajas/pages/CajasPage';
+import { InventarioPage } from './features/inventario/pages';
+
+// Rutas secundarias — carga diferida
+const ReporteVentasPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteVentasPage })));
+const ReporteInventarioPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteInventarioPage })));
+const ReporteCajaPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteCajaPage })));
+const DevolucionesPage = lazy(() => import('./features/devoluciones/pages').then(m => ({ default: m.DevolucionesPage })));
+const SucursalesPage = lazy(() => import('./features/sucursales/pages/SucursalesPage').then(m => ({ default: m.SucursalesPage })));
+const TrasladosPage = lazy(() => import('./features/traslados/pages/TrasladosPage').then(m => ({ default: m.TrasladosPage })));
+const ProductosPage = lazy(() => import('./features/productos/pages/ProductosPage').then(m => ({ default: m.ProductosPage })));
+const PreciosPage = lazy(() => import('./features/precios/pages/PreciosPage').then(m => ({ default: m.PreciosPage })));
+const CategoriasPage = lazy(() => import('./features/categorias/pages/CategoriasPage').then(m => ({ default: m.CategoriasPage })));
+const ConfiguracionPage = lazy(() => import('./features/configuracion/pages/ConfiguracionPage').then(m => ({ default: m.ConfiguracionPage })));
+const ComprasPage = lazy(() => import('./features/compras/pages/ComprasPage').then(m => ({ default: m.ComprasPage })));
+const ImpuestosPage = lazy(() => import('./features/impuestos/pages/ImpuestosPage'));
+const TercerosPage = lazy(() => import('./features/terceros/pages').then(m => ({ default: m.TercerosPage })));
+const UsuariosPage = lazy(() => import('./features/usuarios/pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
+const AuditoriaPage = lazy(() => import('./features/auditoria/pages/AuditoriaPage'));
+const ConfiguracionEmisorPage = lazy(() => import('./features/facturacion/pages/ConfiguracionEmisorPage').then(m => ({ default: m.ConfiguracionEmisorPage })));
+const DocumentosElectronicosPage = lazy(() => import('./features/facturacion/pages/DocumentosElectronicosPage').then(m => ({ default: m.DocumentosElectronicosPage })));
+
+function PageLoader() {
+  return (
+    <Box sx={{ width: '100%', position: 'fixed', top: 0, left: 0, zIndex: 9999 }}>
+      <LinearProgress />
+    </Box>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +70,7 @@ function App() {
         >
           <AuthProvider>
             <BrowserRouter>
+              <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/callback" element={<CallbackPage />} />
@@ -165,6 +177,7 @@ function App() {
                 <Route path="/unauthorized" element={<UnauthorizedPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </Suspense>
             </BrowserRouter>
           </AuthProvider>
         </SnackbarProvider>

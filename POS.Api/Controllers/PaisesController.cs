@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using POS.Application.DTOs;
 using POS.Infrastructure.Services;
 
@@ -23,6 +24,7 @@ public class PaisesController : ControllerBase
     /// Obtener lista de todos los países
     /// </summary>
     [HttpGet]
+    [OutputCache(PolicyName = "Catalogo1h")]
     public async Task<ActionResult<List<PaisDto>>> ObtenerPaises()
     {
         var paises = await _geoService.ObtenerPaises();
@@ -33,6 +35,7 @@ public class PaisesController : ControllerBase
     /// Obtener ciudades de un país específico
     /// </summary>
     [HttpGet("{codigoPais}/ciudades")]
+    [OutputCache(PolicyName = "Catalogo1h")]
     public async Task<ActionResult<List<CiudadDto>>> ObtenerCiudades(string codigoPais)
     {
         if (string.IsNullOrWhiteSpace(codigoPais))

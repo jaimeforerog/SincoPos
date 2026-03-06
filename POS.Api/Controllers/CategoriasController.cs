@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
 using POS.Infrastructure.Data;
@@ -113,6 +114,7 @@ public class CategoriasController : ControllerBase
     /// Listar categorías (plano)
     /// </summary>
     [HttpGet]
+    [OutputCache(PolicyName = "Catalogo5m", VaryByQueryKeys = ["incluirInactivas", "categoriaPadreId"])]
     public async Task<ActionResult<List<CategoriaDto>>> ObtenerCategorias(
         [FromQuery] bool incluirInactivas = false,
         [FromQuery] int? categoriaPadreId = null)
@@ -146,6 +148,7 @@ public class CategoriasController : ControllerBase
     /// Obtener árbol completo de categorías
     /// </summary>
     [HttpGet("arbol")]
+    [OutputCache(PolicyName = "Catalogo5m", VaryByQueryKeys = ["incluirInactivas"])]
     public async Task<ActionResult<List<CategoriaArbolDto>>> ObtenerArbol([FromQuery] bool incluirInactivas = false)
     {
         var todasLasCategorias = await _context.Categorias

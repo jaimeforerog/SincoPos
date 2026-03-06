@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.Services;
 using POS.Infrastructure.Data;
@@ -22,6 +23,7 @@ public class ImpuestosController : ControllerBase
     /// Listar impuestos activos. Filtra opcionalmente por código de país (ej. "CO").
     /// </summary>
     [HttpGet]
+    [OutputCache(PolicyName = "Catalogo5m", VaryByQueryKeys = ["pais"])]
     [ProducesResponseType(typeof(IEnumerable<ImpuestoDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<ImpuestoDto>>> GetImpuestos(
         [FromQuery] string? pais = null)
@@ -64,6 +66,7 @@ public class ImpuestosController : ControllerBase
     /// Tipos: IVA, INC, Saludable, Bolsa.
     /// </summary>
     [HttpGet("tipos")]
+    [OutputCache(PolicyName = "Catalogo1h")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<IEnumerable<object>> GetTipos() =>
         Ok(Enum.GetValues<TipoImpuesto>()

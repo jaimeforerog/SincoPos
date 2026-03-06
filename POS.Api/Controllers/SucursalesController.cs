@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
 using POS.Infrastructure.Data;
@@ -101,12 +102,10 @@ public class SucursalesController : ControllerBase
     /// Listar sucursales
     /// </summary>
     [HttpGet]
+    [OutputCache(PolicyName = "Catalogo5m", VaryByQueryKeys = ["incluirInactivas"])]
     public async Task<ActionResult<List<SucursalDto>>> ObtenerSucursales(
         [FromQuery] bool incluirInactivas = false)
     {
-        // DEBUG: Log para ver qué IDs devuelve la base de datos
-        _logger.LogWarning("=== CONSULTANDO SUCURSALES ===");
-
         var query = _context.Sucursales.AsQueryable();
 
         if (!incluirInactivas)
@@ -118,13 +117,6 @@ public class SucursalesController : ControllerBase
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
                 s.Telefono, s.Email, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
             .ToListAsync();
-
-        // DEBUG: Log los IDs que se van a devolver
-        _logger.LogWarning("Sucursales encontradas: {Count}", sucursales.Count);
-        foreach (var s in sucursales)
-        {
-            _logger.LogWarning("  ID: {Id}, Nombre: {Nombre}", s.Id, s.Nombre);
-        }
 
         return Ok(sucursales);
     }
