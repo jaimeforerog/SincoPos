@@ -31,6 +31,8 @@ import ImpuestosPage from './features/impuestos/pages/ImpuestosPage';
 import { TercerosPage } from './features/terceros/pages';
 import { UsuariosPage } from './features/usuarios/pages/UsuariosPage';
 import AuditoriaPage from './features/auditoria/pages/AuditoriaPage';
+import { ConfiguracionEmisorPage } from './features/facturacion/pages/ConfiguracionEmisorPage';
+import { DocumentosElectronicosPage } from './features/facturacion/pages/DocumentosElectronicosPage';
 import { theme } from './theme/theme';
 
 const queryClient = new QueryClient({
@@ -139,6 +141,22 @@ function App() {
                     element={
                       <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
                         <AuditoriaPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="facturacion"
+                    element={
+                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                        <DocumentosElectronicosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="configuracion/facturacion"
+                    element={
+                      <ProtectedRoute requiredRoles={['admin']}>
+                        <ConfiguracionEmisorPage />
                       </ProtectedRoute>
                     }
                   />

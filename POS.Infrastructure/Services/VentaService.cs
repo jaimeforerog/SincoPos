@@ -17,6 +17,8 @@ public class VentaService : IVentaService
     private readonly ITaxEngine _taxEngine;
     private readonly ILogger<VentaService> _logger;
     private readonly IActivityLogService _activityLogService;
+    private readonly FacturacionBackgroundService _facturacionBackground;
+    private readonly INotificationService _notificationService;
 
     public VentaService(
         AppDbContext context,
@@ -25,7 +27,9 @@ public class VentaService : IVentaService
         CosteoService costeoService,
         ITaxEngine taxEngine,
         ILogger<VentaService> logger,
-        IActivityLogService activityLogService)
+        IActivityLogService activityLogService,
+        FacturacionBackgroundService facturacionBackground,
+        INotificationService notificationService)
     {
         _context = context;
         _session = session;
@@ -34,6 +38,8 @@ public class VentaService : IVentaService
         _taxEngine = taxEngine;
         _logger = logger;
         _activityLogService = activityLogService;
+        _facturacionBackground = facturacionBackground;
+        _notificationService = notificationService;
     }
 
     public async Task<(VentaDto? venta, string? error)> CrearVentaAsync(CrearVentaDto dto)
@@ -89,6 +95,7 @@ public class VentaService : IVentaService
 
         // Procesar cada linea con el TaxEngine
         var detalles = new List<DetalleVenta>();
+        var stocksVerificar = new List<(Stock stock, string nombre)>();
         decimal subtotal = 0;
         decimal descuentoTotal = 0;
         decimal totalImpuestos = 0;
@@ -171,6 +178,7 @@ public class VentaService : IVentaService
             // Actualizar stock en EF Core
             stock.Cantidad -= linea.Cantidad;
             stock.UltimaActualizacion = DateTime.UtcNow;
+            stocksVerificar.Add((stock, producto.Nombre));
 
             // Crear detalle
             var lineaSubtotal = (precioUnitario * linea.Cantidad) - linea.Descuento;
@@ -229,6 +237,23 @@ public class VentaService : IVentaService
 
         _logger.LogInformation("Venta {NumeroVenta} completada. Total: {Total}, Items: {Items}",
             numeroVenta, total, detalles.Count);
+
+        // Facturación electrónica fire-and-forget
+        if (venta.RequiereFacturaElectronica)
+            _facturacionBackground.Encolar(venta.Id);
+
+        // Notificaciones en tiempo real
+        await _notificationService.EnviarNotificacionSucursalAsync(dto.SucursalId, new NotificacionDto(
+            "venta_completada", "Venta completada",
+            $"Venta {numeroVenta} — ${total:N0}", "success", DateTime.UtcNow,
+            new { VentaId = venta.Id, NumeroVenta = numeroVenta, Total = total }));
+
+        foreach (var (stockItem, nombre) in stocksVerificar)
+            if (stockItem.Cantidad >= 0 && stockItem.Cantidad <= stockItem.StockMinimo)
+                await _notificationService.EnviarNotificacionSucursalAsync(dto.SucursalId, new NotificacionDto(
+                    "stock_bajo", "Stock bajo",
+                    $"{nombre}: quedan {stockItem.Cantidad:F0} unidades", "warning", DateTime.UtcNow,
+                    new { stockItem.ProductoId, NombreProducto = nombre, StockActual = stockItem.Cantidad }));
 
         // Activity Log
         await _activityLogService.LogActivityAsync(new ActivityLogDto(

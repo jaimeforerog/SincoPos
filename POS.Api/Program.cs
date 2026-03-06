@@ -32,10 +32,25 @@ builder.Services.AddMemoryCache();
 // Activity Log Service (Singleton para Channel-based background processing)
 builder.Services.AddSingleton<POS.Application.Services.IActivityLogService, POS.Infrastructure.Services.ActivityLogService>();
 
+// Facturación Electrónica DIAN
+builder.Services.AddScoped<POS.Application.Services.IUblBuilderService, POS.Infrastructure.Services.UblBuilderService>();
+builder.Services.AddScoped<POS.Application.Services.IFirmaDigitalService, POS.Infrastructure.Services.FirmaDigitalService>();
+builder.Services.AddHttpClient<POS.Infrastructure.Services.DianSoapService>();
+builder.Services.AddScoped<POS.Application.Services.IDianSoapService, POS.Infrastructure.Services.DianSoapService>();
+builder.Services.AddScoped<POS.Application.Services.IFacturacionService, POS.Infrastructure.Services.FacturacionService>();
+// BackgroundService Singleton (Channel fire-and-forget, igual que ActivityLog)
+builder.Services.AddSingleton<POS.Infrastructure.Services.FacturacionBackgroundService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<POS.Infrastructure.Services.FacturacionBackgroundService>());
+
 // Marten Event Store (PostgreSQL - schema events)
 builder.Services.AddMartenStore(
     builder.Configuration,
     builder.Environment.IsDevelopment());
+
+// SignalR
+builder.Services.AddSignalR();
+builder.Services.AddScoped<POS.Application.Services.INotificationService,
+    POS.Api.Services.NotificationService>();
 
 // API
 builder.Services.AddControllers();
@@ -116,6 +131,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(token) &&
+                context.Request.Path.StartsWithSegments("/hubs/notificaciones"))
+                context.Token = token;
+            return Task.CompletedTask;
+        },
         OnAuthenticationFailed = context =>
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -210,9 +233,10 @@ if (builder.Environment.IsDevelopment())
     {
         options.AddDefaultPolicy(policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:5173")
                   .AllowAnyMethod()
-                  .AllowAnyHeader();
+                  .AllowAnyHeader()
+                  .AllowCredentials();
         });
     });
 }
@@ -232,6 +256,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<POS.Api.Hubs.NotificationHub>("/hubs/notificaciones");
 
 app.Run();
 

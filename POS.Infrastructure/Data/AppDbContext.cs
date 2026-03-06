@@ -42,6 +42,8 @@ public class AppDbContext : DbContext
     public DbSet<DetalleOrdenCompra> DetallesOrdenCompra => Set<DetalleOrdenCompra>();
     public DbSet<MigracionLog> MigracionesLog => Set<MigracionLog>();
     public DbSet<UsuarioSucursal> UsuarioSucursales => Set<UsuarioSucursal>();
+    public DbSet<ConfiguracionEmisor> ConfiguracionesEmisor => Set<ConfiguracionEmisor>();
+    public DbSet<DocumentoElectronico> DocumentosElectronicos => Set<DocumentoElectronico>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -15,19 +15,22 @@ public class TrasladoService : ITrasladoService
     private readonly ILogger<TrasladoService> _logger;
     private readonly IActivityLogService _activityLogService;
     private readonly CosteoService _costeoService;
+    private readonly INotificationService _notificationService;
 
     public TrasladoService(
         global::Marten.IDocumentSession session,
         AppDbContext context,
         ILogger<TrasladoService> logger,
         IActivityLogService activityLogService,
-        CosteoService costeoService)
+        CosteoService costeoService,
+        INotificationService notificationService)
     {
         _session = session;
         _context = context;
         _logger = logger;
         _activityLogService = activityLogService;
         _costeoService = costeoService;
+        _notificationService = notificationService;
     }
 
     public async Task<(object? resultado, string? error)> CrearTrasladoAsync(CrearTrasladoDto dto)
@@ -313,6 +316,11 @@ public class TrasladoService : ITrasladoService
                 recepcion = dto
             }
         ));
+
+        await _notificationService.EnviarNotificacionSucursalAsync(traslado.SucursalDestinoId,
+            new NotificacionDto("traslado_recibido", "Traslado recibido",
+                $"Traslado {traslado.NumeroTraslado} recibido en destino", "info", DateTime.UtcNow,
+                new { traslado.Id, traslado.NumeroTraslado }));
 
         return (true, null);
     }

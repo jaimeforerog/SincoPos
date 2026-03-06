@@ -847,3 +847,86 @@ export interface ActividadRecienteDTO {
   descripcion?: string;
   exitosa: boolean;
 }
+
+// ─── Facturación Electrónica DIAN ─────────────────────────────────────────
+
+export interface ConfiguracionEmisorDTO {
+  id: number;
+  sucursalId: number;
+  nombreSucursal: string;
+  nit: string;
+  digitoVerificacion: string;
+  razonSocial: string;
+  nombreComercial: string;
+  direccion: string;
+  codigoMunicipio: string;
+  codigoDepartamento: string;
+  telefono: string;
+  email: string;
+  codigoCiiu: string;
+  perfilTributario: string;
+  numeroResolucion: string;
+  fechaResolucion: string;
+  prefijo: string;
+  numeroDesde: number;
+  numeroHasta: number;
+  numeroActual: number;
+  fechaVigenciaDesde: string;
+  fechaVigenciaHasta: string;
+  ambiente: string; // "1"=Producción, "2"=Pruebas
+  pinSoftware: string;
+  idSoftware: string;
+  tieneCertificado: boolean;
+}
+
+export interface ActualizarConfiguracionEmisorDTO {
+  nit: string;
+  digitoVerificacion: string;
+  razonSocial: string;
+  nombreComercial: string;
+  direccion: string;
+  codigoMunicipio: string;
+  codigoDepartamento: string;
+  telefono: string;
+  email: string;
+  codigoCiiu: string;
+  perfilTributario: string;
+  numeroResolucion: string;
+  fechaResolucion: string;
+  prefijo: string;
+  numeroDesde: number;
+  numeroHasta: number;
+  fechaVigenciaDesde: string;
+  fechaVigenciaHasta: string;
+  ambiente: string;
+  pinSoftware: string;
+  idSoftware: string;
+  certificadoBase64?: string;
+  certificadoPassword?: string;
+}
+
+export interface DocumentoElectronicoDTO {
+  id: number;
+  ventaId?: number;
+  sucursalId: number;
+  nombreSucursal: string;
+  tipoDocumento: string; // "FV" | "NC" | "ND"
+  prefijo: string;
+  numero: number;
+  numeroCompleto: string;
+  cufe: string;
+  fechaEmision: string;
+  estado: string; // "Pendiente" | "Generado" | "Firmado" | "Enviado" | "Aceptado" | "Rechazado"
+  codigoEstado: number;
+  fechaEnvioDian?: string;
+  codigoRespuestaDian?: string;
+  mensajeRespuestaDian?: string;
+  intentos: number;
+  fechaCreacion: string;
+}
+
+export interface DianRespuestaDTO {
+  esValido: boolean;
+  codigo: string;
+  descripcion: string;
+}

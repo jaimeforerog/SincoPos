@@ -10,6 +10,7 @@ import {
   AdminPanelSettings,
   TuneOutlined,
   ManageSearch,
+  ReceiptLong,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfigCard } from '../components/ConfigCard';
@@ -101,6 +102,15 @@ const configModules: ConfigModule[] = [
     icon: <ManageSearch fontSize="large" />,
     path: '/auditoria',
     roles: ['supervisor', 'admin'],
+    category: 'sistema',
+  },
+  {
+    id: 'facturacion',
+    title: 'Facturación Electrónica',
+    description: 'Configuración del emisor DIAN: resolución, certificado digital y ambiente',
+    icon: <ReceiptLong fontSize="large" />,
+    path: '/configuracion/facturacion',
+    roles: ['admin'],
     category: 'sistema',
   },
   {

@@ -27,6 +27,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { APP_NAME } from '@/utils/constants';
 import { MenuSection } from './MenuSection';
 import { menuSections } from './menuSections';
+import { NotificationBell } from '@/components/common/NotificationBell';
 
 const DRAWER_WIDTH = 260;
 
@@ -130,6 +131,8 @@ export function AppLayout() {
               {user?.sucursalNombre || 'Sin sucursal'}
             </Typography>
           )}
+
+          <NotificationBell />
 
           <IconButton
             onClick={handleProfileMenuOpen}

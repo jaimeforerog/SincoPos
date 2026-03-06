@@ -9,6 +9,7 @@ import {
   Assessment,
   Settings,
   ManageSearch,
+  ReceiptLong,
 } from '@mui/icons-material';
 import { MenuSection } from './MenuSection';
 
@@ -86,6 +87,20 @@ export const menuSections: MenuSection[] = [
         text: 'Auditoría',
         icon: <ManageSearch />,
         path: '/auditoria',
+        roles: ['supervisor', 'admin'],
+      },
+    ],
+  },
+
+  // FACTURACIÓN ELECTRÓNICA
+  {
+    title: 'Facturación Electrónica',
+    roles: ['supervisor', 'admin'],
+    items: [
+      {
+        text: 'Documentos DIAN',
+        icon: <ReceiptLong />,
+        path: '/facturacion',
         roles: ['supervisor', 'admin'],
       },
     ],
