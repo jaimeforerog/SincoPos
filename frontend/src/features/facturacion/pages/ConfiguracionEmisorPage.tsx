@@ -22,6 +22,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { facturacionApi } from '@/api/facturacion';
 import type { ActualizarConfiguracionEmisorDTO } from '@/types/api';
 
+const hoy = new Date().toISOString().split('T')[0];
+const enUnAnio = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0];
+
 export function ConfiguracionEmisorPage() {
   const { activeSucursalId } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
@@ -40,12 +43,12 @@ export function ConfiguracionEmisorPage() {
     codigoCiiu: '',
     perfilTributario: 'REGIMEN_ORDINARIO',
     numeroResolucion: '',
-    fechaResolucion: new Date().toISOString().split('T')[0],
+    fechaResolucion: hoy,
     prefijo: 'FV',
     numeroDesde: 1,
     numeroHasta: 1000,
-    fechaVigenciaDesde: new Date().toISOString().split('T')[0],
-    fechaVigenciaHasta: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0],
+    fechaVigenciaDesde: hoy,
+    fechaVigenciaHasta: enUnAnio,
     ambiente: '2',
     pinSoftware: '',
     idSoftware: '',

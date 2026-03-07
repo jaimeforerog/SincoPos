@@ -1,4 +1,5 @@
-import { Configuration, LogLevel } from '@azure/msal-browser';
+import { Configuration, LogLevel, PublicClientApplication, EventType } from '@azure/msal-browser';
+import type { AuthenticationResult } from '@azure/msal-browser';
 
 const TENANT_ID = import.meta.env.VITE_ENTRA_TENANT_ID || 'common';
 const CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID || '';
@@ -37,6 +38,23 @@ export const msalConfig: Configuration = {
 export const loginRequest = {
   scopes: [API_SCOPE],
 };
+
+// ── MSAL instance (singleton) ──────────────────────────────────────────────
+export const msalInstance = new PublicClientApplication(msalConfig);
+
+msalInstance.initialize().then(() => {
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    msalInstance.setActiveAccount(accounts[0]);
+  }
+
+  msalInstance.addEventCallback((event) => {
+    if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
+      const result = event.payload as AuthenticationResult;
+      msalInstance.setActiveAccount(result.account);
+    }
+  });
+});
 
 export const keycloakConfig = {
   authority: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`,

@@ -39,7 +39,7 @@ jobs:
           dotnet test tests/POS.IntegrationTests/POS.IntegrationTests.csproj
           --no-restore
           --configuration Release
-          --logger "github"
+          --logger "trx"
           --collect:"XPlat Code Coverage"
           --results-directory ./coverage
         env:

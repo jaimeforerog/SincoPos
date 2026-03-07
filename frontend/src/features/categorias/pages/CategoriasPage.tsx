@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -41,8 +42,9 @@ export function CategoriasPage() {
       queryClient.invalidateQueries({ queryKey: ['categorias'] });
       enqueueSnackbar('Categoría eliminada correctamente', { variant: 'success' });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || 'Error al eliminar la categoría';
+    onError: (error: Error) => {
+      const axiosError = error as AxiosError<{ error?: string }>;
+      const message = axiosError.response?.data?.error || 'Error al eliminar la categoría';
       enqueueSnackbar(message, { variant: 'error' });
     },
   });

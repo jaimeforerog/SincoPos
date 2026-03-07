@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { isEntraId, loginRequest } from '../msalConfig';
-import { msalInstance } from '../AuthProvider';
+import { msalInstance } from '../msalConfig';
 
 /**
  * Provides login/logout/acquireToken functions.

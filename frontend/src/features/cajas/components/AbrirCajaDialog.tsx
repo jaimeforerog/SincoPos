@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AxiosError } from 'axios';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -89,9 +90,10 @@ export function AbrirCajaDialog({ open, onClose, defaultSucursalId }: AbrirCajaD
       reset();
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>;
       enqueueSnackbar(
-        error.response?.data?.error || error.response?.data?.message || 'Error al crear/abrir la caja',
+        axiosError.response?.data?.error || axiosError.response?.data?.message || 'Error al crear/abrir la caja',
         { variant: 'error' }
       );
     },
@@ -113,7 +115,7 @@ export function AbrirCajaDialog({ open, onClose, defaultSucursalId }: AbrirCajaD
         <DialogContent>
           {errorSucursales && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              Error al cargar sucursales: {(errorSucursales as any).message}
+              Error al cargar sucursales: {(errorSucursales as Error).message}
             </Alert>
           )}
 

@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios';
 import apiClient from './client';
 import type {
   ConfiguracionEmisorDTO,
@@ -33,8 +34,8 @@ export const facturacionApi = {
         `/facturacion/configuracion/${sucursalId}`
       );
       return response.data;
-    } catch (err: any) {
-      if (err.response?.status === 404) return null;
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.status === 404) return null;
       throw err;
     }
   },

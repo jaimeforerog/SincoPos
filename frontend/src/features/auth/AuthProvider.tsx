@@ -1,34 +1,13 @@
 import { useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { PublicClientApplication, EventType, InteractionStatus } from '@azure/msal-browser';
-import type { AccountInfo, AuthenticationResult } from '@azure/msal-browser';
+import { InteractionStatus } from '@azure/msal-browser';
+import type { AccountInfo } from '@azure/msal-browser';
 import { MsalProvider, useMsal, useIsAuthenticated } from '@azure/msal-react';
 import { AuthProvider as OidcAuthProvider, useAuth as useOidcAuth } from 'react-oidc-context';
-import type { User } from 'oidc-client-ts';
 import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
 import { CircularProgress, Box } from '@mui/material';
-import { msalConfig, loginRequest, keycloakConfig, isEntraId } from './msalConfig';
-
-// ── MSAL instance (singleton) ──────────────────────────────────────────────
-const msalInstance = new PublicClientApplication(msalConfig);
-
-// Set the first account as active on initialization
-msalInstance.initialize().then(() => {
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
-    msalInstance.setActiveAccount(accounts[0]);
-  }
-
-  msalInstance.addEventCallback((event) => {
-    if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
-      const result = event.payload as AuthenticationResult;
-      msalInstance.setActiveAccount(result.account);
-    }
-  });
-});
-
-export { msalInstance };
+import { loginRequest, keycloakConfig, isEntraId, msalInstance } from './msalConfig';
 
 // ── Entra ID Auth Initializer ──────────────────────────────────────────────
 function EntraAuthInitializer({ children }: { children: ReactNode }) {
@@ -214,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Desarrollo local con Keycloak
   const oidcConfig = {
     ...keycloakConfig,
-    onSigninCallback: (_user: User | void): void => {
+    onSigninCallback: (): void => {
       window.history.replaceState({}, document.title, window.location.pathname);
     },
   };

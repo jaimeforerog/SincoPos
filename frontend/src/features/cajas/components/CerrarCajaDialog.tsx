@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -56,9 +57,10 @@ export function CerrarCajaDialog({ open, onClose, caja }: CerrarCajaDialogProps)
       reset();
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
+      const axiosError = error as AxiosError<{ message?: string }>;
       enqueueSnackbar(
-        error.response?.data?.message || 'Error al cerrar la caja',
+        axiosError.response?.data?.message || 'Error al cerrar la caja',
         { variant: 'error' }
       );
     },

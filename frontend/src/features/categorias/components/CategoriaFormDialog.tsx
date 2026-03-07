@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AxiosError } from 'axios';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -101,8 +102,9 @@ export function CategoriaFormDialog({
       enqueueSnackbar('Categoría creada correctamente', { variant: 'success' });
       onClose();
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.errors?.Nombre?.[0] || 'Error al crear la categoría';
+    onError: (error: Error) => {
+      const axiosError = error as AxiosError<{ error?: string; errors?: { Nombre?: string[] } }>;
+      const message = axiosError.response?.data?.error || axiosError.response?.data?.errors?.Nombre?.[0] || 'Error al crear la categoría';
       enqueueSnackbar(message, { variant: 'error' });
     },
   });
@@ -115,8 +117,9 @@ export function CategoriaFormDialog({
       enqueueSnackbar('Categoría actualizada correctamente', { variant: 'success' });
       onClose();
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.errors?.Nombre?.[0] || 'Error al actualizar la categoría';
+    onError: (error: Error) => {
+      const axiosError = error as AxiosError<{ error?: string; errors?: { Nombre?: string[] } }>;
+      const message = axiosError.response?.data?.error || axiosError.response?.data?.errors?.Nombre?.[0] || 'Error al actualizar la categoría';
       enqueueSnackbar(message, { variant: 'error' });
     },
   });

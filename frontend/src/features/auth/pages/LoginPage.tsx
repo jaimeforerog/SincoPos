@@ -12,7 +12,7 @@ import {
 import { LoginOutlined } from '@mui/icons-material';
 import { APP_NAME } from '@/utils/constants';
 import { isEntraId, loginRequest } from '../msalConfig';
-import { msalInstance } from '../AuthProvider';
+import { msalInstance } from '../msalConfig';
 import { useAuth } from '@/hooks/useAuth';
 
 export function LoginPage() {
