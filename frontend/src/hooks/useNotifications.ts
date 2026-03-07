@@ -19,12 +19,15 @@ export function useNotifications() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    const token = sessionStorage.getItem('access_token');
+    if (!token) return; // Don't connect without a valid token
+
     const hubBase = import.meta.env.VITE_API_URL ?? '';
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${hubBase}/hubs/notificaciones`, {
         accessTokenFactory: () => sessionStorage.getItem('access_token') ?? '',
       })
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 10000, 30000]) // Max 4 retries, then stop
       .build();
 
     connection.on('Notificacion', (notif: NotificacionDto) => {
