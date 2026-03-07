@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { InteractionStatus } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-browser';
@@ -8,6 +8,14 @@ import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
 import { CircularProgress, Box } from '@mui/material';
 import { loginRequest, keycloakConfig, isEntraId, msalInstance, msalInitPromise } from './msalConfig';
+
+function LoadingScreen() {
+  return (
+    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+      <CircularProgress />
+    </Box>
+  );
+}
 
 // ── Entra ID Auth Initializer ──────────────────────────────────────────────
 function EntraAuthInitializer({ children }: { children: ReactNode }) {
@@ -25,7 +33,6 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
   const getAccount = useCallback((): AccountInfo | null => {
     const active = instance.getActiveAccount();
     if (active) return active;
-    // Fallback: pick the first available account and set it as active
     const accounts = instance.getAllAccounts();
     if (accounts.length > 0) {
       instance.setActiveAccount(accounts[0]);
@@ -40,12 +47,9 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
         ...loginRequest,
         account,
       });
-      // With custom API scopes, use accessToken; with openid/profile scopes
-      // (personal accounts), use idToken since the accessToken is for MS Graph.
       const hasApiScope = loginRequest.scopes.some(s => s.startsWith('api://'));
       return hasApiScope ? response.accessToken : response.idToken;
     } catch {
-      // Silent acquisition failed — use cached idToken from the account if available
       return account.idToken ?? null;
     }
   }, [instance]);
@@ -54,26 +58,27 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       if (inProgress !== InteractionStatus.None) return;
 
-      // Ensure MSAL is fully initialized before acquiring tokens
-      await msalInitPromise;
-
       if (isAuthenticated) {
         const account = getAccount();
         if (!account) {
+          console.warn('[Auth] MSAL isAuthenticated=true but no account found');
           setUser(null);
           return;
         }
 
+        console.log('[Auth] Account found:', account.username);
+
         const token = await acquireToken(account);
         if (token) {
           sessionStorage.setItem('access_token', token);
+          console.log('[Auth] Token acquired, calling /usuarios/me');
 
           try {
             const userInfo = await usuariosApi.me();
             setUser(userInfo);
+            console.log('[Auth] User info loaded from backend');
           } catch (error) {
-            console.error('Failed to fetch user info from backend:', error);
-            // Backend unavailable or user not provisioned yet — use token claims as fallback
+            console.error('[Auth] Backend /me failed, using token claims:', error);
             const idTokenClaims = account.idTokenClaims as Record<string, unknown> | undefined;
             const roles = (idTokenClaims?.['roles'] as string[] | undefined)
               ?.filter(r => ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
@@ -90,7 +95,7 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
             });
           }
         } else {
-          // No token at all — set user from account info anyway
+          console.warn('[Auth] No token, setting user from account info');
           setUser({
             id: account.localAccountId,
             username: account.username,
@@ -110,7 +115,7 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
     initAuth();
   }, [isAuthenticated, inProgress, acquireToken, getAccount, setUser]);
 
-  // Set up token refresh — keep sessionStorage in sync
+  // Set up token refresh
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -121,17 +126,13 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
       if (token) {
         sessionStorage.setItem('access_token', token);
       }
-    }, 4 * 60 * 1000); // Refresh every 4 minutes
+    }, 4 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [isAuthenticated, acquireToken, getAccount]);
 
   if (inProgress !== InteractionStatus.None) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingScreen />;
   }
 
   return <>{children}</>;
@@ -142,7 +143,6 @@ function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
   const oidcAuth = useOidcAuth();
   const { setUser, setIdpLogout } = useAuthStore();
 
-  // Register IdP logout function
   useEffect(() => {
     setIdpLogout(() => {
       oidcAuth.signoutRedirect({ post_logout_redirect_uri: window.location.origin });
@@ -195,11 +195,7 @@ function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
   }, [oidcAuth.isAuthenticated, oidcAuth.isLoading, oidcAuth.user, setUser]);
 
   if (oidcAuth.isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingScreen />;
   }
 
   if (oidcAuth.error) {
@@ -217,14 +213,9 @@ function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
 // ── Auth Provider (selecciona Entra ID o Keycloak) ─────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (isEntraId) {
-    return (
-      <MsalProvider instance={msalInstance}>
-        <EntraAuthInitializer>{children}</EntraAuthInitializer>
-      </MsalProvider>
-    );
+    return <EntraAuthWrapper>{children}</EntraAuthWrapper>;
   }
 
-  // Desarrollo local con Keycloak
   const oidcConfig = {
     ...keycloakConfig,
     onSigninCallback: (): void => {
@@ -236,5 +227,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <OidcAuthProvider {...oidcConfig}>
       <KeycloakAuthInitializer>{children}</KeycloakAuthInitializer>
     </OidcAuthProvider>
+  );
+}
+
+// Wrapper that awaits MSAL initialization before rendering MsalProvider
+function EntraAuthWrapper({ children }: { children: ReactNode }) {
+  const [msalReady, setMsalReady] = useState(false);
+
+  useEffect(() => {
+    msalInitPromise.then(() => setMsalReady(true));
+  }, []);
+
+  if (!msalReady) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <MsalProvider instance={msalInstance}>
+      <EntraAuthInitializer>{children}</EntraAuthInitializer>
+    </MsalProvider>
   );
 }

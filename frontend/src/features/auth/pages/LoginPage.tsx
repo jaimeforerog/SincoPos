@@ -11,8 +11,7 @@ import {
 } from '@mui/material';
 import { LoginOutlined } from '@mui/icons-material';
 import { APP_NAME } from '@/utils/constants';
-import { isEntraId, loginRequest } from '../msalConfig';
-import { msalInstance } from '../msalConfig';
+import { isEntraId, loginRequest, msalInstance, msalInitPromise } from '../msalConfig';
 import { useAuth } from '@/hooks/useAuth';
 
 export function LoginPage() {
@@ -25,8 +24,9 @@ export function LoginPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleLogin = useCallback(() => {
+  const handleLogin = useCallback(async () => {
     if (isEntraId) {
+      await msalInitPromise;
       msalInstance.loginRedirect(loginRequest);
     }
   }, []);
