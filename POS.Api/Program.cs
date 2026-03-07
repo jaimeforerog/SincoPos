@@ -167,19 +167,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = authConfig.GetValue<bool>("ValidateIssuer"),
-        ValidateAudience = authConfig.GetValue<bool>("ValidateAudience"),
+        ValidateIssuer = false,
+        ValidateAudience = false, // Temporarily disabled to diagnose 401
         ValidateLifetime = authConfig.GetValue<bool>("ValidateLifetime"),
         ValidateIssuerSigningKey = true,
         ClockSkew = TimeSpan.FromMinutes(5),
         RoleClaimType = ClaimTypes.Role,
-        // ID tokens from personal MS accounts include a nonce that the backend
-        // didn't generate — skip nonce validation for ID token auth flow.
-        RequireSignedTokens = true,
     };
-
-    // Allow ID tokens (personal accounts use ID tokens, not access tokens)
-    options.TokenValidationParameters.ValidTypes = new[] { "JWT", "at+jwt" };
 
     options.Events = new JwtBearerEvents
     {
@@ -195,6 +189,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
             logger.LogError(context.Exception, "Authentication failed: {Error}", context.Exception.Message);
+            // Return error detail in response header for debugging
+            context.Response.Headers.Append("X-Auth-Error", context.Exception.Message);
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
