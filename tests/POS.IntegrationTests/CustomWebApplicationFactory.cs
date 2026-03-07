@@ -93,9 +93,17 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             TRUNCATE TABLE public.usuarios RESTART IDENTITY CASCADE;
             TRUNCATE TABLE public.sucursales RESTART IDENTITY CASCADE;
             TRUNCATE TABLE public.categorias RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.configuracion_emisor RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.documentos_electronicos RESTART IDENTITY CASCADE;
         ");
+
+        // Tablas de facturación (migración sin Designer — puede no existir en DB fresca)
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                TRUNCATE TABLE public.configuracion_emisor RESTART IDENTITY CASCADE;
+                TRUNCATE TABLE public.documentos_electronicos RESTART IDENTITY CASCADE;
+            ");
+        }
+        catch { /* Tables may not exist if migration was not applied */ }
 
         // Limpiar Marten event store
         try
