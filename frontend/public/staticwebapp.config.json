@@ -9,7 +9,7 @@
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://sincopos-api.azurewebsites.net https://login.microsoftonline.com https://*.microsoftonline.com wss://sincopos-api.azurewebsites.net; frame-src https://login.microsoftonline.com;"
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://sincopos-api.azurewebsites.net https://login.microsoftonline.com https://*.microsoftonline.com wss://sincopos-api.azurewebsites.net; frame-src https://login.microsoftonline.com;"
   },
   "mimeTypes": {
     ".json": "application/json",
