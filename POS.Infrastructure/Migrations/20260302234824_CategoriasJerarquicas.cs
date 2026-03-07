@@ -12,13 +12,8 @@ namespace POS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "detalle_agrupaciones",
-                schema: "public");
-
-            migrationBuilder.DropTable(
-                name: "agrupaciones",
-                schema: "public");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS public.detalle_agrupaciones CASCADE;");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS public.agrupaciones CASCADE;");
 
             migrationBuilder.AddColumn<int>(
                 name: "categoria_padre_id",

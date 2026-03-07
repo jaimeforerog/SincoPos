@@ -626,6 +626,8 @@ export interface CrearRetencionDTO {
 
 export interface ApiError {
   message: string;
+  error?: string;
+  title?: string;
   errors?: Record<string, string[]>;
   statusCode: number;
 }

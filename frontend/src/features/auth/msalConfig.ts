@@ -1,5 +1,5 @@
-import { Configuration, LogLevel, PublicClientApplication, EventType } from '@azure/msal-browser';
-import type { AuthenticationResult } from '@azure/msal-browser';
+import { LogLevel, PublicClientApplication, EventType } from '@azure/msal-browser';
+import type { Configuration, AuthenticationResult } from '@azure/msal-browser';
 
 const TENANT_ID = import.meta.env.VITE_ENTRA_TENANT_ID || 'common';
 const CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID || '';
@@ -18,17 +18,15 @@ export const msalConfig: Configuration = {
     authority: `https://login.microsoftonline.com/${TENANT_ID}`,
     redirectUri: window.location.origin + '/callback',
     postLogoutRedirectUri: window.location.origin,
-    navigateToLoginRequestUrl: true,
   },
   cache: {
     cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false,
   },
   system: {
     loggerOptions: {
-      loggerCallback: (level, message, containsPii) => {
+      loggerCallback: (_level, message, containsPii) => {
         if (containsPii) return;
-        if (level === LogLevel.Error) console.error(message);
+        if (_level === LogLevel.Error) console.error(message);
       },
       logLevel: LogLevel.Error,
     },
