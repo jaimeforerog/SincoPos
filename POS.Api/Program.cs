@@ -172,8 +172,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidateLifetime = authConfig.GetValue<bool>("ValidateLifetime"),
         ValidateIssuerSigningKey = true,
         ClockSkew = TimeSpan.FromMinutes(5),
-        RoleClaimType = ClaimTypes.Role
+        RoleClaimType = ClaimTypes.Role,
+        // ID tokens from personal MS accounts include a nonce that the backend
+        // didn't generate — skip nonce validation for ID token auth flow.
+        RequireSignedTokens = true,
     };
+
+    // Allow ID tokens (personal accounts use ID tokens, not access tokens)
+    options.TokenValidationParameters.ValidTypes = new[] { "JWT", "at+jwt" };
 
     options.Events = new JwtBearerEvents
     {
