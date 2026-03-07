@@ -172,11 +172,15 @@ jobs:
     environment: production
 
     steps:
-      - name: Deploy to Azure Web App
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy container to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: sincopos-api
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
   # ── Deploy Frontend: Azure Static Web Apps ──────────────────────────────────
