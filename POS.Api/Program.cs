@@ -72,15 +72,24 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
 
-    // Particionar por IP remota
+    // Particionar por IP remota — excluir health checks y SignalR negotiate
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var path = context.Request.Path.Value ?? "";
+        if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
+            path.Contains("/negotiate", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitPartition.GetNoLimiter("unlimited");
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = rateLimitConfig.GetValue("PermitLimit", 100),
                 Window = TimeSpan.FromSeconds(rateLimitConfig.GetValue("WindowSeconds", 60))
-            }));
+            });
+    });
 });
 
 // ── Escalabilidad: Health Checks ─────────────────────────────────────────

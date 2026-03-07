@@ -7,7 +7,7 @@ import { AuthProvider as OidcAuthProvider, useAuth as useOidcAuth } from 'react-
 import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
 import { CircularProgress, Box } from '@mui/material';
-import { loginRequest, keycloakConfig, isEntraId, msalInstance } from './msalConfig';
+import { loginRequest, keycloakConfig, isEntraId, msalInstance, msalInitPromise } from './msalConfig';
 
 // ── Entra ID Auth Initializer ──────────────────────────────────────────────
 function EntraAuthInitializer({ children }: { children: ReactNode }) {
@@ -41,6 +41,9 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       if (inProgress !== InteractionStatus.None) return;
 
+      // Ensure MSAL is fully initialized before acquiring tokens
+      await msalInitPromise;
+
       if (isAuthenticated) {
         const token = await acquireToken();
         if (token) {
@@ -51,6 +54,7 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
             setUser(userInfo);
           } catch (error) {
             console.error('Failed to fetch user info from backend:', error);
+            // Backend unavailable or user not provisioned yet — use token claims as fallback
             const account = instance.getActiveAccount() as AccountInfo;
             const idTokenClaims = account.idTokenClaims as Record<string, unknown> | undefined;
             const roles = (idTokenClaims?.['roles'] as string[] | undefined)

@@ -40,7 +40,7 @@ export const loginRequest = {
 // ── MSAL instance (singleton) ──────────────────────────────────────────────
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-msalInstance.initialize().then(() => {
+export const msalInitPromise = msalInstance.initialize().then(() => {
   const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
     msalInstance.setActiveAccount(accounts[0]);

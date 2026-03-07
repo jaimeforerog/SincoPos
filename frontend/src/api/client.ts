@@ -68,9 +68,8 @@ apiClient.interceptors.response.use(
 
       // Handle specific status codes
       if (error.response.status === 401) {
-        // Unauthorized - redirect to login
+        // Clear stale token — let the AuthProvider handle redirect/re-auth
         sessionStorage.removeItem('access_token');
-        window.location.href = '/login';
       }
 
       return Promise.reject(apiError);
