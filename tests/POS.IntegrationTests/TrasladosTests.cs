@@ -46,7 +46,7 @@ public class TrasladosTests
             precioVenta = 1000m,
             precioCosto = 500m
         };
-        var response = await _client.PostAsJsonAsync("/api/Productos", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Productos", dto);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ProductoDto>(_jsonOptions);
         return result!.Id;
@@ -66,7 +66,7 @@ public class TrasladosTests
             referencia,
             observaciones = $"Test entrada {referencia}"
         };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/entrada", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Entrada {referencia} deberia ser exitosa");
     }
@@ -74,7 +74,7 @@ public class TrasladosTests
     private async Task<StockDto?> ObtenerStock(Guid productoId, int sucursalId)
     {
         var response = await _client.GetFromJsonAsync<List<StockDto>>(
-            $"/api/Inventario?productoId={productoId}&sucursalId={sucursalId}",
+            $"/api/v1/Inventario?productoId={productoId}&sucursalId={sucursalId}",
             _jsonOptions);
         return response?.FirstOrDefault();
     }
@@ -95,7 +95,7 @@ public class TrasladosTests
             }).ToList()
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Traslados", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Traslados", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Crear traslado deberia ser exitoso. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -103,7 +103,7 @@ public class TrasladosTests
 
     private async Task<JsonElement> EnviarTraslado(int trasladoId)
     {
-        var response = await _client.PostAsync($"/api/Traslados/{trasladoId}/enviar", null);
+        var response = await _client.PostAsync($"/api/v1/Traslados/{trasladoId}/enviar", null);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Enviar traslado deberia ser exitoso. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -123,7 +123,7 @@ public class TrasladosTests
             observaciones = (string?)null
         };
 
-        var response = await _client.PostAsJsonAsync($"/api/Traslados/{trasladoId}/recibir", dto);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Traslados/{trasladoId}/recibir", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Recibir traslado deberia ser exitoso. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -132,7 +132,7 @@ public class TrasladosTests
     private async Task<TrasladoDto?> ObtenerTraslado(int trasladoId)
     {
         return await _client.GetFromJsonAsync<TrasladoDto>(
-            $"/api/Traslados/{trasladoId}",
+            $"/api/v1/Traslados/{trasladoId}",
             _jsonOptions);
     }
 
@@ -207,7 +207,7 @@ public class TrasladosTests
             }
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Traslados", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Traslados", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "Debe rechazar traslado con stock insuficiente");
 
@@ -234,7 +234,7 @@ public class TrasladosTests
             }
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Traslados", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Traslados", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "Debe rechazar traslado con sucursales iguales");
 
@@ -297,7 +297,7 @@ public class TrasladosTests
             observaciones = (string?)null
         };
 
-        var response = await _client.PostAsJsonAsync($"/api/Traslados/{trasladoId}/recibir", dto);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Traslados/{trasladoId}/recibir", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "No debe permitir recibir más de lo solicitado");
 
@@ -321,7 +321,7 @@ public class TrasladosTests
 
         // Act - Cancelar traslado
         var dtoCancel = new { motivo = "Cancelación de prueba" };
-        var response = await _client.PostAsJsonAsync($"/api/Traslados/{trasladoId}/cancelar", dtoCancel);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Traslados/{trasladoId}/cancelar", dtoCancel);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Assert
@@ -351,7 +351,7 @@ public class TrasladosTests
 
         // Act - Rechazar traslado
         var dtoRechazo = new { motivoRechazo = "Mercancía dañada en tránsito" };
-        var response = await _client.PostAsJsonAsync($"/api/Traslados/{trasladoId}/rechazar", dtoRechazo);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Traslados/{trasladoId}/rechazar", dtoRechazo);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Assert - Stock debe restaurarse

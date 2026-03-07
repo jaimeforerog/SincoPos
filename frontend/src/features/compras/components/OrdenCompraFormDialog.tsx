@@ -206,8 +206,16 @@ export function OrdenCompraFormDialog({
     mutation.mutate(data);
   };
 
+  const valoresLimpios: OrdenCompraFormData = {
+    sucursalId: 0,
+    proveedorId: 0,
+    fechaEntregaEsperada: new Date().toISOString().split('T')[0],
+    observaciones: '',
+    lineas: [],
+  };
+
   const handleClose = () => {
-    reset();
+    reset(valoresLimpios);
     setBackendError(null);
     onClose();
   };
@@ -223,10 +231,10 @@ export function OrdenCompraFormDialog({
 
   useEffect(() => {
     if (open) {
-      reset();
+      reset(valoresLimpios);
       setBackendError(null);
     }
-  }, [open, reset]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
@@ -379,13 +387,25 @@ export function OrdenCompraFormDialog({
                               <Autocomplete
                                 value={productos.find((p) => p.id === value) || null}
                                 onChange={(_, newValue) => {
-                                  onChange(newValue?.id || '');
-                                  // Auto-rellenar precio de costo e impuesto del producto
                                   if (newValue) {
+                                    // Verificar si el producto ya existe en otra línea
                                     const currentLineas = watch('lineas');
+                                    const lineaDuplicada = currentLineas.findIndex(
+                                      (l, i) => i !== index && l.productoId === newValue.id
+                                    );
+                                    if (lineaDuplicada !== -1) {
+                                      enqueueSnackbar(
+                                        `"${newValue.nombre}" ya está en la línea ${lineaDuplicada + 1}. Modifica la cantidad en esa línea.`,
+                                        { variant: 'warning' }
+                                      );
+                                      return; // No permite agregar duplicado
+                                    }
+                                    onChange(newValue.id);
                                     currentLineas[index].precioUnitario = newValue.precioCosto;
                                     currentLineas[index].impuestoId = newValue.impuestoId;
                                     reset({ ...watch(), lineas: currentLineas });
+                                  } else {
+                                    onChange('');
                                   }
                                 }}
                                 options={productos}
@@ -436,7 +456,7 @@ export function OrdenCompraFormDialog({
                                 error={!!(errors.lineas?.[index] as any)?.precioUnitario}
                                 size="small"
                                 fullWidth
-                                inputProps={{ min: 0, step: 100 }}
+                                inputProps={{ min: 0, step: 1 }}
                               />
                             )}
                           />

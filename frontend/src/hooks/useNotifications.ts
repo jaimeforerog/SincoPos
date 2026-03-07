@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { useSnackbar } from 'notistack';
-import { useAuth as useOidcAuth } from 'react-oidc-context';
 import { useAuthStore } from '@/stores/auth.store';
 import type { NotificacionDto } from '@/types/notifications';
 
@@ -9,8 +8,7 @@ const MAX_NOTIFICATIONS = 50;
 
 export function useNotifications() {
   const { enqueueSnackbar } = useSnackbar();
-  const oidcAuth = useOidcAuth();
-  const { activeSucursalId } = useAuthStore();
+  const { isAuthenticated, activeSucursalId } = useAuthStore();
   const [notifications, setNotifications] = useState<NotificacionDto[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
@@ -19,11 +17,12 @@ export function useNotifications() {
   const markAllRead = useCallback(() => setUnreadCount(0), []);
 
   useEffect(() => {
-    if (!oidcAuth.isAuthenticated) return;
+    if (!isAuthenticated) return;
 
+    const hubBase = import.meta.env.VITE_API_URL ?? '';
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${import.meta.env.VITE_API_URL}/hubs/notificaciones`, {
-        accessTokenFactory: () => oidcAuth.user?.access_token ?? '',
+      .withUrl(`${hubBase}/hubs/notificaciones`, {
+        accessTokenFactory: () => sessionStorage.getItem('access_token') ?? '',
       })
       .withAutomaticReconnect()
       .build();
@@ -54,7 +53,7 @@ export function useNotifications() {
       connectionRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oidcAuth.isAuthenticated]);
+  }, [isAuthenticated]);
 
   // Handle sucursal changes
   useEffect(() => {

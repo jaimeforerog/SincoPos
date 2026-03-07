@@ -2,10 +2,14 @@ import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '@/types/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5086';
+// Use empty string (relative paths) when VITE_API_URL is not set so requests
+// go through the Vite dev proxy (same-origin, no CORS).
+// In production VITE_API_URL is set to the backend origin.
+const API_URL = import.meta.env.VITE_API_URL ?? '';
+const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
 
 export const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/api/${API_VERSION}`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -36,9 +40,29 @@ apiClient.interceptors.response.use(
   (error: AxiosError<ApiError>) => {
     if (error.response) {
       // Server responded with error
+      const data = error.response.data;
+      let message = 'An error occurred';
+      let errors = data?.errors;
+
+      if (typeof data === 'string') {
+        message = data;
+      } else if (Array.isArray(data)) {
+        // FluentValidation returns array of error strings
+        message = data.join('. ');
+        errors = data;
+      } else if (data?.error) {
+        message = data.error;
+      } else if (data?.message) {
+        message = data.message;
+      } else if (data?.title) {
+        // ASP.NET ProblemDetails format
+        message = data.title;
+        errors = data.errors;
+      }
+
       const apiError: ApiError = {
-        message: error.response.data?.message || 'An error occurred',
-        errors: error.response.data?.errors,
+        message,
+        errors,
         statusCode: error.response.status,
       };
 

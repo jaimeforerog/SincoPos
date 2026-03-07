@@ -32,7 +32,7 @@ public class ImpuestosTests
     private async Task<int> CrearImpuesto(string nombre, string tipo, decimal porcentaje,
         bool aplicaSobreBase = true, decimal? valorFijo = null)
     {
-        var response = await _client.PostAsJsonAsync("/api/Impuestos", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Impuestos", new
         {
             nombre, tipo, porcentaje,
             valorFijo,
@@ -50,7 +50,7 @@ public class ImpuestosTests
     private async Task<Guid> CrearProductoConImpuesto(string codigo, int? impuestoId,
         decimal precio = 1000m, decimal costo = 500m)
     {
-        var response = await _client.PostAsJsonAsync("/api/Productos", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Productos", new
         {
             codigoBarras = codigo,
             nombre = $"Prod {codigo}",
@@ -67,7 +67,7 @@ public class ImpuestosTests
 
     private async Task RegistrarStock(Guid productoId, int sucursalId, decimal cantidad)
     {
-        var response = await _client.PostAsJsonAsync("/api/Inventario/entrada", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", new
         {
             productoId, sucursalId, cantidad, costoUnitario = 500m,
             terceroId = _factory.TerceroTestId,
@@ -79,10 +79,10 @@ public class ImpuestosTests
 
     private async Task<int> CrearYAbrirCaja(string nombre)
     {
-        var crear = await _client.PostAsJsonAsync("/api/Cajas", new { nombre, sucursalId = SucPP });
+        var crear = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre, sucursalId = SucPP });
         crear.EnsureSuccessStatusCode();
         var caja = await crear.Content.ReadFromJsonAsync<CajaDto>(_jsonOptions);
-        var abrir = await _client.PostAsJsonAsync($"/api/Cajas/{caja!.Id}/abrir", new { montoApertura = 500_000m });
+        var abrir = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja!.Id}/abrir", new { montoApertura = 500_000m });
         abrir.EnsureSuccessStatusCode();
         return caja.Id;
     }
@@ -100,7 +100,7 @@ public class ImpuestosTests
         // Assert
         impuestoId.Should().BeGreaterThan(0);
 
-        var response = await _client.GetAsync($"/api/Impuestos/{impuestoId}");
+        var response = await _client.GetAsync($"/api/v1/Impuestos/{impuestoId}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var imp = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
         imp.GetProperty("nombre").GetString().Should().Be("IVA Test 19%");
@@ -112,7 +112,7 @@ public class ImpuestosTests
     public async Task ObtenerImpuestos_RetornaListaActivos()
     {
         // Act
-        var response = await _client.GetAsync("/api/Impuestos");
+        var response = await _client.GetAsync("/api/v1/Impuestos");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var lista = await response.Content.ReadFromJsonAsync<JsonElement[]>(_jsonOptions);
 
@@ -128,7 +128,7 @@ public class ImpuestosTests
         var id = await CrearImpuesto("IVA Edit Test", "IVA", 0.05m);
 
         // Act
-        var editResponse = await _client.PutAsJsonAsync($"/api/Impuestos/{id}", new
+        var editResponse = await _client.PutAsJsonAsync($"/api/v1/Impuestos/{id}", new
         {
             nombre = "IVA Edit Actualizado",
             porcentaje = (decimal?)0.19m,
@@ -137,7 +137,7 @@ public class ImpuestosTests
         editResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Assert
-        var get = await _client.GetAsync($"/api/Impuestos/{id}");
+        var get = await _client.GetAsync($"/api/v1/Impuestos/{id}");
         var updated = await get.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
         updated.GetProperty("nombre").GetString().Should().Be("IVA Edit Actualizado");
         updated.GetProperty("porcentaje").GetDecimal().Should().Be(0.19m);
@@ -150,13 +150,13 @@ public class ImpuestosTests
         var id = await CrearImpuesto("IVA Para Desactivar", "IVA", 0.19m);
 
         // Act
-        var response = await _client.DeleteAsync($"/api/Impuestos/{id}");
+        var response = await _client.DeleteAsync($"/api/v1/Impuestos/{id}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verificar que ya no aparece en el listado
-        var get = await _client.GetAsync($"/api/Impuestos/{id}");
+        var get = await _client.GetAsync($"/api/v1/Impuestos/{id}");
         get.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -168,7 +168,7 @@ public class ImpuestosTests
         await CrearProductoConImpuesto("IMP-PROT-001", impId);
 
         // Act: intentar desactivar
-        var response = await _client.DeleteAsync($"/api/Impuestos/{impId}");
+        var response = await _client.DeleteAsync($"/api/v1/Impuestos/{impId}");
 
         // Assert: debe rechazarse — ya está en uso
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -187,7 +187,7 @@ public class ImpuestosTests
         var cajaId = await CrearYAbrirCaja("Caja IVA Test");
 
         // Act: vender 5 unidades a $1000
-        var response = await _client.PostAsJsonAsync("/api/Ventas", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 10000m,
             lineas = new[] { new { productoId, cantidad = 5m, precioUnitario = (decimal?)null, descuento = 0m } }
@@ -215,7 +215,7 @@ public class ImpuestosTests
         var cajaId = await CrearYAbrirCaja("Caja Exento Test");
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/Ventas", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 20000m,
             lineas = new[] { new { productoId, cantidad = 3m, precioUnitario = (decimal?)null, descuento = 0m } }
@@ -238,7 +238,7 @@ public class ImpuestosTests
         await RegistrarStock(productoId, SucPP, 50);
         var cajaId = await CrearYAbrirCaja("Caja Sin Impuesto Test");
 
-        var response = await _client.PostAsJsonAsync("/api/Ventas", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 10000m,
             lineas = new[] { new { productoId, cantidad = 2m, precioUnitario = (decimal?)null, descuento = 0m } }
@@ -264,7 +264,7 @@ public class ImpuestosTests
         await RegistrarStock(productoId, SucPP, 50);
         var cajaId = await CrearYAbrirCaja("Caja 5UVT Test");
 
-        var response = await _client.PostAsJsonAsync("/api/Ventas", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 500_000m,
             lineas = new[] { new { productoId, cantidad = 3m, precioUnitario = (decimal?)null, descuento = 0m } }
@@ -287,7 +287,7 @@ public class ImpuestosTests
         await RegistrarStock(productoId, SucPP, 100);
         var cajaId = await CrearYAbrirCaja("Caja Mini Test");
 
-        var response = await _client.PostAsJsonAsync("/api/Ventas", new
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 20_000m,
             lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m } }
@@ -306,7 +306,7 @@ public class ImpuestosTests
     [Fact]
     public async Task GetRetenciones_RetornaLista()
     {
-        var response = await _client.GetAsync("/api/Retenciones");
+        var response = await _client.GetAsync("/api/v1/Retenciones");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var lista = await response.Content.ReadFromJsonAsync<JsonElement[]>(_jsonOptions);
         lista.Should().NotBeNullOrEmpty("los seeds deben incluir al menos 1 retención (ReteFuente)");

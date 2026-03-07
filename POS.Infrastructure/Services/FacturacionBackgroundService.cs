@@ -118,7 +118,7 @@ public class FacturacionBackgroundService : BackgroundService
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        _channel.Writer.Complete();
+        _channel.Writer.TryComplete();
         await base.StopAsync(cancellationToken);
     }
 }

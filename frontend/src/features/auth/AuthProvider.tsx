@@ -1,50 +1,153 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
+import { PublicClientApplication, EventType, InteractionStatus } from '@azure/msal-browser';
+import type { AccountInfo, AuthenticationResult } from '@azure/msal-browser';
+import { MsalProvider, useMsal, useIsAuthenticated } from '@azure/msal-react';
 import { AuthProvider as OidcAuthProvider, useAuth as useOidcAuth } from 'react-oidc-context';
 import type { User } from 'oidc-client-ts';
 import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
 import { CircularProgress, Box } from '@mui/material';
+import { msalConfig, loginRequest, keycloakConfig, isEntraId } from './msalConfig';
 
-const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080';
-const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'sincopos';
-const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'sincopos-frontend';
+// ── MSAL instance (singleton) ──────────────────────────────────────────────
+const msalInstance = new PublicClientApplication(msalConfig);
 
-const oidcConfig = {
-  authority: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`,
-  client_id: CLIENT_ID,
-  redirect_uri: window.location.origin + '/callback',
-  response_type: 'code',
-  scope: 'openid profile email',
-  onSigninCallback: (_user: User | void): void => {
-    window.history.replaceState({}, document.title, window.location.pathname);
-  },
-  automaticSilentRenew: true,
-  loadUserInfo: true,
-};
+// Set the first account as active on initialization
+msalInstance.initialize().then(() => {
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    msalInstance.setActiveAccount(accounts[0]);
+  }
 
-function AuthInitializer({ children }: { children: ReactNode }) {
-  const oidcAuth = useOidcAuth();
-  const { setUser } = useAuthStore();
+  msalInstance.addEventCallback((event) => {
+    if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
+      const result = event.payload as AuthenticationResult;
+      msalInstance.setActiveAccount(result.account);
+    }
+  });
+});
+
+export { msalInstance };
+
+// ── Entra ID Auth Initializer ──────────────────────────────────────────────
+function EntraAuthInitializer({ children }: { children: ReactNode }) {
+  const { instance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
+  const { setUser, setIdpLogout } = useAuthStore();
+
+  // Register IdP logout function
+  useEffect(() => {
+    setIdpLogout(() => {
+      instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
+    });
+  }, [instance, setIdpLogout]);
+
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    const account = instance.getActiveAccount();
+    if (!account) return null;
+    try {
+      const response = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account,
+      });
+      return response.accessToken;
+    } catch {
+      // Silent token acquisition failed — interaction required
+      return null;
+    }
+  }, [instance]);
 
   useEffect(() => {
     const initAuth = async () => {
-      if (oidcAuth.isLoading) {
-        return;
+      if (inProgress !== InteractionStatus.None) return;
+
+      if (isAuthenticated) {
+        const token = await acquireToken();
+        if (token) {
+          sessionStorage.setItem('access_token', token);
+
+          try {
+            const userInfo = await usuariosApi.me();
+            setUser(userInfo);
+          } catch (error) {
+            console.error('Failed to fetch user info from backend:', error);
+            const account = instance.getActiveAccount() as AccountInfo;
+            const idTokenClaims = account.idTokenClaims as Record<string, unknown> | undefined;
+            const roles = (idTokenClaims?.['roles'] as string[] | undefined)
+              ?.filter(r => ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
+
+            setUser({
+              id: account.localAccountId,
+              username: account.username,
+              email: account.username,
+              nombre: account.name ?? account.username,
+              roles,
+              sucursalId: undefined,
+              sucursalNombre: undefined,
+              sucursalesDisponibles: [],
+            });
+          }
+        } else {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
+    };
+
+    initAuth();
+  }, [isAuthenticated, inProgress, acquireToken, setUser, instance]);
+
+  // Set up token refresh — keep sessionStorage in sync
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const interval = setInterval(async () => {
+      const token = await acquireToken();
+      if (token) {
+        sessionStorage.setItem('access_token', token);
+      }
+    }, 4 * 60 * 1000); // Refresh every 4 minutes
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, acquireToken]);
+
+  if (inProgress !== InteractionStatus.None) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+// ── Keycloak Auth Initializer (desarrollo local) ───────────────────────────
+function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
+  const oidcAuth = useOidcAuth();
+  const { setUser, setIdpLogout } = useAuthStore();
+
+  // Register IdP logout function
+  useEffect(() => {
+    setIdpLogout(() => {
+      oidcAuth.signoutRedirect({ post_logout_redirect_uri: window.location.origin });
+    });
+  }, [oidcAuth, setIdpLogout]);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      if (oidcAuth.isLoading) return;
 
       if (oidcAuth.isAuthenticated && oidcAuth.user) {
-        // Store token in sessionStorage for axios interceptor
         sessionStorage.setItem('access_token', oidcAuth.user.access_token);
 
         try {
-          // Fetch user info from backend
           const userInfo = await usuariosApi.me();
           setUser(userInfo);
         } catch (error) {
           console.error('Failed to fetch user info from backend:', error);
-          // Fallback: decodificar el access token JWT para obtener roles
-          // (realm_access está en el access token, no en el ID token/profile)
           const profile = oidcAuth.user.profile;
           let roles: string[] = [];
           try {
@@ -53,12 +156,11 @@ function AuthInitializer({ children }: { children: ReactNode }) {
             const payload = JSON.parse(atob(b64)) as Record<string, unknown>;
             const realmAccess = payload['realm_access'] as { roles?: string[] } | undefined;
             roles = realmAccess?.roles?.filter(r =>
-              ['admin','supervisor','cajero','vendedor'].includes(r)) ?? [];
+              ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
           } catch {
-            // Si falla el decode, intentar desde el profile (ID token)
             const profileRealmAccess = (profile as Record<string, unknown>)['realm_access'] as { roles?: string[] } | undefined;
             roles = profileRealmAccess?.roles?.filter(r =>
-              ['admin','supervisor','cajero','vendedor'].includes(r)) ?? [];
+              ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
           }
           setUser({
             id: profile.sub ?? 'unknown',
@@ -81,12 +183,7 @@ function AuthInitializer({ children }: { children: ReactNode }) {
 
   if (oidcAuth.isLoading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
       </Box>
     );
@@ -94,14 +191,8 @@ function AuthInitializer({ children }: { children: ReactNode }) {
 
   if (oidcAuth.error) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-        flexDirection="column"
-      >
-        <h1>Error de autenticación</h1>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" flexDirection="column">
+        <h1>Error de autenticaci&oacute;n</h1>
         <p>{oidcAuth.error.message}</p>
       </Box>
     );
@@ -110,10 +201,27 @@ function AuthInitializer({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// ── Auth Provider (selecciona Entra ID o Keycloak) ─────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
+  if (isEntraId) {
+    return (
+      <MsalProvider instance={msalInstance}>
+        <EntraAuthInitializer>{children}</EntraAuthInitializer>
+      </MsalProvider>
+    );
+  }
+
+  // Desarrollo local con Keycloak
+  const oidcConfig = {
+    ...keycloakConfig,
+    onSigninCallback: (_user: User | void): void => {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    },
+  };
+
   return (
     <OidcAuthProvider {...oidcConfig}>
-      <AuthInitializer>{children}</AuthInitializer>
+      <KeycloakAuthInitializer>{children}</KeycloakAuthInitializer>
     </OidcAuthProvider>
   );
 }

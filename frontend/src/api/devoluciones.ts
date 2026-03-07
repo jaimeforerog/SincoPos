@@ -7,7 +7,7 @@ export const devolucionesApi = {
    */
   crearDevolucionParcial: async (ventaId: number, dto: CrearDevolucionParcialDTO) => {
     const response = await apiClient.post<DevolucionVentaDTO>(
-      `/api/ventas/${ventaId}/devolucion-parcial`,
+      `/ventas/${ventaId}/devolucion-parcial`,
       dto
     );
     return response.data;
@@ -18,7 +18,7 @@ export const devolucionesApi = {
    */
   obtenerPorVenta: async (ventaId: number) => {
     const response = await apiClient.get<DevolucionVentaDTO[]>(
-      `/api/ventas/${ventaId}/devoluciones`
+      `/ventas/${ventaId}/devoluciones`
     );
     return response.data;
   },
@@ -28,7 +28,7 @@ export const devolucionesApi = {
    */
   obtenerPorId: async (devolucionId: number) => {
     const response = await apiClient.get<DevolucionVentaDTO>(
-      `/api/ventas/devoluciones/${devolucionId}`
+      `/ventas/devoluciones/${devolucionId}`
     );
     return response.data;
   },

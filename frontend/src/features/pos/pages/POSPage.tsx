@@ -7,6 +7,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import { ventasApi } from '@/api/ventas';
 import { cajasApi } from '@/api/cajas';
@@ -19,7 +20,7 @@ import type { ProductoDTO, CrearVentaDTO, VentaDTO } from '@/types/api';
 
 export function POSPage() {
   const { enqueueSnackbar } = useSnackbar();
-  const { user, isCajero, activeSucursalId } = useAuth();
+  const { user, isCajero, activeSucursalId, isLoading } = useAuth();
 
   // Cargar cajas abiertas
   const { data: _cajasAbiertas = [] } = useCajasAbiertas();
@@ -36,23 +37,22 @@ export function POSPage() {
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
   const [showSeleccionarCaja, setShowSeleccionarCaja] = useState(false);
 
-  // SIEMPRE mostrar diálogo de selección al entrar
+  // Mostrar diálogo de selección de caja una vez que el perfil de usuario esté cargado
   useEffect(() => {
-    // Verificar que el usuario tenga sucursal activa asignada
-    if (!activeSucursalId) {
-      enqueueSnackbar('No tienes una sucursal asignada. Contacta al administrador.', {
-        variant: 'error',
-      });
-      return;
-    }
+    // Esperar a que el perfil del usuario esté completamente cargado
+    if (isLoading) return;
 
-    // Siempre mostrar el diálogo de selección de caja al entrar
     setShowSeleccionarCaja(true);
-  }, [activeSucursalId, enqueueSnackbar]);
+  }, [isLoading]);
 
-  // Handler para seleccionar caja
-  const handleSelectCaja = (cajaId: number) => {
+  // Handler para seleccionar caja (también recibe la sucursal del diálogo)
+  const { setActiveSucursal } = useAuthStore();
+  const handleSelectCaja = (cajaId: number, sucursalId: number) => {
     setSelectedCajaId(cajaId);
+    // Asegurar que activeSucursalId quede sincronizado con la sucursal de la caja
+    if (!activeSucursalId || activeSucursalId !== sucursalId) {
+      setActiveSucursal(sucursalId);
+    }
     setShowSeleccionarCaja(false);
     enqueueSnackbar('Caja seleccionada correctamente', { variant: 'success' });
   };
@@ -133,7 +133,7 @@ export function POSPage() {
   // Handler para agregar producto con validación de stock y precio de sucursal
   const handleSelectProduct = async (producto: ProductoDTO) => {
     if (!activeSucursalId) {
-      enqueueSnackbar('No tienes sucursal asignada', { variant: 'error' });
+      enqueueSnackbar(`El usuario ${user?.nombre ?? user?.email} no tiene una sucursal asignada`, { variant: 'error' });
       return;
     }
 
@@ -201,7 +201,7 @@ export function POSPage() {
   // Handler para actualizar cantidad con validación de stock
   const handleUpdateQuantity = async (productoId: string, nuevaCantidad: number) => {
     if (!activeSucursalId) {
-      enqueueSnackbar('No tienes sucursal asignada', { variant: 'error' });
+      enqueueSnackbar(`El usuario ${user?.nombre ?? user?.email} no tiene una sucursal asignada`, { variant: 'error' });
       return;
     }
 
@@ -264,7 +264,7 @@ export function POSPage() {
     }
 
     if (!activeSucursalId) {
-      enqueueSnackbar('No tienes una sucursal asignada', { variant: 'error' });
+      enqueueSnackbar(`El usuario ${user?.nombre ?? user?.email} no tiene una sucursal asignada`, { variant: 'error' });
       return;
     }
 

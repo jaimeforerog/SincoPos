@@ -4,49 +4,49 @@ import type { ImpuestoDTO, RetencionReglaDTO, CrearImpuestoDTO, EditarImpuestoDT
 export const impuestosApi = {
   getAll: async (pais?: string): Promise<ImpuestoDTO[]> => {
     const params = pais ? { pais } : {};
-    const response = await apiClient.get<ImpuestoDTO[]>('/api/impuestos', { params });
+    const response = await apiClient.get<ImpuestoDTO[]>('/impuestos', { params });
     return response.data;
   },
 
   getById: async (id: number): Promise<ImpuestoDTO> => {
-    const response = await apiClient.get<ImpuestoDTO>(`/api/impuestos/${id}`);
+    const response = await apiClient.get<ImpuestoDTO>(`/impuestos/${id}`);
     return response.data;
   },
 
   getTipos: async (): Promise<{ valor: number; nombre: string }[]> => {
-    const response = await apiClient.get('/api/impuestos/tipos');
+    const response = await apiClient.get('/impuestos/tipos');
     return response.data;
   },
 
   create: async (dto: CrearImpuestoDTO): Promise<ImpuestoDTO> => {
-    const response = await apiClient.post<ImpuestoDTO>('/api/impuestos', dto);
+    const response = await apiClient.post<ImpuestoDTO>('/impuestos', dto);
     return response.data;
   },
 
   update: async (id: number, dto: EditarImpuestoDTO): Promise<void> => {
-    await apiClient.put(`/api/impuestos/${id}`, dto);
+    await apiClient.put(`/impuestos/${id}`, dto);
   },
 
   deactivate: async (id: number): Promise<void> => {
-    await apiClient.delete(`/api/impuestos/${id}`);
+    await apiClient.delete(`/impuestos/${id}`);
   },
 };
 
 export const retencionesApi = {
   getAll: async (): Promise<RetencionReglaDTO[]> => {
-    const response = await apiClient.get<RetencionReglaDTO[]>('/api/retenciones');
+    const response = await apiClient.get<RetencionReglaDTO[]>('/retenciones');
     return response.data;
   },
 
   create: async (dto: CrearRetencionDTO): Promise<void> => {
-    await apiClient.post('/api/retenciones', dto);
+    await apiClient.post('/retenciones', dto);
   },
 
   update: async (id: number, dto: CrearRetencionDTO): Promise<void> => {
-    await apiClient.put(`/api/retenciones/${id}`, dto);
+    await apiClient.put(`/retenciones/${id}`, dto);
   },
 
   deactivate: async (id: number): Promise<void> => {
-    await apiClient.delete(`/api/retenciones/${id}`);
+    await apiClient.delete(`/retenciones/${id}`);
   },
 };

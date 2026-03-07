@@ -20,7 +20,7 @@ export const comprasApi = {
     hasta?: string;
     limite?: number;
   }) => {
-    const response = await apiClient.get<OrdenCompraDTO[]>('/api/compras', { params });
+    const response = await apiClient.get<OrdenCompraDTO[]>('/compras', { params });
     return response.data;
   },
 
@@ -28,7 +28,7 @@ export const comprasApi = {
    * Obtener detalle de una orden de compra
    */
   getById: async (id: number) => {
-    const response = await apiClient.get<OrdenCompraDTO>(`/api/compras/${id}`);
+    const response = await apiClient.get<OrdenCompraDTO>(`/compras/${id}`);
     return response.data;
   },
 
@@ -36,7 +36,7 @@ export const comprasApi = {
    * Crear nueva orden de compra
    */
   create: async (data: CrearOrdenCompraDTO) => {
-    const response = await apiClient.post<OrdenCompraDTO>('/api/compras', data);
+    const response = await apiClient.post<OrdenCompraDTO>('/compras', data);
     return response.data;
   },
 
@@ -44,7 +44,7 @@ export const comprasApi = {
    * Aprobar orden de compra (Pendiente → Aprobada)
    */
   aprobar: async (id: number, data?: AprobarOrdenCompraDTO) => {
-    const response = await apiClient.post(`/api/compras/${id}/aprobar`, data || {});
+    const response = await apiClient.post(`/compras/${id}/aprobar`, data || {});
     return response.data;
   },
 
@@ -52,7 +52,7 @@ export const comprasApi = {
    * Rechazar orden de compra (Pendiente → Rechazada)
    */
   rechazar: async (id: number, data: RechazarOrdenCompraDTO) => {
-    const response = await apiClient.post(`/api/compras/${id}/rechazar`, data);
+    const response = await apiClient.post(`/compras/${id}/rechazar`, data);
     return response.data;
   },
 
@@ -60,7 +60,7 @@ export const comprasApi = {
    * Recibir mercancía (Aprobada → RecibidaParcial o RecibidaCompleta)
    */
   recibir: async (id: number, data: RecibirOrdenCompraDTO) => {
-    const response = await apiClient.post(`/api/compras/${id}/recibir`, data);
+    const response = await apiClient.post(`/compras/${id}/recibir`, data);
     return response.data;
   },
 
@@ -68,7 +68,7 @@ export const comprasApi = {
    * Cancelar orden de compra
    */
   cancelar: async (id: number, data: CancelarOrdenCompraDTO) => {
-    const response = await apiClient.post(`/api/compras/${id}/cancelar`, data);
+    const response = await apiClient.post(`/compras/${id}/cancelar`, data);
     return response.data;
   },
 };

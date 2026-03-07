@@ -7,14 +7,26 @@ using Microsoft.Extensions.Options;
 namespace POS.IntegrationTests;
 
 /// <summary>
+/// Opciones para TestAuthHandler. DefaultEmail = null → 401 cuando no hay X-Test-User.
+/// </summary>
+public class TestAuthHandlerOptions : AuthenticationSchemeOptions
+{
+    /// <summary>
+    /// Email a usar cuando no hay header X-Test-User.
+    /// null = retorna NoResult (401). Valor como "admin@sincopos.com" = autenticación implícita.
+    /// </summary>
+    public string? DefaultEmail { get; set; }
+}
+
+/// <summary>
 /// Handler de autenticación para tests que permite simular diferentes usuarios autenticados.
 /// </summary>
-public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+public class TestAuthHandler : AuthenticationHandler<TestAuthHandlerOptions>
 {
     public const string SchemeName = "TestAuth";
 
     public TestAuthHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        IOptionsMonitor<TestAuthHandlerOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder)
         : base(options, logger, encoder)
@@ -28,8 +40,10 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 
         if (string.IsNullOrEmpty(email))
         {
-            // Sin usuario - autenticación fallida
-            return Task.FromResult(AuthenticateResult.NoResult());
+            // Sin header → usar DefaultEmail configurado (null = NoResult/401)
+            email = Options.DefaultEmail;
+            if (string.IsNullOrEmpty(email))
+                return Task.FromResult(AuthenticateResult.NoResult());
         }
 
         // Determinar rol basado en el email

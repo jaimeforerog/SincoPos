@@ -14,30 +14,30 @@ export const tercerosApi = {
     tipoTercero?: string;
     incluirInactivos?: boolean;
   }) => {
-    const response = await apiClient.get<TerceroDTO[]>('/api/terceros', { params });
+    const response = await apiClient.get<TerceroDTO[]>('/terceros', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<TerceroDTO>(`/api/terceros/${id}`);
+    const response = await apiClient.get<TerceroDTO>(`/terceros/${id}`);
     return response.data;
   },
 
   create: async (dto: CrearTerceroDTO) => {
-    const response = await apiClient.post<TerceroDTO>('/api/terceros', dto);
+    const response = await apiClient.post<TerceroDTO>('/terceros', dto);
     return response.data;
   },
 
   update: async (id: number, dto: ActualizarTerceroDTO) => {
-    await apiClient.put(`/api/terceros/${id}`, dto);
+    await apiClient.put(`/terceros/${id}`, dto);
   },
 
   deactivate: async (id: number) => {
-    await apiClient.delete(`/api/terceros/${id}`);
+    await apiClient.delete(`/terceros/${id}`);
   },
 
   calcularDV: async (nit: string): Promise<{ dv: string }> => {
-    const response = await apiClient.get<{ dv: string }>('/api/terceros/calcular-dv', {
+    const response = await apiClient.get<{ dv: string }>('/terceros/calcular-dv', {
       params: { nit },
     });
     return response.data;
@@ -45,22 +45,22 @@ export const tercerosApi = {
 
   agregarActividad: async (id: number, dto: AgregarActividadDTO) => {
     const response = await apiClient.post<TerceroActividadDTO>(
-      `/api/terceros/${id}/actividades`,
+      `/terceros/${id}/actividades`,
       dto,
     );
     return response.data;
   },
 
   eliminarActividad: async (id: number, actividadId: number) => {
-    await apiClient.delete(`/api/terceros/${id}/actividades/${actividadId}`);
+    await apiClient.delete(`/terceros/${id}/actividades/${actividadId}`);
   },
 
   establecerPrincipal: async (id: number, actividadId: number) => {
-    await apiClient.patch(`/api/terceros/${id}/actividades/${actividadId}/principal`);
+    await apiClient.patch(`/terceros/${id}/actividades/${actividadId}/principal`);
   },
 
   descargarPlantilla: async () => {
-    const response = await apiClient.get('/api/terceros/plantilla', {
+    const response = await apiClient.get('/terceros/plantilla', {
       responseType: 'blob',
     });
     const url = URL.createObjectURL(response.data);
@@ -75,7 +75,7 @@ export const tercerosApi = {
     const formData = new FormData();
     formData.append('archivo', archivo);
     const response = await apiClient.post<ResultadoImportacionTercerosDTO>(
-      '/api/terceros/importar',
+      '/terceros/importar',
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );

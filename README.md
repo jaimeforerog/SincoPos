@@ -33,7 +33,7 @@ Sistema de Punto de Venta moderno para Colombia con facturación electrónica DI
 | Notificaciones en tiempo real (SignalR) | ✅ |
 | CI/CD (GitHub Actions + Docker) | ✅ |
 
-**Suite de tests: 191 pruebas de integración (Testcontainers)**
+**Suite de tests: 233/234 pruebas de integración (233 passing, 1 skip)**
 
 ## Inicio rápido
 
@@ -163,12 +163,12 @@ Eventos que se envían automáticamente vía WebSocket al grupo `sucursal-{id}`:
 
 ## Tecnologías
 
-**Backend**: .NET 9, ASP.NET Core, EF Core 9, Marten, PostgreSQL 16, SignalR, FluentValidation
+**Backend**: .NET 9, ASP.NET Core, EF Core 9, Marten, PostgreSQL 16, SignalR, FluentValidation, Rate Limiting, Response Compression, Health Checks
 
 **Frontend**: React 18, TypeScript, Vite, MUI v7, TanStack Query, Zustand, notistack, @microsoft/signalr
 
 **Auth**: Keycloak JWT Bearer (realm `sincopos`)
 
-**Testing**: xUnit, FluentAssertions, Testcontainers, WebApplicationFactory
+**Testing**: xUnit, FluentAssertions, WebApplicationFactory (PostgreSQL local)
 
 **DevOps**: Docker, Docker Compose, GitHub Actions, ghcr.io

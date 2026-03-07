@@ -35,7 +35,7 @@ public class FacturacionTests
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
         var idInexistente = 999_999;
 
-        var response = await client.GetAsync($"/api/Facturacion/configuracion/{idInexistente}");
+        var response = await client.GetAsync($"/api/v1/Facturacion/configuracion/{idInexistente}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -46,7 +46,7 @@ public class FacturacionTests
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
         var dto = BuildConfiguracionDto();
 
-        var response = await client.PutAsJsonAsync($"/api/Facturacion/configuracion/{SucursalId}", dto);
+        var response = await client.PutAsJsonAsync($"/api/v1/Facturacion/configuracion/{SucursalId}", dto);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -57,9 +57,9 @@ public class FacturacionTests
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
         var dto = BuildConfiguracionDto(nit: "800555777", razonSocial: "EMPRESA FACTURACION SAS");
 
-        await client.PutAsJsonAsync($"/api/Facturacion/configuracion/{SucursalId}", dto);
+        await client.PutAsJsonAsync($"/api/v1/Facturacion/configuracion/{SucursalId}", dto);
 
-        var response = await client.GetAsync($"/api/Facturacion/configuracion/{SucursalId}");
+        var response = await client.GetAsync($"/api/v1/Facturacion/configuracion/{SucursalId}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var config = await response.Content.ReadFromJsonAsync<ConfiguracionEmisorDto>(_jsonOptions);
@@ -72,12 +72,14 @@ public class FacturacionTests
     [Fact]
     public async Task ObtenerConfiguracion_SinCertificado_TieneCertificadoDebeSer_False()
     {
+        // Usar SucursalFIFOId para evitar interferencia con el test del certificado (que usa SucursalPPId)
+        var sucursalSinCert = _factory.SucursalFIFOId;
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
         var dto = BuildConfiguracionDto(certificadoBase64: null);
 
-        await client.PutAsJsonAsync($"/api/Facturacion/configuracion/{SucursalId}", dto);
+        await client.PutAsJsonAsync($"/api/v1/Facturacion/configuracion/{sucursalSinCert}", dto);
 
-        var response = await client.GetAsync($"/api/Facturacion/configuracion/{SucursalId}");
+        var response = await client.GetAsync($"/api/v1/Facturacion/configuracion/{sucursalSinCert}");
         var config = await response.Content.ReadFromJsonAsync<ConfiguracionEmisorDto>(_jsonOptions);
 
         config!.TieneCertificado.Should().BeFalse();
@@ -91,9 +93,9 @@ public class FacturacionTests
         var certFicticio = Convert.ToBase64String(new byte[] { 1, 2, 3, 4, 5 });
         var dto = BuildConfiguracionDto(certificadoBase64: certFicticio);
 
-        await client.PutAsJsonAsync($"/api/Facturacion/configuracion/{SucursalId}", dto);
+        await client.PutAsJsonAsync($"/api/v1/Facturacion/configuracion/{SucursalId}", dto);
 
-        var response = await client.GetAsync($"/api/Facturacion/configuracion/{SucursalId}");
+        var response = await client.GetAsync($"/api/v1/Facturacion/configuracion/{SucursalId}");
         var config = await response.Content.ReadFromJsonAsync<ConfiguracionEmisorDto>(_jsonOptions);
 
         config!.TieneCertificado.Should().BeTrue();
@@ -106,15 +108,15 @@ public class FacturacionTests
 
         // Primera actualización
         var dto1 = BuildConfiguracionDto(prefijo: "FV1");
-        await client.PutAsJsonAsync($"/api/Facturacion/configuracion/{SucursalId}", dto1);
+        await client.PutAsJsonAsync($"/api/v1/Facturacion/configuracion/{SucursalId}", dto1);
 
         // Segunda actualización con datos diferentes
         var dto2 = BuildConfiguracionDto(prefijo: "FV2");
-        var response2 = await client.PutAsJsonAsync($"/api/Facturacion/configuracion/{SucursalId}", dto2);
+        var response2 = await client.PutAsJsonAsync($"/api/v1/Facturacion/configuracion/{SucursalId}", dto2);
         response2.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // El último valor debe prevalecer
-        var getResponse = await client.GetAsync($"/api/Facturacion/configuracion/{SucursalId}");
+        var getResponse = await client.GetAsync($"/api/v1/Facturacion/configuracion/{SucursalId}");
         var config = await getResponse.Content.ReadFromJsonAsync<ConfiguracionEmisorDto>(_jsonOptions);
         config!.Prefijo.Should().Be("FV2");
     }
@@ -126,7 +128,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
 
-        var response = await client.GetAsync($"/api/Facturacion/configuracion/{SucursalId}");
+        var response = await client.GetAsync($"/api/v1/Facturacion/configuracion/{SucursalId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -136,7 +138,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateAuthenticatedClient(CajeroEmail);
 
-        var response = await client.GetAsync($"/api/Facturacion/configuracion/{SucursalId}");
+        var response = await client.GetAsync($"/api/v1/Facturacion/configuracion/{SucursalId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -147,7 +149,7 @@ public class FacturacionTests
         var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
         var dto = BuildConfiguracionDto();
 
-        var response = await client.PutAsJsonAsync($"/api/Facturacion/configuracion/{SucursalId}", dto);
+        var response = await client.PutAsJsonAsync($"/api/v1/Facturacion/configuracion/{SucursalId}", dto);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -157,7 +159,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateClient(); // sin header X-Test-User
 
-        var response = await client.GetAsync($"/api/Facturacion/configuracion/{SucursalId}");
+        var response = await client.GetAsync($"/api/v1/Facturacion/configuracion/{SucursalId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -170,7 +172,7 @@ public class FacturacionTests
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
 
         var response = await client.GetAsync(
-            $"/api/Facturacion/documentos?sucursalId={SucursalId}&pageNumber=1&pageSize=20");
+            $"/api/v1/Facturacion/documentos?sucursalId={SucursalId}&pageNumber=1&pageSize=20");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -186,7 +188,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
 
-        var response = await client.GetAsync("/api/Facturacion/documentos");
+        var response = await client.GetAsync("/api/v1/Facturacion/documentos");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -196,7 +198,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateAuthenticatedClient(CajeroEmail);
 
-        var response = await client.GetAsync("/api/Facturacion/documentos");
+        var response = await client.GetAsync("/api/v1/Facturacion/documentos");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -206,7 +208,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
 
-        var response = await client.GetAsync("/api/Facturacion/documentos/999999");
+        var response = await client.GetAsync("/api/v1/Facturacion/documentos/999999");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -216,7 +218,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
 
-        var response = await client.GetAsync("/api/Facturacion/documentos/999999/xml");
+        var response = await client.GetAsync("/api/v1/Facturacion/documentos/999999/xml");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -226,7 +228,7 @@ public class FacturacionTests
     {
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
 
-        var response = await client.PostAsync("/api/Facturacion/documentos/999999/reintentar", null);
+        var response = await client.PostAsync("/api/v1/Facturacion/documentos/999999/reintentar", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

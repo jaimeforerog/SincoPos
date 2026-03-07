@@ -1,17 +1,17 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth as useOidcAuth } from 'react-oidc-context';
 import { Box, CircularProgress, Typography } from '@mui/material';
+import { useAuth } from '@/hooks/useAuth';
 
 export function CallbackPage() {
-  const oidcAuth = useOidcAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (oidcAuth.isAuthenticated) {
+    if (isAuthenticated) {
       navigate('/');
     }
-  }, [oidcAuth.isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate]);
 
   return (
     <Box

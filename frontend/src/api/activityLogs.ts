@@ -31,7 +31,7 @@ export const activityLogsApi = {
     params.set('pageSize',   String(filters.pageSize   ?? 50));
 
     const res = await apiClient.get<PaginatedResult<ActivityLogFullDTO>>(
-      `/api/ActivityLogs?${params.toString()}`
+      `/ActivityLogs?${params.toString()}`
     );
     return res.data;
   },
@@ -41,12 +41,12 @@ export const activityLogsApi = {
     if (fechaDesde) params.set('fechaDesde', fechaDesde);
     if (fechaHasta) params.set('fechaHasta', fechaHasta);
     if (sucursalId) params.set('sucursalId', String(sucursalId));
-    const res = await apiClient.get<DashboardActivityDTO>(`/api/ActivityLogs/dashboard?${params.toString()}`);
+    const res = await apiClient.get<DashboardActivityDTO>(`/ActivityLogs/dashboard?${params.toString()}`);
     return res.data;
   },
 
   getTipos: async (): Promise<Record<number, string>> => {
-    const res = await apiClient.get<Record<number, string>>('/api/ActivityLogs/tipos');
+    const res = await apiClient.get<Record<number, string>>('/ActivityLogs/tipos');
     return res.data;
   },
 };

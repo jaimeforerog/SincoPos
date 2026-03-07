@@ -79,15 +79,19 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Run tests
+        working-directory: frontend
+        run: npm run test:run
+
       - name: Build (production)
         working-directory: frontend
         run: npm run build
         env:
-          # Variables de entorno para el build de producción
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.sincopos.com' }}
-          VITE_KEYCLOAK_URL: ${{ vars.VITE_KEYCLOAK_URL || 'https://auth.sincopos.com' }}
-          VITE_KEYCLOAK_REALM: ${{ vars.VITE_KEYCLOAK_REALM || 'sincopos' }}
-          VITE_KEYCLOAK_CLIENT_ID: ${{ vars.VITE_KEYCLOAK_CLIENT_ID || 'sincopos-frontend' }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://sincopos-api.azurewebsites.net' }}
+          VITE_ENTRA_TENANT_ID: ${{ vars.VITE_ENTRA_TENANT_ID }}
+          VITE_ENTRA_CLIENT_ID: ${{ vars.VITE_ENTRA_CLIENT_ID }}
+          VITE_ENTRA_API_SCOPE: ${{ vars.VITE_ENTRA_API_SCOPE }}
+          VITE_API_VERSION: ${{ vars.VITE_API_VERSION || 'v1' }}
 
       - name: Upload frontend dist
         uses: actions/upload-artifact@v4
@@ -139,3 +143,48 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ── Deploy Backend: Azure App Service ────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend (Azure App Service)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: sincopos-api
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  # ── Deploy Frontend: Azure Static Web Apps ──────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend (Azure Static Web Apps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend/dist
+          skip_app_build: true

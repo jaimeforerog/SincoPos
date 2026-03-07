@@ -23,7 +23,7 @@ public class PaisesTests
     public async Task ObtenerPaises_DebeRetornarListado()
     {
         // Act
-        var response = await _client.GetAsync("/api/paises");
+        var response = await _client.GetAsync("/api/v1/paises");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -37,7 +37,7 @@ public class PaisesTests
     public async Task ObtenerPaises_DebeIncluirDatosCompletos()
     {
         // Act
-        var response = await _client.GetAsync("/api/paises");
+        var response = await _client.GetAsync("/api/v1/paises");
 
         // Assert
         var paises = await response.Content.ReadFromJsonAsync<List<PaisDto>>();
@@ -56,7 +56,7 @@ public class PaisesTests
     public async Task ObtenerPaises_DebeIncluirEmoji()
     {
         // Act
-        var response = await _client.GetAsync("/api/paises");
+        var response = await _client.GetAsync("/api/v1/paises");
 
         // Assert
         var paises = await response.Content.ReadFromJsonAsync<List<PaisDto>>();
@@ -72,8 +72,8 @@ public class PaisesTests
     public async Task ObtenerPaises_DebeUsarCache()
     {
         // Act: Hacer dos llamadas consecutivas
-        var response1 = await _client.GetAsync("/api/paises");
-        var response2 = await _client.GetAsync("/api/paises");
+        var response1 = await _client.GetAsync("/api/v1/paises");
+        var response2 = await _client.GetAsync("/api/v1/paises");
 
         // Assert: Ambas deben ser exitosas
         response1.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -94,7 +94,7 @@ public class PaisesTests
     public async Task ObtenerCiudades_PorPais_DebeRetornarCiudades()
     {
         // Act: Obtener ciudades de Colombia
-        var response = await _client.GetAsync("/api/paises/CO/ciudades");
+        var response = await _client.GetAsync("/api/v1/paises/CO/ciudades");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -110,7 +110,7 @@ public class PaisesTests
     public async Task ObtenerCiudades_DebeIncluirDatosCompletos()
     {
         // Act
-        var response = await _client.GetAsync("/api/paises/CO/ciudades");
+        var response = await _client.GetAsync("/api/v1/paises/CO/ciudades");
 
         // Assert
         var ciudades = await response.Content.ReadFromJsonAsync<List<CiudadDto>>();
@@ -129,7 +129,7 @@ public class PaisesTests
     public async Task ObtenerCiudades_PaisInvalido_DebeRetornar400()
     {
         // Act: Usar código de país inválido
-        var response = await _client.GetAsync("/api/paises/ /ciudades");
+        var response = await _client.GetAsync("/api/v1/paises/ /ciudades");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -139,7 +139,7 @@ public class PaisesTests
     public async Task ObtenerCiudades_PaisVacio_DebeRetornar400()
     {
         // Act: Usar código de país vacío
-        var response = await _client.GetAsync("/api/paises//ciudades");
+        var response = await _client.GetAsync("/api/v1/paises//ciudades");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound); // Ruta no encontrada
@@ -149,8 +149,8 @@ public class PaisesTests
     public async Task ObtenerCiudades_DebeUsarCache()
     {
         // Act: Hacer dos llamadas consecutivas
-        var response1 = await _client.GetAsync("/api/paises/CO/ciudades");
-        var response2 = await _client.GetAsync("/api/paises/CO/ciudades");
+        var response1 = await _client.GetAsync("/api/v1/paises/CO/ciudades");
+        var response2 = await _client.GetAsync("/api/v1/paises/CO/ciudades");
 
         // Assert
         response1.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -167,8 +167,8 @@ public class PaisesTests
     public async Task ObtenerCiudades_DistintosPaises_DebeTenerDiferentesCiudades()
     {
         // Act: Obtener ciudades de Colombia y Perú
-        var responseCO = await _client.GetAsync("/api/paises/CO/ciudades");
-        var responsePE = await _client.GetAsync("/api/paises/PE/ciudades");
+        var responseCO = await _client.GetAsync("/api/v1/paises/CO/ciudades");
+        var responsePE = await _client.GetAsync("/api/v1/paises/PE/ciudades");
 
         // Assert
         responseCO.StatusCode.Should().Be(HttpStatusCode.OK);

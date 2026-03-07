@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface SeleccionarCajaDialogProps {
   open: boolean;
-  onSelect: (cajaId: number) => void;
+  onSelect: (cajaId: number, sucursalId: number) => void;
 }
 
 export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogProps) {
@@ -60,8 +60,8 @@ export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogP
   };
 
   const handleConfirm = () => {
-    if (selectedCajaId) {
-      onSelect(selectedCajaId);
+    if (selectedCajaId && selectedSucursalId) {
+      onSelect(selectedCajaId, selectedSucursalId);
     }
   };
 

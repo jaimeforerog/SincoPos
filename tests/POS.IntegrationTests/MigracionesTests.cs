@@ -27,7 +27,7 @@ public class MigracionesTests
     public async Task ObtenerHistorial_DebeRetornarMigraciones()
     {
         // Act
-        var response = await _client.GetAsync("/api/migraciones?limite=10");
+        var response = await _client.GetAsync("/api/v1/migraciones?limite=10");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -41,10 +41,10 @@ public class MigracionesTests
     public async Task ObtenerHistorial_ConLimite_DebeRespetarLimite()
     {
         // Arrange: Sincronizar para tener datos
-        await _client.PostAsync("/api/migraciones/sincronizar", null);
+        await _client.PostAsync("/api/v1/migraciones/sincronizar", null);
 
         // Act
-        var response = await _client.GetAsync("/api/migraciones?limite=5");
+        var response = await _client.GetAsync("/api/v1/migraciones?limite=5");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -57,10 +57,10 @@ public class MigracionesTests
     public async Task ObtenerHistorial_DebeOrdenarPorFechaDesc()
     {
         // Arrange: Sincronizar para tener datos
-        await _client.PostAsync("/api/migraciones/sincronizar", null);
+        await _client.PostAsync("/api/v1/migraciones/sincronizar", null);
 
         // Act
-        var response = await _client.GetAsync("/api/migraciones?limite=50");
+        var response = await _client.GetAsync("/api/v1/migraciones?limite=50");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -86,7 +86,7 @@ public class MigracionesTests
     public async Task SincronizarMigraciones_DebeSincronizarHistoricas()
     {
         // Act
-        var response = await _client.PostAsync("/api/migraciones/sincronizar", null);
+        var response = await _client.PostAsync("/api/v1/migraciones/sincronizar", null);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -99,13 +99,13 @@ public class MigracionesTests
     public async Task SincronizarMigraciones_NoDebeDuplicar()
     {
         // Act: Ejecutar dos veces
-        await _client.PostAsync("/api/migraciones/sincronizar", null);
-        var responseHistorial1 = await _client.GetAsync("/api/migraciones?limite=100");
+        await _client.PostAsync("/api/v1/migraciones/sincronizar", null);
+        var responseHistorial1 = await _client.GetAsync("/api/v1/migraciones?limite=100");
         var migraciones1 = await responseHistorial1.Content.ReadFromJsonAsync<List<MigracionLogDto>>();
         var count1 = migraciones1!.Count;
 
-        await _client.PostAsync("/api/migraciones/sincronizar", null);
-        var responseHistorial2 = await _client.GetAsync("/api/migraciones?limite=100");
+        await _client.PostAsync("/api/v1/migraciones/sincronizar", null);
+        var responseHistorial2 = await _client.GetAsync("/api/v1/migraciones?limite=100");
         var migraciones2 = await responseHistorial2.Content.ReadFromJsonAsync<List<MigracionLogDto>>();
         var count2 = migraciones2!.Count;
 
@@ -117,8 +117,8 @@ public class MigracionesTests
     public async Task SincronizarMigraciones_DebeMarcarComoHistoricas()
     {
         // Act
-        await _client.PostAsync("/api/migraciones/sincronizar", null);
-        var response = await _client.GetAsync("/api/migraciones?limite=100");
+        await _client.PostAsync("/api/v1/migraciones/sincronizar", null);
+        var response = await _client.GetAsync("/api/v1/migraciones?limite=100");
 
         // Assert
         var migraciones = await response.Content.ReadFromJsonAsync<List<MigracionLogDto>>();
@@ -150,7 +150,7 @@ public class MigracionesTests
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/migraciones/registrar", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/migraciones/registrar", dto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -174,10 +174,10 @@ public class MigracionesTests
         };
 
         // Act
-        await _client.PostAsJsonAsync("/api/migraciones/registrar", dto);
+        await _client.PostAsJsonAsync("/api/v1/migraciones/registrar", dto);
 
         // Assert: Verificar que se guardó con el usuario correcto
-        var responseHistorial = await _client.GetAsync("/api/migraciones?limite=1");
+        var responseHistorial = await _client.GetAsync("/api/v1/migraciones?limite=1");
         var migraciones = await responseHistorial.Content.ReadFromJsonAsync<List<MigracionLogDto>>();
         migraciones.Should().NotBeNull();
         migraciones!.Count.Should().BeGreaterThan(0);
@@ -199,10 +199,10 @@ public class MigracionesTests
         };
 
         // Act
-        await _client.PostAsJsonAsync("/api/migraciones/registrar", dto);
+        await _client.PostAsJsonAsync("/api/v1/migraciones/registrar", dto);
 
         // Assert: Verificar que la descripción se guardó
-        var responseHistorial = await _client.GetAsync("/api/migraciones?limite=1");
+        var responseHistorial = await _client.GetAsync("/api/v1/migraciones?limite=1");
         var migraciones = await responseHistorial.Content.ReadFromJsonAsync<List<MigracionLogDto>>();
         migraciones.Should().NotBeNull();
         migraciones!.Count.Should().BeGreaterThan(0);
@@ -217,7 +217,7 @@ public class MigracionesTests
     public async Task AccederMigraciones_SinSerAdmin_DebeRetornar403()
     {
         // Act: Usar cliente sin rol Admin
-        var response = await _clientSupervisor.GetAsync("/api/migraciones?limite=10");
+        var response = await _clientSupervisor.GetAsync("/api/v1/migraciones?limite=10");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -227,7 +227,7 @@ public class MigracionesTests
     public async Task SincronizarMigraciones_SinSerAdmin_DebeRetornar403()
     {
         // Act
-        var response = await _clientSupervisor.PostAsync("/api/migraciones/sincronizar", null);
+        var response = await _clientSupervisor.PostAsync("/api/v1/migraciones/sincronizar", null);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -246,7 +246,7 @@ public class MigracionesTests
         };
 
         // Act
-        var response = await _clientSupervisor.PostAsJsonAsync("/api/migraciones/registrar", dto);
+        var response = await _clientSupervisor.PostAsJsonAsync("/api/v1/migraciones/registrar", dto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);

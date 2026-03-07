@@ -10,7 +10,8 @@ namespace POS.Api.Controllers;
 /// </summary>
 [Authorize(Policy = "Admin")]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class MigracionesController : ControllerBase
 {
     private readonly MigracionLogService _migracionLogService;

@@ -10,7 +10,8 @@ namespace POS.Api.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class ImpuestosController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -180,7 +181,7 @@ public class ImpuestosController : ControllerBase
     /// Listar todas las reglas de retención activas e inactivas.
     /// Tipos: ReteFuente, ReteICA, ReteIVA.
     /// </summary>
-    [HttpGet("/api/Retenciones")]
+    [HttpGet("/api/v{version:apiVersion}/Retenciones")]
     [ProducesResponseType(typeof(IEnumerable<RetencionReglaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<RetencionReglaDto>>> GetRetenciones() =>
         Ok(await _context.RetencionesReglas
@@ -201,7 +202,7 @@ public class ImpuestosController : ControllerBase
     /// </remarks>
     /// <response code="201">Regla de retención creada.</response>
     /// <response code="400">Nombre vacío o porcentaje inválido.</response>
-    [HttpPost("/api/Retenciones")]
+    [HttpPost("/api/v{version:apiVersion}/Retenciones")]
     [Authorize(Policy = "Admin")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -232,7 +233,7 @@ public class ImpuestosController : ControllerBase
     /// <summary>Actualizar una regla de retención existente (reemplaza todos los campos).</summary>
     /// <response code="204">Actualizado exitosamente.</response>
     /// <response code="404">Regla no encontrada.</response>
-    [HttpPut("/api/Retenciones/{id:int}")]
+    [HttpPut("/api/v{version:apiVersion}/Retenciones/{id:int}")]
     [Authorize(Policy = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -256,7 +257,7 @@ public class ImpuestosController : ControllerBase
     /// <summary>Desactivar (soft delete) una regla de retención.</summary>
     /// <response code="204">Desactivado exitosamente.</response>
     /// <response code="404">Regla no encontrada.</response>
-    [HttpDelete("/api/Retenciones/{id:int}")]
+    [HttpDelete("/api/v{version:apiVersion}/Retenciones/{id:int}")]
     [Authorize(Policy = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

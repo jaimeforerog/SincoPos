@@ -235,6 +235,18 @@ public class UsuarioService
     }
 
     /// <summary>
+    /// Obtiene todas las sucursales activas (para usuarios admin/supervisor sin asignaciones)
+    /// </summary>
+    public async Task<List<(int Id, string Nombre)>> ObtenerTodasSucursalesActivasAsync()
+    {
+        return await _context.Sucursales
+            .Where(s => s.Activo)
+            .OrderBy(s => s.Nombre)
+            .Select(s => new ValueTuple<int, string>(s.Id, s.Nombre))
+            .ToListAsync();
+    }
+
+    /// <summary>
     /// Obtiene estadísticas de usuarios
     /// </summary>
     public async Task<Dictionary<string, object>> ObtenerEstadisticasAsync()

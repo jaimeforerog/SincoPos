@@ -39,7 +39,7 @@ export interface FiltrosUsuario {
 
 export const usuariosApi = {
   me: async (): Promise<UserInfo> => {
-    const response = await apiClient.get<PerfilUsuarioBackend>('/api/usuarios/me');
+    const response = await apiClient.get<PerfilUsuarioBackend>('/usuarios/me');
     const d = response.data;
     return {
       id: String(d.id),
@@ -54,25 +54,25 @@ export const usuariosApi = {
   },
 
   listar: async (filtros?: FiltrosUsuario): Promise<UsuarioDto[]> => {
-    const response = await apiClient.get<UsuarioDto[]>('/api/usuarios', {
+    const response = await apiClient.get<UsuarioDto[]>('/usuarios', {
       params: filtros,
     });
     return response.data;
   },
 
   actualizarSucursal: async (id: number, sucursalId: number): Promise<void> => {
-    await apiClient.put(`/api/usuarios/${id}/sucursal`, { sucursalId });
+    await apiClient.put(`/usuarios/${id}/sucursal`, { sucursalId });
   },
 
   actualizarMiSucursal: async (sucursalId: number): Promise<void> => {
-    await apiClient.put('/api/usuarios/me/sucursal', { sucursalId });
+    await apiClient.put('/usuarios/me/sucursal', { sucursalId });
   },
 
   asignarSucursales: async (id: number, sucursalIds: number[]): Promise<void> => {
-    await apiClient.put(`/api/usuarios/${id}/sucursales`, { sucursalIds });
+    await apiClient.put(`/usuarios/${id}/sucursales`, { sucursalIds });
   },
 
   cambiarEstado: async (id: number, activo: boolean, motivo?: string): Promise<void> => {
-    await apiClient.put(`/api/usuarios/${id}/estado`, { activo, motivo });
+    await apiClient.put(`/usuarios/${id}/estado`, { activo, motivo });
   },
 };

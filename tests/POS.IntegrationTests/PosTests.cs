@@ -31,20 +31,20 @@ public class PosTests
 
     private async Task<CajaDto> CrearCaja(string nombre)
     {
-        var r = await _client.PostAsJsonAsync("/api/Cajas", new { nombre, sucursalId = SucId });
+        var r = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre, sucursalId = SucId });
         r.EnsureSuccessStatusCode();
         return (await r.Content.ReadFromJsonAsync<CajaDto>(_json))!;
     }
 
     private async Task AbrirCaja(int cajaId, decimal montoApertura = 100_000m)
     {
-        var r = await _client.PostAsJsonAsync($"/api/Cajas/{cajaId}/abrir", new { montoApertura });
+        var r = await _client.PostAsJsonAsync($"/api/v1/Cajas/{cajaId}/abrir", new { montoApertura });
         r.EnsureSuccessStatusCode();
     }
 
     private async Task<Guid> CrearProducto(string codigo, decimal precioVenta = 5000m, decimal precioCosto = 2000m)
     {
-        var r = await _client.PostAsJsonAsync("/api/Productos", new
+        var r = await _client.PostAsJsonAsync("/api/v1/Productos", new
         {
             codigoBarras = codigo, nombre = $"Prod {codigo}",
             categoriaId = CatId, precioVenta, precioCosto
@@ -55,7 +55,7 @@ public class PosTests
 
     private async Task RegistrarEntrada(Guid productoId, decimal cantidad, decimal costo = 2000m)
     {
-        var r = await _client.PostAsJsonAsync("/api/Inventario/entrada", new
+        var r = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", new
         {
             productoId, sucursalId = SucId, cantidad, costoUnitario = costo,
             terceroId = TercId, referencia = $"POS-{Guid.NewGuid():N}"[..20]
@@ -65,7 +65,7 @@ public class PosTests
 
     private async Task<VentaDto> HacerVenta(int cajaId, Guid productoId, int cantidad = 1)
     {
-        var r = await _client.PostAsJsonAsync("/api/Ventas", new
+        var r = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucId, cajaId,
             metodoPago = 0,  // 0 = Efectivo
@@ -83,7 +83,7 @@ public class PosTests
     {
         var nombre = $"Caja-New-{Guid.NewGuid():N}"[..20];
 
-        var r = await _client.PostAsJsonAsync("/api/Cajas", new { nombre, sucursalId = SucId });
+        var r = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre, sucursalId = SucId });
 
         r.StatusCode.Should().Be(HttpStatusCode.Created);
         var caja = await r.Content.ReadFromJsonAsync<CajaDto>(_json);
@@ -99,7 +99,7 @@ public class PosTests
         var nombre = $"Caja-Dup-{Guid.NewGuid():N}"[..20];
         await CrearCaja(nombre);
 
-        var r = await _client.PostAsJsonAsync("/api/Cajas", new { nombre, sucursalId = SucId });
+        var r = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre, sucursalId = SucId });
 
         r.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -109,7 +109,7 @@ public class PosTests
     {
         var caja = await CrearCaja($"Caja-Get-{Guid.NewGuid():N}"[..20]);
 
-        var r = await _client.GetAsync($"/api/Cajas/{caja.Id}");
+        var r = await _client.GetAsync($"/api/v1/Cajas/{caja.Id}");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var resultado = await r.Content.ReadFromJsonAsync<CajaDto>(_json);
@@ -119,7 +119,7 @@ public class PosTests
     [Fact]
     public async Task ObtenerCaja_Inexistente_Retorna404()
     {
-        var r = await _client.GetAsync("/api/Cajas/999999");
+        var r = await _client.GetAsync("/api/v1/Cajas/999999");
         r.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -128,7 +128,7 @@ public class PosTests
     {
         await CrearCaja($"Caja-List-{Guid.NewGuid():N}"[..20]);
 
-        var r = await _client.GetAsync($"/api/Cajas?sucursalId={SucId}");
+        var r = await _client.GetAsync($"/api/v1/Cajas?sucursalId={SucId}");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var cajas = await r.Content.ReadFromJsonAsync<List<CajaDto>>(_json);
@@ -141,7 +141,7 @@ public class PosTests
     {
         var caja = await CrearCaja($"Caja-Del-{Guid.NewGuid():N}"[..20]);
 
-        var r = await _client.DeleteAsync($"/api/Cajas/{caja.Id}");
+        var r = await _client.DeleteAsync($"/api/v1/Cajas/{caja.Id}");
 
         r.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -152,7 +152,7 @@ public class PosTests
         var caja = await CrearCaja($"Caja-DelAbr-{Guid.NewGuid():N}"[..18]);
         await AbrirCaja(caja.Id);
 
-        var r = await _client.DeleteAsync($"/api/Cajas/{caja.Id}");
+        var r = await _client.DeleteAsync($"/api/v1/Cajas/{caja.Id}");
 
         r.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -164,11 +164,11 @@ public class PosTests
     {
         var caja = await CrearCaja($"Caja-Abr-{Guid.NewGuid():N}"[..20]);
 
-        var r = await _client.PostAsJsonAsync($"/api/Cajas/{caja.Id}/abrir",
+        var r = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja.Id}/abrir",
             new { montoApertura = 50_000m });
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
-        var cajaActual = await (await _client.GetAsync($"/api/Cajas/{caja.Id}"))
+        var cajaActual = await (await _client.GetAsync($"/api/v1/Cajas/{caja.Id}"))
             .Content.ReadFromJsonAsync<CajaDto>(_json);
         cajaActual!.Estado.Should().Be("Abierta");
         cajaActual.MontoApertura.Should().Be(50_000m);
@@ -180,7 +180,7 @@ public class PosTests
         var caja = await CrearCaja($"Caja-AbrDup-{Guid.NewGuid():N}"[..18]);
         await AbrirCaja(caja.Id);
 
-        var r = await _client.PostAsJsonAsync($"/api/Cajas/{caja.Id}/abrir",
+        var r = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja.Id}/abrir",
             new { montoApertura = 10_000m });
 
         r.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -192,7 +192,7 @@ public class PosTests
         var caja = await CrearCaja($"Caja-Cerr-{Guid.NewGuid():N}"[..19]);
         await AbrirCaja(caja.Id, 80_000m);
 
-        var r = await _client.PostAsJsonAsync($"/api/Cajas/{caja.Id}/cerrar",
+        var r = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja.Id}/cerrar",
             new { montoReal = 80_000m, observaciones = "Cuadre correcto" });
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -207,7 +207,7 @@ public class PosTests
         var caja = await CrearCaja($"Caja-Diff-{Guid.NewGuid():N}"[..19]);
         await AbrirCaja(caja.Id, 100_000m);
 
-        var r = await _client.PostAsJsonAsync($"/api/Cajas/{caja.Id}/cerrar",
+        var r = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja.Id}/cerrar",
             new { montoReal = 95_000m });
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -221,7 +221,7 @@ public class PosTests
     {
         var caja = await CrearCaja($"Caja-CerrDup-{Guid.NewGuid():N}"[..17]);
 
-        var r = await _client.PostAsJsonAsync($"/api/Cajas/{caja.Id}/cerrar",
+        var r = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja.Id}/cerrar",
             new { montoReal = 0m });
 
         r.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -249,14 +249,14 @@ public class PosTests
 
         // Verificar stock decrementó
         var stockR = await _client.GetAsync(
-            $"/api/Inventario?sucursalId={SucId}&productoId={productoId}");
+            $"/api/v1/Inventario?sucursalId={SucId}&productoId={productoId}");
         stockR.StatusCode.Should().Be(HttpStatusCode.OK);
         var stock = await stockR.Content.ReadFromJsonAsync<List<StockDto>>(_json);
         stock!.Single().Cantidad.Should().Be(8);
 
         // Cerrar caja con monto esperado (apertura + efectivo venta)
         var montoEsperado = 50_000m + 20_000m;
-        var cierreR = await _client.PostAsJsonAsync($"/api/Cajas/{caja.Id}/cerrar",
+        var cierreR = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja.Id}/cerrar",
             new { montoReal = montoEsperado });
         cierreR.StatusCode.Should().Be(HttpStatusCode.OK);
         var cierre = await cierreR.Content.ReadFromJsonAsync<JsonElement>(_json);
@@ -272,7 +272,7 @@ public class PosTests
         var caja = await CrearCaja($"Caja-Cerr-{cod}");
         // No abrir la caja
 
-        var r = await _client.PostAsJsonAsync("/api/Ventas", new
+        var r = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucId, cajaId = caja.Id,
             metodoPago = "Efectivo",
@@ -293,21 +293,21 @@ public class PosTests
         await AbrirCaja(caja.Id, 100_000m);
 
         // Venta 1: Efectivo
-        await _client.PostAsJsonAsync("/api/Ventas", new
+        await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucId, cajaId = caja.Id, metodoPago = 0, montoPagado = 10_000m,
             lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)8000m, descuento = 0m } }
         });
 
         // Venta 2: Tarjeta
-        await _client.PostAsJsonAsync("/api/Ventas", new
+        await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucId, cajaId = caja.Id, metodoPago = 1, montoPagado = 8_000m,
             lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)8000m, descuento = 0m } }
         });
 
         // Verificar reporte de caja
-        var r = await _client.GetAsync($"/api/Reportes/caja/{caja.Id}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/caja/{caja.Id}");
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var reporte = await r.Content.ReadFromJsonAsync<ReporteCajaDto>(_json);
         reporte!.TotalVentasEfectivo.Should().Be(8_000m);
@@ -330,7 +330,7 @@ public class PosTests
         await HacerVenta(caja.Id, productoId, cantidad: 1);
 
         // El monto esperado al cierre = apertura (200k) + efectivo (15k)
-        var r = await _client.PostAsJsonAsync($"/api/Cajas/{caja.Id}/cerrar",
+        var r = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja.Id}/cerrar",
             new { montoReal = 215_000m });
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -344,7 +344,7 @@ public class PosTests
     [Fact]
     public async Task AbrirCaja_SucursalInexistente_Retorna400()
     {
-        var r = await _client.PostAsJsonAsync("/api/Cajas", new { nombre = "X", sucursalId = 999999 });
+        var r = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre = "X", sucursalId = 999999 });
         r.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -353,9 +353,9 @@ public class PosTests
     {
         var nombre = $"Caja-Inact-{Guid.NewGuid():N}"[..18];
         var caja = await CrearCaja(nombre);
-        await _client.DeleteAsync($"/api/Cajas/{caja.Id}");
+        await _client.DeleteAsync($"/api/v1/Cajas/{caja.Id}");
 
-        var r = await _client.GetAsync($"/api/Cajas?sucursalId={SucId}&incluirInactivas=true");
+        var r = await _client.GetAsync($"/api/v1/Cajas?sucursalId={SucId}&incluirInactivas=true");
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var cajas = await r.Content.ReadFromJsonAsync<List<CajaDto>>(_json);
         cajas.Should().Contain(c => c.Id == caja.Id && !c.Activa);

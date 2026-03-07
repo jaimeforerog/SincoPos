@@ -22,7 +22,6 @@ import {
   Logout,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
-import { useAuth as useOidcAuth } from 'react-oidc-context';
 import { useAuthStore } from '@/stores/auth.store';
 import { APP_NAME } from '@/utils/constants';
 import { MenuSection } from './MenuSection';
@@ -38,8 +37,7 @@ export function AppLayout() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const oidcAuth = useOidcAuth();
-  const { activeSucursalId, setActiveSucursal } = useAuthStore();
+  const { activeSucursalId, setActiveSucursal, logout } = useAuthStore();
 
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
@@ -62,10 +60,7 @@ export function AppLayout() {
 
   const handleLogout = () => {
     handleProfileMenuClose();
-    sessionStorage.removeItem('access_token');
-    oidcAuth.signoutRedirect({
-      post_logout_redirect_uri: window.location.origin,
-    });
+    logout();
   };
 
   const drawer = (

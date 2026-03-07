@@ -10,7 +10,8 @@ namespace POS.Api.Controllers;
 /// </summary>
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class ActivityLogsController : ControllerBase
 {
     private readonly IActivityLogService _activityLogService;

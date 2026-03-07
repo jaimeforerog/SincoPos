@@ -47,7 +47,7 @@ public class ComprasTests
             precioVenta,
             precioCosto = precioVenta * 0.6m
         };
-        var response = await _client.PostAsJsonAsync("/api/Productos", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Productos", dto);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ProductoDto>(_jsonOptions);
         return result!.Id;
@@ -66,7 +66,7 @@ public class ComprasTests
             direccion = "Calle Test 123",
             ciudad = (string?)null
         };
-        var response = await _client.PostAsJsonAsync("/api/Terceros", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Terceros", dto);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
         return result.GetProperty("id").GetInt32();
@@ -94,7 +94,7 @@ public class ComprasTests
             }).ToList()
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Compras", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Compras", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Crear orden debería ser exitoso. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -103,14 +103,14 @@ public class ComprasTests
     private async Task<OrdenCompraDto?> ObtenerOrdenCompra(int ordenId)
     {
         return await _client.GetFromJsonAsync<OrdenCompraDto>(
-            $"/api/Compras/{ordenId}",
+            $"/api/v1/Compras/{ordenId}",
             _jsonOptions);
     }
 
     private async Task<JsonElement> AprobarOrdenCompra(int ordenId, string? observaciones = null)
     {
         var dto = new { observaciones };
-        var response = await _client.PostAsJsonAsync($"/api/Compras/{ordenId}/aprobar", dto);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Compras/{ordenId}/aprobar", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Aprobar orden debería ser exitoso. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -130,7 +130,7 @@ public class ComprasTests
             }).ToList()
         };
 
-        var response = await _client.PostAsJsonAsync($"/api/Compras/{ordenId}/recibir", dto);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Compras/{ordenId}/recibir", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Recibir orden debería ser exitoso. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -139,7 +139,7 @@ public class ComprasTests
     private async Task<StockDto?> ObtenerStock(Guid productoId, int sucursalId)
     {
         var response = await _client.GetFromJsonAsync<List<StockDto>>(
-            $"/api/Inventario?productoId={productoId}&sucursalId={sucursalId}",
+            $"/api/v1/Inventario?productoId={productoId}&sucursalId={sucursalId}",
             _jsonOptions);
         return response?.FirstOrDefault();
     }
@@ -293,7 +293,7 @@ public class ComprasTests
             }
         };
 
-        var response = await _client.PostAsJsonAsync($"/api/Compras/{ordenId}/recibir", dto);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Compras/{ordenId}/recibir", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "No debe permitir recibir más de lo pendiente");
 
@@ -323,7 +323,7 @@ public class ComprasTests
 
         // Act & Assert - Intentar aprobar de nuevo
         var dto = new { observaciones = "Segundo intento" };
-        var response = await _client.PostAsJsonAsync($"/api/Compras/{ordenId}/aprobar", dto);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Compras/{ordenId}/aprobar", dto);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "Solo se pueden aprobar órdenes en estado Pendiente");
@@ -348,7 +348,7 @@ public class ComprasTests
 
         // Act - Rechazar orden
         var dtoRechazo = new { motivoRechazo = "Precios no competitivos" };
-        var response = await _client.PostAsJsonAsync($"/api/Compras/{ordenId}/rechazar", dtoRechazo);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Compras/{ordenId}/rechazar", dtoRechazo);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Assert
@@ -376,7 +376,7 @@ public class ComprasTests
 
         // Act - Cancelar orden en estado Pendiente
         var dtoCancelar = new { motivo = "Cambio de proveedor" };
-        var response = await _client.PostAsJsonAsync($"/api/Compras/{ordenId}/cancelar", dtoCancelar);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Compras/{ordenId}/cancelar", dtoCancelar);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Assert
@@ -412,7 +412,7 @@ public class ComprasTests
 
         // Act & Assert - Intentar cancelar con recepciones
         var dtoCancelar = new { motivo = "Intento de cancelación" };
-        var response = await _client.PostAsJsonAsync($"/api/Compras/{ordenId}/cancelar", dtoCancelar);
+        var response = await _client.PostAsJsonAsync($"/api/v1/Compras/{ordenId}/cancelar", dtoCancelar);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "No debe permitir cancelar órdenes con recepciones");
@@ -542,7 +542,7 @@ public class ComprasTests
             lineas = Array.Empty<object>()
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Compras", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Compras", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var content = await response.Content.ReadAsStringAsync();
@@ -568,7 +568,7 @@ public class ComprasTests
             }
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Compras", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Compras", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var content = await response.Content.ReadAsStringAsync();
@@ -595,7 +595,7 @@ public class ComprasTests
             }
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Compras", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Compras", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "No debe permitir precios negativos");
     }
@@ -608,7 +608,7 @@ public class ComprasTests
     public async Task ListarOrdenes_FiltrosPorSucursal()
     {
         // Act
-        var response = await _client.GetAsync($"/api/Compras?sucursalId={SucPP}&limite=100");
+        var response = await _client.GetAsync($"/api/v1/Compras?sucursalId={SucPP}&limite=100");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var ordenes = await response.Content.ReadFromJsonAsync<List<OrdenCompraDto>>(_jsonOptions);
@@ -622,7 +622,7 @@ public class ComprasTests
     public async Task ListarOrdenes_FiltrosPorEstado()
     {
         // Act
-        var response = await _client.GetAsync($"/api/Compras?estado=Aprobada&limite=100");
+        var response = await _client.GetAsync($"/api/v1/Compras?estado=Aprobada&limite=100");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var ordenes = await response.Content.ReadFromJsonAsync<List<OrdenCompraDto>>(_jsonOptions);
@@ -655,7 +655,7 @@ public class ComprasTests
         var ordenId = resultCrear.GetProperty("id").GetInt32();
 
         // Act
-        var response = await _client.GetAsync($"/api/Compras/{ordenId}");
+        var response = await _client.GetAsync($"/api/v1/Compras/{ordenId}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var orden = await response.Content.ReadFromJsonAsync<OrdenCompraDto>(_jsonOptions);

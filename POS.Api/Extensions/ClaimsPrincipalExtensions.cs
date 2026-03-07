@@ -3,17 +3,31 @@ using System.Security.Claims;
 namespace POS.Api.Extensions;
 
 /// <summary>
-/// Extensiones para obtener información del usuario autenticado
+/// Extensiones para obtener información del usuario autenticado.
+/// Compatible con Entra ID (Azure AD) y Keycloak.
 /// </summary>
 public static class ClaimsPrincipalExtensions
 {
     /// <summary>
-    /// Obtiene el Keycloak Subject ID (UUID del usuario)
+    /// Obtiene el ID externo del proveedor de identidad.
+    /// Entra ID usa "oid", Keycloak usa "sub" / NameIdentifier.
     /// </summary>
+    public static string? GetExternalId(this ClaimsPrincipal principal)
+    {
+        // Entra ID: "oid" (Object ID) — estable entre tokens
+        return principal.FindFirst("oid")?.Value
+            ?? principal.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
+            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? principal.FindFirst("sub")?.Value;
+    }
+
+    /// <summary>
+    /// Alias para compatibilidad con código existente.
+    /// </summary>
+    [Obsolete("Usar GetExternalId() en su lugar")]
     public static string? GetKeycloakId(this ClaimsPrincipal principal)
     {
-        return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? principal.FindFirst("sub")?.Value;
+        return principal.GetExternalId();
     }
 
     /// <summary>
@@ -22,7 +36,8 @@ public static class ClaimsPrincipalExtensions
     public static string? GetEmail(this ClaimsPrincipal principal)
     {
         return principal.FindFirst(ClaimTypes.Email)?.Value
-            ?? principal.FindFirst("email")?.Value;
+            ?? principal.FindFirst("email")?.Value
+            ?? principal.FindFirst("preferred_username")?.Value;
     }
 
     /// <summary>
@@ -45,13 +60,13 @@ public static class ClaimsPrincipalExtensions
     }
 
     /// <summary>
-    /// Obtiene los roles del usuario desde Keycloak
-    /// Los roles pueden estar en diferentes claims dependiendo de la configuración
+    /// Obtiene los roles del usuario desde Entra ID o Keycloak.
+    /// Entra ID envía roles en claim "roles", Keycloak en "realm_access.roles".
     /// </summary>
     public static IEnumerable<string> GetRoles(this ClaimsPrincipal principal)
     {
-        // Keycloak puede enviar roles en diferentes claims
         var roleClaims = principal.FindAll(ClaimTypes.Role)
+            .Concat(principal.FindAll("roles"))
             .Concat(principal.FindAll("realm_access.roles"))
             .Concat(principal.FindAll("role"))
             .Select(c => c.Value)

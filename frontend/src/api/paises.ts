@@ -5,7 +5,7 @@ import type { PaisDTO, CiudadDTO } from '@/types/api';
  * Obtener lista de países
  */
 export const getPaises = async (): Promise<PaisDTO[]> => {
-  const response = await apiClient.get<PaisDTO[]>('/api/paises');
+  const response = await apiClient.get<PaisDTO[]>('/paises');
   return response.data;
 };
 
@@ -13,6 +13,6 @@ export const getPaises = async (): Promise<PaisDTO[]> => {
  * Obtener ciudades de un país específico
  */
 export const getCiudadesPorPais = async (codigoPais: string): Promise<CiudadDTO[]> => {
-  const response = await apiClient.get<CiudadDTO[]>(`/api/paises/${codigoPais}/ciudades`);
+  const response = await apiClient.get<CiudadDTO[]>(`/paises/${codigoPais}/ciudades`);
   return response.data;
 };

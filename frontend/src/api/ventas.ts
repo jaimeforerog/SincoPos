@@ -10,25 +10,25 @@ export const ventasApi = {
     estado?: string;
     limite?: number;
   }) => {
-    const response = await apiClient.get<VentaDTO[]>('/api/ventas', {
+    const response = await apiClient.get<VentaDTO[]>('/ventas', {
       params,
     });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<VentaDTO>(`/api/ventas/${id}`);
+    const response = await apiClient.get<VentaDTO>(`/ventas/${id}`);
     return response.data;
   },
 
   create: async (data: CrearVentaDTO) => {
-    const response = await apiClient.post<VentaDTO>('/api/ventas', data);
+    const response = await apiClient.post<VentaDTO>('/ventas', data);
     return response.data;
   },
 
   anular: async (id: number, motivo?: string) => {
     const response = await apiClient.post<{ mensaje: string; stockRevertido: boolean }>(
-      `/api/ventas/${id}/anular`,
+      `/ventas/${id}/anular`,
       null,
       { params: { motivo } }
     );

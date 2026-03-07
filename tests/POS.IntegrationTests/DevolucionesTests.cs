@@ -44,7 +44,7 @@ public class DevolucionesTests
             precioVenta,
             precioCosto
         };
-        var response = await _client.PostAsJsonAsync("/api/Productos", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Productos", dto);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ProductoDto>(_jsonOptions);
         return result!.Id;
@@ -63,14 +63,14 @@ public class DevolucionesTests
             referencia = $"FC-DEV-{Guid.NewGuid():N}"[..20],
             observaciones = "Entrada para test de devoluciones"
         };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/entrada", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", dto);
         response.EnsureSuccessStatusCode();
     }
 
     private async Task<int> CrearYAbrirCaja(int sucursalId, string nombre, decimal montoApertura = 100_000m)
     {
         // Crear caja
-        var crearResponse = await _client.PostAsJsonAsync("/api/Cajas", new
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/Cajas", new
         {
             nombre,
             sucursalId
@@ -80,7 +80,7 @@ public class DevolucionesTests
         var cajaId = caja!.Id;
 
         // Abrir caja
-        var abrirResponse = await _client.PostAsJsonAsync($"/api/Cajas/{cajaId}/abrir", new
+        var abrirResponse = await _client.PostAsJsonAsync($"/api/v1/Cajas/{cajaId}/abrir", new
         {
             montoApertura
         });
@@ -92,7 +92,7 @@ public class DevolucionesTests
     private async Task<StockDto?> ObtenerStock(Guid productoId, int sucursalId)
     {
         var response = await _client.GetFromJsonAsync<List<StockDto>>(
-            $"/api/Inventario?productoId={productoId}&sucursalId={sucursalId}",
+            $"/api/v1/Inventario?productoId={productoId}&sucursalId={sucursalId}",
             _jsonOptions);
         return response?.FirstOrDefault();
     }
@@ -120,7 +120,7 @@ public class DevolucionesTests
             }).ToList()
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Ventas", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", dto);
         response.EnsureSuccessStatusCode();
         var venta = await response.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
         return venta!;
@@ -151,7 +151,7 @@ public class DevolucionesTests
         stockDespuesVenta!.Cantidad.Should().Be(40);
 
         // Obtener info de caja antes de devolución
-        var cajaAntesDevolucion = await _client.GetFromJsonAsync<CajaDto>($"/api/Cajas/{caja}", _jsonOptions);
+        var cajaAntesDevolucion = await _client.GetFromJsonAsync<CajaDto>($"/api/v1/Cajas/{caja}", _jsonOptions);
 
         // Act: Devolver 3 unidades
         var devolucionDto = new
@@ -164,7 +164,7 @@ public class DevolucionesTests
         };
 
         var responseDevolucion = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial",
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial",
             devolucionDto);
 
         // Assert
@@ -184,7 +184,7 @@ public class DevolucionesTests
         stockFinal!.Cantidad.Should().Be(43); // 40 + 3
 
         // Verificar ajuste de caja
-        var cajaDespuesDevolucion = await _client.GetFromJsonAsync<CajaDto>($"/api/Cajas/{caja}", _jsonOptions);
+        var cajaDespuesDevolucion = await _client.GetFromJsonAsync<CajaDto>($"/api/v1/Cajas/{caja}", _jsonOptions);
         cajaDespuesDevolucion!.MontoActual.Should()
             .Be(cajaAntesDevolucion!.MontoActual - 3000); // Se restó el monto devuelto
     }
@@ -213,7 +213,7 @@ public class DevolucionesTests
             lineas = new[] { new { productoId = producto, cantidad = 4m } }
         };
         var response1 = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucion1);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucion1);
         response1.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Segunda devolución: 5 unidades (OK - total 9)
@@ -223,7 +223,7 @@ public class DevolucionesTests
             lineas = new[] { new { productoId = producto, cantidad = 5m } }
         };
         var response2 = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucion2);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucion2);
         response2.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Tercera devolución: 2 unidades (FALLA - solo queda 1)
@@ -233,7 +233,7 @@ public class DevolucionesTests
             lineas = new[] { new { productoId = producto, cantidad = 2m } }
         };
         var response3 = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucion3);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucion3);
         response3.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var error = await response3.Content.ReadAsStringAsync();
@@ -242,7 +242,7 @@ public class DevolucionesTests
 
         // Verificar que solo se pueden devolver las devoluciones exitosas
         var devolucionesResponse = await _client.GetFromJsonAsync<List<DevolucionVentaDto>>(
-            $"/api/Ventas/{venta.Id}/devoluciones", _jsonOptions);
+            $"/api/v1/Ventas/{venta.Id}/devoluciones", _jsonOptions);
         devolucionesResponse.Should().HaveCount(2);
         devolucionesResponse!.Sum(d => d.Detalles[0].CantidadDevuelta).Should().Be(9);
     }
@@ -263,7 +263,7 @@ public class DevolucionesTests
 
         // Anular la venta
         var anularResponse = await _client.PostAsync(
-            $"/api/Ventas/{venta.Id}/anular?motivo=Test", null);
+            $"/api/v1/Ventas/{venta.Id}/anular?motivo=Test", null);
         anularResponse.EnsureSuccessStatusCode();
 
         // Act: Intentar devolver producto de venta anulada
@@ -274,7 +274,7 @@ public class DevolucionesTests
         };
 
         var response = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -305,7 +305,7 @@ public class DevolucionesTests
         };
 
         var response = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -332,7 +332,7 @@ public class DevolucionesTests
         };
 
         var response = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -359,7 +359,7 @@ public class DevolucionesTests
         };
 
         var response = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -387,18 +387,18 @@ public class DevolucionesTests
             motivo = "Primera devolución",
             lineas = new[] { new { productoId = producto, cantidad = 2m } }
         };
-        await _client.PostAsJsonAsync($"/api/Ventas/{venta.Id}/devolucion-parcial", dev1);
+        await _client.PostAsJsonAsync($"/api/v1/Ventas/{venta.Id}/devolucion-parcial", dev1);
 
         var dev2 = new
         {
             motivo = "Segunda devolución",
             lineas = new[] { new { productoId = producto, cantidad = 3m } }
         };
-        await _client.PostAsJsonAsync($"/api/Ventas/{venta.Id}/devolucion-parcial", dev2);
+        await _client.PostAsJsonAsync($"/api/v1/Ventas/{venta.Id}/devolucion-parcial", dev2);
 
         // Act
         var response = await _client.GetFromJsonAsync<List<DevolucionVentaDto>>(
-            $"/api/Ventas/{venta.Id}/devoluciones", _jsonOptions);
+            $"/api/v1/Ventas/{venta.Id}/devoluciones", _jsonOptions);
 
         // Assert
         response.Should().NotBeNull();
@@ -423,12 +423,12 @@ public class DevolucionesTests
         };
 
         var createResponse = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
         var devolucionCreada = await createResponse.Content.ReadFromJsonAsync<DevolucionVentaDto>(_jsonOptions);
 
         // Act
         var response = await _client.GetFromJsonAsync<DevolucionVentaDto>(
-            $"/api/Ventas/devoluciones/{devolucionCreada!.Id}", _jsonOptions);
+            $"/api/v1/Ventas/devoluciones/{devolucionCreada!.Id}", _jsonOptions);
 
         // Assert
         response.Should().NotBeNull();
@@ -466,7 +466,7 @@ public class DevolucionesTests
         };
 
         var response = await _client.PostAsJsonAsync(
-            $"/api/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);

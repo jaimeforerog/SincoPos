@@ -28,7 +28,7 @@ public class ProductosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var response = await _client.PostAsJsonAsync("/api/productos", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/productos", dto);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var producto = await response.Content.ReadFromJsonAsync<ProductoDto>();
@@ -43,8 +43,8 @@ public class ProductosTests
         var codigo = $"DUP{Guid.NewGuid():N}"[..20];
         var dto = new CrearProductoDto(codigo, "Prod1", null, _factory.CategoriaTestId, 100m, 60m);
 
-        await _client.PostAsJsonAsync("/api/productos", dto);
-        var response = await _client.PostAsJsonAsync("/api/productos", dto);
+        await _client.PostAsJsonAsync("/api/v1/productos", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/productos", dto);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -60,10 +60,10 @@ public class ProductosTests
             PrecioVenta: 50m,
             PrecioCosto: 30m);
 
-        var crearResponse = await _client.PostAsJsonAsync("/api/productos", crearDto);
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/productos", crearDto);
         var created = await crearResponse.Content.ReadFromJsonAsync<ProductoDto>();
 
-        var response = await _client.GetAsync($"/api/productos/{created!.Id}");
+        var response = await _client.GetAsync($"/api/v1/productos/{created!.Id}");
 
         response.EnsureSuccessStatusCode();
         var producto = await response.Content.ReadFromJsonAsync<ProductoDto>();
@@ -80,15 +80,15 @@ public class ProductosTests
     {
         var crearDto = new CrearProductoDto(
             $"UPD{Guid.NewGuid():N}"[..20], "Original", null, _factory.CategoriaTestId, 100m, 60m);
-        var crearResponse = await _client.PostAsJsonAsync("/api/productos", crearDto);
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/productos", crearDto);
         var created = await crearResponse.Content.ReadFromJsonAsync<ProductoDto>();
 
         var actualizarDto = new ActualizarProductoDto("Actualizado", "Nueva desc", 120m, 70m);
-        var response = await _client.PutAsJsonAsync($"/api/productos/{created!.Id}", actualizarDto);
+        var response = await _client.PutAsJsonAsync($"/api/v1/productos/{created!.Id}", actualizarDto);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var getResponse = await _client.GetAsync($"/api/productos/{created.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/productos/{created.Id}");
         var producto = await getResponse.Content.ReadFromJsonAsync<ProductoDto>();
 
         producto!.Nombre.Should().Be("Actualizado");
@@ -100,20 +100,20 @@ public class ProductosTests
     {
         var crearDto = new CrearProductoDto(
             $"DEL{Guid.NewGuid():N}"[..20], "Para desactivar", null, _factory.CategoriaTestId, 100m, 60m);
-        var crearResponse = await _client.PostAsJsonAsync("/api/productos", crearDto);
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/productos", crearDto);
         var created = await crearResponse.Content.ReadFromJsonAsync<ProductoDto>();
 
-        var response = await _client.DeleteAsync($"/api/productos/{created!.Id}?motivo=test");
+        var response = await _client.DeleteAsync($"/api/v1/productos/{created!.Id}?motivo=test");
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // No deberia aparecer en lista de activos
-        var listResponse = await _client.GetAsync("/api/productos");
+        var listResponse = await _client.GetAsync("/api/v1/productos");
         var productos = await listResponse.Content.ReadFromJsonAsync<List<ProductoDto>>();
         productos!.Should().NotContain(p => p.Id == created.Id);
 
         // Deberia aparecer con incluirInactivos
-        var allResponse = await _client.GetAsync("/api/productos?incluirInactivos=true");
+        var allResponse = await _client.GetAsync("/api/v1/productos?incluirInactivos=true");
         var todos = await allResponse.Content.ReadFromJsonAsync<List<ProductoDto>>();
         todos!.Should().Contain(p => p.Id == created.Id && !p.Activo);
     }
@@ -123,9 +123,9 @@ public class ProductosTests
     {
         var codigo = $"BAR{Guid.NewGuid():N}"[..20];
         var crearDto = new CrearProductoDto(codigo, "Buscable", null, _factory.CategoriaTestId, 100m, 60m);
-        await _client.PostAsJsonAsync("/api/productos", crearDto);
+        await _client.PostAsJsonAsync("/api/v1/productos", crearDto);
 
-        var response = await _client.GetAsync($"/api/productos/codigo/{codigo}");
+        var response = await _client.GetAsync($"/api/v1/productos/codigo/{codigo}");
 
         response.EnsureSuccessStatusCode();
         var producto = await response.Content.ReadFromJsonAsync<ProductoDto>();

@@ -16,7 +16,7 @@ export const reportesApi = {
     metodoPago?: number; // 0=Efectivo, 1=Tarjeta, 2=Transferencia
   }) => {
     const response = await apiClient.get<ReporteVentasDTO>(
-      '/api/reportes/ventas',
+      '/reportes/ventas',
       { params }
     );
     return response.data;
@@ -31,7 +31,7 @@ export const reportesApi = {
     soloConStock?: boolean;
   }) => {
     const response = await apiClient.get<ReporteInventarioValorizadoDTO>(
-      '/api/reportes/inventario-valorizado',
+      '/reportes/inventario-valorizado',
       { params }
     );
     return response.data;
@@ -48,7 +48,7 @@ export const reportesApi = {
     }
   ) => {
     const response = await apiClient.get<ReporteCajaDTO>(
-      `/api/reportes/caja/${cajaId}`,
+      `/reportes/caja/${cajaId}`,
       { params }
     );
     return response.data;
@@ -58,7 +58,7 @@ export const reportesApi = {
    * Obtener dashboard con métricas del día
    */
   dashboard: async (params?: { sucursalId?: number }) => {
-    const response = await apiClient.get('/api/reportes/dashboard', { params });
+    const response = await apiClient.get('/reportes/dashboard', { params });
     return response.data;
   },
 
@@ -71,7 +71,7 @@ export const reportesApi = {
     sucursalId?: number;
     limite?: number;
   }) => {
-    const response = await apiClient.get('/api/reportes/top-productos', { params });
+    const response = await apiClient.get('/reportes/top-productos', { params });
     return response.data;
   },
 };

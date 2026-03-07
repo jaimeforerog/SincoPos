@@ -13,7 +13,8 @@ namespace POS.Api.Controllers;
 /// </summary>
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class UsuariosController : ControllerBase
 {
     private readonly UsuarioService _usuarioService;
@@ -59,25 +60,25 @@ public class UsuariosController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<PerfilUsuarioDto>> ObtenerPerfil()
     {
-        var keycloakId = User.GetKeycloakId();
-        if (string.IsNullOrEmpty(keycloakId))
+        var externalId = User.GetExternalId();
+        if (string.IsNullOrEmpty(externalId))
             return Unauthorized("No se pudo identificar al usuario");
 
         var email = User.GetEmail() ?? "unknown@sincopos.com";
         var nombreCompleto = User.GetNombreCompleto() ?? email;
-        var keycloakRoles = User.GetRoles().ToList();
+        var idpRoles = User.GetRoles().ToList();
 
-        var rolKeycloak = keycloakRoles.Count > 0
-            ? DeterminarRolPrincipal(keycloakRoles)
+        var rolPrincipal = idpRoles.Count > 0
+            ? DeterminarRolPrincipal(idpRoles)
             : null;
 
         _logger.LogInformation(
-            "ObtenerPerfil: keycloakId={Id}, rolesKeycloak=[{Roles}], rolDeterminado={Rol}",
-            keycloakId, string.Join(",", keycloakRoles), rolKeycloak ?? "(sin rol)");
+            "ObtenerPerfil: externalId={Id}, roles=[{Roles}], rolDeterminado={Rol}",
+            externalId, string.Join(",", idpRoles), rolPrincipal ?? "(sin rol)");
 
-        await _usuarioService.ObtenerOCrearUsuarioAsync(keycloakId, email, nombreCompleto, rolKeycloak);
+        await _usuarioService.ObtenerOCrearUsuarioAsync(externalId, email, nombreCompleto, rolPrincipal);
 
-        var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(keycloakId);
+        var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(externalId);
         if (usuario == null)
             return StatusCode(500, "Error al obtener perfil de usuario");
 
@@ -85,6 +86,22 @@ public class UsuariosController : ControllerBase
         var sucursalesAsignadas = usuario.Sucursales
             .Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre))
             .ToList();
+
+        // Si el usuario es admin o supervisor y no tiene sucursales asignadas,
+        // darle acceso a todas las sucursales activas
+        if (sucursalesAsignadas.Count == 0 &&
+            (usuario.Rol.Equals(Roles.Admin, StringComparison.OrdinalIgnoreCase) ||
+             usuario.Rol.Equals(Roles.Supervisor, StringComparison.OrdinalIgnoreCase)))
+        {
+            var todas = await _usuarioService.ObtenerTodasSucursalesActivasAsync();
+            sucursalesAsignadas = todas
+                .Select(s => new SucursalResumenDto(s.Id, s.Nombre))
+                .ToList();
+
+            _logger.LogInformation(
+                "Usuario {Email} ({Rol}) sin sucursales asignadas, usando todas las activas ({Count})",
+                usuario.Email, usuario.Rol, sucursalesAsignadas.Count);
+        }
 
         var dto = new PerfilUsuarioDto(
             usuario.Id,
@@ -122,11 +139,11 @@ public class UsuariosController : ControllerBase
     [HttpPut("me/sucursal")]
     public async Task<IActionResult> ActualizarMiSucursal([FromBody] ActualizarSucursalDefaultDto dto)
     {
-        var keycloakId = User.GetKeycloakId();
-        if (string.IsNullOrEmpty(keycloakId))
+        var externalId = User.GetExternalId();
+        if (string.IsNullOrEmpty(externalId))
             return Unauthorized("No se pudo identificar al usuario");
 
-        var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(keycloakId);
+        var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(externalId);
         if (usuario == null)
             return NotFound("Usuario no encontrado");
 
@@ -203,8 +220,8 @@ public class UsuariosController : ControllerBase
         if (usuario == null)
             return NotFound($"Usuario con ID {id} no encontrado");
 
-        var keycloakIdActual = User.GetKeycloakId();
-        if (usuario.KeycloakId == keycloakIdActual && !dto.Activo)
+        var currentExternalId = User.GetExternalId();
+        if (usuario.KeycloakId == currentExternalId && !dto.Activo)
         {
             return BadRequest("No puedes desactivarte a ti mismo");
         }

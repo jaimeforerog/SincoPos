@@ -17,7 +17,7 @@ export const inventarioApi = {
     productoId?: string;
     soloConStock?: boolean;
   }) => {
-    const response = await apiClient.get<InventarioStockDTO[]>('/api/inventario', { params });
+    const response = await apiClient.get<InventarioStockDTO[]>('/inventario', { params });
     return response.data;
   },
 
@@ -29,7 +29,7 @@ export const inventarioApi = {
     productoId?: string;
     soloConStock?: boolean;
   }) => {
-    const response = await apiClient.get<InventarioStockDTO[]>('/api/inventario', { params });
+    const response = await apiClient.get<InventarioStockDTO[]>('/inventario', { params });
     return response.data;
   },
 
@@ -37,7 +37,7 @@ export const inventarioApi = {
    * Obtener alertas de stock bajo
    */
   getAlertas: async (sucursalId?: number) => {
-    const response = await apiClient.get<AlertaStockDTO[]>('/api/inventario/alertas', {
+    const response = await apiClient.get<AlertaStockDTO[]>('/inventario/alertas', {
       params: { sucursalId },
     });
     return response.data;
@@ -52,7 +52,7 @@ export const inventarioApi = {
     limite?: number;
   }) => {
     const response = await apiClient.get<MovimientoInventarioDTO[]>(
-      '/api/inventario/movimientos',
+      '/inventario/movimientos',
       { params }
     );
     return response.data;
@@ -62,7 +62,7 @@ export const inventarioApi = {
    * Registrar entrada de mercancía
    */
   registrarEntrada: async (dto: EntradaInventarioDTO) => {
-    const response = await apiClient.post('/api/inventario/entrada', dto);
+    const response = await apiClient.post('/inventario/entrada', dto);
     return response.data;
   },
 
@@ -70,7 +70,7 @@ export const inventarioApi = {
    * Ajustar inventario (conteo físico)
    */
   ajustarInventario: async (dto: AjusteInventarioDTO) => {
-    const response = await apiClient.post('/api/inventario/ajuste', dto);
+    const response = await apiClient.post('/inventario/ajuste', dto);
     return response.data;
   },
 
@@ -78,7 +78,7 @@ export const inventarioApi = {
    * Registrar devolución a proveedor
    */
   devolucionProveedor: async (dto: DevolucionProveedorDTO) => {
-    const response = await apiClient.post('/api/inventario/devolucion-proveedor', dto);
+    const response = await apiClient.post('/inventario/devolucion-proveedor', dto);
     return response.data;
   },
 
@@ -86,7 +86,7 @@ export const inventarioApi = {
    * Actualizar stock mínimo
    */
   actualizarStockMinimo: async (productoId: string, sucursalId: number, stockMinimo: number) => {
-    const response = await apiClient.put('/api/inventario/stock-minimo', null, {
+    const response = await apiClient.put('/inventario/stock-minimo', null, {
       params: { productoId, sucursalId, stockMinimo },
     });
     return response.data;

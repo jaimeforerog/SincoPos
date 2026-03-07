@@ -43,7 +43,7 @@ public class VentasTests
             precioVenta,
             precioCosto
         };
-        var response = await _client.PostAsJsonAsync("/api/Productos", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Productos", dto);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ProductoDto>(_jsonOptions);
         return result!.Id;
@@ -58,14 +58,14 @@ public class VentasTests
             terceroId = TerceroId, referencia = $"FC-VENTA-{Guid.NewGuid():N}"[..20],
             observaciones = "Entrada para test de ventas"
         };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/entrada", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", dto);
         response.EnsureSuccessStatusCode();
     }
 
     private async Task<int> CrearYAbrirCaja(int sucursalId, string nombre, decimal montoApertura = 100_000m)
     {
         // Crear caja
-        var crearResponse = await _client.PostAsJsonAsync("/api/Cajas", new
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/Cajas", new
         {
             nombre,
             sucursalId
@@ -75,7 +75,7 @@ public class VentasTests
         var cajaId = caja!.Id;
 
         // Abrir caja
-        var abrirResponse = await _client.PostAsJsonAsync($"/api/Cajas/{cajaId}/abrir", new
+        var abrirResponse = await _client.PostAsJsonAsync($"/api/v1/Cajas/{cajaId}/abrir", new
         {
             montoApertura
         });
@@ -87,7 +87,7 @@ public class VentasTests
     private async Task<StockDto?> ObtenerStock(Guid productoId, int sucursalId)
     {
         var response = await _client.GetFromJsonAsync<List<StockDto>>(
-            $"/api/Inventario?productoId={productoId}&sucursalId={sucursalId}",
+            $"/api/v1/Inventario?productoId={productoId}&sucursalId={sucursalId}",
             _jsonOptions);
         return response?.FirstOrDefault();
     }
@@ -120,7 +120,7 @@ public class VentasTests
                 new { productoId, cantidad = 10m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var response = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Venta deberia ser exitosa. Body: {await response.Content.ReadAsStringAsync()}");
 
@@ -159,7 +159,7 @@ public class VentasTests
                 new { productoId, cantidad = 5m, precioUnitario = (decimal?)2500m, descuento = 0m }
             }
         };
-        var response = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Body: {await response.Content.ReadAsStringAsync()}");
 
@@ -184,7 +184,7 @@ public class VentasTests
         var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 003");
 
         // Configurar precio por sucursal (mayor que el precio base del producto)
-        var precioSucResponse = await _client.PostAsJsonAsync("/api/Precios", new
+        var precioSucResponse = await _client.PostAsJsonAsync("/api/v1/Precios", new
         {
             productoId,
             sucursalId = SucPP,
@@ -205,7 +205,7 @@ public class VentasTests
                 new { productoId, cantidad = 5m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var response = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Body: {await response.Content.ReadAsStringAsync()}");
 
@@ -228,7 +228,7 @@ public class VentasTests
         await RegistrarEntradaInventario(productoId, SucPP, 50, 500);
 
         // Crear caja sin abrirla
-        var crearCaja = await _client.PostAsJsonAsync("/api/Cajas", new
+        var crearCaja = await _client.PostAsJsonAsync("/api/v1/Cajas", new
         {
             nombre = "Caja Cerrada Test",
             sucursalId = SucPP
@@ -248,7 +248,7 @@ public class VentasTests
                 new { productoId, cantidad = 5m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var response = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
 
         // Assert: debe rechazar
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -274,7 +274,7 @@ public class VentasTests
                 new { productoId, cantidad = 50m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var response = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -293,7 +293,7 @@ public class VentasTests
             montoPagado = 1000m,
             lineas = Array.Empty<object>()
         };
-        var response = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -317,7 +317,7 @@ public class VentasTests
                 new { productoId, cantidad = 2m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var response = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -346,7 +346,7 @@ public class VentasTests
                 new { productoId, cantidad = 30m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var crearResponse = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         crearResponse.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Body: {await crearResponse.Content.ReadAsStringAsync()}");
 
@@ -358,7 +358,7 @@ public class VentasTests
 
         // Act 2: anular la venta → stock debe volver a 100
         var anularResponse = await _client.PostAsync(
-            $"/api/Ventas/{ventaId}/anular?motivo=Test anulacion", null);
+            $"/api/v1/Ventas/{ventaId}/anular?motivo=Test anulacion", null);
         anularResponse.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Body: {await anularResponse.Content.ReadAsStringAsync()}");
 
@@ -386,16 +386,16 @@ public class VentasTests
                 new { productoId, cantidad = 5m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var crearResponse = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         crearResponse.EnsureSuccessStatusCode();
         var venta = await crearResponse.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
 
         // Anular la primera vez → OK
-        var anular1 = await _client.PostAsync($"/api/Ventas/{venta!.Id}/anular?motivo=Primera", null);
+        var anular1 = await _client.PostAsync($"/api/v1/Ventas/{venta!.Id}/anular?motivo=Primera", null);
         anular1.EnsureSuccessStatusCode();
 
         // Act: intentar anular de nuevo
-        var anular2 = await _client.PostAsync($"/api/Ventas/{venta.Id}/anular?motivo=Segunda", null);
+        var anular2 = await _client.PostAsync($"/api/v1/Ventas/{venta.Id}/anular?motivo=Segunda", null);
 
         // Assert
         anular2.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -423,12 +423,12 @@ public class VentasTests
                 new { productoId, cantidad = 3m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var crearResponse = await _client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         crearResponse.EnsureSuccessStatusCode();
         var ventaCreada = await crearResponse.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
 
         // Act
-        var response = await _client.GetAsync($"/api/Ventas/{ventaCreada!.Id}");
+        var response = await _client.GetAsync($"/api/v1/Ventas/{ventaCreada!.Id}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var venta = await response.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
@@ -447,7 +447,7 @@ public class VentasTests
     public async Task ListarVentas_FiltrosPorSucursal()
     {
         // Act
-        var response = await _client.GetAsync($"/api/Ventas?sucursalId={SucPP}&limite=100");
+        var response = await _client.GetAsync($"/api/v1/Ventas?sucursalId={SucPP}&limite=100");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var ventas = await response.Content.ReadFromJsonAsync<List<VentaDto>>(_jsonOptions);
@@ -461,7 +461,7 @@ public class VentasTests
     public async Task ResumenDeVentas_RetornaTotales()
     {
         // Act
-        var response = await _client.GetAsync($"/api/Ventas/resumen?sucursalId={SucPP}");
+        var response = await _client.GetAsync($"/api/v1/Ventas/resumen?sucursalId={SucPP}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var resumen = await response.Content.ReadFromJsonAsync<ResumenVentaDto>(_jsonOptions);

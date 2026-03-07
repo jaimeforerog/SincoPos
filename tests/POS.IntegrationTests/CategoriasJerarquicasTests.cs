@@ -32,7 +32,7 @@ public class CategoriasJerarquicasTests
         );
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/categorias", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/categorias", dto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -54,7 +54,7 @@ public class CategoriasJerarquicasTests
             Descripcion: "Bebidas",
             CategoriaPadreId: null
         );
-        var responsePadre = await _client.PostAsJsonAsync("/api/categorias", dtoPadre);
+        var responsePadre = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre);
         var padre = await responsePadre.Content.ReadFromJsonAsync<CategoriaDto>();
 
         // Crear subcategoría
@@ -65,7 +65,7 @@ public class CategoriasJerarquicasTests
         );
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/categorias", dtoHijo);
+        var response = await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -84,12 +84,12 @@ public class CategoriasJerarquicasTests
         var nombre = $"Duplicado-{Guid.NewGuid().ToString("N")[..8]}";
         var dto1 = new CrearCategoriaDto(nombre, null, null);
 
-        await _client.PostAsJsonAsync("/api/categorias", dto1);
+        await _client.PostAsJsonAsync("/api/v1/categorias", dto1);
 
         var dto2 = new CrearCategoriaDto(nombre, "Otra descripción", null);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/categorias", dto2);
+        var response = await _client.PostAsJsonAsync("/api/v1/categorias", dto2);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -106,7 +106,7 @@ public class CategoriasJerarquicasTests
         );
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/categorias", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/categorias", dto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -119,20 +119,20 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Crear 3 niveles
         var dto1 = new CrearCategoriaDto($"Nivel0-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var res1 = await _client.PostAsJsonAsync("/api/categorias", dto1);
+        var res1 = await _client.PostAsJsonAsync("/api/v1/categorias", dto1);
         var cat1 = await res1.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dto2 = new CrearCategoriaDto("Nivel1", null, cat1!.Id);
-        var res2 = await _client.PostAsJsonAsync("/api/categorias", dto2);
+        var res2 = await _client.PostAsJsonAsync("/api/v1/categorias", dto2);
         var cat2 = await res2.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dto3 = new CrearCategoriaDto("Nivel2", null, cat2!.Id);
-        var res3 = await _client.PostAsJsonAsync("/api/categorias", dto3);
+        var res3 = await _client.PostAsJsonAsync("/api/v1/categorias", dto3);
         var cat3 = await res3.Content.ReadFromJsonAsync<CategoriaDto>();
 
         // Act: Intentar crear nivel 3 (4to nivel, no permitido)
         var dto4 = new CrearCategoriaDto("Nivel3", null, cat3!.Id);
-        var response = await _client.PostAsJsonAsync("/api/categorias", dto4);
+        var response = await _client.PostAsJsonAsync("/api/v1/categorias", dto4);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -149,11 +149,11 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Crear categoría
         var dto = new CrearCategoriaDto($"Test-{Guid.NewGuid().ToString("N")[..8]}", "Desc", null);
-        var createResponse = await _client.PostAsJsonAsync("/api/categorias", dto);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/categorias", dto);
         var created = await createResponse.Content.ReadFromJsonAsync<CategoriaDto>();
 
         // Act
-        var response = await _client.GetAsync($"/api/categorias/{created!.Id}");
+        var response = await _client.GetAsync($"/api/v1/categorias/{created!.Id}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -167,14 +167,14 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Crear estructura
         var dto1 = new CrearCategoriaDto($"Raiz-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var res1 = await _client.PostAsJsonAsync("/api/categorias", dto1);
+        var res1 = await _client.PostAsJsonAsync("/api/v1/categorias", dto1);
         var raiz = await res1.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dto2 = new CrearCategoriaDto($"Hijo-{Guid.NewGuid().ToString("N")[..6]}", null, raiz!.Id);
-        await _client.PostAsJsonAsync("/api/categorias", dto2);
+        await _client.PostAsJsonAsync("/api/v1/categorias", dto2);
 
         // Act
-        var response = await _client.GetAsync("/api/categorias/arbol");
+        var response = await _client.GetAsync("/api/v1/categorias/arbol");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -191,14 +191,14 @@ public class CategoriasJerarquicasTests
     {
         // Arrange
         var dtoRaiz = new CrearCategoriaDto($"Raiz-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resRaiz = await _client.PostAsJsonAsync("/api/categorias", dtoRaiz);
+        var resRaiz = await _client.PostAsJsonAsync("/api/v1/categorias", dtoRaiz);
         var raiz = await resRaiz.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoHijo = new CrearCategoriaDto("Hijo", null, raiz!.Id);
-        await _client.PostAsJsonAsync("/api/categorias", dtoHijo);
+        await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo);
 
         // Act
-        var response = await _client.GetAsync("/api/categorias/raiz");
+        var response = await _client.GetAsync("/api/v1/categorias/raiz");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -213,17 +213,17 @@ public class CategoriasJerarquicasTests
     {
         // Arrange
         var dtoPadre = new CrearCategoriaDto($"Padre-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resPadre = await _client.PostAsJsonAsync("/api/categorias", dtoPadre);
+        var resPadre = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre);
         var padre = await resPadre.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoHijo1 = new CrearCategoriaDto($"Hijo1-{Guid.NewGuid().ToString("N")[..6]}", null, padre!.Id);
-        await _client.PostAsJsonAsync("/api/categorias", dtoHijo1);
+        await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo1);
 
         var dtoHijo2 = new CrearCategoriaDto($"Hijo2-{Guid.NewGuid().ToString("N")[..6]}", null, padre.Id);
-        await _client.PostAsJsonAsync("/api/categorias", dtoHijo2);
+        await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo2);
 
         // Act
-        var response = await _client.GetAsync($"/api/categorias/{padre.Id}/subcategorias");
+        var response = await _client.GetAsync($"/api/v1/categorias/{padre.Id}/subcategorias");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -242,7 +242,7 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Crear categoría
         var dtoCrear = new CrearCategoriaDto($"Original-{Guid.NewGuid().ToString("N")[..6]}", "Desc original", null);
-        var createResponse = await _client.PostAsJsonAsync("/api/categorias", dtoCrear);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/categorias", dtoCrear);
         var created = await createResponse.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoActualizar = new ActualizarCategoriaDto(
@@ -252,12 +252,12 @@ public class CategoriasJerarquicasTests
         );
 
         // Act
-        var response = await _client.PutAsJsonAsync($"/api/categorias/{created!.Id}", dtoActualizar);
+        var response = await _client.PutAsJsonAsync($"/api/v1/categorias/{created!.Id}", dtoActualizar);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResponse = await _client.GetAsync($"/api/categorias/{created.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/categorias/{created.Id}");
         var actualizada = await getResponse.Content.ReadFromJsonAsync<CategoriaDto>();
         actualizada!.Nombre.Should().Be(dtoActualizar.Nombre);
         actualizada.Descripcion.Should().Be(dtoActualizar.Descripcion);
@@ -268,25 +268,25 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Crear 2 raíz y 1 hijo
         var dtoPadre1 = new CrearCategoriaDto($"Padre1-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resPadre1 = await _client.PostAsJsonAsync("/api/categorias", dtoPadre1);
+        var resPadre1 = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre1);
         var padre1 = await resPadre1.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoPadre2 = new CrearCategoriaDto($"Padre2-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resPadre2 = await _client.PostAsJsonAsync("/api/categorias", dtoPadre2);
+        var resPadre2 = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre2);
         var padre2 = await resPadre2.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoHijo = new CrearCategoriaDto($"Hijo-{Guid.NewGuid().ToString("N")[..6]}", null, padre1!.Id);
-        var resHijo = await _client.PostAsJsonAsync("/api/categorias", dtoHijo);
+        var resHijo = await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo);
         var hijo = await resHijo.Content.ReadFromJsonAsync<CategoriaDto>();
 
         // Act: Mover hijo de padre1 a padre2
         var dtoActualizar = new ActualizarCategoriaDto(hijo!.Nombre, hijo.Descripcion, padre2!.Id);
-        var response = await _client.PutAsJsonAsync($"/api/categorias/{hijo.Id}", dtoActualizar);
+        var response = await _client.PutAsJsonAsync($"/api/v1/categorias/{hijo.Id}", dtoActualizar);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResponse = await _client.GetAsync($"/api/categorias/{hijo.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/categorias/{hijo.Id}");
         var actualizada = await getResponse.Content.ReadFromJsonAsync<CategoriaDto>();
         actualizada!.CategoriaPadreId.Should().Be(padre2.Id);
         actualizada.NombrePadre.Should().Be(dtoPadre2.Nombre);
@@ -297,7 +297,7 @@ public class CategoriasJerarquicasTests
     {
         // Arrange
         var dto = new CrearCategoriaDto($"Test-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var createResponse = await _client.PostAsJsonAsync("/api/categorias", dto);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/categorias", dto);
         var created = await createResponse.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoActualizar = new ActualizarCategoriaDto(
@@ -307,7 +307,7 @@ public class CategoriasJerarquicasTests
         );
 
         // Act
-        var response = await _client.PutAsJsonAsync($"/api/categorias/{created.Id}", dtoActualizar);
+        var response = await _client.PutAsJsonAsync($"/api/v1/categorias/{created.Id}", dtoActualizar);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -324,25 +324,25 @@ public class CategoriasJerarquicasTests
     {
         // Arrange
         var dtoPadre1 = new CrearCategoriaDto($"P1-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resPadre1 = await _client.PostAsJsonAsync("/api/categorias", dtoPadre1);
+        var resPadre1 = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre1);
         var padre1 = await resPadre1.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoPadre2 = new CrearCategoriaDto($"P2-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resPadre2 = await _client.PostAsJsonAsync("/api/categorias", dtoPadre2);
+        var resPadre2 = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre2);
         var padre2 = await resPadre2.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoHijo = new CrearCategoriaDto($"Hijo-{Guid.NewGuid().ToString("N")[..6]}", null, padre1!.Id);
-        var resHijo = await _client.PostAsJsonAsync("/api/categorias", dtoHijo);
+        var resHijo = await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo);
         var hijo = await resHijo.Content.ReadFromJsonAsync<CategoriaDto>();
 
         // Act: Mover de padre1 a padre2
         var dtoMover = new MoverCategoriaDto(hijo!.Id, padre2!.Id);
-        var response = await _client.PostAsJsonAsync("/api/categorias/mover", dtoMover);
+        var response = await _client.PostAsJsonAsync("/api/v1/categorias/mover", dtoMover);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResponse = await _client.GetAsync($"/api/categorias/{hijo.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/categorias/{hijo.Id}");
         var movida = await getResponse.Content.ReadFromJsonAsync<CategoriaDto>();
         movida!.CategoriaPadreId.Should().Be(padre2.Id);
     }
@@ -352,13 +352,13 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Padre > Hijo
         var dtoPadre = new CrearCategoriaDto($"Padre-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resPadre = await _client.PostAsJsonAsync("/api/categorias", dtoPadre);
+        var resPadre = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre);
         resPadre.StatusCode.Should().Be(HttpStatusCode.Created);
         var padre = await resPadre.Content.ReadFromJsonAsync<CategoriaDto>();
         padre.Should().NotBeNull();
 
         var dtoHijo = new CrearCategoriaDto($"Hijo-{Guid.NewGuid().ToString("N")[..6]}", null, padre!.Id);
-        var resHijo = await _client.PostAsJsonAsync("/api/categorias", dtoHijo);
+        var resHijo = await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo);
         resHijo.StatusCode.Should().Be(HttpStatusCode.Created);
         var hijo = await resHijo.Content.ReadFromJsonAsync<CategoriaDto>();
         hijo.Should().NotBeNull();
@@ -366,7 +366,7 @@ public class CategoriasJerarquicasTests
 
         // Act: Intentar mover padre dentro de hijo (crearía ciclo)
         var dtoMover = new MoverCategoriaDto(padre.Id, hijo.Id);
-        var response = await _client.PostAsJsonAsync("/api/categorias/mover", dtoMover);
+        var response = await _client.PostAsJsonAsync("/api/v1/categorias/mover", dtoMover);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -383,16 +383,16 @@ public class CategoriasJerarquicasTests
     {
         // Arrange
         var dto = new CrearCategoriaDto($"PorEliminar-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var createResponse = await _client.PostAsJsonAsync("/api/categorias", dto);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/categorias", dto);
         var created = await createResponse.Content.ReadFromJsonAsync<CategoriaDto>();
 
         // Act
-        var response = await _client.DeleteAsync($"/api/categorias/{created!.Id}");
+        var response = await _client.DeleteAsync($"/api/v1/categorias/{created!.Id}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResponse = await _client.GetAsync($"/api/categorias/{created.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/categorias/{created.Id}");
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -401,14 +401,14 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Padre con hijo
         var dtoPadre = new CrearCategoriaDto($"PadreConHijos-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var resPadre = await _client.PostAsJsonAsync("/api/categorias", dtoPadre);
+        var resPadre = await _client.PostAsJsonAsync("/api/v1/categorias", dtoPadre);
         var padre = await resPadre.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoHijo = new CrearCategoriaDto("Hijo", null, padre!.Id);
-        await _client.PostAsJsonAsync("/api/categorias", dtoHijo);
+        await _client.PostAsJsonAsync("/api/v1/categorias", dtoHijo);
 
         // Act: Intentar eliminar padre
-        var response = await _client.DeleteAsync($"/api/categorias/{padre.Id}");
+        var response = await _client.DeleteAsync($"/api/v1/categorias/{padre.Id}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -427,7 +427,7 @@ public class CategoriasJerarquicasTests
         var dto = new CrearCategoriaDto("Test", null, null);
 
         // Act
-        var response = await _clientCajero.PostAsJsonAsync("/api/categorias", dto);
+        var response = await _clientCajero.PostAsJsonAsync("/api/v1/categorias", dto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -438,13 +438,13 @@ public class CategoriasJerarquicasTests
     {
         // Arrange: Crear con admin
         var dtoCrear = new CrearCategoriaDto($"Test-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var createResponse = await _client.PostAsJsonAsync("/api/categorias", dtoCrear);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/categorias", dtoCrear);
         var created = await createResponse.Content.ReadFromJsonAsync<CategoriaDto>();
 
         var dtoActualizar = new ActualizarCategoriaDto("Actualizado", null, null);
 
         // Act
-        var response = await _clientCajero.PutAsJsonAsync($"/api/categorias/{created!.Id}", dtoActualizar);
+        var response = await _clientCajero.PutAsJsonAsync($"/api/v1/categorias/{created!.Id}", dtoActualizar);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -455,11 +455,11 @@ public class CategoriasJerarquicasTests
     {
         // Arrange
         var dto = new CrearCategoriaDto($"Test-{Guid.NewGuid().ToString("N")[..6]}", null, null);
-        var createResponse = await _client.PostAsJsonAsync("/api/categorias", dto);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/categorias", dto);
         var created = await createResponse.Content.ReadFromJsonAsync<CategoriaDto>();
 
         // Act
-        var response = await _clientCajero.DeleteAsync($"/api/categorias/{created!.Id}");
+        var response = await _clientCajero.DeleteAsync($"/api/v1/categorias/{created!.Id}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);

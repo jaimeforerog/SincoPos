@@ -30,7 +30,7 @@ export const facturacionApi = {
   getConfiguracion: async (sucursalId: number): Promise<ConfiguracionEmisorDTO | null> => {
     try {
       const response = await apiClient.get<ConfiguracionEmisorDTO>(
-        `/api/facturacion/configuracion/${sucursalId}`
+        `/facturacion/configuracion/${sucursalId}`
       );
       return response.data;
     } catch (err: any) {
@@ -43,7 +43,7 @@ export const facturacionApi = {
     sucursalId: number,
     data: ActualizarConfiguracionEmisorDTO
   ): Promise<void> => {
-    await apiClient.put(`/api/facturacion/configuracion/${sucursalId}`, data);
+    await apiClient.put(`/facturacion/configuracion/${sucursalId}`, data);
   },
 
   // ─── Documentos Electrónicos ────────────────────────────────────────────
@@ -52,7 +52,7 @@ export const facturacionApi = {
     params: FiltroDocumentosParams
   ): Promise<PaginatedResult<DocumentoElectronicoDTO>> => {
     const response = await apiClient.get<PaginatedResult<DocumentoElectronicoDTO>>(
-      '/api/facturacion/documentos',
+      '/facturacion/documentos',
       { params }
     );
     return response.data;
@@ -60,7 +60,7 @@ export const facturacionApi = {
 
   getDocumento: async (id: number): Promise<DocumentoElectronicoDTO> => {
     const response = await apiClient.get<DocumentoElectronicoDTO>(
-      `/api/facturacion/documentos/${id}`
+      `/facturacion/documentos/${id}`
     );
     return response.data;
   },
@@ -71,21 +71,21 @@ export const facturacionApi = {
 
   reintentar: async (id: number): Promise<DocumentoElectronicoDTO> => {
     const response = await apiClient.post<DocumentoElectronicoDTO>(
-      `/api/facturacion/documentos/${id}/reintentar`
+      `/facturacion/documentos/${id}/reintentar`
     );
     return response.data;
   },
 
   consultarEstadoDian: async (id: number): Promise<DianRespuestaDTO> => {
     const response = await apiClient.get<DianRespuestaDTO>(
-      `/api/facturacion/documentos/${id}/estado-dian`
+      `/facturacion/documentos/${id}/estado-dian`
     );
     return response.data;
   },
 
   emitirFacturaManual: async (ventaId: number): Promise<DocumentoElectronicoDTO> => {
     const response = await apiClient.post<DocumentoElectronicoDTO>(
-      `/api/facturacion/documentos/emitir-venta/${ventaId}`
+      `/facturacion/documentos/emitir-venta/${ventaId}`
     );
     return response.data;
   },

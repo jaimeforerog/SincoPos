@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { useAuth as useOidcAuth } from 'react-oidc-context';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth as useOidcAuth } from 'react-oidc-context';
 import {
   Box,
   Button,
@@ -11,20 +11,25 @@ import {
 } from '@mui/material';
 import { LoginOutlined } from '@mui/icons-material';
 import { APP_NAME } from '@/utils/constants';
+import { isEntraId, loginRequest } from '../msalConfig';
+import { msalInstance } from '../AuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 
 export function LoginPage() {
-  const oidcAuth = useOidcAuth();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (oidcAuth.isAuthenticated) {
+    if (isAuthenticated) {
       navigate('/');
     }
-  }, [oidcAuth.isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate]);
 
-  const handleLogin = () => {
-    oidcAuth.signinRedirect();
-  };
+  const handleLogin = useCallback(() => {
+    if (isEntraId) {
+      msalInstance.loginRedirect(loginRequest);
+    }
+  }, []);
 
   return (
     <Box
@@ -51,26 +56,52 @@ export function LoginPage() {
               Sistema de Punto de Venta
             </Typography>
 
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              startIcon={<LoginOutlined />}
-              onClick={handleLogin}
-              sx={{
-                py: 1.5,
-                fontSize: '1.1rem',
-              }}
-            >
-              Iniciar Sesión
-            </Button>
+            {isEntraId ? (
+              <EntraLoginButton onLogin={handleLogin} />
+            ) : (
+              <KeycloakLoginButton />
+            )}
 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
-              Al continuar, serás redirigido a Keycloak para autenticarte
+              {isEntraId
+                ? 'Al continuar, serás redirigido a Microsoft para autenticarte'
+                : 'Al continuar, serás redirigido a Keycloak para autenticarte'}
             </Typography>
           </CardContent>
         </Card>
       </Container>
     </Box>
+  );
+}
+
+function EntraLoginButton({ onLogin }: { onLogin: () => void }) {
+  return (
+    <Button
+      variant="contained"
+      size="large"
+      fullWidth
+      startIcon={<LoginOutlined />}
+      onClick={onLogin}
+      sx={{ py: 1.5, fontSize: '1.1rem' }}
+    >
+      Iniciar Sesión con Microsoft
+    </Button>
+  );
+}
+
+function KeycloakLoginButton() {
+  const oidcAuth = useOidcAuth();
+
+  return (
+    <Button
+      variant="contained"
+      size="large"
+      fullWidth
+      startIcon={<LoginOutlined />}
+      onClick={() => oidcAuth.signinRedirect()}
+      sx={{ py: 1.5, fontSize: '1.1rem' }}
+    >
+      Iniciar Sesión
+    </Button>
   );
 }

@@ -23,82 +23,6 @@ namespace POS.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("POS.Infrastructure.Data.Entities.ConfiguracionEmisor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Ambiente").IsRequired().HasMaxLength(1).HasColumnType("character varying(1)").HasColumnName("ambiente").HasDefaultValue("2");
-                    b.Property<string>("CertificadoBase64").IsRequired().HasColumnType("text").HasColumnName("certificado_base64");
-                    b.Property<string>("CertificadoPassword").IsRequired().HasMaxLength(200).HasColumnType("character varying(200)").HasColumnName("certificado_password");
-                    b.Property<string>("CodigoCiiu").IsRequired().HasMaxLength(10).HasColumnType("character varying(10)").HasColumnName("codigo_ciiu");
-                    b.Property<string>("CodigoDepartamento").IsRequired().HasMaxLength(10).HasColumnType("character varying(10)").HasColumnName("codigo_departamento");
-                    b.Property<string>("CodigoMunicipio").IsRequired().HasMaxLength(10).HasColumnType("character varying(10)").HasColumnName("codigo_municipio");
-                    b.Property<string>("DigitoVerificacion").IsRequired().HasMaxLength(1).HasColumnType("character varying(1)").HasColumnName("digito_verificacion");
-                    b.Property<string>("Direccion").IsRequired().HasMaxLength(500).HasColumnType("character varying(500)").HasColumnName("direccion");
-                    b.Property<string>("Email").IsRequired().HasMaxLength(100).HasColumnType("character varying(100)").HasColumnName("email");
-                    b.Property<DateTime>("FechaResolucion").HasColumnType("timestamp with time zone").HasColumnName("fecha_resolucion");
-                    b.Property<DateTime>("FechaVigenciaDesde").HasColumnType("timestamp with time zone").HasColumnName("fecha_vigencia_desde");
-                    b.Property<DateTime>("FechaVigenciaHasta").HasColumnType("timestamp with time zone").HasColumnName("fecha_vigencia_hasta");
-                    b.Property<string>("IdSoftware").IsRequired().HasMaxLength(100).HasColumnType("character varying(100)").HasColumnName("id_software");
-                    b.Property<string>("Nit").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)").HasColumnName("nit");
-                    b.Property<string>("NombreComercial").IsRequired().HasMaxLength(250).HasColumnType("character varying(250)").HasColumnName("nombre_comercial");
-                    b.Property<long>("NumeroActual").HasColumnType("bigint").HasColumnName("numero_actual").HasDefaultValue(0L);
-                    b.Property<long>("NumeroDesde").HasColumnType("bigint").HasColumnName("numero_desde");
-                    b.Property<long>("NumeroHasta").HasColumnType("bigint").HasColumnName("numero_hasta");
-                    b.Property<string>("NumeroResolucion").IsRequired().HasMaxLength(50).HasColumnType("character varying(50)").HasColumnName("numero_resolucion");
-                    b.Property<string>("PerfilTributario").IsRequired().HasMaxLength(50).HasColumnType("character varying(50)").HasColumnName("perfil_tributario");
-                    b.Property<string>("PinSoftware").IsRequired().HasMaxLength(100).HasColumnType("character varying(100)").HasColumnName("pin_software");
-                    b.Property<string>("Prefijo").IsRequired().HasMaxLength(5).HasColumnType("character varying(5)").HasColumnName("prefijo");
-                    b.Property<string>("RazonSocial").IsRequired().HasMaxLength(250).HasColumnType("character varying(250)").HasColumnName("razon_social");
-                    b.Property<int>("SucursalId").HasColumnType("integer").HasColumnName("sucursal_id");
-                    b.Property<string>("Telefono").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)").HasColumnName("telefono");
-
-                    b.HasKey("Id").HasName("pk_configuracion_emisor");
-                    b.HasIndex("SucursalId").IsUnique().HasDatabaseName("ix_configuracion_emisor_sucursal_id");
-                    b.ToTable("configuracion_emisor", "public");
-                });
-
-            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoElectronico", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CodigoRespuestaDian").HasMaxLength(20).HasColumnType("character varying(20)").HasColumnName("codigo_respuesta_dian");
-                    b.Property<string>("CreadoPor").IsRequired().HasMaxLength(200).HasColumnType("character varying(200)").HasColumnName("creado_por");
-                    b.Property<string>("Cufe").IsRequired().HasMaxLength(200).HasColumnType("character varying(200)").HasColumnName("cufe");
-                    b.Property<int>("Estado").HasColumnType("integer").HasColumnName("estado").HasDefaultValue(0);
-                    b.Property<DateTime>("FechaCreacion").HasColumnType("timestamp with time zone").HasColumnName("fecha_creacion");
-                    b.Property<DateTime>("FechaEmision").HasColumnType("timestamp with time zone").HasColumnName("fecha_emision");
-                    b.Property<DateTime?>("FechaEnvioDian").HasColumnType("timestamp with time zone").HasColumnName("fecha_envio_dian");
-                    b.Property<DateTime?>("FechaModificacion").HasColumnType("timestamp with time zone").HasColumnName("fecha_modificacion");
-                    b.Property<int>("Intentos").HasColumnType("integer").HasColumnName("intentos").HasDefaultValue(0);
-                    b.Property<string>("MensajeRespuestaDian").HasMaxLength(1000).HasColumnType("character varying(1000)").HasColumnName("mensaje_respuesta_dian");
-                    b.Property<string>("ModificadoPor").HasMaxLength(200).HasColumnType("character varying(200)").HasColumnName("modificado_por");
-                    b.Property<long>("Numero").HasColumnType("bigint").HasColumnName("numero");
-                    b.Property<string>("NumeroCompleto").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)").HasColumnName("numero_completo");
-                    b.Property<string>("Prefijo").IsRequired().HasMaxLength(5).HasColumnType("character varying(5)").HasColumnName("prefijo");
-                    b.Property<int>("SucursalId").HasColumnType("integer").HasColumnName("sucursal_id");
-                    b.Property<string>("TipoDocumento").IsRequired().HasMaxLength(2).HasColumnType("character varying(2)").HasColumnName("tipo_documento");
-                    b.Property<int?>("VentaId").HasColumnType("integer").HasColumnName("venta_id");
-                    b.Property<string>("XmlUbl").IsRequired().HasColumnType("text").HasColumnName("xml_ubl");
-
-                    b.HasKey("Id").HasName("pk_documentos_electronicos");
-                    b.HasIndex("Cufe").IsUnique().HasDatabaseName("ix_documentos_electronicos_cufe");
-                    b.HasIndex("Estado").HasDatabaseName("ix_documentos_electronicos_estado");
-                    b.HasIndex("SucursalId", "FechaEmision").HasDatabaseName("ix_documentos_electronicos_sucursal_fecha");
-                    b.HasIndex("VentaId").HasDatabaseName("ix_documentos_electronicos_venta_id").HasFilter("venta_id IS NOT NULL");
-                    b.ToTable("documentos_electronicos", "public");
-                });
-
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.ActivityLog", b =>
                 {
                     b.Property<long>("Id")
@@ -356,6 +280,162 @@ namespace POS.Infrastructure.Migrations
                         .HasDatabaseName("ix_categorias_categoria_padre_id");
 
                     b.ToTable("categorias", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.ConfiguracionEmisor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ambiente")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)")
+                        .HasDefaultValue("2")
+                        .HasColumnName("ambiente");
+
+                    b.Property<string>("CertificadoBase64")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("certificado_base64");
+
+                    b.Property<string>("CertificadoPassword")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("certificado_password");
+
+                    b.Property<string>("CodigoCiiu")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("codigo_ciiu");
+
+                    b.Property<string>("CodigoDepartamento")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("codigo_departamento");
+
+                    b.Property<string>("CodigoMunicipio")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("codigo_municipio");
+
+                    b.Property<string>("DigitoVerificacion")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)")
+                        .HasColumnName("digito_verificacion");
+
+                    b.Property<string>("Direccion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("direccion");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("FechaResolucion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_resolucion");
+
+                    b.Property<DateTime>("FechaVigenciaDesde")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_vigencia_desde");
+
+                    b.Property<DateTime>("FechaVigenciaHasta")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_vigencia_hasta");
+
+                    b.Property<string>("IdSoftware")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("id_software");
+
+                    b.Property<string>("Nit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("nit");
+
+                    b.Property<string>("NombreComercial")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("nombre_comercial");
+
+                    b.Property<long>("NumeroActual")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("numero_actual");
+
+                    b.Property<long>("NumeroDesde")
+                        .HasColumnType("bigint")
+                        .HasColumnName("numero_desde");
+
+                    b.Property<long>("NumeroHasta")
+                        .HasColumnType("bigint")
+                        .HasColumnName("numero_hasta");
+
+                    b.Property<string>("NumeroResolucion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("numero_resolucion");
+
+                    b.Property<string>("PerfilTributario")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("perfil_tributario");
+
+                    b.Property<string>("PinSoftware")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pin_software");
+
+                    b.Property<string>("Prefijo")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("prefijo");
+
+                    b.Property<string>("RazonSocial")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("razon_social");
+
+                    b.Property<int>("SucursalId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sucursal_id");
+
+                    b.Property<string>("Telefono")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefono");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SucursalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuracion_emisor_sucursal_id");
+
+                    b.ToTable("configuracion_emisor", "public");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleDevolucion", b =>
@@ -670,6 +750,123 @@ namespace POS.Infrastructure.Migrations
                         .HasDatabaseName("ix_devoluciones_venta_fecha");
 
                     b.ToTable("devoluciones_venta", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoElectronico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodigoRespuestaDian")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("codigo_respuesta_dian");
+
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("creado_por");
+
+                    b.Property<string>("Cufe")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("cufe");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<DateTime>("FechaEmision")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_emision");
+
+                    b.Property<DateTime?>("FechaEnvioDian")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_envio_dian");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_modificacion");
+
+                    b.Property<int>("Intentos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("intentos");
+
+                    b.Property<string>("MensajeRespuestaDian")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("mensaje_respuesta_dian");
+
+                    b.Property<string>("ModificadoPor")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("modificado_por");
+
+                    b.Property<long>("Numero")
+                        .HasColumnType("bigint")
+                        .HasColumnName("numero");
+
+                    b.Property<string>("NumeroCompleto")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("numero_completo");
+
+                    b.Property<string>("Prefijo")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("prefijo");
+
+                    b.Property<int>("SucursalId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sucursal_id");
+
+                    b.Property<string>("TipoDocumento")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("tipo_documento");
+
+                    b.Property<int?>("VentaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("venta_id");
+
+                    b.Property<string>("XmlUbl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("xml_ubl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Cufe")
+                        .IsUnique()
+                        .HasDatabaseName("ix_documentos_electronicos_cufe");
+
+                    b.HasIndex("Estado")
+                        .HasDatabaseName("ix_documentos_electronicos_estado");
+
+                    b.HasIndex("VentaId")
+                        .HasDatabaseName("ix_documentos_electronicos_venta_id")
+                        .HasFilter("venta_id IS NOT NULL");
+
+                    b.HasIndex("SucursalId", "FechaEmision")
+                        .HasDatabaseName("ix_documentos_electronicos_sucursal_fecha");
+
+                    b.ToTable("documentos_electronicos", "public");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Impuesto", b =>
@@ -1265,13 +1462,6 @@ namespace POS.Infrastructure.Migrations
                     b.Property<decimal?>("GramosAzucarPor100ml")
                         .HasColumnType("numeric");
 
-                    b.Property<string>("UnidadMedida")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasDefaultValue("94")
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("unidad_medida");
-
                     b.Property<int?>("ImpuestoId")
                         .HasColumnType("integer")
                         .HasColumnName("impuesto_id");
@@ -1294,6 +1484,14 @@ namespace POS.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("precio_venta");
+
+                    b.Property<string>("UnidadMedida")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("94")
+                        .HasColumnName("unidad_medida");
 
                     b.HasKey("Id");
 
@@ -2096,6 +2294,17 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("CategoriaPadre");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.ConfiguracionEmisor", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "Sucursal")
+                        .WithMany()
+                        .HasForeignKey("SucursalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Sucursal");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleDevolucion", b =>
                 {
                     b.HasOne("POS.Infrastructure.Data.Entities.DevolucionVenta", "DevolucionVenta")
@@ -2179,6 +2388,24 @@ namespace POS.Infrastructure.Migrations
                         .HasForeignKey("VentaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Venta");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoElectronico", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "Sucursal")
+                        .WithMany()
+                        .HasForeignKey("SucursalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("POS.Infrastructure.Data.Entities.Venta", "Venta")
+                        .WithMany()
+                        .HasForeignKey("VentaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Sucursal");
 
                     b.Navigation("Venta");
                 });
@@ -2355,8 +2582,6 @@ namespace POS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("SucursalDefault");
-
-                    b.Navigation("Sucursales");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.UsuarioSucursal", b =>
@@ -2434,6 +2659,11 @@ namespace POS.Infrastructure.Migrations
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Traslado", b =>
                 {
                     b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Usuario", b =>
+                {
+                    b.Navigation("Sucursales");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Venta", b =>

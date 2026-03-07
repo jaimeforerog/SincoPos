@@ -52,7 +52,7 @@ public class AuditoriaTests
         var ahora = DateTime.UtcNow;
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/Categorias", new
+        var response = await client.PostAsJsonAsync("/api/v1/Categorias", new
         {
             nombre = "Categoria Auditoria Test",
             descripcion = "Test de auditoría"
@@ -82,7 +82,7 @@ public class AuditoriaTests
         var ahora = DateTime.UtcNow;
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/Impuestos", new
+        var response = await client.PostAsJsonAsync("/api/v1/Impuestos", new
         {
             nombre = "IVA Test Auditoria",
             porcentaje = 0.19m
@@ -111,7 +111,7 @@ public class AuditoriaTests
         var ahora = DateTime.UtcNow;
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/Terceros", new
+        var response = await client.PostAsJsonAsync("/api/v1/Terceros", new
         {
             nombre = "Cliente Test Auditoria",
             tipoIdentificacion = "NIT",
@@ -139,7 +139,7 @@ public class AuditoriaTests
         var ahora = DateTime.UtcNow;
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/Productos", new
+        var response = await client.PostAsJsonAsync("/api/v1/Productos", new
         {
             codigoBarras = "AUD-PROD-001",
             nombre = "Producto Auditoria Test",
@@ -194,7 +194,7 @@ public class AuditoriaTests
     {
         // Arrange - Crear como Admin
         var clientAdmin = _factory.CreateAuthenticatedClient(AdminEmail);
-        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/Categorias", new
+        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Categorias", new
         {
             nombre = "Categoria Para Modificar",
             descripcion = "Original"
@@ -208,7 +208,7 @@ public class AuditoriaTests
         var ahoraModificacion = DateTime.UtcNow;
 
         var modificarResponse = await clientSupervisor.PutAsJsonAsync(
-            $"/api/Categorias/{categoria!.Id}",
+            $"/api/v1/Categorias/{categoria!.Id}",
             new
             {
                 nombre = "Categoria Modificada",
@@ -233,7 +233,7 @@ public class AuditoriaTests
     {
         // Arrange - Crear tercero
         var clientAdmin = _factory.CreateAuthenticatedClient(AdminEmail);
-        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/Terceros", new
+        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Terceros", new
         {
             nombre = "Tercero Para Modificar",
             tipoIdentificacion = "CC",
@@ -249,7 +249,7 @@ public class AuditoriaTests
         var ahoraModificacion = DateTime.UtcNow;
 
         var modificarResponse = await clientSupervisor.PutAsJsonAsync(
-            $"/api/Terceros/{tercero!.Id}",
+            $"/api/v1/Terceros/{tercero!.Id}",
             new
             {
                 nombre = "Tercero Modificado",
@@ -277,7 +277,7 @@ public class AuditoriaTests
     {
         // Arrange - Crear producto
         var clientAdmin = _factory.CreateAuthenticatedClient(AdminEmail);
-        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/Productos", new
+        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Productos", new
         {
             codigoBarras = "PROD-MOD-001",
             nombre = "Producto Para Modificar",
@@ -295,7 +295,7 @@ public class AuditoriaTests
         var ahoraModificacion = DateTime.UtcNow;
 
         var modificarResponse = await clientSupervisor.PutAsJsonAsync(
-            $"/api/Productos/{producto!.Id}",
+            $"/api/v1/Productos/{producto!.Id}",
             new
             {
                 codigoBarras = "PROD-MOD-001",
@@ -328,7 +328,7 @@ public class AuditoriaTests
     {
         // Arrange - Crear categoria
         var clientAdmin = _factory.CreateAuthenticatedClient(AdminEmail);
-        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/Categorias", new
+        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Categorias", new
         {
             nombre = "Categoria Proteccion Test",
             descripcion = "Test"
@@ -372,7 +372,7 @@ public class AuditoriaTests
     {
         // Arrange - Crear
         var clientAdmin = _factory.CreateAuthenticatedClient(AdminEmail);
-        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/Categorias", new
+        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Categorias", new
         {
             nombre = "Categoria Multi Modificacion",
             descripcion = "V1"
@@ -384,7 +384,7 @@ public class AuditoriaTests
         // Modificación 1 - Supervisor
         await Task.Delay(100);
         var clientSupervisor = _factory.CreateAuthenticatedClient(SupervisorEmail);
-        await clientSupervisor.PutAsJsonAsync($"/api/Categorias/{categoria!.Id}", new
+        await clientSupervisor.PutAsJsonAsync($"/api/v1/Categorias/{categoria!.Id}", new
         {
             nombre = "Categoria Multi Modificacion",
             descripcion = "V2 - Supervisor"
@@ -402,7 +402,7 @@ public class AuditoriaTests
         // Modificación 3 - Admin
         await Task.Delay(100);
         var ahoraFinal = DateTime.UtcNow;
-        await clientAdmin.PutAsJsonAsync($"/api/Categorias/{categoria.Id}", new
+        await clientAdmin.PutAsJsonAsync($"/api/v1/Categorias/{categoria.Id}", new
         {
             nombre = "Categoria Multi Modificacion",
             descripcion = "V4 - Admin final"
@@ -431,7 +431,7 @@ public class AuditoriaTests
         var ahora = DateTime.UtcNow;
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/Sucursales", new
+        var response = await client.PostAsJsonAsync("/api/v1/Sucursales", new
         {
             nombre = "Sucursal Auditoria Test",
             direccion = "Calle Test 123",
@@ -459,7 +459,7 @@ public class AuditoriaTests
         var ahora = DateTime.UtcNow;
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/Cajas", new
+        var response = await client.PostAsJsonAsync("/api/v1/Cajas", new
         {
             nombre = "Caja Auditoria Test",
             sucursalId = _factory.SucursalPPId
@@ -490,7 +490,7 @@ public class AuditoriaTests
 
         // Paso 1: Admin crea la categoria
         var clientAdmin = _factory.CreateAuthenticatedClient(AdminEmail);
-        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/Categorias", new
+        var crearResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Categorias", new
         {
             nombre = "Categoria Ciclo Completo",
             descripcion = "Versión inicial"
@@ -514,7 +514,7 @@ public class AuditoriaTests
         var ahoraModificacion = DateTime.UtcNow;
         var clientSupervisor = _factory.CreateAuthenticatedClient(SupervisorEmail);
         var modificarResponse = await clientSupervisor.PutAsJsonAsync(
-            $"/api/Categorias/{categoria!.Id}",
+            $"/api/v1/Categorias/{categoria!.Id}",
             new
             {
                 nombre = "Categoria Ciclo Completo MODIFICADA",
@@ -539,7 +539,7 @@ public class AuditoriaTests
         // Paso 3: Admin hace otra modificación
         var ahoraSegundaModificacion = DateTime.UtcNow;
         var modificar2Response = await clientAdmin.PutAsJsonAsync(
-            $"/api/Categorias/{categoria.Id}",
+            $"/api/v1/Categorias/{categoria.Id}",
             new
             {
                 nombre = "Categoria Ciclo Completo FINAL",
@@ -577,12 +577,12 @@ public class AuditoriaTests
 
         // Admin crea categoria y sucursal
         var clientAdmin = _factory.CreateAuthenticatedClient(AdminEmail);
-        var categoriaResponse = await clientAdmin.PostAsJsonAsync("/api/Categorias", new
+        var categoriaResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Categorias", new
         {
             nombre = "Cat Multi Usuario",
             descripcion = "Test"
         });
-        var sucursalResponse = await clientAdmin.PostAsJsonAsync("/api/Sucursales", new
+        var sucursalResponse = await clientAdmin.PostAsJsonAsync("/api/v1/Sucursales", new
         {
             nombre = "Suc Multi Usuario",
             direccion = "Test 123",
@@ -591,7 +591,7 @@ public class AuditoriaTests
 
         // Supervisor crea producto
         var clientSupervisor = _factory.CreateAuthenticatedClient(SupervisorEmail);
-        var productoResponse = await clientSupervisor.PostAsJsonAsync("/api/Productos", new
+        var productoResponse = await clientSupervisor.PostAsJsonAsync("/api/v1/Productos", new
         {
             codigoBarras = "MULTI-USER-001",
             nombre = "Prod Multi Usuario",
@@ -602,7 +602,7 @@ public class AuditoriaTests
 
         // Cajero crea tercero
         var clientCajero = _factory.CreateAuthenticatedClient(CajeroEmail);
-        var terceroResponse = await clientCajero.PostAsJsonAsync("/api/Terceros", new
+        var terceroResponse = await clientCajero.PostAsJsonAsync("/api/v1/Terceros", new
         {
             nombre = "Tercero Multi Usuario",
             tipoIdentificacion = "NIT",

@@ -46,7 +46,7 @@ public class InventarioCosteoTests
             precioVenta = 1000m,
             precioCosto = 500m
         };
-        var response = await _client.PostAsJsonAsync("/api/Productos", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Productos", dto);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ProductoDto>(_jsonOptions);
         return result!.Id;
@@ -60,7 +60,7 @@ public class InventarioCosteoTests
             productoId, sucursalId, cantidad, costoUnitario,
             terceroId = TerceroId, referencia, observaciones = $"Test entrada {referencia}"
         };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/entrada", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Entrada {referencia} deberia ser exitosa. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -74,7 +74,7 @@ public class InventarioCosteoTests
             productoId, sucursalId, cantidad,
             terceroId = TerceroId, referencia, observaciones = $"Test devolucion {referencia}"
         };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/devolucion-proveedor", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/devolucion-proveedor", dto);
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Devolucion {referencia} deberia ser exitosa. Body: {await response.Content.ReadAsStringAsync()}");
         return await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
@@ -83,7 +83,7 @@ public class InventarioCosteoTests
     private async Task<StockDto?> ObtenerStock(Guid productoId, int sucursalId)
     {
         var response = await _client.GetFromJsonAsync<List<StockDto>>(
-            $"/api/Inventario?productoId={productoId}&sucursalId={sucursalId}",
+            $"/api/v1/Inventario?productoId={productoId}&sucursalId={sucursalId}",
             _jsonOptions);
         return response?.FirstOrDefault();
     }
@@ -92,7 +92,7 @@ public class InventarioCosteoTests
         Guid productoId, int sucursalId)
     {
         return await _client.GetFromJsonAsync<List<MovimientoInventarioDto>>(
-            $"/api/Inventario/movimientos?productoId={productoId}&sucursalId={sucursalId}",
+            $"/api/v1/Inventario/movimientos?productoId={productoId}&sucursalId={sucursalId}",
             _jsonOptions) ?? [];
     }
 
@@ -345,7 +345,7 @@ public class InventarioCosteoTests
         await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-ES-002");
 
         var ajusteDto = new { productoId, sucursalId = SucPP, cantidadNueva = 80m, observaciones = "Conteo fisico" };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/ajuste", ajusteDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/ajuste", ajusteDto);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var stock = await ObtenerStock(productoId, SucPP);
@@ -371,7 +371,7 @@ public class InventarioCosteoTests
             productoId, sucursalId = SucPP, cantidad = 999m,
             terceroId = TerceroId, referencia = "DEV-VAL-001"
         };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/devolucion-proveedor", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/devolucion-proveedor", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -384,7 +384,7 @@ public class InventarioCosteoTests
             sucursalId = SucPP, cantidad = 100m, costoUnitario = 50m,
             terceroId = TerceroId, referencia = "FC-NOEXISTE"
         };
-        var response = await _client.PostAsJsonAsync("/api/Inventario/entrada", dto);
+        var response = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", dto);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -395,12 +395,12 @@ public class InventarioCosteoTests
         await RegistrarEntrada(productoId, SucPP, 5, 50, "FC-ALERTA-001");
 
         var response = await _client.PutAsync(
-            $"/api/Inventario/stock-minimo?productoId={productoId}&sucursalId={SucPP}&stockMinimo=10",
+            $"/api/v1/Inventario/stock-minimo?productoId={productoId}&sucursalId={SucPP}&stockMinimo=10",
             null);
         response.EnsureSuccessStatusCode();
 
         var alertas = await _client.GetFromJsonAsync<List<AlertaStockDto>>(
-            $"/api/Inventario/alertas?sucursalId={SucPP}", _jsonOptions) ?? [];
+            $"/api/v1/Inventario/alertas?sucursalId={SucPP}", _jsonOptions) ?? [];
         alertas.Should().Contain(a => a.ProductoId == productoId);
     }
 }

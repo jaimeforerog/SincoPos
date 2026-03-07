@@ -12,7 +12,8 @@ namespace POS.Api.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class CajasController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -143,15 +144,15 @@ public class CajasController : ControllerBase
     public async Task<ActionResult<List<CajaDto>>> ObtenerMisCajasAbiertas()
     {
         // Obtener el usuario autenticado
-        var keycloakId = User.GetKeycloakId();
+        var externalId = User.GetExternalId();
         var email = User.GetEmail();
 
-        if (string.IsNullOrEmpty(keycloakId) || string.IsNullOrEmpty(email))
+        if (string.IsNullOrEmpty(externalId) || string.IsNullOrEmpty(email))
             return BadRequest(new { error = "Usuario no autenticado correctamente" });
 
         // Buscar el usuario en la base de datos
         var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u => u.KeycloakId == keycloakId || u.Email == email);
+            .FirstOrDefaultAsync(u => u.KeycloakId == externalId || u.Email == email);
 
         if (usuario == null || !usuario.SucursalDefaultId.HasValue)
             return Ok(new List<CajaDto>()); // Usuario sin sucursal asignada = sin cajas
@@ -212,16 +213,16 @@ public class CajasController : ControllerBase
         caja.FechaCierre = null;
 
         // Obtener usuario autenticado de Keycloak
-        var keycloakId = User.GetKeycloakId();
+        var externalId = User.GetExternalId();
         var email = User.GetEmail();
         var nombreCompleto = User.GetNombreCompleto();
         var roles = User.GetRoles().ToList();
         var rol = roles.FirstOrDefault() ?? "vendedor";
 
-        if (!string.IsNullOrEmpty(keycloakId) && !string.IsNullOrEmpty(email))
+        if (!string.IsNullOrEmpty(externalId) && !string.IsNullOrEmpty(email))
         {
             var usuario = await _usuarioService.ObtenerOCrearUsuarioAsync(
-                keycloakId, email, nombreCompleto, rol);
+                externalId, email, nombreCompleto, rol);
             caja.AbiertaPorUsuarioId = usuario.Id;
         }
 

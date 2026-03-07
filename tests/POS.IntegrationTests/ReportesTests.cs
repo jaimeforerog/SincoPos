@@ -31,7 +31,7 @@ public class ReportesTests
 
     private async Task<Guid> CrearProducto(string codigo, decimal precioVenta = 2000m, decimal precioCosto = 1000m)
     {
-        var r = await _client.PostAsJsonAsync("/api/Productos", new
+        var r = await _client.PostAsJsonAsync("/api/v1/Productos", new
         {
             codigoBarras = codigo, nombre = $"Prod {codigo}",
             categoriaId = CatId, precioVenta, precioCosto
@@ -42,7 +42,7 @@ public class ReportesTests
 
     private async Task RegistrarEntrada(Guid productoId, decimal cantidad, decimal costo = 1000m)
     {
-        var r = await _client.PostAsJsonAsync("/api/Inventario/entrada", new
+        var r = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", new
         {
             productoId, sucursalId = SucId, cantidad, costoUnitario = costo,
             terceroId = TercId, referencia = $"REP-{Guid.NewGuid():N}"[..20]
@@ -52,17 +52,17 @@ public class ReportesTests
 
     private async Task<int> CrearAbrirCaja(string nombre)
     {
-        var r1 = await _client.PostAsJsonAsync("/api/Cajas", new { nombre, sucursalId = SucId });
+        var r1 = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre, sucursalId = SucId });
         r1.EnsureSuccessStatusCode();
         var caja = await r1.Content.ReadFromJsonAsync<CajaDto>(_json);
-        var r2 = await _client.PostAsJsonAsync($"/api/Cajas/{caja!.Id}/abrir", new { montoApertura = 50_000m });
+        var r2 = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja!.Id}/abrir", new { montoApertura = 50_000m });
         r2.EnsureSuccessStatusCode();
         return caja.Id;
     }
 
     private async Task<int> CrearVenta(int cajaId, Guid productoId, int cantidad = 2)
     {
-        var r = await _client.PostAsJsonAsync("/api/Ventas", new
+        var r = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucId,
             cajaId,
@@ -83,7 +83,7 @@ public class ReportesTests
         var desde = DateTime.UtcNow.AddYears(-10).ToString("yyyy-MM-ddTHH:mm:ssZ");
         var hasta = DateTime.UtcNow.AddYears(-9).ToString("yyyy-MM-ddTHH:mm:ssZ");
 
-        var r = await _client.GetAsync($"/api/Reportes/ventas?fechaDesde={desde}&fechaHasta={hasta}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/ventas?fechaDesde={desde}&fechaHasta={hasta}");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var reporte = await r.Content.ReadFromJsonAsync<ReporteVentasDto>(_json);
@@ -107,7 +107,7 @@ public class ReportesTests
         var hasta = DateTime.UtcNow.AddMinutes(5).ToString("yyyy-MM-ddTHH:mm:ssZ");
 
         // Act
-        var r = await _client.GetAsync($"/api/Reportes/ventas?fechaDesde={desde}&fechaHasta={hasta}&sucursalId={SucId}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/ventas?fechaDesde={desde}&fechaHasta={hasta}&sucursalId={SucId}");
 
         // Assert
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -127,7 +127,7 @@ public class ReportesTests
         var desde = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
         var hasta = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ssZ");
 
-        var r = await _client.GetAsync($"/api/Reportes/ventas?fechaDesde={desde}&fechaHasta={hasta}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/ventas?fechaDesde={desde}&fechaHasta={hasta}");
 
         r.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -143,7 +143,7 @@ public class ReportesTests
         await RegistrarEntrada(productoId, 10, costo: 2000m);
 
         // Act
-        var r = await _client.GetAsync($"/api/Reportes/inventario-valorizado?sucursalId={SucId}&soloConStock=true");
+        var r = await _client.GetAsync($"/api/v1/Reportes/inventario-valorizado?sucursalId={SucId}&soloConStock=true");
 
         // Assert
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -165,7 +165,7 @@ public class ReportesTests
     [Fact]
     public async Task InventarioValorizado_SinFiltros_RetornaTodosLosProductos()
     {
-        var r = await _client.GetAsync("/api/Reportes/inventario-valorizado");
+        var r = await _client.GetAsync("/api/v1/Reportes/inventario-valorizado");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var reporte = await r.Content.ReadFromJsonAsync<ReporteInventarioValorizadoDto>(_json);
@@ -179,7 +179,7 @@ public class ReportesTests
     [Fact]
     public async Task ReporteCaja_CajaInexistente_Retorna404()
     {
-        var r = await _client.GetAsync("/api/Reportes/caja/999999");
+        var r = await _client.GetAsync("/api/v1/Reportes/caja/999999");
         r.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -194,7 +194,7 @@ public class ReportesTests
         await CrearVenta(cajaId, productoId, cantidad: 2); // 2 x 4000 = 8000
 
         // Act
-        var r = await _client.GetAsync($"/api/Reportes/caja/{cajaId}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/caja/{cajaId}");
 
         // Assert
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -219,7 +219,7 @@ public class ReportesTests
         var cajaId = await CrearAbrirCaja($"Caja-Util-{cod}");
         await CrearVenta(cajaId, productoId, cantidad: 1); // Venta: 6000, Costo: 3000
 
-        var r = await _client.GetAsync($"/api/Reportes/caja/{cajaId}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/caja/{cajaId}");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var reporte = await r.Content.ReadFromJsonAsync<ReporteCajaDto>(_json);
@@ -234,7 +234,7 @@ public class ReportesTests
     [Fact]
     public async Task Dashboard_SinFiltros_RetornaEstructuraCompleta()
     {
-        var r = await _client.GetAsync("/api/Reportes/dashboard");
+        var r = await _client.GetAsync("/api/v1/Reportes/dashboard");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var dashboard = await r.Content.ReadFromJsonAsync<DashboardDto>(_json);
@@ -248,7 +248,7 @@ public class ReportesTests
     [Fact]
     public async Task Dashboard_ConSucursal_FiltraPorSucursal()
     {
-        var r = await _client.GetAsync($"/api/Reportes/dashboard?sucursalId={SucId}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/dashboard?sucursalId={SucId}");
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var dashboard = await r.Content.ReadFromJsonAsync<DashboardDto>(_json);
         dashboard.Should().NotBeNull();
@@ -264,7 +264,7 @@ public class ReportesTests
         var cajaId = await CrearAbrirCaja($"Caja-Dash-{cod}");
         await CrearVenta(cajaId, productoId, cantidad: 2);
 
-        var r = await _client.GetAsync($"/api/Reportes/dashboard?sucursalId={SucId}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/dashboard?sucursalId={SucId}");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var dashboard = await r.Content.ReadFromJsonAsync<DashboardDto>(_json);
@@ -296,7 +296,7 @@ public class ReportesTests
         var hasta = DateTime.UtcNow.AddMinutes(5).ToString("yyyy-MM-ddTHH:mm:ssZ");
 
         var r = await _client.GetAsync(
-            $"/api/Reportes/top-productos?fechaDesde={desde}&fechaHasta={hasta}&sucursalId={SucId}&limite=10");
+            $"/api/v1/Reportes/top-productos?fechaDesde={desde}&fechaHasta={hasta}&sucursalId={SucId}&limite=10");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var top = await r.Content.ReadFromJsonAsync<List<TopProductoDto>>(_json);
@@ -313,7 +313,7 @@ public class ReportesTests
         var desde = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
         var hasta = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ssZ");
 
-        var r = await _client.GetAsync($"/api/Reportes/top-productos?fechaDesde={desde}&fechaHasta={hasta}");
+        var r = await _client.GetAsync($"/api/v1/Reportes/top-productos?fechaDesde={desde}&fechaHasta={hasta}");
         r.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -330,7 +330,7 @@ public class ReportesTests
         var hasta = DateTime.UtcNow.AddMinutes(5).ToString("yyyy-MM-ddTHH:mm:ssZ");
 
         var r = await _client.GetAsync(
-            $"/api/Reportes/top-productos?fechaDesde={desde}&fechaHasta={hasta}&sucursalId={SucId}&limite=1000");
+            $"/api/v1/Reportes/top-productos?fechaDesde={desde}&fechaHasta={hasta}&sucursalId={SucId}&limite=1000");
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var top = await r.Content.ReadFromJsonAsync<List<TopProductoDto>>(_json);
 

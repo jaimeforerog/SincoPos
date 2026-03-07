@@ -11,7 +11,7 @@ export const productosApi = {
     categoriaId?: number;
     incluirInactivos?: boolean;
   }) => {
-    const response = await apiClient.get<ProductoDTO[]>('/api/productos', {
+    const response = await apiClient.get<ProductoDTO[]>('/productos', {
       params,
     });
     return response.data;
@@ -22,31 +22,31 @@ export const productosApi = {
     categoriaId?: number;
     incluirInactivos?: boolean;
   }) => {
-    const response = await apiClient.get<ProductoDTO[]>('/api/productos', {
+    const response = await apiClient.get<ProductoDTO[]>('/productos', {
       params,
     });
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await apiClient.get<ProductoDTO>(`/api/productos/${id}`);
+    const response = await apiClient.get<ProductoDTO>(`/productos/${id}`);
     return response.data;
   },
 
   create: async (data: CrearProductoDTO) => {
-    const response = await apiClient.post<ProductoDTO>('/api/productos', data);
+    const response = await apiClient.post<ProductoDTO>('/productos', data);
     return response.data;
   },
 
   update: async (id: string, data: ActualizarProductoDTO) => {
     const response = await apiClient.put<ProductoDTO>(
-      `/api/productos/${id}`,
+      `/productos/${id}`,
       data
     );
     return response.data;
   },
 
   delete: async (id: string) => {
-    await apiClient.delete(`/api/productos/${id}`);
+    await apiClient.delete(`/productos/${id}`);
   },
 };

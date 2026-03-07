@@ -31,7 +31,7 @@ public class PreciosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         // Crear precio específico para la sucursal
@@ -42,10 +42,10 @@ public class PreciosTests
             PrecioMinimo: 120m,
             OrigenDato: "Manual");
 
-        await _client.PostAsJsonAsync("/api/precios", crearPrecioDto);
+        await _client.PostAsJsonAsync("/api/v1/precios", crearPrecioDto);
 
         // Act: Resolver precio
-        var response = await _client.GetAsync($"/api/precios/resolver?productoId={producto.Id}&sucursalId={_factory.SucursalPPId}");
+        var response = await _client.GetAsync($"/api/v1/precios/resolver?productoId={producto.Id}&sucursalId={_factory.SucursalPPId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -69,11 +69,11 @@ public class PreciosTests
             PrecioVenta: 200m,
             PrecioCosto: 80m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         // Act: Resolver precio (sin crear precio de sucursal)
-        var response = await _client.GetAsync($"/api/precios/resolver?productoId={producto!.Id}&sucursalId={_factory.SucursalPPId}");
+        var response = await _client.GetAsync($"/api/v1/precios/resolver?productoId={producto!.Id}&sucursalId={_factory.SucursalPPId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -87,7 +87,7 @@ public class PreciosTests
     public async Task ResolverPrecio_ProductoInexistente_DebeRetornar400()
     {
         // Act
-        var response = await _client.GetAsync($"/api/precios/resolver?productoId={Guid.NewGuid()}&sucursalId={_factory.SucursalPPId}");
+        var response = await _client.GetAsync($"/api/v1/precios/resolver?productoId={Guid.NewGuid()}&sucursalId={_factory.SucursalPPId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -109,7 +109,7 @@ public class PreciosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         // Act: Crear precio
@@ -120,7 +120,7 @@ public class PreciosTests
             PrecioMinimo: 110m,
             OrigenDato: "Manual");
 
-        var response = await _client.PostAsJsonAsync("/api/precios", crearPrecioDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/precios", crearPrecioDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -142,7 +142,7 @@ public class PreciosTests
             PrecioMinimo: null,
             OrigenDato: null);
 
-        var response = await _client.PostAsJsonAsync("/api/precios", crearPrecioDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/precios", crearPrecioDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -162,7 +162,7 @@ public class PreciosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         // Act: Usar sucursal inexistente
@@ -173,7 +173,7 @@ public class PreciosTests
             PrecioMinimo: null,
             OrigenDato: null);
 
-        var response = await _client.PostAsJsonAsync("/api/precios", crearPrecioDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/precios", crearPrecioDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -193,7 +193,7 @@ public class PreciosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         var crearPrecioDto = new CrearPrecioSucursalDto(
@@ -203,7 +203,7 @@ public class PreciosTests
             PrecioMinimo: 80m,
             OrigenDato: "Manual");
 
-        await _client.PostAsJsonAsync("/api/precios", crearPrecioDto);
+        await _client.PostAsJsonAsync("/api/v1/precios", crearPrecioDto);
 
         // Act: Actualizar precio
         var actualizarPrecioDto = new CrearPrecioSucursalDto(
@@ -213,7 +213,7 @@ public class PreciosTests
             PrecioMinimo: 120m,
             OrigenDato: "Manual");
 
-        var response = await _client.PostAsJsonAsync("/api/precios", actualizarPrecioDto);
+        var response = await _client.PostAsJsonAsync("/api/v1/precios", actualizarPrecioDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -235,7 +235,7 @@ public class PreciosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         // Act
@@ -246,10 +246,10 @@ public class PreciosTests
             PrecioMinimo: null,
             OrigenDato: "Manual");
 
-        await _client.PostAsJsonAsync("/api/precios", crearPrecioDto);
+        await _client.PostAsJsonAsync("/api/v1/precios", crearPrecioDto);
 
         // Assert: Verificar que se guardó correctamente
-        var responseResolver = await _client.GetAsync($"/api/precios/resolver?productoId={producto.Id}&sucursalId={_factory.SucursalPPId}");
+        var responseResolver = await _client.GetAsync($"/api/v1/precios/resolver?productoId={producto.Id}&sucursalId={_factory.SucursalPPId}");
         var precioResuelto = await responseResolver.Content.ReadFromJsonAsync<PrecioResueltoDto>();
         precioResuelto!.OrigenDato.Should().Be("Manual");
     }
@@ -266,7 +266,7 @@ public class PreciosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         // Act
@@ -277,10 +277,10 @@ public class PreciosTests
             PrecioMinimo: null,
             OrigenDato: "Migrado");
 
-        await _client.PostAsJsonAsync("/api/precios", crearPrecioDto);
+        await _client.PostAsJsonAsync("/api/v1/precios", crearPrecioDto);
 
         // Assert
-        var responseResolver = await _client.GetAsync($"/api/precios/resolver?productoId={producto.Id}&sucursalId={_factory.SucursalPPId}");
+        var responseResolver = await _client.GetAsync($"/api/v1/precios/resolver?productoId={producto.Id}&sucursalId={_factory.SucursalPPId}");
         var precioResuelto = await responseResolver.Content.ReadFromJsonAsync<PrecioResueltoDto>();
         precioResuelto!.OrigenDato.Should().Be("Migrado");
     }
@@ -301,18 +301,18 @@ public class PreciosTests
             PrecioVenta: 100m,
             PrecioCosto: 60m);
 
-        var responseProducto = await _client.PostAsJsonAsync("/api/productos", crearProductoDto);
+        var responseProducto = await _client.PostAsJsonAsync("/api/v1/productos", crearProductoDto);
         var producto = await responseProducto.Content.ReadFromJsonAsync<ProductoDto>();
 
         // Crear precios en 2 sucursales
-        await _client.PostAsJsonAsync("/api/precios", new CrearPrecioSucursalDto(
+        await _client.PostAsJsonAsync("/api/v1/precios", new CrearPrecioSucursalDto(
             producto!.Id, _factory.SucursalPPId, 100m, null, "Manual"));
 
-        await _client.PostAsJsonAsync("/api/precios", new CrearPrecioSucursalDto(
+        await _client.PostAsJsonAsync("/api/v1/precios", new CrearPrecioSucursalDto(
             producto.Id, _factory.SucursalFIFOId, 110m, null, "Manual"));
 
         // Act
-        var response = await _client.GetAsync($"/api/precios/producto/{producto.Id}");
+        var response = await _client.GetAsync($"/api/v1/precios/producto/{producto.Id}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -325,7 +325,7 @@ public class PreciosTests
     public async Task ListarPreciosProducto_ProductoInexistente_DebeRetornar404()
     {
         // Act
-        var response = await _client.GetAsync($"/api/precios/producto/{Guid.NewGuid()}");
+        var response = await _client.GetAsync($"/api/v1/precios/producto/{Guid.NewGuid()}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);

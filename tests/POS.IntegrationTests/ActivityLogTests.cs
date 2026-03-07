@@ -77,7 +77,7 @@ public class ActivityLogTests
         using var db2 = GetDbContext();
         var cajaAbierta = await db2.Cajas.FirstAsync(c => c.Nombre == "Caja ActivityLog Test");
 
-        var response = await client.PostAsJsonAsync($"/api/Cajas/{cajaAbierta.Id}/abrir", new
+        var response = await client.PostAsJsonAsync($"/api/v1/Cajas/{cajaAbierta.Id}/abrir", new
         {
             montoApertura = 100m
         });
@@ -135,7 +135,7 @@ public class ActivityLogTests
         using var db2 = GetDbContext();
         var cajaCerrar = await db2.Cajas.FirstAsync(c => c.Nombre == "Caja Cierre Test");
 
-        var response = await client.PostAsJsonAsync($"/api/Cajas/{cajaCerrar.Id}/cerrar", new
+        var response = await client.PostAsJsonAsync($"/api/v1/Cajas/{cajaCerrar.Id}/cerrar", new
         {
             montoReal = 240m, // Diferencia de -10
             observaciones = "Test de cierre"
@@ -233,7 +233,7 @@ public class ActivityLogTests
             referencia = "ENT-ACTLOG-001",
             observaciones = "Entrada para test de activity log"
         };
-        var entradaResponse = await client.PostAsJsonAsync("/api/Inventario/entrada", entradaDto);
+        var entradaResponse = await client.PostAsJsonAsync("/api/v1/Inventario/entrada", entradaDto);
         entradaResponse.EnsureSuccessStatusCode();
 
         // Act
@@ -249,7 +249,7 @@ public class ActivityLogTests
             }
         };
 
-        var response = await client.PostAsJsonAsync("/api/Ventas", ventaDto);
+        var response = await client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         response.EnsureSuccessStatusCode();
 
         var venta = await response.Content.ReadFromJsonAsync<VentaDto>();
@@ -301,7 +301,7 @@ public class ActivityLogTests
         using var db2 = GetDbContext();
         var usuario2 = await db2.Usuarios.FirstAsync(u => u.Email == "activitylog-test@sincopos.com");
 
-        var response = await client.PutAsJsonAsync($"/api/Usuarios/{usuario2.Id}/estado", new
+        var response = await client.PutAsJsonAsync($"/api/v1/Usuarios/{usuario2.Id}/estado", new
         {
             activo = false,
             motivo = "Suspendido por prueba de Activity Log"
@@ -340,7 +340,7 @@ public class ActivityLogTests
         var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
 
         // Act - Buscar solo logs de Caja
-        var response = await client.GetAsync("/api/ActivityLogs?tipo=1&pageSize=10");
+        var response = await client.GetAsync("/api/v1/ActivityLogs?tipo=1&pageSize=10");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -380,11 +380,11 @@ public class ActivityLogTests
 
         // Abrir caja para generar log
         var clientCajero = _factory.CreateAuthenticatedClient(CajeroEmail);
-        await clientCajero.PostAsJsonAsync($"/api/Cajas/{cajaHistorial.Id}/abrir", new { montoApertura = 50m });
+        await clientCajero.PostAsJsonAsync($"/api/v1/Cajas/{cajaHistorial.Id}/abrir", new { montoApertura = 50m });
         await EsperarProcesamiento();
 
         // Act - Obtener historial
-        var response = await client.GetAsync($"/api/ActivityLogs/entidad/Caja/{cajaHistorial.Id}");
+        var response = await client.GetAsync($"/api/v1/ActivityLogs/entidad/Caja/{cajaHistorial.Id}");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -402,7 +402,7 @@ public class ActivityLogTests
         var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
 
         // Act
-        var response = await client.GetAsync("/api/ActivityLogs/dashboard");
+        var response = await client.GetAsync("/api/v1/ActivityLogs/dashboard");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -423,7 +423,7 @@ public class ActivityLogTests
         var client = _factory.CreateAuthenticatedClient(CajeroEmail);
 
         // Act
-        var response = await client.GetAsync("/api/ActivityLogs/tipos");
+        var response = await client.GetAsync("/api/v1/ActivityLogs/tipos");
 
         // Assert
         response.EnsureSuccessStatusCode();

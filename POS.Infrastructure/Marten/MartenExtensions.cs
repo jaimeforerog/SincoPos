@@ -75,7 +75,11 @@ public static class MartenExtensions
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsHistoryTable("__ef_migrations_history", "public");
-                npgsqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null);
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorCodesToAdd: null);
+                npgsqlOptions.CommandTimeout(60);
             });
         });
 
