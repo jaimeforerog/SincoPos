@@ -42,18 +42,35 @@ export const loginRequest = {
 // ── MSAL instance (singleton) ──────────────────────────────────────────────
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-export const msalInitPromise = msalInstance.initialize().then(() => {
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
-    msalInstance.setActiveAccount(accounts[0]);
-  }
-
+export const msalInitPromise = msalInstance.initialize().then(async () => {
+  // Add event callback before handling redirect so LOGIN_SUCCESS is captured
   msalInstance.addEventCallback((event) => {
     if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
       const result = event.payload as AuthenticationResult;
       msalInstance.setActiveAccount(result.account);
     }
   });
+
+  // Process redirect response (MSAL v5 requires explicit call)
+  try {
+    const result = await msalInstance.handleRedirectPromise();
+    if (result?.account) {
+      msalInstance.setActiveAccount(result.account);
+      console.log('[MSAL] Redirect processed, account:', result.account.username);
+      return;
+    }
+  } catch (error) {
+    console.error('[MSAL] handleRedirectPromise failed:', error);
+  }
+
+  // No redirect — check cached accounts
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    msalInstance.setActiveAccount(accounts[0]);
+    console.log('[MSAL] Cached account found:', accounts[0].username);
+  } else {
+    console.log('[MSAL] No accounts found');
+  }
 });
 
 export const keycloakConfig = {
