@@ -1,7 +1,7 @@
 import { LogLevel, PublicClientApplication, EventType } from '@azure/msal-browser';
 import type { Configuration, AuthenticationResult } from '@azure/msal-browser';
 
-const TENANT_ID = import.meta.env.VITE_ENTRA_TENANT_ID || 'common';
+const TENANT_ID = import.meta.env.VITE_ENTRA_TENANT_ID || 'consumers';
 const CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID || '';
 // Personal MS accounts cannot use custom API scopes (api://...).
 // Use VITE_ENTRA_API_SCOPE for org tenants; default to openid+profile for personal accounts.
