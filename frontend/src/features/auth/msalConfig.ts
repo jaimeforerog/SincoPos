@@ -3,7 +3,9 @@ import type { Configuration, AuthenticationResult } from '@azure/msal-browser';
 
 const TENANT_ID = import.meta.env.VITE_ENTRA_TENANT_ID || 'common';
 const CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID || '';
-const API_SCOPE = import.meta.env.VITE_ENTRA_API_SCOPE || `api://${CLIENT_ID}/.default`;
+// Personal MS accounts cannot use custom API scopes (api://...).
+// Use VITE_ENTRA_API_SCOPE for org tenants; default to openid+profile for personal accounts.
+const API_SCOPE = import.meta.env.VITE_ENTRA_API_SCOPE || '';
 
 // Fallback a Keycloak si no hay config de Entra ID
 const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080';
@@ -34,7 +36,7 @@ export const msalConfig: Configuration = {
 };
 
 export const loginRequest = {
-  scopes: [API_SCOPE],
+  scopes: API_SCOPE ? [API_SCOPE] : ['openid', 'profile', 'email'],
 };
 
 // ── MSAL instance (singleton) ──────────────────────────────────────────────

@@ -30,7 +30,10 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
         ...loginRequest,
         account,
       });
-      return response.accessToken;
+      // With custom API scopes, use accessToken; with openid/profile scopes
+      // (personal accounts), use idToken since the accessToken is for MS Graph.
+      const hasApiScope = loginRequest.scopes.some(s => s.startsWith('api://'));
+      return hasApiScope ? response.accessToken : response.idToken;
     } catch {
       // Silent token acquisition failed — interaction required
       return null;
