@@ -22,9 +22,19 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
     });
   }, [instance, setIdpLogout]);
 
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    const account = instance.getActiveAccount();
-    if (!account) return null;
+  const getAccount = useCallback((): AccountInfo | null => {
+    const active = instance.getActiveAccount();
+    if (active) return active;
+    // Fallback: pick the first available account and set it as active
+    const accounts = instance.getAllAccounts();
+    if (accounts.length > 0) {
+      instance.setActiveAccount(accounts[0]);
+      return accounts[0];
+    }
+    return null;
+  }, [instance]);
+
+  const acquireToken = useCallback(async (account: AccountInfo): Promise<string | null> => {
     try {
       const response = await instance.acquireTokenSilent({
         ...loginRequest,
@@ -35,8 +45,8 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
       const hasApiScope = loginRequest.scopes.some(s => s.startsWith('api://'));
       return hasApiScope ? response.accessToken : response.idToken;
     } catch {
-      // Silent token acquisition failed — interaction required
-      return null;
+      // Silent acquisition failed — use cached idToken from the account if available
+      return account.idToken ?? null;
     }
   }, [instance]);
 
@@ -48,7 +58,13 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
       await msalInitPromise;
 
       if (isAuthenticated) {
-        const token = await acquireToken();
+        const account = getAccount();
+        if (!account) {
+          setUser(null);
+          return;
+        }
+
+        const token = await acquireToken(account);
         if (token) {
           sessionStorage.setItem('access_token', token);
 
@@ -58,7 +74,6 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
           } catch (error) {
             console.error('Failed to fetch user info from backend:', error);
             // Backend unavailable or user not provisioned yet — use token claims as fallback
-            const account = instance.getActiveAccount() as AccountInfo;
             const idTokenClaims = account.idTokenClaims as Record<string, unknown> | undefined;
             const roles = (idTokenClaims?.['roles'] as string[] | undefined)
               ?.filter(r => ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
@@ -75,7 +90,17 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
             });
           }
         } else {
-          setUser(null);
+          // No token at all — set user from account info anyway
+          setUser({
+            id: account.localAccountId,
+            username: account.username,
+            email: account.username,
+            nombre: account.name ?? account.username,
+            roles: [],
+            sucursalId: undefined,
+            sucursalNombre: undefined,
+            sucursalesDisponibles: [],
+          });
         }
       } else {
         setUser(null);
@@ -83,21 +108,23 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [isAuthenticated, inProgress, acquireToken, setUser, instance]);
+  }, [isAuthenticated, inProgress, acquireToken, getAccount, setUser]);
 
   // Set up token refresh — keep sessionStorage in sync
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const interval = setInterval(async () => {
-      const token = await acquireToken();
+      const account = getAccount();
+      if (!account) return;
+      const token = await acquireToken(account);
       if (token) {
         sessionStorage.setItem('access_token', token);
       }
     }, 4 * 60 * 1000); // Refresh every 4 minutes
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, acquireToken]);
+  }, [isAuthenticated, acquireToken, getAccount]);
 
   if (inProgress !== InteractionStatus.None) {
     return (
