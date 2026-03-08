@@ -18,6 +18,10 @@ public class UsuarioSucursalConfiguration : IEntityTypeConfiguration<UsuarioSucu
         builder.Property(us => us.SucursalId)
             .HasColumnName("sucursal_id");
 
+        builder.Property(us => us.FechaAsignacion)
+            .HasColumnName("fecha_asignacion")
+            .HasDefaultValueSql("NOW()");
+
         builder.HasIndex(us => us.SucursalId)
             .HasDatabaseName("ix_usuario_sucursales_sucursal_id");
 

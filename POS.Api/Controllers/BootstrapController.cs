@@ -119,12 +119,18 @@ public class BootstrapController : ControllerBase
         }
         await _db.SaveChangesAsync();
 
-        // 5. Asignar sucursal al usuario (SQL directo — BD tiene columna fecha_asignacion NOT NULL)
-        await _db.Database.ExecuteSqlRawAsync(
-            @"INSERT INTO public.usuario_sucursales (usuario_id, sucursal_id, fecha_asignacion)
-              VALUES ({0}, {1}, NOW())
-              ON CONFLICT DO NOTHING",
-            usuario.Id, sucursal.Id);
+        // 5. Asignar sucursal al usuario
+        var yaAsignada = await _db.Set<UsuarioSucursal>()
+            .AnyAsync(us => us.UsuarioId == usuario.Id && us.SucursalId == sucursal.Id);
+        if (!yaAsignada)
+        {
+            _db.Set<UsuarioSucursal>().Add(new UsuarioSucursal
+            {
+                UsuarioId = usuario.Id,
+                SucursalId = sucursal.Id
+            });
+            await _db.SaveChangesAsync();
+        }
 
         _logger.LogWarning("BOOTSTRAP: Completado. Sucursal={SucId}, Usuario={UserId} (admin)", sucursal.Id, usuario.Id);
 

@@ -7,6 +7,7 @@ public class UsuarioSucursal
 {
     public int UsuarioId { get; set; }
     public int SucursalId { get; set; }
+    public DateTime FechaAsignacion { get; set; } = DateTime.UtcNow;
     public Usuario Usuario { get; set; } = null!;
     public Sucursal Sucursal { get; set; } = null!;
 }

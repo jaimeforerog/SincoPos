@@ -81,7 +81,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
 
-        // Crear schema desde el modelo actual (sin depender de migraciones con Designer)
+        // Recrear schema desde el modelo actual (sin depender de migraciones con Designer)
+        await context.Database.EnsureDeletedAsync();
         await context.Database.EnsureCreatedAsync();
 
         // Limpiar datos de tests anteriores y reiniciar secuencias de IDs
