@@ -42,7 +42,8 @@ public class UsuarioService
                 NombreCompleto = nombreCompleto ?? email,
                 Rol = rol ?? Roles.Vendedor,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = DateTime.UtcNow,
+                Sucursales = new List<UsuarioSucursal>() // <-- Initialization to avoid NullReferenceException
             };
 
             _context.Usuarios.Add(usuario);

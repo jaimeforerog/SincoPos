@@ -303,20 +303,36 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
-    // Producción: origenes desde appsettings.json → Cors:AllowedOrigins
-    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    // Producción: origenes desde appsettings.json o Variables de entorno de Azure
+    var corsConfig = builder.Configuration.GetSection("Cors:AllowedOrigins");
+    
+    // Intentar leer como array (appsettings.json) o como string separado por comas (Azure App Settings)
+    var allowedOrigins = corsConfig.Get<string[]>() 
+        ?? builder.Configuration.GetValue<string>("Cors:AllowedOrigins")?.Split(',') 
         ?? Array.Empty<string>();
+        
     builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy =>
         {
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
-                  .AllowCredentials();
+            if (allowedOrigins.Any())
+            {
+                policy.WithOrigins(allowedOrigins)
+                      .AllowAnyMethod()
+                      .AllowAnyHeader()
+                      .AllowCredentials();
+            }
+            else
+            {
+                // Fallback seguro si no se configuran orígenes
+                policy.AllowAnyOrigin()
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            }
         });
     });
 }
+
 
 var app = builder.Build();
 
