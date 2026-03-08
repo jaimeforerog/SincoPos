@@ -363,8 +363,10 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// ── Escalabilidad: Response Compression ──────────────────────────────────
-app.UseResponseCompression();
+// ── Escalabilidad: Response Compression (excluir WebSockets) ─────────────
+app.UseWhen(
+    context => !context.WebSockets.IsWebSocketRequest,
+    appBuilder => appBuilder.UseResponseCompression());
 
 if (app.Environment.IsDevelopment())
 {
@@ -380,9 +382,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseHttpsRedirection();
 app.UseCors();
 app.UseWebSockets();
-app.UseHttpsRedirection();
 if (!app.Environment.IsDevelopment())
     app.UseRateLimiter();
 // DESARROLLO: autenticación/autorización permisiva
