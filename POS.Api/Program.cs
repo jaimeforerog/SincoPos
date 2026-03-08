@@ -195,7 +195,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             context.Response.Headers.Append("X-Auth-Error", safeMessage);
             return Task.CompletedTask;
         },
-        OnTokenValidated = context =>
+        OnTokenValidated = async context =>
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
 
@@ -264,19 +264,49 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     }
                 }
 
+                // ── Fallback: buscar rol en BD si el token no tiene roles ──
+                if (rolesAdded == 0)
+                {
+                    var externalId = context.Principal.FindFirstValue("http://schemas.microsoft.com/identity/claims/objectidentifier")
+                        ?? context.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+
+                    if (!string.IsNullOrEmpty(externalId))
+                    {
+                        try
+                        {
+                            var dbContext = context.HttpContext.RequestServices
+                                .GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+                            var usuario = await dbContext.Set<POS.Infrastructure.Data.Entities.Usuario>()
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(u => u.KeycloakId == externalId);
+
+                            if (usuario != null && !string.IsNullOrEmpty(usuario.Rol))
+                            {
+                                identity.AddClaim(new Claim(ClaimTypes.Role, usuario.Rol));
+                                rolesAdded++;
+                                logger.LogInformation("Role '{Role}' loaded from DB for user {Email}",
+                                    usuario.Rol, usuario.Email);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogWarning(ex, "Failed to load role from DB for externalId {Id}", externalId);
+                        }
+                    }
+                }
+
                 if (rolesAdded == 0)
                 {
                     logger.LogWarning(
-                        "No roles found in token. Available claim types: {Claims}",
+                        "No roles found in token or DB. Available claim types: {Claims}",
                         string.Join(", ", allClaims.Select(c => c.Type).Distinct()));
                 }
                 else
                 {
-                    logger.LogInformation("Mapped {Count} roles from identity token", rolesAdded);
+                    logger.LogInformation("Mapped {Count} roles for authenticated user", rolesAdded);
                 }
             }
 
-            return Task.CompletedTask;
         }
     };
 });
