@@ -56,7 +56,7 @@ namespace POS.Infrastructure.Migrations
                         column: x => x.sucursal_id,
                         principalSchema: "public",
                         principalTable: "sucursales",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -101,14 +101,14 @@ namespace POS.Infrastructure.Migrations
                         column: x => x.venta_id,
                         principalSchema: "public",
                         principalTable: "ventas",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_documentos_electronicos_sucursal",
                         column: x => x.sucursal_id,
                         principalSchema: "public",
                         principalTable: "sucursales",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
