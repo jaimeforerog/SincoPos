@@ -11,13 +11,21 @@ namespace POS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "fecha_asignacion",
-                schema: "public",
-                table: "usuario_sucursales",
-                type: "timestamp with time zone",
-                nullable: false,
-                defaultValueSql: "NOW()");
+            // Columna puede existir si fue agregada manualmente antes de esta migración
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'usuario_sucursales'
+                          AND column_name = 'fecha_asignacion'
+                    ) THEN
+                        ALTER TABLE public.usuario_sucursales
+                            ADD COLUMN fecha_asignacion timestamp with time zone NOT NULL DEFAULT NOW();
+                    END IF;
+                END $$;
+            ");
         }
 
         /// <inheritdoc />
