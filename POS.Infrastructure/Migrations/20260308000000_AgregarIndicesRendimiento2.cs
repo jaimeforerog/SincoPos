@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+using POS.Infrastructure.Data;
+
 namespace POS.Infrastructure.Migrations
 {
-    /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260308000000_AgregarIndicesRendimiento2")]
     public partial class AgregarIndicesRendimiento2 : Migration
     {
         /// <inheritdoc />

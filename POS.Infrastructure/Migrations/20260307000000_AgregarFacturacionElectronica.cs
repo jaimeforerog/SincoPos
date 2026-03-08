@@ -1,11 +1,15 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
+using POS.Infrastructure.Data;
+
 namespace POS.Infrastructure.Migrations
 {
-    /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260307000000_AgregarFacturacionElectronica")]
     public partial class AgregarFacturacionElectronica : Migration
     {
         /// <inheritdoc />
