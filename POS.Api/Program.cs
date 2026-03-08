@@ -338,13 +338,14 @@ else
 
 var app = builder.Build();
 
-// ── Aplicar migraciones pendientes de EF Core al iniciar ────────────────
+// ── Sincronizar schema de BD (columnas faltantes) ───────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
     var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
+        // Aplicar migraciones pendientes si las hay
         var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
         if (pending.Count > 0)
         {
@@ -353,10 +354,32 @@ using (var scope = app.Services.CreateScope())
             await db.Database.MigrateAsync();
             migrationLogger.LogWarning("Migraciones aplicadas exitosamente");
         }
+
+        // Reparar columnas faltantes (historial de migraciones incorrecto en producción)
+        await db.Database.ExecuteSqlRawAsync(@"
+            DO $$
+            BEGIN
+                -- unidad_medida en productos
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='productos' AND column_name='unidad_medida')
+                THEN
+                    ALTER TABLE public.productos ADD COLUMN unidad_medida varchar(10) NOT NULL DEFAULT '94';
+                    RAISE NOTICE 'Columna unidad_medida agregada a productos';
+                END IF;
+
+                -- fecha_asignacion en usuario_sucursales
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='usuario_sucursales' AND column_name='fecha_asignacion')
+                THEN
+                    ALTER TABLE public.usuario_sucursales ADD COLUMN fecha_asignacion timestamp with time zone NOT NULL DEFAULT NOW();
+                    RAISE NOTICE 'Columna fecha_asignacion agregada a usuario_sucursales';
+                END IF;
+            END $$;
+        ");
     }
     catch (Exception ex)
     {
-        migrationLogger.LogError(ex, "Error al aplicar migraciones de EF Core");
+        migrationLogger.LogError(ex, "Error al sincronizar schema de BD");
     }
 }
 
