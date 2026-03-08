@@ -363,10 +363,8 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// ── Escalabilidad: Response Compression (excluir WebSockets) ─────────────
-app.UseWhen(
-    context => !context.WebSockets.IsWebSocketRequest,
-    appBuilder => appBuilder.UseResponseCompression());
+// ── Escalabilidad: Response Compression ──────────────────────────────────
+app.UseResponseCompression();
 
 if (app.Environment.IsDevelopment())
 {
@@ -382,7 +380,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// Azure App Service termina TLS en el load balancer — no redirigir dentro del contenedor
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
 app.UseCors();
 app.UseWebSockets();
 if (!app.Environment.IsDevelopment())
