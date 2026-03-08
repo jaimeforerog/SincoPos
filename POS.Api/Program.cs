@@ -418,6 +418,19 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
     Predicate = check => check.Tags.Contains("ready")
 });
 
+app.MapGet("/api/v1/run-migrations", async (AppDbContext dbContext) =>
+{
+    try
+    {
+        await dbContext.Database.MigrateAsync();
+        return Results.Ok(new { message = "Migraciones aplicadas correctamente.", tablas = await dbContext.Database.GetPendingMigrationsAsync() });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+}).ExcludeFromDescription();
+
 app.Run();
 
 // Hacer Program accesible para tests de integracion
