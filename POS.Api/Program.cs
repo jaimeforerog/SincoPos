@@ -381,6 +381,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseWebSockets();
 app.UseHttpsRedirection();
 if (!app.Environment.IsDevelopment())
     app.UseRateLimiter();
