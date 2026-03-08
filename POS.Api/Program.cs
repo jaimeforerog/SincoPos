@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using POS.Infrastructure.Marten;
 
@@ -336,6 +337,28 @@ else
 
 
 var app = builder.Build();
+
+// ── Aplicar migraciones pendientes de EF Core al iniciar ────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+        if (pending.Count > 0)
+        {
+            migrationLogger.LogWarning("Aplicando {Count} migraciones pendientes: {Migrations}",
+                pending.Count, string.Join(", ", pending));
+            await db.Database.MigrateAsync();
+            migrationLogger.LogWarning("Migraciones aplicadas exitosamente");
+        }
+    }
+    catch (Exception ex)
+    {
+        migrationLogger.LogError(ex, "Error al aplicar migraciones de EF Core");
+    }
+}
 
 // ── Escalabilidad: Global Exception Handler (JSON consistente) ───────────
 app.UseExceptionHandler(errorApp =>
