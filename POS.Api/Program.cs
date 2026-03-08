@@ -189,8 +189,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
             logger.LogError(context.Exception, "Authentication failed: {Error}", context.Exception.Message);
-            // Return error detail in response header for debugging
-            context.Response.Headers.Append("X-Auth-Error", context.Exception.Message);
+            // Return error detail in response header for debugging (sanitize newlines)
+            var safeMessage = context.Exception.Message.Replace("\r", "").Replace("\n", " ");
+            context.Response.Headers.Append("X-Auth-Error", safeMessage);
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
