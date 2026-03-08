@@ -172,6 +172,22 @@ jobs:
     environment: production
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install EF Core CLI
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Apply Database Migrations
+        run: dotnet ef database update --project POS.Infrastructure/POS.Infrastructure.csproj --startup-project POS.Api/POS.Api.csproj
+        env:
+          ConnectionStrings__Postgres: ${{ secrets.DB_CONNECTION_STRING }}
+
       - name: Azure Login
         uses: azure/login@v2
         with:
