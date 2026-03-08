@@ -26,8 +26,14 @@ export function useNotifications() {
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${hubBase}/hubs/notificaciones`, {
         accessTokenFactory: () => sessionStorage.getItem('access_token') ?? '',
+        // Azure App Service proxy puede bloquear WS — permitir fallback a SSE/LongPolling
+        skipNegotiation: false,
+        transport: signalR.HttpTransportType.WebSockets |
+                   signalR.HttpTransportType.ServerSentEvents |
+                   signalR.HttpTransportType.LongPolling,
       })
       .withAutomaticReconnect([0, 2000, 10000, 30000]) // Max 4 retries, then stop
+      .configureLogging(signalR.LogLevel.Information)
       .build();
 
     connection.on('Notificacion', (notif: NotificacionDto) => {

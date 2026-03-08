@@ -77,7 +77,7 @@ builder.Services.AddRateLimiter(options =>
     {
         var path = context.Request.Path.Value ?? "";
         if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
-            path.Contains("/negotiate", StringComparison.OrdinalIgnoreCase))
+            path.StartsWith("/hubs/", StringComparison.OrdinalIgnoreCase))
         {
             return RateLimitPartition.GetNoLimiter("unlimited");
         }
