@@ -13,6 +13,10 @@ import {
   Stack,
   TextField,
   Autocomplete,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Search } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
@@ -22,26 +26,31 @@ import { es } from 'date-fns/locale';
 
 import { reportesApi } from '@/api/reportes';
 import { productosApi } from '@/api/productos';
-import { useAuth } from '@/hooks/useAuth';
+import { sucursalesApi } from '@/api/sucursales';
 import { PageHeader } from '@/components/common/PageHeader';
 import { formatCurrency } from '@/utils/format';
 import type { ProductoDTO } from '@/types/api';
 
 export function ReporteKardexPage() {
-  const { user } = useAuth();
-  
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
   const [producto, setProducto] = useState<ProductoDTO | null>(null);
+  const [sucursalId, setSucursalId] = useState<number | ''>('');
   const [fechaDesde, setFechaDesde] = useState(format(firstDayOfMonth, 'yyyy-MM-dd'));
   const [fechaHasta, setFechaHasta] = useState(format(today, 'yyyy-MM-dd'));
 
   const [queryParams, setQueryParams] = useState<{
     productoId: string;
+    sucursalId: number;
     fechaDesde: string;
     fechaHasta: string;
   } | null>(null);
+
+  const { data: sucursales = [] } = useQuery({
+    queryKey: ['sucursales'],
+    queryFn: () => sucursalesApi.getAll(true),
+  });
 
   const { data: productos = [] } = useQuery({
     queryKey: ['productos'],
@@ -49,23 +58,24 @@ export function ReporteKardexPage() {
   });
 
   const { data: reporte, isLoading, isError, error } = useQuery({
-    queryKey: ['kardex', queryParams, user?.sucursalId],
+    queryKey: ['kardex', queryParams],
     queryFn: () => {
-      if (!queryParams || !user?.sucursalId) return null;
+      if (!queryParams) return null;
       return reportesApi.kardex({
         productoId: queryParams.productoId,
-        sucursalId: user.sucursalId,
+        sucursalId: queryParams.sucursalId,
         fechaDesde: queryParams.fechaDesde,
         fechaHasta: queryParams.fechaHasta,
       });
     },
-    enabled: !!queryParams && !!user?.sucursalId,
+    enabled: !!queryParams,
   });
 
   const handleBuscar = () => {
-    if (!producto) return;
+    if (!producto || !sucursalId) return;
     setQueryParams({
       productoId: producto.id,
+      sucursalId: sucursalId as number,
       fechaDesde,
       fechaHasta,
     });
@@ -170,6 +180,21 @@ export function ReporteKardexPage() {
             Filtros del Kardex
           </Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2 }} alignItems="flex-start">
+            <FormControl sx={{ minWidth: 150 }}>
+              <InputLabel>Sucursal *</InputLabel>
+              <Select
+                value={sucursalId}
+                onChange={(e) => setSucursalId(e.target.value as number | '')}
+                label="Sucursal *"
+              >
+                <MenuItem value="">Seleccionar Sucursal</MenuItem>
+                {sucursales.map((s) => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <Box sx={{ flex: 2, minWidth: 250 }}>
               <Autocomplete
                 options={productos}
@@ -202,7 +227,7 @@ export function ReporteKardexPage() {
               size="large"
               startIcon={<Search />}
               onClick={handleBuscar}
-              disabled={!producto}
+              disabled={!producto || !sucursalId}
               sx={{ height: 56, flex: { xs: 1, md: 'auto' } }}
             >
               Consultar
