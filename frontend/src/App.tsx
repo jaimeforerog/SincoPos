@@ -23,6 +23,7 @@ import { InventarioPage } from './features/inventario/pages';
 const ReporteVentasPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteVentasPage })));
 const ReporteInventarioPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteInventarioPage })));
 const ReporteCajaPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteCajaPage })));
+const ReportesHomePage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReportesHomePage })));
 const DevolucionesPage = lazy(() => import('./features/devoluciones/pages').then(m => ({ default: m.DevolucionesPage })));
 const SucursalesPage = lazy(() => import('./features/sucursales/pages/SucursalesPage').then(m => ({ default: m.SucursalesPage })));
 const TrasladosPage = lazy(() => import('./features/traslados/pages/TrasladosPage').then(m => ({ default: m.TrasladosPage })));
@@ -95,7 +96,7 @@ function App() {
                   <Route path="cajas" element={<ProtectedRoute requiredRoles={['cajero', 'supervisor', 'admin']}><CajasPage /></ProtectedRoute>} />
                   <Route path="sucursales" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><SucursalesPage /></ProtectedRoute>} />
                   <Route path="reportes">
-                    <Route index element={<Navigate to="/reportes/ventas" replace />} />
+                    <Route index element={<ReportesHomePage />} />
                     <Route path="ventas" element={<ReporteVentasPage />} />
                     <Route path="inventario" element={<ReporteInventarioPage />} />
                     <Route path="caja" element={<ReporteCajaPage />} />
