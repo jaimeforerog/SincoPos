@@ -24,6 +24,7 @@ const ReporteVentasPage = lazy(() => import('./features/reportes/pages').then(m 
 const ReporteInventarioPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteInventarioPage })));
 const ReporteCajaPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteCajaPage })));
 const ReportesHomePage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReportesHomePage })));
+const ReporteKardexPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteKardexPage })));
 const DevolucionesPage = lazy(() => import('./features/devoluciones/pages').then(m => ({ default: m.DevolucionesPage })));
 const SucursalesPage = lazy(() => import('./features/sucursales/pages/SucursalesPage').then(m => ({ default: m.SucursalesPage })));
 const TrasladosPage = lazy(() => import('./features/traslados/pages/TrasladosPage').then(m => ({ default: m.TrasladosPage })));
@@ -100,6 +101,8 @@ function App() {
                     <Route path="ventas" element={<ReporteVentasPage />} />
                     <Route path="inventario" element={<ReporteInventarioPage />} />
                     <Route path="caja" element={<ReporteCajaPage />} />
+                    <Route path="kardex" element={<ReporteKardexPage />} />
+                    <Route path="auditoria" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><AuditoriaPage /></ProtectedRoute>} />
                   </Route>
                   <Route
                     path="usuarios"
@@ -146,14 +149,6 @@ function App() {
                     element={
                       <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
                         <TercerosPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="auditoria"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <AuditoriaPage />
                       </ProtectedRoute>
                     }
                   />

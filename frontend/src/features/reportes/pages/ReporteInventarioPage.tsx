@@ -79,7 +79,15 @@ export function ReporteInventarioPage() {
 
   return (
     <Box>
-      <PageHeader title="Reporte de Inventario Valorizado" />
+      <PageHeader 
+        title="Reporte de Inventario Valorizado"
+        showBackButton={true}
+        backPath="/reportes"
+        breadcrumbs={[
+          { label: 'Reportes', path: '/reportes' },
+          { label: 'Inventario Valorizado' },
+        ]}
+      />
 
       {/* Filtros */}
       <Card sx={{ mb: 3 }}>

@@ -3,6 +3,7 @@ import type {
   ReporteVentasDTO,
   ReporteInventarioValorizadoDTO,
   ReporteCajaDTO,
+  ReporteKardexDTO,
 } from '@/types/api';
 
 export const reportesApi = {
@@ -72,6 +73,21 @@ export const reportesApi = {
     limite?: number;
   }) => {
     const response = await apiClient.get('/reportes/top-productos', { params });
+    return response.data;
+  },
+
+  /**
+   * Obtener el kardex de un producto específico
+   */
+  kardex: async (params: {
+    productoId: string;
+    sucursalId: number;
+    fechaDesde: string; // formato: YYYY-MM-DD
+    fechaHasta: string; // formato: YYYY-MM-DD
+  }) => {
+    const response = await apiClient.get<ReporteKardexDTO>('/reportes/kardex', {
+      params,
+    });
     return response.data;
   },
 };

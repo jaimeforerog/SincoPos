@@ -110,4 +110,35 @@ public class ReportesController : ControllerBase
 
         return Ok(topProductos);
     }
+    /// <summary>
+    /// Kardex de inventario: historial detallado de movimientos (entradas, salidas, ajustes) y saldos.
+    /// </summary>
+    [HttpGet("kardex")]
+    [ProducesResponseType(typeof(ReporteKardexDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ReporteKardexDto>> ObtenerKardex(
+        [FromQuery] Guid productoId,
+        [FromQuery] int sucursalId,
+        [FromQuery] DateTime fechaDesde,
+        [FromQuery] DateTime fechaHasta)
+    {
+        if (productoId == Guid.Empty)
+            return BadRequest("El ID del producto es requerido.");
+
+        if (fechaDesde > fechaHasta)
+            return BadRequest("La fecha desde no puede ser mayor que la fecha hasta.");
+
+        try
+        {
+            var reporte = await _reportesService.ObtenerKardexAsync(
+                productoId, sucursalId, fechaDesde, fechaHasta);
+
+            return Ok(reporte);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+    }
 }

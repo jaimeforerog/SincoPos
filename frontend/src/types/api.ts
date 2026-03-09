@@ -960,3 +960,31 @@ export interface DianRespuestaDTO {
   codigo: string;
   descripcion: string;
 }
+
+// ─── Kardex de Inventario ─────────────────────────────────────────
+
+export interface ReporteKardexDTO {
+  productoId: string;
+  codigoBarras: string;
+  nombre: string;
+  sucursalId: number;
+  nombreSucursal: string;
+  fechaDesde: string;
+  fechaHasta: string;
+  saldoInicial: number;
+  saldoFinal: number;
+  costoPromedioVigente: number;
+  movimientos: KardexMovimientoDTO[];
+}
+
+export interface KardexMovimientoDTO {
+  fecha: string;
+  tipoMovimiento: string;
+  referencia: string;
+  observaciones: string;
+  entrada: number;
+  salida: number;
+  saldoAcumulado: number;
+  costoUnitario: number;
+  costoTotalMovimiento: number;
+}

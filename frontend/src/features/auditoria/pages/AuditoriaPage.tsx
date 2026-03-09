@@ -240,11 +240,11 @@ export default function AuditoriaPage() {
       <PageHeader
         title="Auditoría"
         breadcrumbs={[
-          { label: 'Configuración', path: '/configuracion' },
+          { label: 'Reportes', path: '/reportes' },
           { label: 'Auditoría' },
         ]}
         showBackButton={true}
-        backPath="/configuracion"
+        backPath="/reportes"
         action={
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()}>
             Actualizar

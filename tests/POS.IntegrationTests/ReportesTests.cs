@@ -339,4 +339,49 @@ public class ReportesTests
         prod!.CodigoBarras.Should().NotBeNullOrEmpty();
         prod.Categoria.Should().NotBeNullOrEmpty();
     }
+
+    // ─── Kardex de Inventario ────────────────────────────────────────
+
+    [Fact]
+    public async Task Kardex_ConMovimientos_CalculaSaldoYPromedioCorrectamente()
+    {
+        // Arrange
+        var cod = $"KARDEX-{Guid.NewGuid():N}"[..12];
+        var productoId = await CrearProducto(cod, precioVenta: 5000m, precioCosto: 1000m);
+        
+        // 1. Entrada de 10 unidades a 1000 (Saldo: 10, PP: 1000)
+        await RegistrarEntrada(productoId, 10, costo: 1000m);
+        
+        // 2. Venta de 2 unidades (Saldo: 8, PP: 1000)
+        var cajaId = await CrearAbrirCaja($"Caja-Kardex-{cod}");
+        await CrearVenta(cajaId, productoId, cantidad: 2);
+
+        // 3. Entrada de 5 unidades a 1600 (Saldo: 13, PP: ((8*1000) + (5*1600)) / 13 = 16000/13 = 1230.76)
+        await RegistrarEntrada(productoId, 5, costo: 1600m);
+
+        var desde = DateTime.UtcNow.AddMinutes(-10).ToString("yyyy-MM-ddTHH:mm:ssZ");
+        var hasta = DateTime.UtcNow.AddMinutes(10).ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+        // Act
+        var r = await _client.GetAsync($"/api/v1/Reportes/kardex?productoId={productoId}&sucursalId={SucId}&fechaDesde={desde}&fechaHasta={hasta}");
+
+        // Assert
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+        var kardex = await r.Content.ReadFromJsonAsync<ReporteKardexDto>(_json);
+        
+        kardex.Should().NotBeNull();
+        kardex!.ProductoId.Should().Be(productoId);
+        kardex.SaldoInicial.Should().Be(0);
+        kardex.SaldoFinal.Should().Be(13); // 10 - 2 + 5
+        kardex.CostoPromedioVigente.Should().BeApproximately(1230.77m, 0.01m); // 16000 / 13 = 1230.769...
+        
+        kardex.Movimientos.Should().HaveCount(3);
+        
+        // El último movimiento es la última entrada
+        var ultimoMov = kardex.Movimientos.Last();
+        ultimoMov.Entrada.Should().Be(5);
+        ultimoMov.SaldoAcumulado.Should().Be(13);
+        ultimoMov.TipoMovimiento.Should().Be("EntradaCompra");
+    }
 }
+

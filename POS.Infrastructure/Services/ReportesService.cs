@@ -3,6 +3,8 @@ using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
+using POS.Domain.Events.Inventario;
+using POS.Domain.Aggregates;
 
 namespace POS.Infrastructure.Services;
 
@@ -10,11 +12,13 @@ public class ReportesService : IReportesService
 {
     private readonly AppDbContext _context;
     private readonly IActivityLogService _activityLogService;
+    private readonly global::Marten.IDocumentSession _session;
 
-    public ReportesService(AppDbContext context, IActivityLogService activityLogService)
+    public ReportesService(AppDbContext context, IActivityLogService activityLogService, global::Marten.IDocumentSession session)
     {
         _context = context;
         _activityLogService = activityLogService;
+        _session = session;
     }
 
     public async Task<ReporteVentasDto> ObtenerReporteVentasAsync(
@@ -415,5 +419,179 @@ public class ReportesService : IReportesService
         ));
 
         return topProductos;
+    }
+
+    public async Task<ReporteKardexDto> ObtenerKardexAsync(
+        Guid productoId, int sucursalId, DateTime fechaDesde, DateTime fechaHasta)
+    {
+        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde, DateTimeKind.Utc);
+        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta, DateTimeKind.Utc);
+
+        var productoInfo = await _context.Productos
+            .Where(p => p.Id == productoId)
+            .Select(p => new { p.CodigoBarras, p.Nombre })
+            .FirstOrDefaultAsync();
+
+        var sucursalInfo = await _context.Sucursales
+            .Where(s => s.Id == sucursalId)
+            .Select(s => new { s.Nombre })
+            .FirstOrDefaultAsync();
+
+        if (productoInfo == null || sucursalInfo == null)
+            throw new InvalidOperationException("Producto o Sucursal no encontrados.");
+
+        var streamId = InventarioAggregate.GenerarStreamId(productoId, sucursalId);
+        
+        // Obtenemos todos los eventos del stream
+        var eventosMarten = await _session.Events.FetchStreamAsync(streamId);
+
+        decimal saldoAcumulado = 0;
+        decimal saldoInicial = 0;
+        decimal costoPromedioVigente = 0;
+        var movimientos = new List<KardexMovimientoDto>();
+
+        foreach (var martenEvent in eventosMarten.OrderBy(e => e.Timestamp))
+        {
+            var evtData = martenEvent.Data as BaseEvent;
+            if (evtData == null) continue;
+
+            var evtTimestamp = evtData.Timestamp;
+
+            if (evtTimestamp < fechaDesdeUtc)
+            {
+                // Solo reconstruimos saldo y costo promedio *antes* del rango seleccionado
+                if (evtData is EntradaCompraRegistrada ec) { saldoInicial += ec.Cantidad; costoPromedioVigente = RecalcularPromedio(saldoInicial - ec.Cantidad, costoPromedioVigente, ec.Cantidad, ec.CostoUnitario); }
+                else if (evtData is SalidaVentaRegistrada sv) { saldoInicial -= sv.Cantidad; }
+                else if (evtData is DevolucionProveedorRegistrada dp) { saldoInicial -= dp.Cantidad; }
+                else if (evtData is AjusteInventarioRegistrado ai) { saldoInicial = ai.CantidadNueva; costoPromedioVigente = ai.CostoUnitario; }
+                else if (evtData is TrasladoSalidaRegistrado ts) { saldoInicial -= ts.Cantidad; }
+                else if (evtData is TrasladoEntradaRegistrado te) { saldoInicial += te.CantidadRecibida; costoPromedioVigente = RecalcularPromedio(saldoInicial - te.CantidadRecibida, costoPromedioVigente, te.CantidadRecibida, te.CostoUnitario); }
+
+                saldoAcumulado = saldoInicial;
+            }
+            else if (evtTimestamp <= fechaHastaUtc)
+            {
+                // Es un movimiento ocurrido dentro del periodo, guardarlo en el Kardex
+                string tipoMovimiento = "Desconocido";
+                string referencia = "";
+                string observaciones = "";
+                decimal entrada = 0;
+                decimal salida = 0;
+                decimal costoUnitario = 0;
+                decimal costoTotalMov = 0;
+
+                if (evtData is EntradaCompraRegistrada ec)
+                {
+                    tipoMovimiento = "EntradaCompra";
+                    referencia = ec.Referencia ?? "";
+                    observaciones = ec.Observaciones ?? "";
+                    entrada = ec.Cantidad;
+                    costoUnitario = ec.CostoUnitario;
+                    costoTotalMov = ec.CostoTotal;
+
+                    costoPromedioVigente = RecalcularPromedio(saldoAcumulado, costoPromedioVigente, ec.Cantidad, ec.CostoUnitario);
+                    saldoAcumulado += ec.Cantidad;
+                }
+                else if (evtData is SalidaVentaRegistrada sv)
+                {
+                    tipoMovimiento = "SalidaVenta";
+                    referencia = sv.ReferenciaVenta ?? "";
+                    salida = sv.Cantidad;
+                    costoUnitario = sv.CostoUnitario;
+                    costoTotalMov = sv.CostoTotal;
+                    saldoAcumulado -= sv.Cantidad;
+                }
+                else if (evtData is DevolucionProveedorRegistrada dp)
+                {
+                    tipoMovimiento = "DevolucionCompra";
+                    referencia = dp.Referencia ?? "";
+                    salida = dp.Cantidad;
+                    costoUnitario = dp.CostoUnitario;
+                    costoTotalMov = dp.CostoTotal;
+                    saldoAcumulado -= dp.Cantidad;
+                }
+                else if (evtData is AjusteInventarioRegistrado ai)
+                {
+                    tipoMovimiento = "Ajuste";
+                    referencia = "Ajuste de Inventario";
+                    observaciones = ai.Observaciones ?? "";
+
+                    if (ai.EsPositivo) entrada = ai.Diferencia;
+                    else salida = Math.Abs(ai.Diferencia);
+
+                    costoUnitario = ai.CostoUnitario;
+                    costoTotalMov = ai.CostoTotal;
+                    saldoAcumulado = ai.CantidadNueva;
+                    costoPromedioVigente = ai.CostoUnitario;
+                }
+                else if (evtData is TrasladoSalidaRegistrado ts)
+                {
+                    tipoMovimiento = "TrasladoSalida";
+                    referencia = ts.NumeroTraslado ?? "";
+                    salida = ts.Cantidad;
+                    costoUnitario = ts.CostoUnitario;
+                    costoTotalMov = ts.CostoTotal;
+                    saldoAcumulado -= ts.Cantidad;
+                }
+                else if (evtData is TrasladoEntradaRegistrado te)
+                {
+                    tipoMovimiento = "TrasladoEntrada";
+                    referencia = te.NumeroTraslado ?? "";
+                    entrada = te.CantidadRecibida;
+                    costoUnitario = te.CostoUnitario;
+                    costoTotalMov = te.CostoTotal;
+
+                    costoPromedioVigente = RecalcularPromedio(saldoAcumulado, costoPromedioVigente, te.CantidadRecibida, te.CostoUnitario);
+                    saldoAcumulado += te.CantidadRecibida;
+                }
+
+                if (tipoMovimiento != "Desconocido")
+                {
+                    movimientos.Add(new KardexMovimientoDto(
+                        evtTimestamp,
+                        tipoMovimiento,
+                        referencia,
+                        observaciones,
+                        entrada,
+                        salida,
+                        saldoAcumulado,
+                        costoUnitario,
+                        costoTotalMov
+                    ));
+                }
+            }
+        }
+
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ConsultarKardex",
+            Tipo: TipoActividad.Inventario,
+            Descripcion: $"Kardex de {productoInfo.CodigoBarras} consultado. Saldo Final: {saldoAcumulado}",
+            SucursalId: sucursalId,
+            TipoEntidad: "Reporte",
+            EntidadId: productoId.ToString(),
+            EntidadNombre: "Kardex Inventario",
+            DatosNuevos: new { productoId, sucursalId, fechaDesde, fechaHasta, saldoInicial, saldoFinal = saldoAcumulado }
+        ));
+
+        return new ReporteKardexDto(
+            productoId,
+            productoInfo.CodigoBarras,
+            productoInfo.Nombre,
+            sucursalId,
+            sucursalInfo.Nombre,
+            fechaDesdeUtc,
+            fechaHastaUtc,
+            saldoInicial,
+            saldoAcumulado,
+            costoPromedioVigente,
+            movimientos
+        );
+    }
+
+    private decimal RecalcularPromedio(decimal cantAnterior, decimal costoAnterior, decimal cantNueva, decimal costoNuevo)
+    {
+        var totalCant = cantAnterior + cantNueva;
+        if (totalCant <= 0) return costoNuevo;
+        return ((cantAnterior * costoAnterior) + (cantNueva * costoNuevo)) / totalCant;
     }
 }

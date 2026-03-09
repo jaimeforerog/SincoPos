@@ -71,7 +71,15 @@ export function ReporteVentasPage() {
 
   return (
     <Box>
-      <PageHeader title="Reporte de Ventas" />
+      <PageHeader 
+        title="Reporte de Ventas" 
+        showBackButton={true}
+        backPath="/reportes"
+        breadcrumbs={[
+          { label: 'Reportes', path: '/reportes' },
+          { label: 'Ventas' },
+        ]}
+      />
 
       {/* Filtros */}
       <Card sx={{ mb: 3 }}>

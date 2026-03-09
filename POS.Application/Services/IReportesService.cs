@@ -17,4 +17,7 @@ public interface IReportesService
 
     Task<List<TopProductoDto>> ObtenerTopProductosAsync(
         DateTime fechaDesde, DateTime fechaHasta, int? sucursalId = null, int limite = 10);
+
+    Task<ReporteKardexDto> ObtenerKardexAsync(
+        Guid productoId, int sucursalId, DateTime fechaDesde, DateTime fechaHasta);
 }

@@ -3,6 +3,8 @@ import {
   Timeline,
   Inventory,
   PointOfSale,
+  Assessment,
+  ManageSearch,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ReporteCard } from '../components/ReporteCard';
@@ -34,7 +36,6 @@ const reportModules: ReporteModule[] = [
     path: '/reportes/caja',
     roles: ['supervisor', 'admin'],
   },
-  /* Espacio reservado para el futuro Kardex
   {
     id: 'kardex',
     title: 'Kardex de Inventario',
@@ -43,7 +44,14 @@ const reportModules: ReporteModule[] = [
     path: '/reportes/kardex',
     roles: ['supervisor', 'admin'],
   },
-  */
+  {
+    id: 'auditoria',
+    title: 'Auditoría de Actividad',
+    description: 'Registro de la trazabilidad y eventos del sistema',
+    icon: <ManageSearch fontSize="large" />,
+    path: '/reportes/auditoria',
+    roles: ['supervisor', 'admin'],
+  },
 ];
 
 export function ReportesHomePage() {

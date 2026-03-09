@@ -64,7 +64,15 @@ export function ReporteCajaPage() {
 
   return (
     <Box>
-      <PageHeader title="Reporte de Caja" />
+      <PageHeader 
+        title="Reporte de Caja" 
+        showBackButton={true}
+        backPath="/reportes"
+        breadcrumbs={[
+          { label: 'Reportes', path: '/reportes' },
+          { label: 'Caja' },
+        ]}
+      />
 
       {/* Filtros */}
       <Card sx={{ mb: 3 }}>

@@ -143,3 +143,38 @@ public record TopProductoDto(
     decimal Utilidad,
     decimal MargenPorcentaje
 );
+
+// ─── Kardex de Inventario ─────────────────────────────────────────
+
+public record ReporteKardexDto(
+    Guid ProductoId,
+    string CodigoBarras,
+    string Nombre,
+    int SucursalId,
+    string NombreSucursal,
+    DateTime FechaDesde,
+    DateTime FechaHasta,
+    decimal SaldoInicial,
+    decimal SaldoFinal,
+    decimal CostoPromedioVigente,
+    List<KardexMovimientoDto> Movimientos
+);
+
+public record KardexMovimientoDto(
+    DateTime Fecha,
+    string TipoMovimiento,
+    string Referencia,
+    string? Observaciones,
+    decimal Entrada,
+    decimal Salida,
+    decimal SaldoAcumulado,
+    decimal CostoUnitario,
+    decimal CostoTotalMovimiento
+);
+
+public record ReporteKardexQueryDto(
+    Guid ProductoId,
+    int SucursalId,
+    DateTime FechaDesde,
+    DateTime FechaHasta
+);
