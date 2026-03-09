@@ -24,11 +24,12 @@ builder.Services.AddScoped<POS.Application.Services.IProductoService, POS.Infras
 builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.PrecioService>();
 
-// Identity Provider abstraction: LocalIdentityProviderService for dev, EntraIdService for prod (future)
+// Identity Provider abstraction: EntraIdService (prod) / LocalIdentityProviderService (dev)
 if (builder.Configuration.GetSection("MicrosoftGraph:TenantId").Exists())
 {
-    // TODO: Register EntraIdService when implemented
-    builder.Services.AddScoped<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.LocalIdentityProviderService>();
+    builder.Services.Configure<POS.Infrastructure.Configuration.MicrosoftGraphOptions>(
+        builder.Configuration.GetSection(POS.Infrastructure.Configuration.MicrosoftGraphOptions.SectionName));
+    builder.Services.AddScoped<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.EntraIdService>();
 }
 else
 {
