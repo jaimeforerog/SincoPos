@@ -148,12 +148,15 @@ export function ProductoFormDialog({
           precioCosto: 0,
           unidadMedida: '94',
         });
-        setConceptoRetencionId('');
+        
+        // Buscar el concepto "Compras generales" (codigoDian: 2307) para asignarlo por defecto
+        const conceptoComprasDefault = conceptosRetencion.find(c => c.codigoDian === '2307');
+        setConceptoRetencionId(conceptoComprasDefault ? conceptoComprasDefault.id : '');
       }
       setShowCategoriaInput(false);
       setNuevaCategoria('');
     }
-  }, [open, producto, resetCrear, resetActualizar]);
+  }, [open, producto, resetCrear, resetActualizar, conceptosRetencion]);
 
   // Mutación para crear categoría
   const crearCategoriaMutation = useMutation({
