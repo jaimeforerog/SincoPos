@@ -169,6 +169,22 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             Activo = true
         };
         context.Terceros.Add(tercero);
+        
+        // RE-SEED IMPUESTOS Y RETENCIONES (Como fue truncado, inicializamos los básicos)
+        var fecha = DateTime.UtcNow;
+        var exento = new POS.Infrastructure.Data.Entities.Impuesto { Nombre = "Exento", Tipo = POS.Infrastructure.Data.Entities.TipoImpuesto.IVA, Porcentaje = 0m, CodigoCuentaContable = "2408", AplicaSobreBase = true, CodigoPais = "CO", Activo = true, FechaCreacion = fecha };
+        var iva5 = new POS.Infrastructure.Data.Entities.Impuesto { Nombre = "IVA 5%", Tipo = POS.Infrastructure.Data.Entities.TipoImpuesto.IVA, Porcentaje = 0.05m, CodigoCuentaContable = "2408", AplicaSobreBase = true, CodigoPais = "CO", Activo = true, FechaCreacion = fecha };
+        var iva19 = new POS.Infrastructure.Data.Entities.Impuesto { Nombre = "IVA 19%", Tipo = POS.Infrastructure.Data.Entities.TipoImpuesto.IVA, Porcentaje = 0.19m, CodigoCuentaContable = "2408", AplicaSobreBase = true, CodigoPais = "CO", Activo = true, FechaCreacion = fecha };
+        context.Impuestos.AddRange(exento, iva5, iva19);
+
+        var concepto1 = new POS.Infrastructure.Data.Entities.ConceptoRetencion { Nombre = "Honorarios", CodigoDian = "2301", PorcentajeSugerido = 11m, Activo = true, FechaCreacion = fecha };
+        var concepto2 = new POS.Infrastructure.Data.Entities.ConceptoRetencion { Nombre = "Compras", CodigoDian = "2307", PorcentajeSugerido = 2.5m, Activo = true, FechaCreacion = fecha };
+        context.ConceptosRetencion.AddRange(concepto1, concepto2);
+
+        var retefuente = new POS.Infrastructure.Data.Entities.RetencionRegla { Nombre = "ReteFuente Compras 2.5%", Tipo = POS.Infrastructure.Data.Entities.TipoRetencion.ReteFuente, Porcentaje = 0.025m, BaseMinUVT = 4m, PerfilVendedor = "REGIMEN_ORDINARIO", PerfilComprador = "GRAN_CONTRIBUYENTE", CodigoCuentaContable = "1355", ConceptoRetencion = concepto2, Activo = true, FechaCreacion = fecha };
+        var reteica = new POS.Infrastructure.Data.Entities.RetencionRegla { Nombre = "ReteICA Bogotá 0.966%", Tipo = POS.Infrastructure.Data.Entities.TipoRetencion.ReteICA, Porcentaje = 0.00966m, BaseMinUVT = 0m, CodigoMunicipio = "11001", PerfilVendedor = "REGIMEN_ORDINARIO", PerfilComprador = "GRAN_CONTRIBUYENTE", CodigoCuentaContable = "1356", Activo = true, FechaCreacion = fecha };
+        context.RetencionesReglas.AddRange(retefuente, reteica);
+
         await context.SaveChangesAsync();
         TerceroTestId = tercero.Id;
     }
