@@ -47,7 +47,7 @@ public class CosteoService
     /// Calcular y actualizar el costo en stock segun el metodo de la sucursal
     /// </summary>
     public async Task ActualizarCostoEntrada(Stock stock, decimal cantidadNueva,
-        decimal costoUnitario, MetodoCosteo metodo)
+        decimal costoUnitario, MetodoCosteo metodo, List<LoteInventario>? lotesExistentes = null)
     {
         switch (metodo)
         {
@@ -63,7 +63,7 @@ public class CosteoService
             case MetodoCosteo.PEPS: // FIFO - costo promedio se recalcula de lotes disponibles
             case MetodoCosteo.UEPS: // LIFO - igual, costo promedio es referencial
                 stock.CostoPromedio = await CalcularCostoPromedioDesdelotes(
-                    stock.ProductoId, stock.SucursalId, cantidadNueva, costoUnitario);
+                    stock.ProductoId, stock.SucursalId, cantidadNueva, costoUnitario, lotesExistentes);
                 break;
         }
 
@@ -156,9 +156,9 @@ public class CosteoService
     /// Recalcular costo promedio ponderado desde lotes disponibles
     /// </summary>
     private async Task<decimal> CalcularCostoPromedioDesdelotes(
-        Guid productoId, int sucursalId, decimal cantidadNueva, decimal costoNuevo)
+        Guid productoId, int sucursalId, decimal cantidadNueva, decimal costoNuevo, List<LoteInventario>? lotesExistentes = null)
     {
-        var lotes = await _context.LotesInventario
+        var lotes = lotesExistentes ?? await _context.LotesInventario
             .Where(l => l.ProductoId == productoId
                      && l.SucursalId == sucursalId
                      && l.CantidadDisponible > 0)

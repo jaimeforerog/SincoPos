@@ -253,6 +253,28 @@ public class CompraService : ICompraService
         if (orden.Estado != EstadoOrdenCompra.Aprobada && orden.Estado != EstadoOrdenCompra.RecibidaParcial)
             return (false, "Solo se pueden recibir órdenes en estado Aprobada o RecibidaParcial");
 
+        // PRE-CARGA DE DATOS EN LOTE (Batching) para evitar N+1 queries
+        var productosIds = dto.Lineas.Select(l => l.ProductoId).Distinct().ToList();
+
+        // 1. Cargar Stocks
+        var stocksDict = await _context.Stock
+            .Where(s => s.SucursalId == orden.SucursalId && productosIds.Contains(s.ProductoId))
+            .ToDictionaryAsync(s => s.ProductoId);
+
+        // 2. Cargar Lotes (solo si el método requiere recálculo sobre lotes antiguos)
+        Dictionary<Guid, List<LoteInventario>> lotesDict = new();
+        if (orden.Sucursal!.MetodoCosteo == MetodoCosteo.PEPS || orden.Sucursal!.MetodoCosteo == MetodoCosteo.UEPS)
+        {
+            var todosLotes = await _context.LotesInventario
+                .Where(l => l.SucursalId == orden.SucursalId 
+                         && productosIds.Contains(l.ProductoId) 
+                         && l.CantidadDisponible > 0)
+                .ToListAsync();
+            
+            lotesDict = todosLotes.GroupBy(l => l.ProductoId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+
         // Procesar cada línea recibida
         foreach (var lineaRecibida in dto.Lineas)
         {
@@ -319,17 +341,29 @@ public class CompraService : ICompraService
                 orden.NumeroOrden,
                 orden.ProveedorId);
 
-            // 3. Actualizar stock
-            var stock = await _context.Stock.FirstOrDefaultAsync(
-                s => s.ProductoId == detalle.ProductoId && s.SucursalId == orden.SucursalId);
+            // 3. Actualizar stock desde el diccionario pre-cargado
+            stocksDict.TryGetValue(detalle.ProductoId, out var stock);
 
             if (stock != null)
             {
+                lotesDict.TryGetValue(detalle.ProductoId, out var lotesProducto);
+                var lotesParaCosteo = lotesProducto ?? new List<LoteInventario>();
+
                 await _costeoService.ActualizarCostoEntrada(
                     stock,
                     lineaRecibida.CantidadRecibida,
                     detalle.PrecioUnitario,
-                    orden.Sucursal!.MetodoCosteo);
+                    orden.Sucursal!.MetodoCosteo,
+                    lotesParaCosteo);
+
+                // Si recibimos el mismo producto varias veces, simulamos la adición del lote en RAM para los futuros cálculos de coste de iteraciones subsecuentes.
+                lotesParaCosteo.Add(new LoteInventario
+                {
+                    ProductoId = detalle.ProductoId,
+                    SucursalId = orden.SucursalId,
+                    CantidadDisponible = lineaRecibida.CantidadRecibida,
+                    CostoUnitario = detalle.PrecioUnitario
+                });
             }
         }
 
