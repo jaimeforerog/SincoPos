@@ -56,11 +56,20 @@ public class TestAuthHandler : AuthenticationHandler<TestAuthHandlerOptions>
             _ => "vendedor" // Default role
         };
 
+        // Generate a stable external ID for each email (for GetExternalId() to work)
+        var externalId = email.ToLower() switch
+        {
+            "admin@sincopos.com" => "test-keycloak-admin-001",
+            _ => $"test-{email.ToLower().Replace("@", "-at-")}"
+        };
+
         var claims = new[]
         {
             new Claim(ClaimTypes.Email, email),
             new Claim("email", email),
             new Claim(ClaimTypes.Name, email),
+            new Claim(ClaimTypes.NameIdentifier, externalId),
+            new Claim("sub", externalId),
             new Claim("preferred_username", email),
             new Claim(ClaimTypes.Role, role) // Agregar rol para políticas
         };

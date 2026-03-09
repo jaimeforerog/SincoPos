@@ -95,13 +95,13 @@ public class MultiSucursalTests
     }
 
     [Fact]
-    public async Task ObtenerUsuario_ComoSupervisor_Devuelve403()
+    public async Task ObtenerUsuario_ComoSupervisor_Devuelve200()
     {
         var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
 
         var response = await client.GetAsync($"/api/v1/Usuarios/{UsuarioId}");
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]

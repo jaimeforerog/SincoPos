@@ -37,6 +37,41 @@ export interface FiltrosUsuario {
   sucursalId?: number;
 }
 
+// ─── DTOs para crear / actualizar usuarios ───────────────────────────────────
+
+export interface CrearUsuarioRequest {
+  email: string;
+  nombreCompleto: string;
+  telefono?: string;
+  rol: string;
+  sucursalDefaultId?: number;
+  sucursalIds?: number[];
+}
+
+export interface CrearUsuarioResult {
+  id: number;
+  email: string;
+  nombreCompleto: string;
+  rol: string;
+  passwordTemporal?: string;
+}
+
+export interface ActualizarUsuarioRequest {
+  nombreCompleto?: string;
+  telefono?: string;
+  rol?: string;
+  sucursalDefaultId?: number;
+  sucursalIds?: number[];
+}
+
+export interface CambiarRolRequest {
+  rol: string;
+}
+
+export interface ResetPasswordResult {
+  passwordTemporal: string;
+}
+
 export const usuariosApi = {
   me: async (): Promise<UserInfo> => {
     const response = await apiClient.get<PerfilUsuarioBackend>('/usuarios/me');
@@ -74,5 +109,23 @@ export const usuariosApi = {
 
   cambiarEstado: async (id: number, activo: boolean, motivo?: string): Promise<void> => {
     await apiClient.put(`/usuarios/${id}/estado`, { activo, motivo });
+  },
+
+  crear: async (data: CrearUsuarioRequest): Promise<CrearUsuarioResult> => {
+    const response = await apiClient.post<CrearUsuarioResult>('/usuarios', data);
+    return response.data;
+  },
+
+  actualizar: async (id: number, data: ActualizarUsuarioRequest): Promise<void> => {
+    await apiClient.put(`/usuarios/${id}`, data);
+  },
+
+  cambiarRol: async (id: number, rol: string): Promise<void> => {
+    await apiClient.put(`/usuarios/${id}/rol`, { rol });
+  },
+
+  resetPassword: async (id: number): Promise<ResetPasswordResult> => {
+    const response = await apiClient.post<ResetPasswordResult>(`/usuarios/${id}/reset-password`);
+    return response.data;
   },
 };

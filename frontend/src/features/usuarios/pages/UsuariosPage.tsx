@@ -36,6 +36,8 @@ import {
   CheckCircle,
   Cancel,
   Domain,
+  Edit,
+  Add,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
@@ -43,7 +45,10 @@ import { usuariosApi, type UsuarioDto } from '@/api/usuarios';
 import { sucursalesApi } from '@/api/sucursales';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useAuthStore } from '@/stores/auth.store';
+import { useAuth } from '@/hooks/useAuth';
 import type { SucursalDTO } from '@/types/api';
+import { CrearUsuarioDialog } from '../components/CrearUsuarioDialog';
+import { EditarUsuarioDialog } from '../components/EditarUsuarioDialog';
 
 const ROL_LABELS: Record<string, { label: string; color: 'error' | 'warning' | 'info' | 'success' }> = {
   admin:      { label: 'Admin',      color: 'error' },
@@ -231,6 +236,7 @@ export function UsuariosPage() {
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
   const { user: currentUser, setUser } = useAuthStore();
+  const { isAdmin } = useAuth();
 
   // Filtros
   const [busqueda, setBusqueda] = useState('');
@@ -241,6 +247,8 @@ export function UsuariosPage() {
   const [usuarioSucursal, setUsuarioSucursal] = useState<UsuarioDto | null>(null);
   const [usuarioSucursales, setUsuarioSucursales] = useState<UsuarioDto | null>(null);
   const [usuarioEstado, setUsuarioEstado] = useState<UsuarioDto | null>(null);
+  const [crearDialogOpen, setCrearDialogOpen] = useState(false);
+  const [usuarioEditar, setUsuarioEditar] = useState<UsuarioDto | null>(null);
 
   // Queries
   const { data: usuarios = [], isLoading, error } = useQuery({
@@ -326,6 +334,19 @@ export function UsuariosPage() {
         showBackButton={true}
         backPath="/configuracion"
       />
+
+      {/* Acciones */}
+      {isAdmin() && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setCrearDialogOpen(true)}
+          >
+            Nuevo Usuario
+          </Button>
+        </Box>
+      )}
 
       {/* Filtros */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
@@ -438,6 +459,13 @@ export function UsuariosPage() {
                       {formatFecha(u.ultimoAcceso)}
                     </TableCell>
                     <TableCell align="center">
+                      {isAdmin() && (
+                        <Tooltip title="Editar usuario">
+                          <IconButton size="small" onClick={() => setUsuarioEditar(u)}>
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       <Tooltip title="Asignar sucursal default">
                         <IconButton size="small" onClick={() => setUsuarioSucursal(u)}>
                           <StoreMallDirectory fontSize="small" />
@@ -497,6 +525,19 @@ export function UsuariosPage() {
           loading={mutEstado.isPending}
         />
       )}
+
+      {/* Diálogo crear usuario */}
+      <CrearUsuarioDialog
+        open={crearDialogOpen}
+        onClose={() => setCrearDialogOpen(false)}
+      />
+
+      {/* Diálogo editar usuario */}
+      <EditarUsuarioDialog
+        open={!!usuarioEditar}
+        usuario={usuarioEditar}
+        onClose={() => setUsuarioEditar(null)}
+      />
     </Container>
   );
 }

@@ -96,3 +96,42 @@ public record FiltrosUsuarioDto(
     bool? Activo,
     int? SucursalId
 );
+
+/// <summary>
+/// DTO para crear un nuevo usuario
+/// </summary>
+public record CrearUsuarioDto(
+    string Email,
+    string NombreCompleto,
+    string? Telefono,
+    string Rol,
+    int? SucursalDefaultId,
+    List<int>? SucursalIds
+);
+
+/// <summary>
+/// DTO para actualizar un usuario existente
+/// </summary>
+public record ActualizarUsuarioDto(
+    string? NombreCompleto,
+    string? Telefono,
+    string? Rol,
+    int? SucursalDefaultId,
+    List<int>? SucursalIds
+);
+
+/// <summary>
+/// DTO resultado de creacion de usuario, incluye contrasena temporal
+/// </summary>
+public record CrearUsuarioResultDto(
+    int Id,
+    string Email,
+    string NombreCompleto,
+    string Rol,
+    string? PasswordTemporal
+);
+
+/// <summary>
+/// DTO para cambiar rol de un usuario
+/// </summary>
+public record CambiarRolDto(string Rol);

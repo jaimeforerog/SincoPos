@@ -53,4 +53,34 @@ public static class Roles
     /// Verifica si un rol es válido
     /// </summary>
     public static bool EsValido(string rol) => TodosLosRoles.Contains(rol.ToLower());
+
+    /// <summary>
+    /// Obtiene el nivel jerárquico de un rol (mayor = más privilegios).
+    /// admin=4, supervisor=3, cajero=2, vendedor=1
+    /// </summary>
+    public static int GetNivelJerarquico(string rol) => rol.ToLower() switch
+    {
+        Admin => 4,
+        Supervisor => 3,
+        Cajero => 2,
+        Vendedor => 1,
+        _ => 0
+    };
+
+    /// <summary>
+    /// Verifica si un rol creador puede asignar el rol destino.
+    /// Un usuario no puede asignar un rol de nivel igual o superior al suyo (excepto admin).
+    /// </summary>
+    public static bool PuedeAsignarRol(string rolCreador, string rolDestino)
+    {
+        var nivelCreador = GetNivelJerarquico(rolCreador);
+        var nivelDestino = GetNivelJerarquico(rolDestino);
+
+        // Admin puede asignar cualquier rol
+        if (rolCreador.ToLower() == Admin)
+            return true;
+
+        // Los demás solo pueden asignar roles de nivel inferior
+        return nivelCreador > nivelDestino;
+    }
 }

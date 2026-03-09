@@ -221,7 +221,7 @@ public class CajasController : ControllerBase
 
         if (!string.IsNullOrEmpty(externalId) && !string.IsNullOrEmpty(email))
         {
-            var usuario = await _usuarioService.ObtenerOCrearUsuarioAsync(
+            var usuario = await _usuarioService.ObtenerOCrearUsuarioEntityAsync(
                 externalId, email, nombreCompleto, rol);
             caja.AbiertaPorUsuarioId = usuario.Id;
         }

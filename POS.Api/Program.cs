@@ -23,7 +23,22 @@ builder.Services.AddScoped<POS.Application.Services.ITerceroService, POS.Infrast
 builder.Services.AddScoped<POS.Application.Services.IProductoService, POS.Infrastructure.Services.ProductoLocalService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.PrecioService>();
+
+// Identity Provider abstraction: LocalIdentityProviderService for dev, EntraIdService for prod (future)
+if (builder.Configuration.GetSection("MicrosoftGraph:TenantId").Exists())
+{
+    // TODO: Register EntraIdService when implemented
+    builder.Services.AddScoped<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.LocalIdentityProviderService>();
+}
+else
+{
+    builder.Services.AddScoped<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.LocalIdentityProviderService>();
+}
+
+// Usuario service: interface + concrete (concrete kept for backward compat with CajasController)
+builder.Services.AddScoped<POS.Application.Services.IUsuarioService, POS.Infrastructure.Services.UsuarioService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.UsuarioService>();
+
 builder.Services.AddScoped<POS.Infrastructure.Services.MigracionLogService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.ITaxEngine, POS.Infrastructure.Services.TaxEngine>();
 builder.Services.AddScoped<POS.Application.Services.IVentaService, POS.Infrastructure.Services.VentaService>();

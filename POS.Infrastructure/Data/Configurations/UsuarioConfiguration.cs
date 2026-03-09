@@ -31,6 +31,7 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             .IsRequired();
 
         builder.HasIndex(u => u.Email)
+            .IsUnique()
             .HasDatabaseName("ix_usuarios_email");
 
         builder.Property(u => u.NombreCompleto)

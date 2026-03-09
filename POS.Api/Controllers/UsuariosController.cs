@@ -1,10 +1,9 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using POS.Api.Extensions;
 using POS.Application.DTOs;
 using POS.Application.Services;
-using POS.Infrastructure.Data.Entities;
-using POS.Infrastructure.Services;
 
 namespace POS.Api.Controllers;
 
@@ -17,12 +16,12 @@ namespace POS.Api.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class UsuariosController : ControllerBase
 {
-    private readonly UsuarioService _usuarioService;
+    private readonly IUsuarioService _usuarioService;
     private readonly ILogger<UsuariosController> _logger;
     private readonly IActivityLogService _activityLogService;
 
     public UsuariosController(
-        UsuarioService usuarioService,
+        IUsuarioService usuarioService,
         ILogger<UsuariosController> logger,
         IActivityLogService activityLogService)
     {
@@ -42,10 +41,8 @@ public class UsuariosController : ControllerBase
         [FromQuery] bool? activo = null,
         [FromQuery] int? sucursalId = null)
     {
-        var usuarios = await _usuarioService.ListarUsuariosAsync(
+        var dtos = await _usuarioService.ListarUsuariosAsync(
             busqueda, rol, activo, sucursalId);
-
-        var dtos = usuarios.Select(ToDto).ToList();
 
         _logger.LogInformation(
             "Usuario {Email} listó {Count} usuarios con filtros: busqueda={Busqueda}, rol={Rol}, activo={Activo}",
@@ -78,40 +75,36 @@ public class UsuariosController : ControllerBase
 
         await _usuarioService.ObtenerOCrearUsuarioAsync(externalId, email, nombreCompleto, rolPrincipal);
 
-        var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(externalId);
-        if (usuario == null)
+        var perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
+        if (perfil == null)
             return StatusCode(500, "Error al obtener perfil de usuario");
 
-        var permisos = ObtenerPermisosPorRol(usuario.Rol);
-        var sucursalesAsignadas = usuario.Sucursales
-            .Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre))
-            .ToList();
+        var permisos = ObtenerPermisosPorRol(perfil.Rol);
+        var sucursalesAsignadas = perfil.SucursalesAsignadas;
 
         // Si el usuario es admin o supervisor y no tiene sucursales asignadas,
         // darle acceso a todas las sucursales activas
         if (sucursalesAsignadas.Count == 0 &&
-            (usuario.Rol.Equals(Roles.Admin, StringComparison.OrdinalIgnoreCase) ||
-             usuario.Rol.Equals(Roles.Supervisor, StringComparison.OrdinalIgnoreCase)))
+            (perfil.Rol.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+             perfil.Rol.Equals("supervisor", StringComparison.OrdinalIgnoreCase)))
         {
-            var todas = await _usuarioService.ObtenerTodasSucursalesActivasAsync();
-            sucursalesAsignadas = todas
-                .Select(s => new SucursalResumenDto(s.Id, s.Nombre))
-                .ToList();
+            sucursalesAsignadas = await _usuarioService.ObtenerTodasSucursalesActivasAsync();
 
             _logger.LogInformation(
                 "Usuario {Email} ({Rol}) sin sucursales asignadas, usando todas las activas ({Count})",
-                usuario.Email, usuario.Rol, sucursalesAsignadas.Count);
+                perfil.Email, perfil.Rol, sucursalesAsignadas.Count);
         }
 
+        // Rebuild with permisos and potentially expanded sucursales
         var dto = new PerfilUsuarioDto(
-            usuario.Id,
-            usuario.Email,
-            usuario.NombreCompleto,
-            usuario.Telefono,
-            usuario.Rol,
-            usuario.SucursalDefaultId,
-            usuario.SucursalDefault?.Nombre,
-            usuario.UltimoAcceso,
+            perfil.Id,
+            perfil.Email,
+            perfil.NombreCompleto,
+            perfil.Telefono,
+            perfil.Rol,
+            perfil.SucursalDefaultId,
+            perfil.SucursalDefaultNombre,
+            perfil.UltimoAcceso,
             permisos,
             sucursalesAsignadas
         );
@@ -123,14 +116,233 @@ public class UsuariosController : ControllerBase
     /// Obtener usuario por ID
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "Supervisor")]
     public async Task<ActionResult<UsuarioDto>> ObtenerUsuario(int id)
     {
         var usuario = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuario == null)
             return NotFound($"Usuario con ID {id} no encontrado");
 
-        return Ok(ToDto(usuario));
+        return Ok(usuario);
+    }
+
+    /// <summary>
+    /// Crear un nuevo usuario
+    /// </summary>
+    [HttpPost]
+    [Authorize(Policy = "Supervisor")]
+    public async Task<ActionResult<CrearUsuarioResultDto>> CrearUsuario(
+        [FromBody] CrearUsuarioDto dto,
+        [FromServices] IValidator<CrearUsuarioDto> validator)
+    {
+        var validationResult = await validator.ValidateAsync(dto);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+
+        var externalId = User.GetExternalId();
+        if (string.IsNullOrEmpty(externalId))
+            return Unauthorized("No se pudo identificar al usuario");
+
+        var creadorRol = ObtenerRolActual();
+        var (result, error) = await _usuarioService.CrearUsuarioAsync(dto, externalId, creadorRol);
+        if (result == null)
+            return BadRequest(error);
+
+        _logger.LogInformation(
+            "{Rol} {Email} creó usuario {NuevoEmail} con rol {RolNuevo}",
+            creadorRol, User.GetEmail(), result.Email, result.Rol);
+
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "CrearUsuario",
+            Tipo: TipoActividad.Usuario,
+            Descripcion: $"Usuario '{result.NombreCompleto}' ({result.Email}) creado con rol '{result.Rol}' por {User.GetEmail()}",
+            SucursalId: dto.SucursalDefaultId,
+            TipoEntidad: "Usuario",
+            EntidadId: result.Id.ToString(),
+            EntidadNombre: result.NombreCompleto,
+            DatosAnteriores: null,
+            DatosNuevos: new
+            {
+                result.Email,
+                result.NombreCompleto,
+                result.Rol,
+                dto.SucursalDefaultId,
+                dto.SucursalIds,
+                CreadoPor = User.GetEmail()
+            }
+        ));
+
+        return CreatedAtAction(nameof(ObtenerUsuario), new { id = result.Id }, result);
+    }
+
+    /// <summary>
+    /// Actualizar un usuario existente
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Policy = "Supervisor")]
+    public async Task<IActionResult> ActualizarUsuario(
+        int id,
+        [FromBody] ActualizarUsuarioDto dto,
+        [FromServices] IValidator<ActualizarUsuarioDto> validator)
+    {
+        var validationResult = await validator.ValidateAsync(dto);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+
+        // Obtener datos anteriores para auditoría
+        var usuarioAnterior = await _usuarioService.ObtenerPorIdAsync(id);
+        if (usuarioAnterior == null)
+            return NotFound($"Usuario con ID {id} no encontrado");
+
+        // Self-protection: no puede cambiar su propio rol
+        var currentExternalId = User.GetExternalId();
+        if (dto.Rol != null && usuarioAnterior.KeycloakId == currentExternalId)
+            return BadRequest("No puedes cambiar tu propio rol");
+
+        var creadorRol = ObtenerRolActual();
+        var (success, error) = await _usuarioService.ActualizarUsuarioAsync(id, dto, creadorRol);
+        if (!success)
+        {
+            if (error == "NOT_FOUND")
+                return NotFound($"Usuario con ID {id} no encontrado");
+            return BadRequest(error);
+        }
+
+        _logger.LogInformation(
+            "{Rol} {Email} actualizó usuario {Id}",
+            creadorRol, User.GetEmail(), id);
+
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ActualizarUsuario",
+            Tipo: TipoActividad.Usuario,
+            Descripcion: $"Usuario '{usuarioAnterior.NombreCompleto}' ({usuarioAnterior.Email}) actualizado por {User.GetEmail()}",
+            SucursalId: usuarioAnterior.SucursalDefaultId,
+            TipoEntidad: "Usuario",
+            EntidadId: id.ToString(),
+            EntidadNombre: usuarioAnterior.NombreCompleto,
+            DatosAnteriores: new
+            {
+                usuarioAnterior.NombreCompleto,
+                usuarioAnterior.Telefono,
+                usuarioAnterior.Rol,
+                usuarioAnterior.SucursalDefaultId
+            },
+            DatosNuevos: new
+            {
+                NombreCompleto = dto.NombreCompleto ?? usuarioAnterior.NombreCompleto,
+                Telefono = dto.Telefono ?? usuarioAnterior.Telefono,
+                Rol = dto.Rol ?? usuarioAnterior.Rol,
+                SucursalDefaultId = dto.SucursalDefaultId ?? usuarioAnterior.SucursalDefaultId,
+                dto.SucursalIds,
+                ModificadoPor = User.GetEmail()
+            }
+        ));
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Cambiar rol de un usuario
+    /// </summary>
+    [HttpPut("{id}/rol")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> CambiarRol(
+        int id,
+        [FromBody] CambiarRolDto dto,
+        [FromServices] IValidator<CambiarRolDto> validator)
+    {
+        var validationResult = await validator.ValidateAsync(dto);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+
+        // Self-protection: no puede cambiar su propio rol
+        var usuario = await _usuarioService.ObtenerPorIdAsync(id);
+        if (usuario == null)
+            return NotFound($"Usuario con ID {id} no encontrado");
+
+        var currentExternalId = User.GetExternalId();
+        if (usuario.KeycloakId == currentExternalId)
+            return BadRequest("No puedes cambiar tu propio rol");
+
+        var creadorRol = ObtenerRolActual();
+        var rolAnterior = usuario.Rol;
+
+        var (success, error) = await _usuarioService.CambiarRolAsync(id, dto.Rol, creadorRol);
+        if (!success)
+        {
+            if (error == "NOT_FOUND")
+                return NotFound($"Usuario con ID {id} no encontrado");
+            return BadRequest(error);
+        }
+
+        _logger.LogInformation(
+            "{Rol} {Email} cambió rol de usuario {Id} de {RolAnterior} a {RolNuevo}",
+            creadorRol, User.GetEmail(), id, rolAnterior, dto.Rol);
+
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "CambiarRol",
+            Tipo: TipoActividad.Usuario,
+            Descripcion: $"Rol de usuario '{usuario.NombreCompleto}' ({usuario.Email}) cambiado de '{rolAnterior}' a '{dto.Rol}' por {User.GetEmail()}",
+            SucursalId: usuario.SucursalDefaultId,
+            TipoEntidad: "Usuario",
+            EntidadId: id.ToString(),
+            EntidadNombre: usuario.NombreCompleto,
+            DatosAnteriores: new
+            {
+                Rol = rolAnterior,
+                usuario.Email
+            },
+            DatosNuevos: new
+            {
+                Rol = dto.Rol.ToLower(),
+                ModificadoPor = User.GetEmail()
+            }
+        ));
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Resetear contrasena de un usuario
+    /// </summary>
+    [HttpPost("{id}/reset-password")]
+    [Authorize(Policy = "Admin")]
+    public async Task<ActionResult<object>> ResetPassword(int id)
+    {
+        var usuario = await _usuarioService.ObtenerPorIdAsync(id);
+        if (usuario == null)
+            return NotFound($"Usuario con ID {id} no encontrado");
+
+        var (tempPassword, error) = await _usuarioService.ResetPasswordAsync(id);
+        if (tempPassword == null)
+        {
+            if (error == "NOT_FOUND")
+                return NotFound($"Usuario con ID {id} no encontrado");
+            return BadRequest(error);
+        }
+
+        _logger.LogInformation(
+            "Admin {Email} reseteó contrasena de usuario {Id} ({UsuarioEmail})",
+            User.GetEmail(), id, usuario.Email);
+
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ResetPassword",
+            Tipo: TipoActividad.Usuario,
+            Descripcion: $"Contrasena de usuario '{usuario.NombreCompleto}' ({usuario.Email}) reseteada por {User.GetEmail()}",
+            SucursalId: usuario.SucursalDefaultId,
+            TipoEntidad: "Usuario",
+            EntidadId: id.ToString(),
+            EntidadNombre: usuario.NombreCompleto,
+            DatosAnteriores: null,
+            DatosNuevos: new
+            {
+                usuario.Email,
+                ResetPor = User.GetEmail(),
+                Fecha = DateTime.UtcNow
+            }
+        ));
+
+        return Ok(new { passwordTemporal = tempPassword });
     }
 
     /// <summary>
@@ -143,19 +355,19 @@ public class UsuariosController : ControllerBase
         if (string.IsNullOrEmpty(externalId))
             return Unauthorized("No se pudo identificar al usuario");
 
-        var usuario = await _usuarioService.ObtenerPorKeycloakIdAsync(externalId);
-        if (usuario == null)
+        var perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
+        if (perfil == null)
             return NotFound("Usuario no encontrado");
 
         var actualizado = await _usuarioService.ActualizarSucursalDefaultAsync(
-            usuario.Id, dto.SucursalId);
+            perfil.Id, dto.SucursalId);
 
         if (!actualizado)
             return BadRequest("No se pudo actualizar la sucursal. Verifique que la sucursal existe y está activa.");
 
         _logger.LogInformation(
             "Usuario {Email} cambió su sucursal default a {SucursalId}",
-            usuario.Email, dto.SucursalId);
+            perfil.Email, dto.SucursalId);
 
         return NoContent();
     }
@@ -266,62 +478,33 @@ public class UsuariosController : ControllerBase
     [Authorize(Policy = "Admin")]
     public async Task<ActionResult<EstadisticasUsuariosDto>> ObtenerEstadisticas()
     {
-        var stats = await _usuarioService.ObtenerEstadisticasAsync();
-
-        var usuariosRecientes = (List<Usuario>)stats["usuariosRecientes"];
-
-        var dto = new EstadisticasUsuariosDto(
-            (int)stats["totalUsuarios"],
-            (int)stats["usuariosActivos"],
-            (int)stats["usuariosInactivos"],
-            (Dictionary<string, int>)stats["usuariosPorRol"],
-            (int)stats["conectadosHoy"],
-            (int)stats["conectadosSemana"],
-            usuariosRecientes.Select(u => new UsuarioRecienteDto(
-                u.Id,
-                u.Email,
-                u.NombreCompleto,
-                u.Rol,
-                u.FechaCreacion,
-                u.UltimoAcceso
-            )).ToList()
-        );
-
+        var dto = await _usuarioService.ObtenerEstadisticasAsync();
         return Ok(dto);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    private static UsuarioDto ToDto(Usuario u) => new(
-        u.Id,
-        u.KeycloakId,
-        u.Email,
-        u.NombreCompleto,
-        u.Telefono,
-        u.Rol,
-        u.SucursalDefaultId,
-        u.SucursalDefault?.Nombre,
-        u.Activo,
-        u.FechaCreacion,
-        u.UltimoAcceso,
-        u.CreadoPor,
-        u.FechaModificacion,
-        u.ModificadoPor,
-        u.Sucursales.Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre)).ToList()
-    );
+    /// <summary>
+    /// Obtiene el rol del usuario actual desde los claims.
+    /// </summary>
+    private string ObtenerRolActual()
+    {
+        var roles = User.GetRoles().ToList();
+        return roles.Count > 0 ? DeterminarRolPrincipal(roles) : "vendedor";
+    }
 
     private static string DeterminarRolPrincipal(List<string> roles)
     {
-        if (roles.Any(r => r.Equals(Roles.Admin, StringComparison.OrdinalIgnoreCase)))
-            return Roles.Admin;
+        if (roles.Any(r => r.Equals("admin", StringComparison.OrdinalIgnoreCase)))
+            return "admin";
 
-        if (roles.Any(r => r.Equals(Roles.Supervisor, StringComparison.OrdinalIgnoreCase)))
-            return Roles.Supervisor;
+        if (roles.Any(r => r.Equals("supervisor", StringComparison.OrdinalIgnoreCase)))
+            return "supervisor";
 
-        if (roles.Any(r => r.Equals(Roles.Cajero, StringComparison.OrdinalIgnoreCase)))
-            return Roles.Cajero;
+        if (roles.Any(r => r.Equals("cajero", StringComparison.OrdinalIgnoreCase)))
+            return "cajero";
 
-        return Roles.Vendedor;
+        return "vendedor";
     }
 
     private static IEnumerable<string> ObtenerPermisosPorRol(string rol)
