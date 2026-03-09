@@ -185,11 +185,13 @@ public class ImpuestosController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<RetencionReglaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<RetencionReglaDto>>> GetRetenciones() =>
         Ok(await _context.RetencionesReglas
+            .Include(r => r.ConceptoRetencion)
             .OrderBy(r => r.Tipo).ThenBy(r => r.Nombre)
             .Select(r => new RetencionReglaDto(
                 r.Id, r.Nombre, r.Tipo.ToString(), r.Porcentaje,
                 r.BaseMinUVT, r.CodigoMunicipio, r.PerfilVendedor,
-                r.PerfilComprador, r.CodigoCuentaContable, r.Activo))
+                r.PerfilComprador, r.CodigoCuentaContable, r.Activo,
+                r.ConceptoRetencionId, r.ConceptoRetencion != null ? r.ConceptoRetencion.Nombre : null))
             .ToListAsync());
 
     /// <summary>
@@ -221,6 +223,7 @@ public class ImpuestosController : ControllerBase
             PerfilVendedor = dto.PerfilVendedor,
             PerfilComprador = dto.PerfilComprador,
             CodigoCuentaContable = dto.CodigoCuentaContable,
+            ConceptoRetencionId = dto.ConceptoRetencionId,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         };
@@ -249,6 +252,7 @@ public class ImpuestosController : ControllerBase
         regla.PerfilVendedor = dto.PerfilVendedor;
         regla.PerfilComprador = dto.PerfilComprador;
         regla.CodigoCuentaContable = dto.CodigoCuentaContable;
+        regla.ConceptoRetencionId = dto.ConceptoRetencionId;
 
         await _context.SaveChangesAsync();
         return NoContent();
@@ -266,6 +270,89 @@ public class ImpuestosController : ControllerBase
         var regla = await _context.RetencionesReglas.FindAsync(id);
         if (regla == null) return NotFound();
         regla.Activo = false;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // ─── Conceptos de Retención ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Listar todos los conceptos de retención DIAN.
+    /// </summary>
+    [HttpGet("conceptos-retencion")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(IEnumerable<ConceptoRetencionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<ConceptoRetencionDto>>> GetConceptosRetencion() =>
+        Ok(await _context.ConceptosRetencion
+            .OrderBy(c => c.CodigoDian).ThenBy(c => c.Nombre)
+            .Select(c => new ConceptoRetencionDto(
+                c.Id, c.Nombre, c.CodigoDian,
+                c.PorcentajeSugerido, c.Activo))
+            .ToListAsync());
+
+    /// <summary>
+    /// Crear un nuevo concepto de retención DIAN.
+    /// </summary>
+    [HttpPost("conceptos-retencion")]
+    [Authorize(Policy = "Admin")]
+    [ProducesResponseType(typeof(ConceptoRetencionDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ConceptoRetencionDto>> CrearConceptoRetencion(
+        [FromBody] CrearConceptoRetencionDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Nombre))
+            return BadRequest("Nombre requerido.");
+
+        var concepto = new ConceptoRetencion
+        {
+            Nombre = dto.Nombre,
+            CodigoDian = dto.CodigoDian,
+            PorcentajeSugerido = dto.PorcentajeSugerido,
+            Activo = true,
+            FechaCreacion = DateTime.UtcNow
+        };
+
+        _context.ConceptosRetencion.Add(concepto);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetConceptosRetencion), null,
+            new ConceptoRetencionDto(concepto.Id, concepto.Nombre,
+                concepto.CodigoDian, concepto.PorcentajeSugerido, concepto.Activo));
+    }
+
+    /// <summary>
+    /// Actualizar un concepto de retención existente.
+    /// </summary>
+    [HttpPut("conceptos-retencion/{id:int}")]
+    [Authorize(Policy = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> EditarConceptoRetencion(int id,
+        [FromBody] EditarConceptoRetencionDto dto)
+    {
+        var concepto = await _context.ConceptosRetencion.FindAsync(id);
+        if (concepto == null) return NotFound("Concepto de retención no encontrado.");
+
+        if (!string.IsNullOrWhiteSpace(dto.Nombre)) concepto.Nombre = dto.Nombre;
+        if (dto.CodigoDian != null) concepto.CodigoDian = dto.CodigoDian;
+        if (dto.PorcentajeSugerido.HasValue) concepto.PorcentajeSugerido = dto.PorcentajeSugerido;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Desactivar (soft delete) un concepto de retención.
+    /// </summary>
+    [HttpDelete("conceptos-retencion/{id:int}")]
+    [Authorize(Policy = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DesactivarConceptoRetencion(int id)
+    {
+        var concepto = await _context.ConceptosRetencion.FindAsync(id);
+        if (concepto == null) return NotFound("Concepto de retención no encontrado.");
+        concepto.Activo = false;
         await _context.SaveChangesAsync();
         return NoContent();
     }
@@ -299,7 +386,9 @@ public record RetencionReglaDto(
     int Id, string Nombre, string Tipo, decimal Porcentaje,
     decimal BaseMinUVT, string? CodigoMunicipio,
     string PerfilVendedor, string PerfilComprador,
-    string? CodigoCuentaContable, bool Activo);
+    string? CodigoCuentaContable, bool Activo,
+    int? ConceptoRetencionId = null,
+    string? ConceptoRetencionNombre = null);
 
 public record CrearRetencionDto(
     string Nombre,
@@ -309,4 +398,19 @@ public record CrearRetencionDto(
     string? CodigoMunicipio,
     string PerfilVendedor,
     string PerfilComprador,
-    string? CodigoCuentaContable);
+    string? CodigoCuentaContable,
+    int? ConceptoRetencionId = null);
+
+public record ConceptoRetencionDto(
+    int Id, string Nombre, string? CodigoDian,
+    decimal? PorcentajeSugerido, bool Activo);
+
+public record CrearConceptoRetencionDto(
+    string Nombre,
+    string? CodigoDian = null,
+    decimal? PorcentajeSugerido = null);
+
+public record EditarConceptoRetencionDto(
+    string? Nombre = null,
+    string? CodigoDian = null,
+    decimal? PorcentajeSugerido = null);

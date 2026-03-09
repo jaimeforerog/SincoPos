@@ -80,6 +80,13 @@ public class RetencionRegla : EntidadAuditable
     /// Cuenta contable del activo (ej. "1355" = Anticipo de impuestos).
     /// </summary>
     public string? CodigoCuentaContable { get; set; }
+
+    /// <summary>
+    /// Concepto de retención DIAN asociado. Solo para ReteFuente.
+    /// Si se especifica, la regla solo aplica a productos con el mismo concepto.
+    /// </summary>
+    public int? ConceptoRetencionId { get; set; }
+    public ConceptoRetencion? ConceptoRetencion { get; set; }
 }
 
 public enum TipoRetencion
@@ -87,4 +94,24 @@ public enum TipoRetencion
     ReteFuente = 0,   // Retención en la fuente (renta)
     ReteICA = 1,      // Retención de Industria y Comercio (territorial)
     ReteIVA = 2       // Retención del IVA
+}
+
+/// <summary>
+/// Concepto de retención DIAN. Clasifica el tipo de actividad económica
+/// para aplicar la tarifa de retención en la fuente correcta.
+/// Códigos DIAN: 2301=Honorarios, 2302=Comisiones, 2304=Servicios, 2306=Arrendamientos, 2307=Compras.
+/// </summary>
+public class ConceptoRetencion : EntidadAuditable
+{
+    public string Nombre { get; set; } = string.Empty;
+
+    /// <summary>Código DIAN del concepto (ej. "2301", "2307").</summary>
+    public string? CodigoDian { get; set; }
+
+    /// <summary>Porcentaje sugerido de referencia para la UI (ej. 2.5, 11).</summary>
+    public decimal? PorcentajeSugerido { get; set; }
+
+    // Navegación
+    public ICollection<RetencionRegla> ReglasRetencion { get; set; } = new List<RetencionRegla>();
+    public ICollection<Producto> Productos { get; set; } = new List<Producto>();
 }

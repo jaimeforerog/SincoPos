@@ -76,12 +76,15 @@ export function OrdenCompraFormDialog({
 
   const { data: terceros = [] } = useQuery({
     queryKey: ['terceros'],
-    queryFn: () => tercerosApi.getAll({ activo: true }),
+    queryFn: () => tercerosApi.getAll(),
     enabled: open,
+    staleTime: 10 * 60 * 1000,
   });
 
-  // Filtrar solo proveedores (tipo 'Proveedor')
-  const proveedores = terceros.filter((t) => t.tipoTercero === 'Proveedor');
+  // Proveedores: tipo 'Proveedor' o 'Ambos'
+  const proveedores = terceros.filter(
+    (t) => t.tipoTercero === 'Proveedor' || t.tipoTercero === 'Ambos'
+  );
 
   const { data: productos = [] } = useQuery({
     queryKey: ['productos'],

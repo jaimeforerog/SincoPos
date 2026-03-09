@@ -30,7 +30,10 @@ public class ProductoLocalService : IProductoService
         p.Impuesto?.Porcentaje,
         p.EsAlimentoUltraprocesado,
         p.GramosAzucarPor100ml,
-        p.UnidadMedida
+        p.UnidadMedida,
+        // Concepto Retención
+        p.ConceptoRetencionId,
+        p.ConceptoRetencion?.Nombre
     );
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -38,6 +41,7 @@ public class ProductoLocalService : IProductoService
     public async Task<ProductoDto?> ObtenerPorIdAsync(Guid id) =>
         await _context.Productos
             .Include(p => p.Impuesto)
+            .Include(p => p.ConceptoRetencion)
             .Where(p => p.Id == id)
             .Select(p => ToDto(p))
             .FirstOrDefaultAsync();
@@ -45,13 +49,14 @@ public class ProductoLocalService : IProductoService
     public async Task<ProductoDto?> ObtenerPorCodigoBarrasAsync(string codigoBarras) =>
         await _context.Productos
             .Include(p => p.Impuesto)
+            .Include(p => p.ConceptoRetencion)
             .Where(p => p.CodigoBarras == codigoBarras)
             .Select(p => ToDto(p))
             .FirstOrDefaultAsync();
 
     public async Task<List<ProductoDto>> BuscarAsync(string? query, int? categoriaId, bool incluirInactivos)
     {
-        var q = _context.Productos.Include(p => p.Impuesto).AsQueryable();
+        var q = _context.Productos.Include(p => p.Impuesto).Include(p => p.ConceptoRetencion).AsQueryable();
 
         if (!incluirInactivos) q = q.Where(p => p.Activo);
 
@@ -86,6 +91,13 @@ public class ProductoLocalService : IProductoService
                 return (null, $"El impuesto con Id {dto.ImpuestoId} no existe o está inactivo.");
         }
 
+        if (dto.ConceptoRetencionId.HasValue)
+        {
+            var conceptoExiste = await _context.ConceptosRetencion.AnyAsync(c => c.Id == dto.ConceptoRetencionId && c.Activo);
+            if (!conceptoExiste)
+                return (null, $"El concepto de retención con Id {dto.ConceptoRetencionId} no existe o está inactivo.");
+        }
+
         var producto = new Producto
         {
             Id = Guid.NewGuid(),
@@ -99,6 +111,7 @@ public class ProductoLocalService : IProductoService
             EsAlimentoUltraprocesado = dto.EsAlimentoUltraprocesado,
             GramosAzucarPor100ml = dto.GramosAzucarPor100ml,
             UnidadMedida = dto.UnidadMedida,
+            ConceptoRetencionId = dto.ConceptoRetencionId,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         };
@@ -107,6 +120,7 @@ public class ProductoLocalService : IProductoService
         await _context.SaveChangesAsync();
 
         await _context.Entry(producto).Reference(p => p.Impuesto).LoadAsync();
+        await _context.Entry(producto).Reference(p => p.ConceptoRetencion).LoadAsync();
         return (ToDto(producto), null);
     }
 
@@ -123,6 +137,13 @@ public class ProductoLocalService : IProductoService
                 return (false, $"El impuesto con Id {dto.ImpuestoId} no existe o está inactivo.");
         }
 
+        if (dto.ConceptoRetencionId.HasValue)
+        {
+            var conceptoExiste = await _context.ConceptosRetencion.AnyAsync(c => c.Id == dto.ConceptoRetencionId && c.Activo);
+            if (!conceptoExiste)
+                return (false, $"El concepto de retención con Id {dto.ConceptoRetencionId} no existe o está inactivo.");
+        }
+
         producto.Nombre = dto.Nombre;
         producto.Descripcion = dto.Descripcion;
         producto.PrecioVenta = dto.PrecioVenta;
@@ -131,6 +152,7 @@ public class ProductoLocalService : IProductoService
         producto.EsAlimentoUltraprocesado = dto.EsAlimentoUltraprocesado;
         producto.GramosAzucarPor100ml = dto.GramosAzucarPor100ml;
         producto.UnidadMedida = dto.UnidadMedida;
+        producto.ConceptoRetencionId = dto.ConceptoRetencionId;
         producto.FechaModificacion = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

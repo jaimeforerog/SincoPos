@@ -18,6 +18,9 @@ export interface ProductoDTO {
   esAlimentoUltraprocesado: boolean;
   gramosAzucarPor100ml?: number;
   unidadMedida: string;          // Código DIAN: "94"=Unidad, "KGM"=Kg, etc.
+  // Concepto Retención DIAN
+  conceptoRetencionId?: number;
+  conceptoRetencionNombre?: string;
 }
 
 export interface CrearProductoDTO {
@@ -31,6 +34,7 @@ export interface CrearProductoDTO {
   esAlimentoUltraprocesado?: boolean;
   gramosAzucarPor100ml?: number;
   unidadMedida?: string;
+  conceptoRetencionId?: number;
 }
 
 export interface ActualizarProductoDTO {
@@ -42,6 +46,7 @@ export interface ActualizarProductoDTO {
   esAlimentoUltraprocesado?: boolean;
   gramosAzucarPor100ml?: number;
   unidadMedida?: string;
+  conceptoRetencionId?: number;
 }
 
 export interface CategoriaDTO {
@@ -611,6 +616,8 @@ export interface RetencionReglaDTO {
   perfilComprador: string;
   codigoCuentaContable?: string;
   activo: boolean;
+  conceptoRetencionId?: number;
+  conceptoRetencionNombre?: string;
 }
 
 export interface CrearRetencionDTO {
@@ -622,6 +629,27 @@ export interface CrearRetencionDTO {
   perfilVendedor: string;
   perfilComprador: string;
   codigoCuentaContable?: string;
+  conceptoRetencionId?: number;
+}
+
+export interface ConceptoRetencionDTO {
+  id: number;
+  nombre: string;
+  codigoDian?: string;
+  porcentajeSugerido?: number;
+  activo: boolean;
+}
+
+export interface CrearConceptoRetencionDTO {
+  nombre: string;
+  codigoDian?: string;
+  porcentajeSugerido?: number;
+}
+
+export interface EditarConceptoRetencionDTO {
+  nombre?: string;
+  codigoDian?: string;
+  porcentajeSugerido?: number;
 }
 
 export interface ApiError {

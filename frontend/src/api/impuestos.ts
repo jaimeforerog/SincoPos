@@ -1,5 +1,8 @@
 import apiClient from './client';
-import type { ImpuestoDTO, RetencionReglaDTO, CrearImpuestoDTO, EditarImpuestoDTO, CrearRetencionDTO } from '@/types/api';
+import type {
+  ImpuestoDTO, RetencionReglaDTO, CrearImpuestoDTO, EditarImpuestoDTO, CrearRetencionDTO,
+  ConceptoRetencionDTO, CrearConceptoRetencionDTO, EditarConceptoRetencionDTO,
+} from '@/types/api';
 
 export const impuestosApi = {
   getAll: async (pais?: string): Promise<ImpuestoDTO[]> => {
@@ -48,5 +51,25 @@ export const retencionesApi = {
 
   deactivate: async (id: number): Promise<void> => {
     await apiClient.delete(`/retenciones/${id}`);
+  },
+};
+
+export const conceptosRetencionApi = {
+  getAll: async (): Promise<ConceptoRetencionDTO[]> => {
+    const response = await apiClient.get<ConceptoRetencionDTO[]>('/impuestos/conceptos-retencion');
+    return response.data;
+  },
+
+  create: async (dto: CrearConceptoRetencionDTO): Promise<ConceptoRetencionDTO> => {
+    const response = await apiClient.post<ConceptoRetencionDTO>('/impuestos/conceptos-retencion', dto);
+    return response.data;
+  },
+
+  update: async (id: number, dto: EditarConceptoRetencionDTO): Promise<void> => {
+    await apiClient.put(`/impuestos/conceptos-retencion/${id}`, dto);
+  },
+
+  deactivate: async (id: number): Promise<void> => {
+    await apiClient.delete(`/impuestos/conceptos-retencion/${id}`);
   },
 };

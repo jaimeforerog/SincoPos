@@ -24,6 +24,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { useSnackbar } from 'notistack';
 import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
+import { conceptosRetencionApi } from '@/api/impuestos';
 import type { ProductoDTO, CrearProductoDTO, ActualizarProductoDTO } from '@/types/api';
 
 const UNIDADES_MEDIDA = [
@@ -76,13 +77,21 @@ export function ProductoFormDialog({
   const [showCategoriaInput, setShowCategoriaInput] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [backendError, setBackendError] = useState<string | null>(null);
+  const [conceptoRetencionId, setConceptoRetencionId] = useState<number | ''>('');
 
   const isEdit = !!producto;
 
-  // Cargar categorías
+  // Cargar categorias
   const { data: categorias = [] } = useQuery({
     queryKey: ['categorias'],
     queryFn: () => categoriasApi.getAll(false),
+    enabled: open,
+  });
+
+  // Cargar conceptos de retencion
+  const { data: conceptosRetencion = [] } = useQuery({
+    queryKey: ['conceptos-retencion'],
+    queryFn: () => conceptosRetencionApi.getAll(),
     enabled: open,
   });
 
@@ -118,7 +127,7 @@ export function ProductoFormDialog({
     },
   });
 
-  // Reset form cuando cambia el producto o se abre el diálogo
+  // Reset form cuando cambia el producto o se abre el dialogo
   useEffect(() => {
     if (open) {
       setBackendError(null);
@@ -129,6 +138,7 @@ export function ProductoFormDialog({
           precioCosto: producto.precioCosto,
           unidadMedida: producto.unidadMedida || '94',
         });
+        setConceptoRetencionId(producto.conceptoRetencionId ?? '');
       } else {
         resetCrear({
           codigoBarras: '',
@@ -138,6 +148,7 @@ export function ProductoFormDialog({
           precioCosto: 0,
           unidadMedida: '94',
         });
+        setConceptoRetencionId('');
       }
       setShowCategoriaInput(false);
       setNuevaCategoria('');
@@ -167,6 +178,7 @@ export function ProductoFormDialog({
         const updateData: ActualizarProductoDTO = {
           ...(data as ActualizarProductoFormData),
           precioVenta: 0, // Precio de venta se maneja por sucursal
+          conceptoRetencionId: conceptoRetencionId || undefined,
         };
         await productosApi.update(producto!.id, updateData);
         return null;
@@ -174,6 +186,7 @@ export function ProductoFormDialog({
         const createData: CrearProductoDTO = {
           ...(data as CrearProductoFormData),
           precioVenta: 0, // Precio de venta se maneja por sucursal
+          conceptoRetencionId: conceptoRetencionId || undefined,
         };
         return await productosApi.create(createData);
       }
@@ -490,9 +503,29 @@ export function ProductoFormDialog({
               />
             )}
 
+            {/* Concepto de Retencion DIAN */}
+            <FormControl fullWidth>
+              <InputLabel id="concepto-retencion-label">Concepto Retencion DIAN</InputLabel>
+              <Select
+                labelId="concepto-retencion-label"
+                label="Concepto Retencion DIAN"
+                value={conceptoRetencionId}
+                onChange={(e) => setConceptoRetencionId(e.target.value as number | '')}
+              >
+                <MenuItem value="">
+                  <em>Sin concepto (aplican todas las reglas)</em>
+                </MenuItem>
+                {conceptosRetencion.filter(c => c.activo).map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.codigoDian ? `${c.codigoDian} - ` : ''}{c.nombre}{c.porcentajeSugerido != null ? ` (${c.porcentajeSugerido}%)` : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <Alert severity="info">
-              Los precios de venta se configuran en el módulo de <strong>Precios por Sucursal</strong>.
-              El sistema calculará automáticamente el precio usando el margen de la categoría si no se define un precio específico.
+              Los precios de venta se configuran en el modulo de <strong>Precios por Sucursal</strong>.
+              El sistema calculara automaticamente el precio usando el margen de la categoria si no se define un precio especifico.
             </Alert>
           </Box>
 

@@ -35,35 +35,32 @@ public class CompraService : ICompraService
 
     public async Task<(OrdenCompraDto? orden, string? error)> CrearOrdenAsync(CrearOrdenCompraDto dto)
     {
-        // Validar sucursal
+        // Validar sucursal y proveedor en una sola query
+        var productosIds = dto.Lineas.Select(l => l.ProductoId).ToList();
         var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
         if (sucursal == null)
             return (null, "Sucursal no encontrada");
 
-        // Validar proveedor
         var proveedor = await _context.Terceros.FindAsync(dto.ProveedorId);
         if (proveedor == null)
             return (null, "Proveedor no encontrado");
 
-        // Cargar productos con impuesto en una sola query (evitar N+1)
-        var productosIds = dto.Lineas.Select(l => l.ProductoId).ToList();
+        // Cargar productos, retenciones e impuestos override
         var productos = await _context.Productos
             .Include(p => p.Impuesto)
+            .Include(p => p.ConceptoRetencion)
             .Where(p => productosIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
 
-        // Validar que todos los productos existan
         foreach (var linea in dto.Lineas)
         {
             if (!productos.ContainsKey(linea.ProductoId))
                 return (null, $"Producto {linea.ProductoId} no encontrado");
         }
 
-        // Cargar retenciones activas
         var reglasRetencion = await _context.RetencionesReglas
             .Where(r => r.Activo).ToListAsync();
 
-        // Cargar impuestos por override (ImpuestoId explícito en línea)
         var impuestoIdsOverride = dto.Lineas
             .Where(l => l.ImpuestoId.HasValue)
             .Select(l => l.ImpuestoId!.Value)
@@ -75,11 +72,9 @@ public class CompraService : ICompraService
                 .ToDictionaryAsync(i => i.Id)
             : new Dictionary<int, Impuesto>();
 
-        // Generar número de orden
-        var ultimaOrden = await _context.OrdenesCompra
-            .OrderByDescending(o => o.Id)
-            .FirstOrDefaultAsync();
-        var numeroOrden = $"OC-{(ultimaOrden?.Id ?? 0) + 1:000000}";
+        // Generar número de orden con MAX(Id) en vez de cargar la entidad completa
+        var maxId = await _context.OrdenesCompra.MaxAsync(o => (int?)o.Id) ?? 0;
+        var numeroOrden = $"OC-{maxId + 1:000000}";
 
         // Calcular totales usando TaxEngine
         decimal subtotal = 0;
@@ -109,6 +104,7 @@ public class CompraService : ICompraService
                 PerfilVendedor: proveedor.PerfilTributario,
                 PerfilComprador: sucursal.PerfilTributario,
                 CodigoMunicipio: sucursal.CodigoMunicipio ?? string.Empty,
+                ConceptoRetencionId: producto.ConceptoRetencionId,
                 ValorUVT: sucursal.ValorUVT,
                 ReglasRetencion: reglasRetencion
             ));
@@ -168,9 +164,9 @@ public class CompraService : ICompraService
             DatosNuevos: new { orden, dto }
         ));
 
-        // Recargar con navigations para el mapper
-        await _context.Entry(orden).Reference(o => o.Sucursal).LoadAsync();
-        await _context.Entry(orden).Reference(o => o.Proveedor).LoadAsync();
+        // Asignar navigations ya cargadas (evitar 2 queries extra)
+        orden.Sucursal = sucursal;
+        orden.Proveedor = proveedor;
 
         return (BuildOrdenCompraDto(orden, null, null), null);
     }

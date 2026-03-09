@@ -98,6 +98,7 @@ public class VentaService : IVentaService
 
         var productosMap = await _context.Productos
             .Include(p => p.Impuesto)
+            .Include(p => p.ConceptoRetencion)
             .Where(p => productoIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
 
@@ -152,6 +153,7 @@ public class VentaService : IVentaService
                 PerfilVendedor: sucursal.PerfilTributario,
                 PerfilComprador: perfilComprador,
                 CodigoMunicipio: sucursal.CodigoMunicipio ?? string.Empty,
+                ConceptoRetencionId: producto.ConceptoRetencionId,
                 ValorUVT: sucursal.ValorUVT,
                 ReglasRetencion: reglasRetencion
             ));

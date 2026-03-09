@@ -170,7 +170,13 @@ public class TaxEngine : ITaxEngine
         if (baseImponible < baseMinPesos)
             return false;
 
-        // 3. ReteICA: validar coincidencia de municipio
+        // 3. ReteFuente: filtrar por concepto de retención del producto
+        if (regla.Tipo == TipoRetencion.ReteFuente &&
+            regla.ConceptoRetencionId.HasValue &&
+            regla.ConceptoRetencionId != req.ConceptoRetencionId)
+            return false;
+
+        // 4. ReteICA: validar coincidencia de municipio
         if (regla.Tipo == TipoRetencion.ReteICA)
         {
             if (string.IsNullOrEmpty(regla.CodigoMunicipio))

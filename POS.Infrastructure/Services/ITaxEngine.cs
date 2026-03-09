@@ -44,6 +44,9 @@ public record TaxRequest(
     string PerfilComprador,           // "GRAN_CONTRIBUYENTE" | "REGIMEN_COMUN" | ...
     string CodigoMunicipio,           // Código DANE (para ReteICA)
 
+    // ── Concepto de retención (producto) ────────────────────────────────────────
+    int? ConceptoRetencionId,         // Concepto DIAN del producto (para filtrar ReteFuente)
+
     // ── Parámetros DIAN ────────────────────────────────────────────────────────
     decimal ValorUVT,                 // Valor UVT vigente (ej. 47065 en 2026)
     List<RetencionRegla> ReglasRetencion  // Catálogo de reglas activas de la sucursal

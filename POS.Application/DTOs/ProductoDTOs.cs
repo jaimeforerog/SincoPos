@@ -10,7 +10,8 @@ public record CrearProductoDto(
     int? ImpuestoId = null,                     // null = exento
     bool EsAlimentoUltraprocesado = false,
     decimal? GramosAzucarPor100ml = null,
-    string UnidadMedida = "94"                  // 94 = Unidad DIAN (default)
+    string UnidadMedida = "94",                 // 94 = Unidad DIAN (default)
+    int? ConceptoRetencionId = null             // Concepto retención DIAN
 );
 
 public record ActualizarProductoDto(
@@ -21,7 +22,8 @@ public record ActualizarProductoDto(
     int? ImpuestoId = null,
     bool EsAlimentoUltraprocesado = false,
     decimal? GramosAzucarPor100ml = null,
-    string UnidadMedida = "94"
+    string UnidadMedida = "94",
+    int? ConceptoRetencionId = null
 );
 
 public record ProductoDto(
@@ -41,5 +43,8 @@ public record ProductoDto(
     decimal? PorcentajeImpuesto,   // 0.19 — el frontend usa esto para la estimación del carrito
     bool EsAlimentoUltraprocesado,
     decimal? GramosAzucarPor100ml,
-    string UnidadMedida = "94"
+    string UnidadMedida = "94",
+    // ── Concepto Retención ───────────────────────────────────────────────────
+    int? ConceptoRetencionId = null,
+    string? ConceptoRetencionNombre = null
 );

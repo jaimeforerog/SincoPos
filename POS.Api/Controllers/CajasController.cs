@@ -112,6 +112,7 @@ public class CajasController : ControllerBase
     [ProducesResponseType(typeof(List<CajaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<CajaDto>>> ObtenerCajas(
         [FromQuery] int? sucursalId = null,
+        [FromQuery] string? estado = null,
         [FromQuery] bool incluirInactivas = false)
     {
         var query = _context.Cajas
@@ -120,6 +121,9 @@ public class CajasController : ControllerBase
 
         if (sucursalId.HasValue)
             query = query.Where(c => c.SucursalId == sucursalId.Value);
+
+        if (!string.IsNullOrEmpty(estado) && Enum.TryParse<EstadoCaja>(estado, true, out var estadoCaja))
+            query = query.Where(c => c.Estado == estadoCaja);
 
         if (!incluirInactivas)
             query = query.Where(c => c.Activo);

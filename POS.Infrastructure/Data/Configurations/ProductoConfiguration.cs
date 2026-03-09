@@ -81,6 +81,14 @@ public class ProductoConfiguration : IEntityTypeConfiguration<Producto>
             .WithMany(i => i.Productos)
             .HasForeignKey(p => p.ImpuestoId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Property(p => p.ConceptoRetencionId)
+            .HasColumnName("concepto_retencion_id");
+
+        builder.HasOne(p => p.ConceptoRetencion)
+            .WithMany(c => c.Productos)
+            .HasForeignKey(p => p.ConceptoRetencionId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 

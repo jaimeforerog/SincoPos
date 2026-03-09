@@ -26,6 +26,7 @@ public class ImpuestosTests
         _factory = factory;
         _client = factory.CreateClient();
     }
+    
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

@@ -38,9 +38,16 @@ public class Producto
     public string? ModificadoPor { get; set; }
     public DateTime? FechaModificacion { get; set; }
 
+    /// <summary>
+    /// Concepto de retención DIAN del producto. Determina qué regla de ReteFuente aplica.
+    /// Null = sin concepto específico (aplican todas las reglas sin filtro de concepto).
+    /// </summary>
+    public int? ConceptoRetencionId { get; set; }
+
     // Navegacion
     public Categoria Categoria { get; set; } = null!;
     public Impuesto? Impuesto { get; set; }
+    public ConceptoRetencion? ConceptoRetencion { get; set; }
 }
 
 public class Categoria : EntidadAuditable

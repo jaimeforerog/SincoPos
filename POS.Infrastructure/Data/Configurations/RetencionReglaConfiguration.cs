@@ -43,6 +43,12 @@ public class RetencionReglaConfiguration : IEntityTypeConfiguration<RetencionReg
         builder.Property(r => r.Activo)
             .HasDefaultValue(true);
 
+        // FK a ConceptoRetencion (opcional)
+        builder.HasOne(r => r.ConceptoRetencion)
+            .WithMany(c => c.ReglasRetencion)
+            .HasForeignKey(r => r.ConceptoRetencionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // ── Seed Data Colombia 2026 ─────────────────────────────────────────────
         // Reglas preconfiguradas siguiendo el Estatuto Tributario colombiano.
         // El administrador puede agregar/modificar según el tipo de negocio.
