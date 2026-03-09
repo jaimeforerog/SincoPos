@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>8311c5c0e956ecb6a72ae5a4af7388d2042013341772939524574</id>
+  <author>jaimeforerog</author>
+  <deployer>GitHub</deployer>
+  <authorEmail />
+  <message>{"type":"Deployment","sha":"8311c5c0e956ecb6a72ae5a4af7388d204201334","repoName":"jaimeforerog/SincoPos","actor":"jaimeforerog","slotName":"production"}</message>
+  <progress />
+  <status>Success</status>
+  <statusText />
+  <lastSuccessEndTime>2026-03-08T03:12:06.3367293Z</lastSuccessEndTime>
+  <receivedTime>2026-03-08T03:12:06.3367293Z</receivedTime>
+  <startTime>2026-03-08T03:12:06.3367293Z</startTime>
+  <endTime>2026-03-08T03:12:06.3367293Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <containerId>4c00f3ea9b0c</containerId>
+  <buildSummary />
+</deployment>

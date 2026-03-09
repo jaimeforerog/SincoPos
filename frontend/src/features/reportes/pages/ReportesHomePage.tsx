@@ -5,6 +5,7 @@ import {
   PointOfSale,
   Assessment,
   ManageSearch,
+  Store,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ReporteCard } from '../components/ReporteCard';
@@ -27,6 +28,14 @@ const reportModules: ReporteModule[] = [
     icon: <Inventory fontSize="large" />,
     path: '/reportes/inventario',
     roles: ['supervisor', 'admin'],
+  },
+  {
+    id: 'gestion-inventario',
+    title: 'Gestión de Inventario',
+    description: 'Gestión de stock actual, registro de movimientos físicos y trazabilidad',
+    icon: <Store fontSize="large" />,
+    path: '/reportes/gestion-inventario',
+    roles: ['cajero', 'supervisor', 'admin'],
   },
   {
     id: 'caja',

@@ -1,0 +1,7 @@
+<step title="Incoming Request" date="2026-03-07T17:41:19.295" instance="f21816" url="/api/deployments/8a5967c5f6e02737472e3e536c8fa1dc3bfa523d1772905278541" method="PUT" type="request" pid="770,1,30" Host="sincopos-api.scm.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_4f300cdd433bb3594177f4c54a2aa48f18c36265e535fa4f189b77ef8c127f3b_v3.0.7" Authorization="Bea..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=f21816c94359f18a077ff2e7f1d9f02e82f8065c85b43f70ab0a97b121821d96; ARRAffinitySameSite=f21816c94359f18a077ff2e7f1d9f02e82f8065c85b43f70ab0a97b121821d96" Content-Length="316" X-ARR-LOG-ID="eecc16db-a340-4ca5-b68f-1d1086307dba" CLIENT-IP="52.173.163.36:60416" X-SITE-DEPLOYMENT-ID="sincopos-api" WAS-DEFAULT-HOSTNAME="sincopos-api.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/8a5967c5f6e02737472e3e536c8fa1dc3bfa523d1772905278541" X-Client-IP="52.173.163.36" X-Client-Port="60416" >
+  <step title="Cleanup Xml Logs" date="2026-03-07T17:41:19.336" /><!-- duration: 29ms -->
+  <step title="DeploymentService.Deploy(id)" date="2026-03-07T17:41:19.790" >
+    <step title="DeploymentService.Create(id)" date="2026-03-07T17:41:19.810" /><!-- duration: 1273ms -->
+  </step><!-- duration: 1298ms -->
+  <step title="Outgoing response" date="2026-03-07T17:41:21.096" type="response" statusCode="200" statusText="OK" /><!-- duration: 18ms -->
+</step><!-- duration: 1822ms -->

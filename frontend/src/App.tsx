@@ -90,7 +90,6 @@ function App() {
                   <Route path="productos" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ProductosPage /></ProtectedRoute>} />
                   <Route path="precios" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><PreciosPage /></ProtectedRoute>} />
                   <Route path="compras" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ComprasPage /></ProtectedRoute>} />
-                  <Route path="inventario" element={<InventarioPage />} />
                   <Route path="traslados" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><TrasladosPage /></ProtectedRoute>} />
                   <Route path="ventas" element={<VentasPage />} />
                   <Route path="devoluciones" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><DevolucionesPage /></ProtectedRoute>} />
@@ -100,6 +99,7 @@ function App() {
                     <Route index element={<ReportesHomePage />} />
                     <Route path="ventas" element={<ReporteVentasPage />} />
                     <Route path="inventario" element={<ReporteInventarioPage />} />
+                    <Route path="gestion-inventario" element={<InventarioPage />} />
                     <Route path="caja" element={<ReporteCajaPage />} />
                     <Route path="kardex" element={<ReporteKardexPage />} />
                     <Route path="auditoria" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><AuditoriaPage /></ProtectedRoute>} />

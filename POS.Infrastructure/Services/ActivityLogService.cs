@@ -145,33 +145,34 @@ public class ActivityLogService : IActivityLogService
         var totalCount = await query.CountAsync();
 
         // Ordenar y paginar
-        var items = await query
+        var entities = await query
             .OrderByDescending(a => a.FechaHora)
             .Skip((filter.PageNumber - 1) * filter.PageSize)
             .Take(filter.PageSize)
-            .Select(a => new ActivityLogFullDto(
-                a.Id,
-                a.UsuarioEmail,
-                a.UsuarioId,
-                a.FechaHora,
-                a.Accion,
-                a.Tipo,
-                a.Tipo.ToString(),
-                a.SucursalId,
-                a.Sucursal != null ? a.Sucursal.Nombre : null,
-                a.IpAddress,
-                a.UserAgent,
-                a.TipoEntidad,
-                a.EntidadId,
-                a.EntidadNombre,
-                a.Descripcion,
-                a.DatosAnteriores,
-                a.DatosNuevos,
-                a.Metadatos,
-                a.Exitosa,
-                a.MensajeError
-            ))
             .ToListAsync();
+
+        var items = entities.Select(a => new ActivityLogFullDto(
+            a.Id,
+            a.UsuarioEmail,
+            a.UsuarioId,
+            a.FechaHora,
+            a.Accion,
+            a.Tipo,
+            a.Tipo.ToString(),
+            a.SucursalId,
+            a.Sucursal?.Nombre,
+            a.IpAddress,
+            a.UserAgent,
+            a.TipoEntidad,
+            a.EntidadId,
+            a.EntidadNombre,
+            a.Descripcion,
+            a.DatosAnteriores,
+            a.DatosNuevos,
+            a.Metadatos,
+            a.Exitosa,
+            a.MensajeError
+        )).ToList();
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)filter.PageSize);
 

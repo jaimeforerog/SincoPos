@@ -135,7 +135,14 @@ export function InventarioPage() {
 
   return (
     <Box>
-      <PageHeader title="Gestión de Inventario" />
+      <PageHeader
+        title="Gestión de Inventario"
+        breadcrumbs={[
+          { label: 'Reportes', path: '/reportes' },
+          { label: 'Gestión de Inventario' }
+        ]}
+        backPath="/reportes"
+      />
 
       {/* Filtros y Acciones */}
       <Card sx={{ mb: 3 }}>

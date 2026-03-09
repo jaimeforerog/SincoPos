@@ -1,0 +1,4 @@
+<step title="Incoming Request" date="2026-03-08T03:22:54.370" instance="f21816" url="/dump" method="GET" type="request" pid="770,1,20" Host="sincopos-api.scm.azurewebsites.net" User-Agent="AZURECLI/2.84.0 (MSI)" Accept-Encoding="identity" Authorization="Bea..." x-ms-client-request-id="124b1dc8-1a9e-11f1-aa2c-a8e29108ccd1" X-ARR-LOG-ID="124b1dc8-1a9e-11f1-aa2c-a8e29108ccd1" CLIENT-IP="186.28.83.48:65274" X-SITE-DEPLOYMENT-ID="sincopos-api" WAS-DEFAULT-HOSTNAME="sincopos-api.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/dump" X-Client-IP="186.28.83.48" X-Client-Port="65274" >
+  <step title="Cleanup Xml Logs" date="2026-03-08T03:22:54.373" /><!-- duration: 6ms -->
+  <step title="Outgoing response" date="2026-03-08T03:22:54.785" type="response" statusCode="200" statusText="OK" /><!-- duration: 2ms -->
+</step><!-- duration: 419ms -->

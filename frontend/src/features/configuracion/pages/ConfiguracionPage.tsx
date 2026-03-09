@@ -8,8 +8,6 @@ import {
   CategoryOutlined,
   Receipt,
   AdminPanelSettings,
-  TuneOutlined,
-  ManageSearch,
   ReceiptLong,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
@@ -96,29 +94,11 @@ const configModules: ConfigModule[] = [
     category: 'sistema',
   },
   {
-    id: 'auditoria',
-    title: 'Auditoría',
-    description: 'Registro de actividades del sistema: acciones por usuario, fecha y tipo',
-    icon: <ManageSearch fontSize="large" />,
-    path: '/auditoria',
-    roles: ['supervisor', 'admin'],
-    category: 'sistema',
-  },
-  {
     id: 'facturacion',
     title: 'Facturación Electrónica',
     description: 'Configuración del emisor DIAN: resolución, certificado digital y ambiente',
     icon: <ReceiptLong fontSize="large" />,
     path: '/configuracion/facturacion',
-    roles: ['admin'],
-    category: 'sistema',
-  },
-  {
-    id: 'sistema',
-    title: 'Sistema',
-    description: 'Configuración avanzada, migraciones y parámetros del sistema',
-    icon: <TuneOutlined fontSize="large" />,
-    path: '/configuracion/sistema',
     roles: ['admin'],
     category: 'sistema',
   },
