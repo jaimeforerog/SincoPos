@@ -24,8 +24,8 @@ public class ReportesService : IReportesService
     public async Task<ReporteVentasDto> ObtenerReporteVentasAsync(
         DateTime fechaDesde, DateTime fechaHasta, int? sucursalId = null, int? metodoPago = null)
     {
-        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde, DateTimeKind.Utc);
-        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta, DateTimeKind.Utc);
+        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
+        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
 
         var ventasQuery = _context.Ventas
             .Include(v => v.Detalles)
@@ -177,6 +177,12 @@ public class ReportesService : IReportesService
             fechaDesde ??= caja.FechaApertura;
             fechaHasta ??= DateTime.UtcNow;
         }
+
+        if (fechaDesde.HasValue && fechaDesde.Value.TimeOfDay == TimeSpan.Zero)
+            fechaDesde = fechaDesde.Value.Date;
+            
+        if (fechaHasta.HasValue && fechaHasta.Value.TimeOfDay == TimeSpan.Zero)
+            fechaHasta = fechaHasta.Value.Date.AddDays(1).AddTicks(-1);
 
         DateTime? fechaDesdeUtc = fechaDesde.HasValue
             ? DateTime.SpecifyKind(fechaDesde.Value, DateTimeKind.Utc)
@@ -367,8 +373,8 @@ public class ReportesService : IReportesService
     public async Task<List<TopProductoDto>> ObtenerTopProductosAsync(
         DateTime fechaDesde, DateTime fechaHasta, int? sucursalId = null, int limite = 10)
     {
-        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde, DateTimeKind.Utc);
-        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta, DateTimeKind.Utc);
+        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
+        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
 
         var ventasQuery = _context.Ventas
             .Include(v => v.Detalles)
@@ -424,8 +430,8 @@ public class ReportesService : IReportesService
     public async Task<ReporteKardexDto> ObtenerKardexAsync(
         Guid productoId, int sucursalId, DateTime fechaDesde, DateTime fechaHasta)
     {
-        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde, DateTimeKind.Utc);
-        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta, DateTimeKind.Utc);
+        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
+        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
 
         var productoInfo = await _context.Productos
             .Where(p => p.Id == productoId)
