@@ -495,6 +495,25 @@ public class UsuarioService : IUsuarioService
             .Include(u => u.Sucursales)
             .FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
 
+        // Si no se encuentra por externalId, buscar por email (usuario creado via admin con otro externalId)
+        if (usuario == null)
+        {
+            usuario = await _context.Usuarios
+                .Include(u => u.Sucursales)
+                .FirstOrDefaultAsync(u => u.Email == email);
+
+            if (usuario != null)
+            {
+                // Vincular el externalId real del login con el usuario existente
+                _logger.LogInformation(
+                    "Vinculando externalId {NewId} al usuario existente {Email} (anterior: {OldId})",
+                    keycloakId, email, usuario.KeycloakId);
+                usuario.KeycloakId = keycloakId;
+                usuario.UltimoAcceso = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
         if (usuario == null)
         {
             usuario = new Usuario
