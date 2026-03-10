@@ -14,4 +14,10 @@ public class ErpSincoOptions
     /// Default: 220501 (Proveedores Nacionales).
     /// </summary>
     public string CuentaCxPProveedores { get; set; } = "220501";
+
+    /// <summary>
+    /// Cuenta contable PUC para Caja General (efectivo).
+    /// Default: 110505 (Caja General).
+    /// </summary>
+    public string CuentaCaja { get; set; } = "110505";
 }

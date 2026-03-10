@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using POS.Application.DTOs;
 
 namespace POS.IntegrationTests;
@@ -475,5 +477,121 @@ public class DevolucionesTests
         // Verificar que el detalle registró el costo original (800), no el nuevo (1200)
         devolucion.Should().NotBeNull();
         devolucion!.Detalles[0].CostoUnitario.Should().Be(800m);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  NOTA CRÉDITO CONTABLE — INTEGRACIÓN ERP
+    // ═══════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task DevolucionParcial_GeneraNotaCreditoContableYOutbox()
+    {
+        // Arrange
+        var producto = await CrearProductoTest($"DEV-NC-001-{Guid.NewGuid():N}"[..15], 2000m, 1000m);
+        await RegistrarEntradaInventario(producto, SucPP, 100, 1000m);
+        var caja = await CrearYAbrirCaja(SucPP, $"CajaNC1-{Guid.NewGuid():N}"[..20]);
+
+        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 20) }, 50_000m);
+
+        // Act: Devolver 5 unidades
+        var devolucionDto = new
+        {
+            motivo = "Productos defectuosos",
+            lineas = new[] { new { productoId = producto, cantidad = 5m } }
+        };
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var devolucion = await response.Content.ReadFromJsonAsync<DevolucionVentaDto>(_jsonOptions);
+        devolucion.Should().NotBeNull();
+
+        // Assert - Verificar DocumentoContable (Nota Crédito)
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+
+        var docs = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+            db.DocumentosContables
+                .Include(d => d.Detalles)
+                .Where(d => d.TipoDocumento == "NotaCredito"
+                         && d.NumeroSoporte == devolucion!.NumeroDevolucion));
+
+        docs.Should().HaveCount(1, "Debe crear un DocumentoContable tipo NotaCredito");
+        var doc = docs.Single();
+        doc.Detalles.Should().NotBeEmpty();
+        doc.TotalDebito.Should().Be(doc.TotalCredito, "Partida doble: Débitos = Créditos");
+
+        // Verificar OutboxMessage
+        var outbox = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
+            db.ErpOutboxMessages
+                .Where(m => m.TipoDocumento == "NotaCreditoVenta"
+                         && m.EntidadId == devolucion!.Id));
+
+        outbox.Should().NotBeNull("Debe encolar un mensaje outbox para la nota crédito");
+        outbox!.Estado.Should().Be(POS.Infrastructure.Data.Entities.EstadoOutbox.Pendiente);
+
+        // Verificar payload de asientos
+        var payload = JsonSerializer.Deserialize<POS.Application.DTOs.CompraErpPayload>(
+            outbox.Payload, _jsonOptions);
+        payload.Should().NotBeNull();
+        payload!.NumeroOrden.Should().Be(devolucion!.NumeroDevolucion);
+
+        // Débitos: Reversión Ingreso + Reversión IVA
+        var debitos = payload.Asientos.Where(a => a.Naturaleza == "Debito").ToList();
+        debitos.Should().NotBeEmpty("Debe tener débitos de reversión de ingresos");
+
+        // Crédito: Reembolso caja
+        var creditos = payload.Asientos.Where(a => a.Naturaleza == "Credito").ToList();
+        creditos.Should().ContainSingle("Debe tener 1 crédito de reembolso a caja");
+
+        // Total devuelto: 5 × 2000 = $10,000
+        payload.TotalOriginalDocumento.Should().Be(10000m);
+    }
+
+    [Fact]
+    public async Task DevolucionParcial_ConIVA_AsientosNotaCreditoCuadran()
+    {
+        // Arrange - Producto con IVA 19%
+        var productoId = await CrearProductoTest($"DEV-NC-IVA-{Guid.NewGuid():N}"[..15], 5000m, 2500m);
+        await RegistrarEntradaInventario(productoId, SucPP, 50, 2500m);
+        var caja = await CrearYAbrirCaja(SucPP, $"CajaNCIVA-{Guid.NewGuid():N}"[..20]);
+
+        // Venta con IVA (el TaxEngine calcula IVA automáticamente si el producto tiene impuesto)
+        var venta = await CrearVentaTest(SucPP, caja, new() { (productoId, 10) }, 100_000m);
+
+        // Act: Devolver 4 unidades
+        var devolucionDto = new
+        {
+            motivo = "Cliente insatisfecho",
+            lineas = new[] { new { productoId, cantidad = 4m } }
+        };
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial", devolucionDto);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var devolucion = await response.Content.ReadFromJsonAsync<DevolucionVentaDto>(_jsonOptions);
+
+        // Assert - Partida doble en el payload ERP
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+
+        var outbox = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstAsync(
+            db.ErpOutboxMessages
+                .Where(m => m.TipoDocumento == "NotaCreditoVenta"
+                         && m.EntidadId == devolucion!.Id));
+
+        var payload = JsonSerializer.Deserialize<POS.Application.DTOs.CompraErpPayload>(
+            outbox.Payload, _jsonOptions)!;
+
+        var totalDebitos = payload.Asientos.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor);
+        var totalCreditos = payload.Asientos.Where(a => a.Naturaleza == "Credito").Sum(a => a.Valor);
+
+        totalDebitos.Should().Be(totalCreditos,
+            "La partida doble exige que Débitos = Créditos en la nota crédito");
+
+        // Los asientos deben incluir al menos el centro de costo de la sucursal
+        payload.Asientos.Should().OnlyContain(
+            a => !string.IsNullOrEmpty(a.CentroCosto),
+            "Todos los asientos deben tener centro de costo");
     }
 }

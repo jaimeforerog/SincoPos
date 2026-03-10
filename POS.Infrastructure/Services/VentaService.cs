@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Domain.Aggregates;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
+using POS.Infrastructure.Services.Erp;
 
 namespace POS.Infrastructure.Services;
 
@@ -19,6 +21,7 @@ public class VentaService : IVentaService
     private readonly IActivityLogService _activityLogService;
     private readonly FacturacionBackgroundService _facturacionBackground;
     private readonly INotificationService _notificationService;
+    private readonly ErpSincoOptions _erpOptions;
 
     public VentaService(
         AppDbContext context,
@@ -29,7 +32,8 @@ public class VentaService : IVentaService
         ILogger<VentaService> logger,
         IActivityLogService activityLogService,
         FacturacionBackgroundService facturacionBackground,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IOptions<ErpSincoOptions> erpOptions)
     {
         _context = context;
         _session = session;
@@ -40,6 +44,7 @@ public class VentaService : IVentaService
         _activityLogService = activityLogService;
         _facturacionBackground = facturacionBackground;
         _notificationService = notificationService;
+        _erpOptions = erpOptions.Value;
     }
 
     public async Task<(VentaDto? venta, string? error)> CrearVentaAsync(CrearVentaDto dto)
@@ -555,8 +560,129 @@ public class VentaService : IVentaService
             caja.MontoActual -= totalDevuelto;
         }
 
-        // Guardar cambios
+        // Guardar devolución + inventario + caja (genera devolucion.Id)
         await _session.SaveChangesAsync();
+        await _context.SaveChangesAsync();
+
+        // ===== NOTA CRÉDITO CONTABLE — ERP OUTBOX =====
+        var productosIds = detallesDevolucion.Select(d => d.ProductoId).Distinct().ToList();
+        var productosBatch = await _context.Productos
+            .Include(p => p.Categoria)
+            .Include(p => p.Impuesto)
+            .Where(p => productosIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var asientosNC = new List<AsientoContableErp>();
+        var centroCosto = sucursal.CentroCosto ?? string.Empty;
+
+        // Acumuladores por cuenta
+        var ingresosAcumulados = new Dictionary<string, decimal>();
+        var ivaAcumulado = new Dictionary<string, (string? Cuenta, decimal Total)>();
+
+        foreach (var det in detallesDevolucion)
+        {
+            var detalleOrig = venta.Detalles.First(d => d.ProductoId == det.ProductoId);
+            var lineaSubtotal = det.CantidadDevuelta * det.PrecioUnitario;
+            var lineaImpuesto = lineaSubtotal * detalleOrig.PorcentajeImpuesto;
+
+            // Acumular ingresos por cuenta (CuentaIngreso de la categoría)
+            var prod = productosBatch.GetValueOrDefault(det.ProductoId);
+            var cuentaIngreso = prod?.Categoria?.CuentaIngreso ?? "4135";
+            if (!ingresosAcumulados.ContainsKey(cuentaIngreso))
+                ingresosAcumulados[cuentaIngreso] = 0;
+            ingresosAcumulados[cuentaIngreso] += lineaSubtotal;
+
+            // Acumular IVA
+            if (detalleOrig.PorcentajeImpuesto > 0)
+            {
+                var nombreImp = $"IVA {detalleOrig.PorcentajeImpuesto * 100:0.##}%";
+                var cuentaImp = prod?.Impuesto?.CodigoCuentaContable ?? "2408";
+                if (!ivaAcumulado.ContainsKey(nombreImp))
+                    ivaAcumulado[nombreImp] = (cuentaImp, 0);
+                var actual = ivaAcumulado[nombreImp];
+                ivaAcumulado[nombreImp] = (actual.Cuenta, actual.Total + lineaImpuesto);
+            }
+        }
+
+        // 1. Débitos: Reversión de Ingresos (devuelve lo vendido)
+        foreach (var ing in ingresosAcumulados)
+        {
+            asientosNC.Add(new AsientoContableErp(
+                Cuenta: ing.Key,
+                CentroCosto: centroCosto,
+                Naturaleza: "Debito",
+                Valor: ing.Value,
+                Nota: $"NC - Reversión Ingreso por devolución {numeroDevolucion}"
+            ));
+        }
+
+        // 2. Débitos: Reversión de IVA por pagar
+        foreach (var iva in ivaAcumulado)
+        {
+            asientosNC.Add(new AsientoContableErp(
+                Cuenta: iva.Value.Cuenta ?? "2408",
+                CentroCosto: centroCosto,
+                Naturaleza: "Debito",
+                Valor: iva.Value.Total,
+                Nota: $"NC - Reversión {iva.Key} por devolución {numeroDevolucion}"
+            ));
+        }
+
+        // 3. Crédito: Devolución al cliente (Caja/Efectivo)
+        var totalIvaNC = ivaAcumulado.Sum(i => i.Value.Total);
+        var totalIngresoNC = ingresosAcumulados.Sum(i => i.Value);
+        asientosNC.Add(new AsientoContableErp(
+            Cuenta: _erpOptions.CuentaCaja,
+            CentroCosto: centroCosto,
+            Naturaleza: "Credito",
+            Valor: totalIngresoNC + totalIvaNC,
+            Nota: $"NC - Reembolso devolución {numeroDevolucion} de venta {venta.NumeroVenta}"
+        ));
+
+        var ncPayload = new CompraErpPayload(
+            NumeroOrden: numeroDevolucion,
+            NitProveedor: "", // No aplica para notas crédito de venta
+            FormaPago: venta.MetodoPago.ToString(),
+            FechaVencimientoErp: DateTime.UtcNow,
+            FechaRecepcion: DateTime.UtcNow,
+            SucursalId: venta.SucursalId,
+            Asientos: asientosNC,
+            TotalOriginalDocumento: totalDevuelto
+        );
+
+        var docContableNC = new DocumentoContable
+        {
+            NumeroSoporte = numeroDevolucion,
+            TipoDocumento = "NotaCredito",
+            TerceroId = venta.ClienteId,
+            SucursalId = venta.SucursalId,
+            FechaCausacion = DateTime.UtcNow,
+            FormaPago = venta.MetodoPago.ToString(),
+            TotalDebito = asientosNC.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor),
+            TotalCredito = asientosNC.Where(a => a.Naturaleza == "Credito").Sum(a => a.Valor),
+            Detalles = asientosNC.Select(a => new DetalleDocumentoContable
+            {
+                CuentaContable = a.Cuenta,
+                CentroCosto = a.CentroCosto,
+                Naturaleza = a.Naturaleza,
+                Valor = a.Valor,
+                Nota = a.Nota
+            }).ToList()
+        };
+
+        _context.DocumentosContables.Add(docContableNC);
+
+        _context.ErpOutboxMessages.Add(new ErpOutboxMessage
+        {
+            TipoDocumento = "NotaCreditoVenta",
+            EntidadId = devolucion.Id,
+            Payload = System.Text.Json.JsonSerializer.Serialize(ncPayload),
+            FechaCreacion = DateTime.UtcNow,
+            Estado = EstadoOutbox.Pendiente
+        });
+        // ===================================================
+
+        // Guardar DocumentoContable + Outbox (segundo save)
         await _context.SaveChangesAsync();
 
         _logger.LogInformation(

@@ -74,7 +74,7 @@ public class ErpSyncBackgroundService : BackgroundService
             mensaje.Intentos++;
 
             // 2. Deserializar Payload según Tipo
-            if (mensaje.TipoDocumento == "CompraRecibida")
+            if (mensaje.TipoDocumento == "CompraRecibida" || mensaje.TipoDocumento == "NotaCreditoVenta")
             {
                 var payload = JsonSerializer.Deserialize<CompraErpPayload>(mensaje.Payload, new JsonSerializerOptions
                 {
@@ -97,78 +97,91 @@ public class ErpSyncBackgroundService : BackgroundService
                     mensaje.FechaProcesamiento = DateTime.UtcNow;
                     mensaje.UltimoError = null;
 
-                    // 5. Auditar Exitoso y Notificar SignalR
-                    var ordenCompra = await db.OrdenesCompra.FirstOrDefaultAsync(o => o.Id == mensaje.EntidadId, stoppingToken);
-                    if (ordenCompra != null)
+                    // 5. Auditar Exitoso, actualizar entidad y notificar SignalR
+                    var tipoEntidad = mensaje.TipoDocumento == "CompraRecibida" ? "OrdenCompra" : "DevolucionVenta";
+                    var tipoDoc = mensaje.TipoDocumento == "CompraRecibida" ? "RecepcionCompra" : "NotaCredito";
+                    int sucursalIdNotif = payload.SucursalId;
+                    string entidadNombre = payload.NumeroOrden;
+
+                    if (mensaje.TipoDocumento == "CompraRecibida")
                     {
-                        ordenCompra.SincronizadoErp = true;
-                        ordenCompra.FechaSincronizacionErp = DateTime.UtcNow;
-                        ordenCompra.ErpReferencia = response.ErpReferencia;
-                        ordenCompra.ErrorSincronizacion = null;
-
-                        // Actualizar DocumentoContable asociado
-                        var docContable = await db.DocumentosContables
-                            .Where(d => d.TipoDocumento == "RecepcionCompra"
-                                     && d.NumeroSoporte.StartsWith(ordenCompra.NumeroOrden))
-                            .OrderByDescending(d => d.FechaCausacion)
-                            .FirstOrDefaultAsync(stoppingToken);
-                        if (docContable != null)
+                        var ordenCompra = await db.OrdenesCompra.FirstOrDefaultAsync(o => o.Id == mensaje.EntidadId, stoppingToken);
+                        if (ordenCompra != null)
                         {
-                            docContable.SincronizadoErp = true;
-                            docContable.ErpReferencia = response.ErpReferencia;
-                            docContable.FechaSincronizacionErp = DateTime.UtcNow;
+                            ordenCompra.SincronizadoErp = true;
+                            ordenCompra.FechaSincronizacionErp = DateTime.UtcNow;
+                            ordenCompra.ErpReferencia = response.ErpReferencia;
+                            ordenCompra.ErrorSincronizacion = null;
+                            sucursalIdNotif = ordenCompra.SucursalId;
+                            entidadNombre = ordenCompra.NumeroOrden;
                         }
-
-                        await activityLogService.LogActivityAsync(new ActivityLogDto(
-                            Accion: "ERP_SYNC_EXITO",
-                            Tipo: TipoActividad.Inventario,
-                            Descripcion: $"Contabilizada exitosamente en ERP Sinco. Ref: {response.ErpReferencia}",
-                            SucursalId: ordenCompra.SucursalId,
-                            TipoEntidad: "OrdenCompra",
-                            EntidadId: ordenCompra.Id.ToString(),
-                            EntidadNombre: ordenCompra.NumeroOrden,
-                            Exitosa: true
-                        ));
-
-                        await notificationService.EnviarNotificacionSucursalAsync(ordenCompra.SucursalId, new NotificacionDto(
-                            "erp_sincronizado",
-                            "Compra contabilizada",
-                            $"Orden #{ordenCompra.NumeroOrden} sincronizada con ERP Sinco (Ref: {response.ErpReferencia})",
-                            "success",
-                            DateTime.UtcNow
-                        ));
                     }
+
+                    // Actualizar DocumentoContable asociado
+                    var docContable = await db.DocumentosContables
+                        .Where(d => d.TipoDocumento == tipoDoc
+                                 && d.NumeroSoporte == payload.NumeroOrden)
+                        .OrderByDescending(d => d.FechaCausacion)
+                        .FirstOrDefaultAsync(stoppingToken);
+                    if (docContable != null)
+                    {
+                        docContable.SincronizadoErp = true;
+                        docContable.ErpReferencia = response.ErpReferencia;
+                        docContable.FechaSincronizacionErp = DateTime.UtcNow;
+                    }
+
+                    await activityLogService.LogActivityAsync(new ActivityLogDto(
+                        Accion: "ERP_SYNC_EXITO",
+                        Tipo: mensaje.TipoDocumento == "CompraRecibida" ? TipoActividad.Inventario : TipoActividad.Venta,
+                        Descripcion: $"{tipoDoc} contabilizada en ERP Sinco. Ref: {response.ErpReferencia}",
+                        SucursalId: sucursalIdNotif,
+                        TipoEntidad: tipoEntidad,
+                        EntidadId: mensaje.EntidadId.ToString(),
+                        EntidadNombre: entidadNombre,
+                        Exitosa: true
+                    ));
+
+                    await notificationService.EnviarNotificacionSucursalAsync(sucursalIdNotif, new NotificacionDto(
+                        "erp_sincronizado",
+                        mensaje.TipoDocumento == "CompraRecibida" ? "Compra contabilizada" : "Nota crédito contabilizada",
+                        $"{entidadNombre} sincronizada con ERP Sinco (Ref: {response.ErpReferencia})",
+                        "success",
+                        DateTime.UtcNow
+                    ));
                 }
                 else
                 {
                     MarcarComoError(mensaje, response.MensajeError ?? "Error desconocido en ERP");
 
-                    var ordenCompra = await db.OrdenesCompra.FirstOrDefaultAsync(o => o.Id == mensaje.EntidadId, stoppingToken);
-                    if (ordenCompra != null)
+                    if (mensaje.TipoDocumento == "CompraRecibida")
                     {
-                        ordenCompra.SincronizadoErp = false;
-                        ordenCompra.ErrorSincronizacion = response.MensajeError;
-
-                        await activityLogService.LogActivityAsync(new ActivityLogDto(
-                            Accion: "ERP_SYNC_ERROR",
-                            Tipo: TipoActividad.Inventario,
-                            Descripcion: $"Fallo sincronizando en ERP Sinco: {response.MensajeError}",
-                            SucursalId: payload.SucursalId,
-                            TipoEntidad: "OrdenCompra",
-                            EntidadId: ordenCompra.Id.ToString(),
-                            EntidadNombre: ordenCompra.NumeroOrden,
-                            Exitosa: false,
-                            MensajeError: response.MensajeError
-                        ));
-
-                        await notificationService.EnviarNotificacionSucursalAsync(payload.SucursalId, new NotificacionDto(
-                            "erp_error",
-                            "Error de Sincronización Contable",
-                            $"Fallo contabilizando la orden #{payload.NumeroOrden}: {response.MensajeError}",
-                            "error",
-                            DateTime.UtcNow
-                        ));
+                        var ordenCompra = await db.OrdenesCompra.FirstOrDefaultAsync(o => o.Id == mensaje.EntidadId, stoppingToken);
+                        if (ordenCompra != null)
+                        {
+                            ordenCompra.SincronizadoErp = false;
+                            ordenCompra.ErrorSincronizacion = response.MensajeError;
+                        }
                     }
+
+                    await activityLogService.LogActivityAsync(new ActivityLogDto(
+                        Accion: "ERP_SYNC_ERROR",
+                        Tipo: mensaje.TipoDocumento == "CompraRecibida" ? TipoActividad.Inventario : TipoActividad.Venta,
+                        Descripcion: $"Fallo sincronizando {mensaje.TipoDocumento} en ERP Sinco: {response.MensajeError}",
+                        SucursalId: payload.SucursalId,
+                        TipoEntidad: mensaje.TipoDocumento == "CompraRecibida" ? "OrdenCompra" : "DevolucionVenta",
+                        EntidadId: mensaje.EntidadId.ToString(),
+                        EntidadNombre: payload.NumeroOrden,
+                        Exitosa: false,
+                        MensajeError: response.MensajeError
+                    ));
+
+                    await notificationService.EnviarNotificacionSucursalAsync(payload.SucursalId, new NotificacionDto(
+                        "erp_error",
+                        "Error de Sincronización Contable",
+                        $"Fallo contabilizando {payload.NumeroOrden}: {response.MensajeError}",
+                        "error",
+                        DateTime.UtcNow
+                    ));
                 }
             }
             else
