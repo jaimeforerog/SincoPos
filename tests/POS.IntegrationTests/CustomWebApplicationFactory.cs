@@ -97,6 +97,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             TRUNCATE TABLE public.conceptos_retencion RESTART IDENTITY CASCADE;
             TRUNCATE TABLE public.configuracion_emisor RESTART IDENTITY CASCADE;
             TRUNCATE TABLE public.documentos_electronicos RESTART IDENTITY CASCADE;
+            TRUNCATE TABLE public.erp_outbox_messages RESTART IDENTITY CASCADE;
         ");
 
         // Limpiar Marten event store

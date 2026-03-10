@@ -45,6 +45,9 @@ public class AppDbContext : DbContext
     public DbSet<ConceptoRetencion> ConceptosRetencion => Set<ConceptoRetencion>();
     public DbSet<ConfiguracionEmisor> ConfiguracionesEmisor => Set<ConfiguracionEmisor>();
     public DbSet<DocumentoElectronico> DocumentosElectronicos => Set<DocumentoElectronico>();
+    public DbSet<ErpOutboxMessage> ErpOutboxMessages => Set<ErpOutboxMessage>();
+    public DbSet<DocumentoContable> DocumentosContables => Set<DocumentoContable>();
+    public DbSet<DetalleDocumentoContable> DetallesDocumentoContable => Set<DetalleDocumentoContable>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -8,6 +8,7 @@ public record CrearSucursalDto(
     string? Ciudad,
     string? Telefono,
     string? Email,
+    string? CentroCosto,
     string? MetodoCosteo
 );
 
@@ -19,6 +20,7 @@ public record ActualizarSucursalDto(
     string? Ciudad,
     string? Telefono,
     string? Email,
+    string? CentroCosto,
     string? MetodoCosteo
 );
 
@@ -31,6 +33,7 @@ public record SucursalDto(
     string? Ciudad,
     string? Telefono,
     string? Email,
+    string? CentroCosto,
     string MetodoCosteo,
     bool Activa,
     DateTime FechaCreacion

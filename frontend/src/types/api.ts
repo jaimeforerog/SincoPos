@@ -60,6 +60,11 @@ export interface CategoriaDTO {
   rutaCompleta: string;
   cantidadSubCategorias: number;
   cantidadProductos: number;
+  cuentaInventario?: string;
+  cuentaCosto?: string;
+  cuentaIngreso?: string;
+  externalId?: string;
+  origenDatos: string;
 }
 
 export interface CategoriaArbolDTO {
@@ -78,12 +83,22 @@ export interface CrearCategoriaDTO {
   nombre: string;
   descripcion?: string;
   categoriaPadreId?: number;
+  cuentaInventario?: string;
+  cuentaCosto?: string;
+  cuentaIngreso?: string;
+  externalId?: string;
+  origenDatos?: string;
 }
 
 export interface ActualizarCategoriaDTO {
   nombre: string;
   descripcion?: string;
   categoriaPadreId?: number;
+  cuentaInventario?: string;
+  cuentaCosto?: string;
+  cuentaIngreso?: string;
+  externalId?: string;
+  origenDatos?: string;
 }
 
 export interface MoverCategoriaDTO {
@@ -228,6 +243,8 @@ export interface OrdenCompraDTO {
   proveedorId: number;
   nombreProveedor: string;
   estado: string; // 'Pendiente' | 'Aprobada' | 'RecibidaParcial' | 'RecibidaCompleta' | 'Rechazada' | 'Cancelada'
+  formaPago: string; // 'Contado' | 'Credito'
+  diasPlazo: number;
   fechaOrden: string;
   fechaEntregaEsperada?: string;
   fechaAprobacion?: string;
@@ -240,6 +257,10 @@ export interface OrdenCompraDTO {
   impuestos: number;
   total: number;
   requiereFacturaElectronica: boolean;
+  sincronizadoErp?: boolean;
+  fechaSincronizacionErp?: string;
+  erpReferencia?: string;
+  errorSincronizacion?: string;
   detalles: DetalleOrdenCompraDTO[];
 }
 
@@ -261,6 +282,8 @@ export interface CrearOrdenCompraDTO {
   sucursalId: number;
   proveedorId: number;
   fechaEntregaEsperada?: string;
+  formaPago: string;
+  diasPlazo: number;
   observaciones?: string;
   lineas: LineaOrdenCompraDTO[];
 }
@@ -294,6 +317,16 @@ export interface CancelarOrdenCompraDTO {
   motivo: string;
 }
 
+export interface ErpOutboxErrorDTO {
+  id: number;
+  tipoDocumento: string;
+  entidadId: number;
+  fechaCreacion: string;
+  fechaProcesamiento?: string;
+  intentos: number;
+  ultimoError?: string;
+  estado: string;
+}
 
 export interface SucursalDTO {
   id: number;
@@ -304,6 +337,7 @@ export interface SucursalDTO {
   ciudad?: string;
   telefono?: string;
   email?: string;
+  centroCosto?: string;
   metodoCosteo: string;
   activa: boolean;
   fechaCreacion: string;
@@ -317,6 +351,7 @@ export interface CrearSucursalDTO {
   ciudad?: string;
   telefono?: string;
   email?: string;
+  centroCosto?: string;
   metodoCosteo?: string;
 }
 
@@ -328,6 +363,7 @@ export interface ActualizarSucursalDTO {
   ciudad?: string;
   telefono?: string;
   email?: string;
+  centroCosto?: string;
   metodoCosteo?: string;
 }
 

@@ -127,6 +127,30 @@ builder.Services.AddScoped<POS.Application.Services.IFacturacionService, POS.Inf
 builder.Services.AddSingleton<POS.Infrastructure.Services.FacturacionBackgroundService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<POS.Infrastructure.Services.FacturacionBackgroundService>());
 
+// ERP Integration
+builder.Services.Configure<POS.Infrastructure.Services.Erp.ErpSincoOptions>(
+    builder.Configuration.GetSection(POS.Infrastructure.Services.Erp.ErpSincoOptions.SectionName));
+
+var erpBaseUrl = builder.Configuration.GetSection("ErpSinco:BaseUrl").Value;
+if (!string.IsNullOrEmpty(erpBaseUrl))
+{
+    // Producción: cliente real contra ERP Sinco
+    builder.Services.AddHttpClient<POS.Application.Services.IErpClient, POS.Infrastructure.Services.Erp.SincoErpClient>((sp, client) =>
+    {
+        var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<POS.Infrastructure.Services.Erp.ErpSincoOptions>>().Value;
+        client.BaseAddress = new Uri(options.BaseUrl);
+        client.DefaultRequestHeaders.Add("X-Api-Key", options.ApiKey);
+        client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+    });
+}
+else
+{
+    // Desarrollo: cliente mock que simula respuestas sin contactar ERP externo
+    builder.Services.AddSingleton<POS.Application.Services.IErpClient, POS.Infrastructure.Services.Erp.MockErpClient>();
+}
+
+builder.Services.AddHostedService<POS.Infrastructure.Services.Erp.ErpSyncBackgroundService>();
+
 // Marten Event Store (PostgreSQL - schema events)
 builder.Services.AddMartenStore(
     builder.Configuration,

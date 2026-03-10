@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -26,6 +26,10 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CancelIcon from '@mui/icons-material/Cancel';
+import SyncIcon from '@mui/icons-material/Sync';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
+import CloudDoneIcon from '@mui/icons-material/CloudDone';
+import ReplayIcon from '@mui/icons-material/Replay';
 import { comprasApi } from '@/api/compras';
 import type { OrdenCompraDTO } from '@/types/api';
 import { OrdenCompraFormDialog } from '../components/OrdenCompraFormDialog';
@@ -74,12 +78,27 @@ export function ComprasPage() {
   const [showCancelarDialog, setShowCancelarDialog] = useState(false);
   const [selectedOrden, setSelectedOrden] = useState<OrdenCompraDTO | null>(null);
 
+  const queryClient = useQueryClient();
+
   const { data: ordenes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['compras', { estado: estadoFiltro }],
     queryFn: () => comprasApi.getAll({
       estado: estadoFiltro || undefined,
       limite: 100,
     }),
+  });
+
+  const { data: erroresErp = [] } = useQuery({
+    queryKey: ['erp-outbox-errores'],
+    queryFn: () => comprasApi.getErroresErp(),
+  });
+
+  const reintentarErpMutation = useMutation({
+    mutationFn: (outboxId: number) => comprasApi.reintentarErp(outboxId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compras'] });
+      queryClient.invalidateQueries({ queryKey: ['erp-outbox-errores'] });
+    },
   });
 
   const handleVerDetalle = (orden: OrdenCompraDTO) => {
@@ -167,8 +186,10 @@ export function ComprasPage() {
                 <TableCell>Fecha</TableCell>
                 <TableCell>Proveedor</TableCell>
                 <TableCell>Sucursal</TableCell>
+                <TableCell>Pago</TableCell>
                 <TableCell align="right">Total</TableCell>
                 <TableCell>Estado</TableCell>
+                <TableCell align="center">ERP</TableCell>
                 <TableCell align="right">Acciones</TableCell>
               </TableRow>
             </TableHead>
@@ -194,6 +215,16 @@ export function ComprasPage() {
                     </TableCell>
                     <TableCell>{orden.nombreProveedor}</TableCell>
                     <TableCell>{orden.nombreSucursal}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {orden.formaPago}
+                      </Typography>
+                      {orden.formaPago === 'Credito' && (
+                        <Typography variant="caption" color="text.secondary">
+                          ({orden.diasPlazo} días)
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell align="right">
                       ${orden.total.toLocaleString('es-CO')}
                     </TableCell>
@@ -203,6 +234,43 @@ export function ComprasPage() {
                         color={getEstadoColor(orden.estado)}
                         size="small"
                       />
+                    </TableCell>
+                    <TableCell align="center">
+                      {(orden.estado === 'RecibidaParcial' || orden.estado === 'RecibidaCompleta') ? (
+                        orden.sincronizadoErp ? (
+                          <Tooltip title={`Sincronizado correctamente - Ref: ${orden.erpReferencia}`}>
+                            <Chip size="small" icon={<CloudDoneIcon />} label="OK" color="success" variant="outlined" />
+                          </Tooltip>
+                        ) : orden.errorSincronizacion ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                            <Tooltip title={`Error ERP: ${orden.errorSincronizacion}`}>
+                              <Chip size="small" icon={<SyncProblemIcon />} label="Error" color="error" variant="outlined" />
+                            </Tooltip>
+                            {(() => {
+                              const outboxError = erroresErp.find(e => e.entidadId === orden.id && e.tipoDocumento === 'CompraRecibida');
+                              if (!outboxError) return null;
+                              return (
+                                <Tooltip title="Reintentar sincronización ERP">
+                                  <IconButton
+                                    size="small"
+                                    color="warning"
+                                    disabled={reintentarErpMutation.isPending}
+                                    onClick={() => reintentarErpMutation.mutate(outboxError.id)}
+                                  >
+                                    <ReplayIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              );
+                            })()}
+                          </Box>
+                        ) : (
+                          <Tooltip title="Sin sincronizar o Procesando...">
+                            <Chip size="small" icon={<SyncIcon />} label="Pendiente" color="default" variant="outlined" />
+                          </Tooltip>
+                        )
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">—</Typography>
+                      )}
                     </TableCell>
                     <TableCell align="right">
                       <Tooltip title="Ver detalle">

@@ -32,6 +32,16 @@ public class OrdenCompra : EntidadAuditable
     public decimal Impuestos { get; set; }
     public decimal Total { get; set; }
     public bool RequiereFacturaElectronica { get; set; } = false;
+    
+    // Forma de Pago y Tesorería
+    public string FormaPago { get; set; } = "Contado"; // "Contado" o "Credito"
+    public int DiasPlazo { get; set; } = 0;            // Ej. 15, 30, 45, 60...
+
+    // Trazabilidad Integración ERP
+    public bool SincronizadoErp { get; set; } = false;
+    public DateTime? FechaSincronizacionErp { get; set; }
+    public string? ErpReferencia { get; set; } 
+    public string? ErrorSincronizacion { get; set; }
 
     // Navegación
     public Sucursal Sucursal { get; set; } = null!;

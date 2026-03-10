@@ -61,6 +61,7 @@ public class SucursalesController : ControllerBase
             Ciudad = dto.Ciudad,
             Telefono = dto.Telefono,
             Email = dto.Email,
+            CentroCosto = dto.CentroCosto,
             MetodoCosteo = metodo,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
@@ -75,6 +76,7 @@ public class SucursalesController : ControllerBase
             sucursal.Id, sucursal.Nombre, sucursal.Direccion,
             sucursal.CodigoPais, sucursal.NombrePais,
             sucursal.Ciudad, sucursal.Telefono, sucursal.Email,
+            sucursal.CentroCosto,
             sucursal.MetodoCosteo.ToString(), sucursal.Activo, sucursal.FechaCreacion);
 
         return CreatedAtAction(nameof(ObtenerSucursal), new { id = sucursal.Id }, result);
@@ -90,7 +92,7 @@ public class SucursalesController : ControllerBase
             .Where(s => s.Id == id)
             .Select(s => new SucursalDto(
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
-                s.Telefono, s.Email, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
+                s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
             .FirstOrDefaultAsync();
 
         if (sucursal == null)
@@ -116,7 +118,7 @@ public class SucursalesController : ControllerBase
             .OrderBy(s => s.Nombre)
             .Select(s => new SucursalDto(
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
-                s.Telefono, s.Email, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
+                s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
             .ToListAsync();
 
         return Ok(sucursales);
@@ -210,6 +212,7 @@ public class SucursalesController : ControllerBase
         sucursal.Ciudad = dto.Ciudad;
         sucursal.Telefono = dto.Telefono;
         sucursal.Email = dto.Email;
+        sucursal.CentroCosto = dto.CentroCosto;
 
         if (!string.IsNullOrEmpty(dto.MetodoCosteo))
         {

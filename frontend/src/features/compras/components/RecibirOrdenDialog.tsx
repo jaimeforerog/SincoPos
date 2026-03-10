@@ -153,7 +153,7 @@ export function RecibirOrdenDialog({
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Ingrese las cantidades recibidas para cada producto. Puede ser una recepción parcial.
+            Ingrese las cantidades recibidas para esta orden de <strong>{orden.formaPago}</strong> {orden.formaPago === 'Credito' ? `(${orden.diasPlazo} días)` : ''}.
           </Alert>
 
           <TableContainer component={Paper} variant="outlined">
@@ -240,11 +240,16 @@ export function RecibirOrdenDialog({
             </Table>
           </TableContainer>
 
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Alert severity="success">
               <Typography variant="body2">
                 <strong>Resumen:</strong> Se recibirán{' '}
                 {lineas.reduce((sum, l) => sum + (l.cantidadRecibida || 0), 0)} unidades en total
+              </Typography>
+            </Alert>
+            <Alert severity="info" color="info" variant="outlined">
+              <Typography variant="body2">
+                <strong>Integración ERP Sinco:</strong> Al confirmar esta recepción, el sistema encolará automáticamente el respectivo comprobante y actualizará el estado en la tabla de órdenes de compra al procesarlo.
               </Typography>
             </Alert>
           </Box>

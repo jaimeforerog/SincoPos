@@ -92,6 +92,11 @@ export function SucursalesPage() {
       minWidth: 180,
     },
     {
+      field: 'centroCosto',
+      headerName: 'Centro Costo',
+      width: 130,
+    },
+    {
       field: 'metodoCosteo',
       headerName: 'Método de Costeo',
       flex: 1,

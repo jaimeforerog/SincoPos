@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using POS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using POS.Infrastructure.Data;
 namespace POS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310004207_AddFormaPago_OrdenCompra")]
+    partial class AddFormaPago_OrdenCompra
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -613,43 +616,6 @@ namespace POS.Infrastructure.Migrations
                     b.ToTable("detalle_devolucion", "public");
                 });
 
-            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleDocumentoContable", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CentroCosto")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("CuentaContable")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("DocumentoContableId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Naturaleza")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Nota")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("Valor")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DocumentoContableId");
-
-                    b.ToTable("DetallesDocumentoContable", "public");
-                });
-
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleOrdenCompra", b =>
                 {
                     b.Property<int>("Id")
@@ -911,78 +877,6 @@ namespace POS.Infrastructure.Migrations
                         .HasDatabaseName("ix_devoluciones_venta_fecha");
 
                     b.ToTable("devoluciones_venta", "public");
-                });
-
-            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoContable", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("CreadoPor")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ErpReferencia")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("FechaCausacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("FechaModificacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("FechaSincronizacionErp")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("FechaVencimiento")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FormaPago")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ModificadoPor")
-                        .HasColumnType("text");
-
-                    b.Property<string>("NumeroSoporte")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("SincronizadoErp")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("SucursalId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("TerceroId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TipoDocumento")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("TotalCredito")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("TotalDebito")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SucursalId");
-
-                    b.HasIndex("TerceroId");
-
-                    b.ToTable("DocumentosContables", "public");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoElectronico", b =>
@@ -2018,9 +1912,6 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("activo");
 
-                    b.Property<string>("CentroCosto")
-                        .HasColumnType("text");
-
                     b.Property<string>("Ciudad")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -2655,17 +2546,6 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("Producto");
                 });
 
-            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleDocumentoContable", b =>
-                {
-                    b.HasOne("POS.Infrastructure.Data.Entities.DocumentoContable", "DocumentoContable")
-                        .WithMany("Detalles")
-                        .HasForeignKey("DocumentoContableId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("DocumentoContable");
-                });
-
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleOrdenCompra", b =>
                 {
                     b.HasOne("POS.Infrastructure.Data.Entities.OrdenCompra", "OrdenCompra")
@@ -2732,21 +2612,6 @@ namespace POS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Venta");
-                });
-
-            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoContable", b =>
-                {
-                    b.HasOne("POS.Infrastructure.Data.Entities.Sucursal", "Sucursal")
-                        .WithMany()
-                        .HasForeignKey("SucursalId");
-
-                    b.HasOne("POS.Infrastructure.Data.Entities.Tercero", "Tercero")
-                        .WithMany()
-                        .HasForeignKey("TerceroId");
-
-                    b.Navigation("Sucursal");
-
-                    b.Navigation("Tercero");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoElectronico", b =>
@@ -3018,11 +2883,6 @@ namespace POS.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DevolucionVenta", b =>
-                {
-                    b.Navigation("Detalles");
-                });
-
-            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoContable", b =>
                 {
                     b.Navigation("Detalles");
                 });

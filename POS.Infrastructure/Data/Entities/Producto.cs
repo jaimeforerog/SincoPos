@@ -61,6 +61,13 @@ public class Categoria : EntidadAuditable
     public int Nivel { get; set; } = 0; // 0 = raíz, 1 = subcategoría, etc.
     public string RutaCompleta { get; set; } = string.Empty; // "Alimentos > Granos > Arroz"
 
+    // Integración ERP y Contable
+    public string? CuentaInventario { get; set; }
+    public string? CuentaCosto { get; set; }
+    public string? CuentaIngreso { get; set; }
+    public string? ExternalId { get; set; }
+    public OrigenDatos OrigenDatos { get; set; } = OrigenDatos.Local;
+
     // Navegacion
     public Categoria? CategoriaPadre { get; set; }
     public ICollection<Categoria> SubCategorias { get; set; } = new List<Categoria>();

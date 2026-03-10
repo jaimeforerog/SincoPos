@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Domain.Aggregates;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
+using POS.Infrastructure.Services.Erp;
 
 namespace POS.Infrastructure.Services;
 
@@ -16,6 +18,7 @@ public class CompraService : ICompraService
     private readonly ITaxEngine _taxEngine;
     private readonly ILogger<CompraService> _logger;
     private readonly IActivityLogService _activityLogService;
+    private readonly ErpSincoOptions _erpOptions;
 
     public CompraService(
         AppDbContext context,
@@ -23,7 +26,8 @@ public class CompraService : ICompraService
         CosteoService costeoService,
         ITaxEngine taxEngine,
         ILogger<CompraService> logger,
-        IActivityLogService activityLogService)
+        IActivityLogService activityLogService,
+        IOptions<ErpSincoOptions> erpOptions)
     {
         _context = context;
         _session = session;
@@ -31,6 +35,7 @@ public class CompraService : ICompraService
         _taxEngine = taxEngine;
         _logger = logger;
         _activityLogService = activityLogService;
+        _erpOptions = erpOptions.Value;
     }
 
     public async Task<(OrdenCompraDto? orden, string? error)> CrearOrdenAsync(CrearOrdenCompraDto dto)
@@ -141,6 +146,8 @@ public class CompraService : ICompraService
                 ? DateTime.SpecifyKind(dto.FechaEntregaEsperada.Value, DateTimeKind.Utc)
                 : null,
             Observaciones = dto.Observaciones,
+            FormaPago = dto.FormaPago,
+            DiasPlazo = dto.DiasPlazo,
             Subtotal = subtotal,
             Impuestos = impuestosTotal,
             Total = subtotal + impuestosTotal,
@@ -256,6 +263,17 @@ public class CompraService : ICompraService
         // PRE-CARGA DE DATOS EN LOTE (Batching) para evitar N+1 queries
         var productosIds = dto.Lineas.Select(l => l.ProductoId).Distinct().ToList();
 
+        var productosBatch = await _context.Productos
+            .Include(p => p.Categoria)
+            .Include(p => p.Impuesto)
+            .Include(p => p.ConceptoRetencion)
+            .Where(p => productosIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        // Cargar reglas de retención activas para el TaxEngine
+        var reglasRetencion = await _context.RetencionesReglas
+            .Where(r => r.Activo).ToListAsync();
+
         // 1. Cargar Stocks
         var stocksDict = await _context.Stock
             .Where(s => s.SucursalId == orden.SucursalId && productosIds.Contains(s.ProductoId))
@@ -275,6 +293,11 @@ public class CompraService : ICompraService
                 .ToDictionary(g => g.Key, g => g.ToList());
         }
 
+        // ERP Payload Builders
+        var inventarioAcumulado = new Dictionary<string, decimal>(); // Key: CuentaInventario, Value: Total
+        var impuestosAcumulados = new Dictionary<string, (decimal Porcentaje, string? Cuenta, decimal MontoBase, decimal Total)>();
+        var retencionesAcumuladas = new Dictionary<string, (string Nombre, string? Cuenta, decimal Total)>();
+
         // Procesar cada línea recibida
         foreach (var lineaRecibida in dto.Lineas)
         {
@@ -290,6 +313,55 @@ public class CompraService : ICompraService
             detalle.CantidadRecibida += lineaRecibida.CantidadRecibida;
             if (!string.IsNullOrEmpty(lineaRecibida.Observaciones))
                 detalle.Observaciones = lineaRecibida.Observaciones;
+
+            // ===== RECOLECCIÓN PAYLOAD ERP =====
+            var productoCompleto = productosBatch[detalle.ProductoId];
+            var lineaSubtotal = lineaRecibida.CantidadRecibida * detalle.PrecioUnitario;
+            var lineaImpuestoValor = lineaSubtotal * detalle.PorcentajeImpuesto;
+
+            var cuentaInventario = productoCompleto.Categoria.CuentaInventario ?? "N/A";
+            if (!inventarioAcumulado.ContainsKey(cuentaInventario))
+            {
+                inventarioAcumulado[cuentaInventario] = 0;
+            }
+            inventarioAcumulado[cuentaInventario] += lineaSubtotal;
+            if (detalle.PorcentajeImpuesto > 0 && productoCompleto.Impuesto != null)
+            {
+                var nombreImpuesto = productoCompleto.Impuesto.Nombre;
+                if (!impuestosAcumulados.ContainsKey(nombreImpuesto))
+                {
+                    impuestosAcumulados[nombreImpuesto] = (detalle.PorcentajeImpuesto, productoCompleto.Impuesto.CodigoCuentaContable, 0, 0);
+                }
+                var actual = impuestosAcumulados[nombreImpuesto];
+                impuestosAcumulados[nombreImpuesto] = (actual.Porcentaje, actual.Cuenta, actual.MontoBase + lineaSubtotal, actual.Total + lineaImpuestoValor);
+            }
+
+            // Calcular retenciones via TaxEngine (ReteFuente, ReteICA, ReteIVA)
+            var taxResultRecepcion = _taxEngine.Calcular(new TaxRequest(
+                ProductoId: detalle.ProductoId,
+                Cantidad: lineaRecibida.CantidadRecibida,
+                PrecioUnitario: detalle.PrecioUnitario,
+                Impuesto: productoCompleto.Impuesto,
+                EsAlimentoUltraprocesado: productoCompleto.EsAlimentoUltraprocesado,
+                GramosAzucarPor100ml: productoCompleto.GramosAzucarPor100ml,
+                PerfilVendedor: orden.Proveedor.PerfilTributario,
+                PerfilComprador: orden.Sucursal!.PerfilTributario,
+                CodigoMunicipio: orden.Sucursal!.CodigoMunicipio ?? string.Empty,
+                ConceptoRetencionId: productoCompleto.ConceptoRetencionId,
+                ValorUVT: orden.Sucursal!.ValorUVT,
+                ReglasRetencion: reglasRetencion
+            ));
+
+            foreach (var ret in taxResultRecepcion.Retenciones)
+            {
+                var claveRetencion = $"{ret.Tipo}_{ret.CuentaContable ?? ret.Nombre}";
+                if (!retencionesAcumuladas.ContainsKey(claveRetencion))
+                {
+                    retencionesAcumuladas[claveRetencion] = (ret.Nombre, ret.CuentaContable, 0);
+                }
+                var actualRet = retencionesAcumuladas[claveRetencion];
+                retencionesAcumuladas[claveRetencion] = (actualRet.Nombre, actualRet.Cuenta, actualRet.Total + ret.Monto);
+            }
 
             // ===== INTEGRACIÓN CON INVENTARIO =====
 
@@ -375,6 +447,133 @@ public class CompraService : ICompraService
         orden.Estado = todasRecibidas ? EstadoOrdenCompra.RecibidaCompleta : EstadoOrdenCompra.RecibidaParcial;
         orden.FechaRecepcion = DateTime.UtcNow;
         orden.RecibidoPorUsuarioId = usuarioId;
+
+        // ===== OUTBOX ERP EMISSION =====
+        var asientos = new List<AsientoContableErp>();
+        var centroCosto = orden.Sucursal?.CentroCosto ?? string.Empty;
+
+        // 1. Débitos por Inventario
+        foreach (var inv in inventarioAcumulado)
+        {
+            asientos.Add(new AsientoContableErp(
+                Cuenta: inv.Key,
+                CentroCosto: centroCosto,
+                Naturaleza: "Debito",
+                Valor: inv.Value,
+                Nota: $"Ingreso Inventario Cuenta {inv.Key}"
+            ));
+        }
+
+        // 2. Débitos por Impuestos (IVA descontable)
+        foreach (var imp in impuestosAcumulados)
+        {
+            asientos.Add(new AsientoContableErp(
+                Cuenta: imp.Value.Cuenta ?? "N/A",
+                CentroCosto: centroCosto,
+                Naturaleza: "Debito", // Normalmente IVA descontable en compras
+                Valor: imp.Value.Total,
+                Nota: $"Impuesto {imp.Key}"
+            ));
+        }
+
+        // 3. Créditos por Retenciones (ReteFuente, ReteICA, ReteIVA)
+        decimal totalRetencionesErp = 0;
+        foreach (var ret in retencionesAcumuladas)
+        {
+            asientos.Add(new AsientoContableErp(
+                Cuenta: ret.Value.Cuenta ?? "N/A",
+                CentroCosto: centroCosto,
+                Naturaleza: "Credito",
+                Valor: ret.Value.Total,
+                Nota: $"Retención {ret.Value.Nombre}"
+            ));
+            totalRetencionesErp += ret.Value.Total;
+        }
+
+        // 4. Crédito por Cuentas por Pagar (Proveedor) = Subtotal + Impuestos - Retenciones
+        var subtotalErp = inventarioAcumulado.Sum(x => x.Value);
+        var totalImpuestosErp = impuestosAcumulados.Sum(i => i.Value.Total);
+        var totalCxP = subtotalErp + totalImpuestosErp - totalRetencionesErp;
+
+        asientos.Add(new AsientoContableErp(
+            Cuenta: _erpOptions.CuentaCxPProveedores,
+            CentroCosto: centroCosto,
+            Naturaleza: "Credito",
+            Valor: totalCxP,
+            Nota: $"CXP Proveedor {orden.Proveedor.Nombre} NIT: {orden.Proveedor.Identificacion}"
+        ));
+
+        // 5. Calcular Fechas y Forma de Pago (Vencimientos)
+        var fechaVencimientoErp = DateTime.UtcNow.AddDays(orden.DiasPlazo);
+        var totalDocumento = subtotalErp + totalImpuestosErp; // Total bruto del documento (antes de retenciones)
+
+        var erpPayload = new CompraErpPayload(
+            NumeroOrden: orden.NumeroOrden,
+            NitProveedor: orden.Proveedor.Identificacion,
+            FormaPago: orden.FormaPago,
+            FechaVencimientoErp: fechaVencimientoErp,
+            FechaRecepcion: DateTime.UtcNow,
+            SucursalId: orden.SucursalId,
+            Asientos: asientos,
+            TotalOriginalDocumento: totalDocumento
+        );
+
+        // --- Número de recepción secuencial para esta orden ---
+        var recepcionesAnteriores = await _context.DocumentosContables
+            .CountAsync(d => d.TipoDocumento == "RecepcionCompra"
+                          && d.NumeroSoporte.StartsWith(orden.NumeroOrden));
+        var numeroRecepcion = recepcionesAnteriores + 1;
+        var soporteRecepcion = numeroRecepcion == 1
+            ? orden.NumeroOrden
+            : $"{orden.NumeroOrden}-R{numeroRecepcion}";
+
+        // --- INSERCIÓN NATIVA DEL DOCUMENTO CONTABLE ---
+        var documentoContable = new DocumentoContable
+        {
+            NumeroSoporte = soporteRecepcion,
+            TipoDocumento = "RecepcionCompra",
+            TerceroId = orden.ProveedorId,
+            SucursalId = orden.SucursalId,
+            FechaCausacion = DateTime.UtcNow,
+            FormaPago = orden.FormaPago,
+            FechaVencimiento = fechaVencimientoErp,
+            TotalDebito = asientos.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor),
+            TotalCredito = asientos.Where(a => a.Naturaleza == "Credito").Sum(a => a.Valor),
+            Detalles = asientos.Select(a => new DetalleDocumentoContable
+            {
+                CuentaContable = a.Cuenta,
+                CentroCosto = a.CentroCosto,
+                Naturaleza = a.Naturaleza,
+                Valor = a.Valor,
+                Nota = a.Nota
+            }).ToList()
+        };
+
+        _context.DocumentosContables.Add(documentoContable);
+        // -----------------------------------------------
+
+        // Invalidar outbox pendientes anteriores de esta misma orden (recepciones parciales previas)
+        var outboxPendientesAnteriores = await _context.ErpOutboxMessages
+            .Where(m => m.TipoDocumento == "CompraRecibida"
+                     && m.EntidadId == orden.Id
+                     && (m.Estado == EstadoOutbox.Pendiente || m.Estado == EstadoOutbox.Error))
+            .ToListAsync();
+
+        foreach (var pendiente in outboxPendientesAnteriores)
+        {
+            pendiente.Estado = EstadoOutbox.Descartado;
+            pendiente.UltimoError = $"Supersedido por recepción #{numeroRecepcion} ({soporteRecepcion})";
+        }
+
+        _context.ErpOutboxMessages.Add(new ErpOutboxMessage
+        {
+            TipoDocumento = "CompraRecibida",
+            EntidadId = orden.Id,
+            Payload = System.Text.Json.JsonSerializer.Serialize(erpPayload),
+            FechaCreacion = DateTime.UtcNow,
+            Estado = EstadoOutbox.Pendiente
+        });
+        // ================================
 
         await _session.SaveChangesAsync();
         await _context.SaveChangesAsync();
@@ -483,6 +682,8 @@ public class CompraService : ICompraService
             ProveedorId: orden.ProveedorId,
             NombreProveedor: orden.Proveedor.Nombre,
             Estado: orden.Estado.ToString(),
+            FormaPago: orden.FormaPago,
+            DiasPlazo: orden.DiasPlazo,
             FechaOrden: orden.FechaOrden,
             FechaEntregaEsperada: orden.FechaEntregaEsperada,
             FechaAprobacion: orden.FechaAprobacion,
@@ -495,6 +696,10 @@ public class CompraService : ICompraService
             Impuestos: orden.Impuestos,
             Total: orden.Total,
             RequiereFacturaElectronica: orden.RequiereFacturaElectronica,
+            SincronizadoErp: orden.SincronizadoErp,
+            FechaSincronizacionErp: orden.FechaSincronizacionErp,
+            ErpReferencia: orden.ErpReferencia,
+            ErrorSincronizacion: orden.ErrorSincronizacion,
             Detalles: orden.Detalles.Select(d => new DetalleOrdenCompraDto(
                 Id: d.Id,
                 ProductoId: d.ProductoId,

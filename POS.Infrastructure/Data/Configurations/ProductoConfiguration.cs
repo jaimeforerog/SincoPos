@@ -139,5 +139,28 @@ public class CategoriaConfiguration : IEntityTypeConfiguration<Categoria>
         // Índice para búsquedas por padre
         builder.HasIndex(c => c.CategoriaPadreId)
             .HasDatabaseName("ix_categorias_categoria_padre_id");
+
+        // Integración ERP y Contable
+        builder.Property(c => c.CuentaInventario)
+            .HasMaxLength(20)
+            .HasColumnName("cuenta_inventario");
+
+        builder.Property(c => c.CuentaCosto)
+            .HasMaxLength(20)
+            .HasColumnName("cuenta_costo");
+
+        builder.Property(c => c.CuentaIngreso)
+            .HasMaxLength(20)
+            .HasColumnName("cuenta_ingreso");
+
+        builder.Property(c => c.ExternalId)
+            .HasMaxLength(100)
+            .HasColumnName("external_id");
+
+        builder.Property(c => c.OrigenDatos)
+            .HasConversion<string>()
+            .HasDefaultValue(OrigenDatos.Local)
+            .HasMaxLength(50)
+            .HasColumnName("origen_datos");
     }
 }

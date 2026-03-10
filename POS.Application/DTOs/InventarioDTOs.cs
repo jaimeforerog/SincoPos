@@ -143,8 +143,10 @@ public record CrearOrdenCompraDto(
     int SucursalId,
     int ProveedorId,
     DateTime? FechaEntregaEsperada,
-    string? Observaciones,
-    List<LineaOrdenCompraDto> Lineas
+    string FormaPago = "Contado",
+    int DiasPlazo = 0,
+    string? Observaciones = null,
+    List<LineaOrdenCompraDto> Lineas = null!
 );
 
 public record LineaOrdenCompraDto(
@@ -190,6 +192,8 @@ public record OrdenCompraDto(
     int ProveedorId,
     string NombreProveedor,
     string Estado,
+    string FormaPago,
+    int DiasPlazo,
     DateTime FechaOrden,
     DateTime? FechaEntregaEsperada,
     DateTime? FechaAprobacion,
@@ -202,6 +206,10 @@ public record OrdenCompraDto(
     decimal Impuestos,
     decimal Total,
     bool RequiereFacturaElectronica,
+    bool SincronizadoErp,
+    DateTime? FechaSincronizacionErp,
+    string? ErpReferencia,
+    string? ErrorSincronizacion,
     List<DetalleOrdenCompraDto> Detalles
 );
 

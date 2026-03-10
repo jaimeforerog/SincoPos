@@ -117,6 +117,15 @@ export function OrdenCompraDetalleDialog({
             </>
           )}
 
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              Forma de Pago
+            </Typography>
+            <Typography variant="body2">
+              {orden.formaPago} {orden.formaPago === 'Credito' ? `(${orden.diasPlazo} días)` : ''}
+            </Typography>
+          </Box>
+
           {orden.fechaRecepcion && (
             <>
               <Box>

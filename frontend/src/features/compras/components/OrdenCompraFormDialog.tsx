@@ -46,6 +46,8 @@ const ordenCompraSchema = z.object({
   sucursalId: z.number().min(1, 'Seleccione una sucursal'),
   proveedorId: z.number().min(1, 'Seleccione un proveedor'),
   fechaEntregaEsperada: z.string().optional(),
+  formaPago: z.enum(['Contado', 'Credito']),
+  diasPlazo: z.number().min(0, 'Días de plazo no puede ser negativo'),
   observaciones: z.string().optional(),
   lineas: z.array(lineaSchema).min(1, 'Debe agregar al menos un producto'),
 });
@@ -110,6 +112,8 @@ export function OrdenCompraFormDialog({
       sucursalId: 0,
       proveedorId: 0,
       fechaEntregaEsperada: new Date().toISOString().split('T')[0],
+      formaPago: 'Contado',
+      diasPlazo: 0,
       observaciones: '',
       lineas: [],
     },
@@ -213,6 +217,8 @@ export function OrdenCompraFormDialog({
     sucursalId: 0,
     proveedorId: 0,
     fechaEntregaEsperada: new Date().toISOString().split('T')[0],
+    formaPago: 'Contado',
+    diasPlazo: 0,
     observaciones: '',
     lineas: [],
   };
@@ -300,6 +306,48 @@ export function OrdenCompraFormDialog({
                   ))}
                 </TextField>
               )}
+            />
+
+            {/* Forma de Pago */}
+            <Controller
+              name="formaPago"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Forma de Pago *"
+                  error={!!errors.formaPago}
+                  helperText={errors.formaPago?.message}
+                  fullWidth
+                >
+                  <MenuItem value="Contado">Contado</MenuItem>
+                  <MenuItem value="Credito">Crédito</MenuItem>
+                </TextField>
+              )}
+            />
+
+            {/* Días Plazo */}
+            <Controller
+              name="diasPlazo"
+              control={control}
+              render={({ field: { value, onChange, ...field } }) => {
+                const isCredito = watch('formaPago') === 'Credito';
+                return (
+                  <TextField
+                    {...field}
+                    type="number"
+                    label="Días Plazo"
+                    value={value}
+                    onChange={(e) => onChange(Number(e.target.value))}
+                    error={!!errors.diasPlazo}
+                    helperText={errors.diasPlazo?.message}
+                    fullWidth
+                    disabled={!isCredito}
+                    inputProps={{ min: 0 }}
+                  />
+                );
+              }}
             />
 
             {/* Fecha de entrega esperada */}

@@ -6,6 +6,7 @@ import type {
   RechazarOrdenCompraDTO,
   RecibirOrdenCompraDTO,
   CancelarOrdenCompraDTO,
+  ErpOutboxErrorDTO,
 } from '@/types/api';
 
 export const comprasApi = {
@@ -69,6 +70,22 @@ export const comprasApi = {
    */
   cancelar: async (id: number, data: CancelarOrdenCompraDTO) => {
     const response = await apiClient.post(`/compras/${id}/cancelar`, data);
+    return response.data;
+  },
+
+  /**
+   * Reintentar sincronización ERP de un mensaje outbox fallido
+   */
+  reintentarErp: async (outboxId: number) => {
+    const response = await apiClient.post(`/integracion-erp/reintentar-outbox/${outboxId}`);
+    return response.data;
+  },
+
+  /**
+   * Obtener mensajes outbox con error
+   */
+  getErroresErp: async () => {
+    const response = await apiClient.get<ErpOutboxErrorDTO[]>('/integracion-erp/outbox/errores');
     return response.data;
   },
 };

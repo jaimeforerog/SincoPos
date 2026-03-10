@@ -24,6 +24,11 @@ const categoriaSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').max(100),
   descripcion: z.string().optional(),
   categoriaPadreId: z.number().optional().nullable(),
+  cuentaInventario: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
+  cuentaCosto: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
+  cuentaIngreso: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
+  externalId: z.string().optional().nullable().or(z.literal('')),
+  origenDatos: z.string().optional(),
 });
 
 type CategoriaFormData = z.infer<typeof categoriaSchema>;
@@ -56,6 +61,11 @@ export function CategoriaFormDialog({
       nombre: '',
       descripcion: '',
       categoriaPadreId: padreId || null,
+      cuentaInventario: '',
+      cuentaCosto: '',
+      cuentaIngreso: '',
+      externalId: '',
+      origenDatos: 'Local',
     },
   });
 
@@ -79,18 +89,33 @@ export function CategoriaFormDialog({
         nombre: categoria.nombre,
         descripcion: categoria.descripcion || '',
         categoriaPadreId: categoria.categoriaPadreId || null,
+        cuentaInventario: categoria.cuentaInventario || '',
+        cuentaCosto: categoria.cuentaCosto || '',
+        cuentaIngreso: categoria.cuentaIngreso || '',
+        externalId: categoria.externalId || '',
+        origenDatos: categoria.origenDatos || 'Local',
       });
     } else if (open && padreId) {
       reset({
         nombre: '',
         descripcion: '',
         categoriaPadreId: padreId,
+        cuentaInventario: '',
+        cuentaCosto: '',
+        cuentaIngreso: '',
+        externalId: '',
+        origenDatos: 'Local',
       });
     } else if (open) {
       reset({
         nombre: '',
         descripcion: '',
         categoriaPadreId: null,
+        cuentaInventario: '',
+        cuentaCosto: '',
+        cuentaIngreso: '',
+        externalId: '',
+        origenDatos: 'Local',
       });
     }
   }, [open, categoria, padreId, reset]);
@@ -129,6 +154,11 @@ export function CategoriaFormDialog({
       nombre: data.nombre,
       descripcion: data.descripcion || undefined,
       categoriaPadreId: data.categoriaPadreId || undefined,
+      cuentaInventario: data.cuentaInventario || undefined,
+      cuentaCosto: data.cuentaCosto || undefined,
+      cuentaIngreso: data.cuentaIngreso || undefined,
+      externalId: data.externalId || undefined,
+      origenDatos: data.origenDatos || 'Local',
     };
 
     if (isEditing) {
@@ -219,6 +249,62 @@ export function CategoriaFormDialog({
                 Esta categoría se creará como subcategoría de la categoría seleccionada
               </Typography>
             )}
+
+            <Typography variant="subtitle2" sx={{ mt: 1 }}>Configuración Integración Contable (ERP)</Typography>
+            
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Controller
+                name="cuentaInventario"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Cuenta Inventario (PUC)"
+                    helperText={errors.cuentaInventario?.message || 'Ej. 1435'}
+                    error={!!errors.cuentaInventario}
+                  />
+                )}
+              />
+
+              <Controller
+                name="cuentaCosto"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Cuenta Costo (PUC)"
+                    helperText={errors.cuentaCosto?.message || 'Ej. 6135'}
+                    error={!!errors.cuentaCosto}
+                  />
+                )}
+              />
+
+              <Controller
+                name="cuentaIngreso"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Cuenta Ingreso (PUC)"
+                    helperText={errors.cuentaIngreso?.message || 'Ej. 4135'}
+                    error={!!errors.cuentaIngreso}
+                  />
+                )}
+              />
+
+              <Controller
+                name="externalId"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="ID Externo (ERP)"
+                    helperText={errors.externalId?.message}
+                    error={!!errors.externalId}
+                  />
+                )}
+              />
+            </Box>
 
             {!padreId && (
               <Typography variant="caption" color="text.secondary">

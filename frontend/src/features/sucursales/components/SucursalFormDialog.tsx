@@ -28,6 +28,7 @@ const sucursalSchema = z.object({
   ciudad: z.string().optional(),
   telefono: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
+  centroCosto: z.string().optional(),
   metodoCosteo: z.enum(['PromedioPonderado', 'PEPS', 'UEPS']).optional(),
 });
 
@@ -61,6 +62,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
       ciudad: '',
       telefono: '',
       email: '',
+      centroCosto: '',
       metodoCosteo: 'PromedioPonderado',
     },
   });
@@ -91,6 +93,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
         ciudad: sucursal.ciudad || '',
         telefono: sucursal.telefono || '',
         email: sucursal.email || '',
+        centroCosto: sucursal.centroCosto || '',
         metodoCosteo: sucursal.metodoCosteo as any,
       });
     } else {
@@ -103,6 +106,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
         ciudad: '',
         telefono: '',
         email: '',
+        centroCosto: '',
         metodoCosteo: 'PromedioPonderado',
       });
     }
@@ -148,6 +152,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
       nombrePais: data.nombrePais || undefined,
       ciudad: data.ciudad || undefined,
       telefono: data.telefono || undefined,
+      centroCosto: data.centroCosto || undefined,
     };
 
     if (isEditing) {
@@ -339,6 +344,22 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
                     fullWidth
                     error={!!errors.email}
                     helperText={errors.email?.message}
+                  />
+                )}
+              />
+            </Box>
+
+            <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
+              <Controller
+                name="centroCosto"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Centro de Costo (ERP)"
+                    fullWidth
+                    error={!!errors.centroCosto}
+                    helperText={errors.centroCosto?.message}
                   />
                 )}
               />

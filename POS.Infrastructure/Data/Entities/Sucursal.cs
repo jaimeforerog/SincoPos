@@ -9,6 +9,7 @@ public class Sucursal : EntidadAuditable
     public string? Ciudad { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public string? CentroCosto { get; set; } // Codigo/Tag Financiero ERP
     public MetodoCosteo MetodoCosteo { get; set; } = MetodoCosteo.PromedioPonderado;
 
     // ── Tax Engine ──────────────────────────────────────────────────────────────
