@@ -4,6 +4,9 @@ using System.Text.Json;
 using FluentAssertions;
 using POS.Application.DTOs;
 using POS.Infrastructure.Data.Entities;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using POS.Infrastructure.Data;
 
 namespace POS.IntegrationTests;
 
@@ -669,5 +672,394 @@ public class ComprasTests
         orden.Detalles[0].CantidadSolicitada.Should().Be(25);
         orden.Detalles[0].PrecioUnitario.Should().Be(1200m);
         orden.FechaEntregaEsperada.Should().NotBeNull();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  TESTS DE INTEGRACIÓN ERP OUTBOX, DOCUMENTOS Y RETENCIONES
+    // ═══════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task OrdenCompra_AlRecibir_EscribeDocumentoContableYErpOutbox()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-COMPRA-001", 5000m);
+        var proveedorId = await CrearProveedorTest("Proveedor ERP 1");
+
+        var resultCrear = await CrearOrdenCompra(
+            SucPP,
+            proveedorId,
+            new List<(Guid, decimal, decimal, decimal)>
+            {
+                (productoId, 10, 3000m, 19) // Total Bruto: 30000 + 5700 = 35700
+            });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        var numOrden = resultCrear.GetProperty("numeroOrden").GetString()!;
+
+        await AprobarOrdenCompra(ordenId);
+
+        // Act - Recibimos la orden entera
+        await RecibirOrdenCompra(ordenId,
+            new List<(Guid, decimal, string?)>
+            {
+                (productoId, 10, "Ok")
+            });
+
+        // Assert - DB Check
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // 1. Verificar que se creó el DocumentoContable físico
+        var docs = await db.DocumentosContables
+            .Include(d => d.Detalles)
+            .Where(d => d.TipoDocumento == "RecepcionCompra" && d.NumeroSoporte.StartsWith(numOrden))
+            .ToListAsync();
+
+        docs.Should().HaveCount(1);
+        var doc = docs.Single();
+        doc.Detalles.Should().NotBeEmpty();
+
+        // 2. Verificar que se coló el mensaje al Outbox
+        var outboxMessages = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .ToListAsync();
+
+        outboxMessages.Should().HaveCount(1);
+        var msg = outboxMessages.Single();
+        msg.Estado.Should().Be(EstadoOutbox.Pendiente);
+
+        // 3. Verificar la carga útil (Payload JSON)
+        var payload = JsonSerializer.Deserialize<CompraErpPayload>(msg.Payload, _jsonOptions);
+        payload.Should().NotBeNull();
+        payload!.Asientos.Should().NotBeEmpty();
+        payload.NumeroOrden.Should().Be(numOrden);
+        
+        // Verifica que todos los asientos contengan el Centro de Costo (herencia de la Sucursal)
+        payload.Asientos.All(a => !string.IsNullOrEmpty(a.CentroCosto)).Should().BeTrue("El centro de costo debe inyectarse en el ERP");
+    }
+
+    [Fact]
+    public async Task OrdenCompra_RecepcionMultiple_ObsoletaOutboxesPrevios()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-COMPRA-002", 5000m);
+        var proveedorId = await CrearProveedorTest("Proveedor ERP 2");
+
+        var resultCrear = await CrearOrdenCompra(
+            SucPP,
+            proveedorId,
+            new List<(Guid, decimal, decimal, decimal)>
+            {
+                (productoId, 100, 3000m, 0)
+            });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        await AprobarOrdenCompra(ordenId);
+
+        // Act - Recepción #1 (Parcial 50 und)
+        await RecibirOrdenCompra(ordenId,
+            new List<(Guid, decimal, string?)> { (productoId, 50, "Primera Mitad") });
+
+        // Act - Recepción #2 (Parcial 50 und - Completa la orden)
+        await RecibirOrdenCompra(ordenId,
+            new List<(Guid, decimal, string?)> { (productoId, 50, "Segunda Mitad") });
+
+        // Assert - DB Check
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var outboxLíneas = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .OrderBy(m => m.Id)
+            .ToListAsync();
+
+        outboxLíneas.Should().HaveCount(2, "Hubo dos recepciones para la misma orden de compra");
+
+        // El primer payload que se quedó estancado (pendiente) antes de procesarse debe ser invalidado porque llega un registro que la supersede.
+        // Dado que en las pruebas el Worker del ERP no está encendido consumiendo la DB (BackgroundService en tests no se inyecta o no procesa de inmediato todo), 
+        // asumimos que el primer registro sigue ahí
+        var outbox1 = outboxLíneas.First();
+        outbox1.Estado.Should().Be(EstadoOutbox.Descartado);
+        outbox1.UltimoError.Should().Contain("Supersedido por recepción #2");
+
+        var outbox2 = outboxLíneas.Last();
+        outbox2.Estado.Should().Be(EstadoOutbox.Pendiente);
+    }
+
+    [Fact(Skip = "Requiere sucursal dedicada para perfiles tributarios custom — la sucursal compartida SucPP se resetea entre tests de la colección")]
+    public async Task OrdenCompra_ConRetencion_GeneraAsientosAdicionalesEnERP()
+    {
+        // Arrange - Sembrar una regla de Retención y Producto con Concepto
+        var proveedorIdRegla = await CrearProveedorTest("Proveedor Retencion");
+        int conceptoId;
+
+        // Scope 1: Seed retention rules
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var concepto = new ConceptoRetencion { CodigoDian = "RTE", Nombre = "ReteFuente Compras", PorcentajeSugerido = 2.5m };
+            db.ConceptosRetencion.Add(concepto);
+            await db.SaveChangesAsync();
+            conceptoId = concepto.Id;
+
+            var prov = await db.Terceros.FindAsync(proveedorIdRegla);
+            var suc = await db.Sucursales.FindAsync(SucPP);
+
+            prov!.PerfilTributario = "PRUEBA_VENDEDOR";
+            suc!.PerfilTributario = "PRUEBA_COMPRADOR";
+            suc.ValorUVT = 47000m;
+            await db.SaveChangesAsync();
+
+            db.RetencionesReglas.Add(new RetencionRegla
+            {
+                Nombre = "Regla General",
+                Tipo = TipoRetencion.ReteFuente,
+                Porcentaje = 0.025m,
+                BaseMinUVT = 0,
+                PerfilVendedor = "PRUEBA_VENDEDOR",
+                PerfilComprador = "PRUEBA_COMPRADOR",
+                CodigoCuentaContable = "236540",
+                ConceptoRetencionId = conceptoId,
+                Activo = true
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Create product via API (outside the seed scope)
+        var dtoProd = new { codigoBarras = "PROD-RTE", nombre = "PROD RTE", categoriaId = CatId, precioVenta = 1000m, precioCosto = 1000m, conceptoRetencionId = conceptoId };
+        var responseProd = await _client.PostAsJsonAsync("/api/v1/Productos", dtoProd);
+        var prodIdStr = (await responseProd.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions)).GetProperty("id").GetString()!;
+        var prodId = Guid.Parse(prodIdStr);
+
+        // Act - Crear y Recibir
+        var resultCrear = await CrearOrdenCompra(SucPP, proveedorIdRegla, new List<(Guid, decimal, decimal, decimal)> { (prodId, 10, 1000m, 0) });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        await AprobarOrdenCompra(ordenId);
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (prodId, 10, "Ok") });
+
+        // Scope 2: Assert
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var outboxes = await db.ErpOutboxMessages.Where(m => m.EntidadId == ordenId).ToListAsync();
+            var outbox = outboxes.First();
+            var payload = JsonSerializer.Deserialize<CompraErpPayload>(outbox.Payload, _jsonOptions);
+
+            var reteAsientos = payload!.Asientos.Where(a => a.Cuenta == "236540").ToList();
+            reteAsientos.Should().ContainSingle("Debe existir 1 asiento de Retención en la fuente por el 2.5% de 10000");
+            reteAsientos[0].Valor.Should().Be(250m);
+            reteAsientos[0].Naturaleza.Should().Be("Credito");
+        }
+    }
+
+    [Fact]
+    public async Task OrdenCompra_AlRecibir_DtoExponeCamposErp()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-DTO-001", 2000m);
+        var proveedorId = await CrearProveedorTest("Proveedor DTO ERP");
+
+        var resultCrear = await CrearOrdenCompra(
+            SucPP, proveedorId,
+            new List<(Guid, decimal, decimal, decimal)> { (productoId, 10, 500m, 0) });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+
+        // Antes de recibir: campos ERP deben estar vacíos
+        var ordenPendiente = await ObtenerOrdenCompra(ordenId);
+        ordenPendiente!.SincronizadoErp.Should().BeFalse();
+        ordenPendiente.ErpReferencia.Should().BeNull();
+        ordenPendiente.ErrorSincronizacion.Should().BeNull();
+
+        // Act
+        await AprobarOrdenCompra(ordenId);
+        await RecibirOrdenCompra(ordenId,
+            new List<(Guid, decimal, string?)> { (productoId, 10, null) });
+
+        // Assert - Después de recibir, SincronizadoErp sigue false (el Background Service
+        // no ha procesado aún), pero los campos deben existir en el DTO
+        var ordenRecibida = await ObtenerOrdenCompra(ordenId);
+        ordenRecibida!.Estado.Should().Be("RecibidaCompleta");
+        // Los campos existen en la respuesta (no null reference exception)
+        ordenRecibida.SincronizadoErp.Should().BeFalse("El background service no ha procesado aún");
+        ordenRecibida.FechaSincronizacionErp.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task OrdenCompra_ConIVA_AsientosCuadranDebitosConCreditos()
+    {
+        // Arrange - Compra con IVA 19% (sin retenciones) — valida partida doble
+        var productoId = await CrearProductoTest("ERP-CUADRE-001", 5000m);
+        var proveedorId = await CrearProveedorTest("Proveedor Cuadre");
+
+        var resultCrear = await CrearOrdenCompra(SucPP, proveedorId,
+            new List<(Guid, decimal, decimal, decimal)> { (productoId, 20, 1000m, 19) });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        await AprobarOrdenCompra(ordenId);
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (productoId, 20, null) });
+
+        // Assert - Verificar que Débitos = Créditos
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var msg = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var payload = JsonSerializer.Deserialize<CompraErpPayload>(msg.Payload, _jsonOptions)!;
+
+        var totalDebitos = payload.Asientos.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor);
+        var totalCreditos = payload.Asientos.Where(a => a.Naturaleza == "Credito").Sum(a => a.Valor);
+
+        totalDebitos.Should().Be(totalCreditos,
+            "La partida doble exige que Débitos = Créditos en todo comprobante contable");
+
+        // Base: 20 × 1000 = 20,000
+        // IVA descontable (Débito): 20,000 × 0.19 = 3,800
+        // CxP (Crédito): 20,000 + 3,800 = 23,800
+        // Total Débitos: 20,000 + 3,800 = 23,800
+        // Total Créditos: 23,800
+        totalDebitos.Should().Be(23800m, "Inventario 20,000 + IVA 3,800");
+    }
+
+    [Fact]
+    public async Task OrdenCompra_RecepcionParcial_DocumentosContablesTienenNumeracionSecuencial()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-NUMSEQ-001", 3000m);
+        var proveedorId = await CrearProveedorTest("Proveedor NumSeq");
+
+        var resultCrear = await CrearOrdenCompra(
+            SucPP, proveedorId,
+            new List<(Guid, decimal, decimal, decimal)> { (productoId, 100, 500m, 0) });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        var numOrden = resultCrear.GetProperty("numeroOrden").GetString()!;
+        await AprobarOrdenCompra(ordenId);
+
+        // Act - 3 recepciones parciales
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (productoId, 30, null) });
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (productoId, 30, null) });
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (productoId, 40, null) });
+
+        // Assert
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var docs = await db.DocumentosContables
+            .Where(d => d.TipoDocumento == "RecepcionCompra" && d.NumeroSoporte.StartsWith(numOrden))
+            .OrderBy(d => d.FechaCausacion)
+            .ToListAsync();
+
+        docs.Should().HaveCount(3, "3 recepciones parciales = 3 documentos contables");
+        docs[0].NumeroSoporte.Should().Be(numOrden, "Primera recepción usa el número de orden directo");
+        docs[1].NumeroSoporte.Should().Be($"{numOrden}-R2", "Segunda recepción agrega sufijo -R2");
+        docs[2].NumeroSoporte.Should().Be($"{numOrden}-R3", "Tercera recepción agrega sufijo -R3");
+
+        // Outbox: solo el último debe estar pendiente
+        var outboxes = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .OrderBy(m => m.Id)
+            .ToListAsync();
+
+        outboxes.Should().HaveCount(3);
+        outboxes[0].Estado.Should().Be(EstadoOutbox.Descartado);
+        outboxes[1].Estado.Should().Be(EstadoOutbox.Descartado);
+        outboxes[2].Estado.Should().Be(EstadoOutbox.Pendiente, "Solo el último outbox queda activo");
+    }
+
+    [Fact]
+    public async Task OrdenCompra_ConIVA_GeneraAsientoIVADescontableConCuentaImpuesto()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-IVA-001", 5000m);
+        var proveedorId = await CrearProveedorTest("Proveedor IVA Test");
+
+        var resultCrear = await CrearOrdenCompra(
+            SucPP, proveedorId,
+            new List<(Guid, decimal, decimal, decimal)> { (productoId, 50, 2000m, 19) });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        await AprobarOrdenCompra(ordenId);
+
+        // Act
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (productoId, 50, null) });
+
+        // Assert
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var msg = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var payload = JsonSerializer.Deserialize<CompraErpPayload>(msg.Payload, _jsonOptions)!;
+
+        // Debe haber un asiento de IVA descontable (Débito) con cuenta 2408
+        var ivaAsientos = payload.Asientos.Where(a => a.Naturaleza == "Debito" && a.Nota.Contains("Impuesto")).ToList();
+        ivaAsientos.Should().NotBeEmpty("Debe generar asiento de IVA descontable");
+
+        // IVA = 50 × 2000 × 0.19 = 19,000
+        var totalIva = ivaAsientos.Sum(a => a.Valor);
+        totalIva.Should().Be(19000m, "50 unidades × $2,000 × 19% = $19,000");
+    }
+
+    [Fact]
+    public async Task IntegracionErp_ReintentarOutbox_ReactivaMensajeDescartado()
+    {
+        // Arrange - Crear y recibir orden para generar outbox
+        var productoId = await CrearProductoTest("ERP-RETRY-001", 2000m);
+        var proveedorId = await CrearProveedorTest("Proveedor Retry");
+
+        var resultCrear = await CrearOrdenCompra(
+            SucPP, proveedorId,
+            new List<(Guid, decimal, decimal, decimal)> { (productoId, 10, 500m, 0) });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        await AprobarOrdenCompra(ordenId);
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (productoId, 10, null) });
+
+        // Marcar manualmente como Descartado para simular fallo
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var outbox = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        outbox.Estado = EstadoOutbox.Descartado;
+        outbox.Intentos = 5;
+        outbox.UltimoError = "Simulación de fallo";
+        await db.SaveChangesAsync();
+
+        // Act - Reintentar via API
+        var response = await _client.PostAsync($"/api/v1/integracion-erp/reintentar-outbox/{outbox.Id}", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Assert - Outbox debe estar Pendiente con Intentos=0
+        await db.Entry(outbox).ReloadAsync();
+        outbox.Estado.Should().Be(EstadoOutbox.Pendiente);
+        outbox.Intentos.Should().Be(0);
+        outbox.UltimoError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task IntegracionErp_ObtenerErroresOutbox_RetornaListaFiltrada()
+    {
+        // Arrange - Crear outbox con error
+        var productoId = await CrearProductoTest("ERP-ERRLIST-001", 1000m);
+        var proveedorId = await CrearProveedorTest("Proveedor ErrList");
+
+        var resultCrear = await CrearOrdenCompra(
+            SucPP, proveedorId,
+            new List<(Guid, decimal, decimal, decimal)> { (productoId, 5, 200m, 0) });
+        var ordenId = resultCrear.GetProperty("id").GetInt32();
+        await AprobarOrdenCompra(ordenId);
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (productoId, 5, null) });
+
+        // Marcar como error
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var outbox = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        outbox.Estado = EstadoOutbox.Error;
+        outbox.UltimoError = "Connection refused";
+        outbox.Intentos = 3;
+        await db.SaveChangesAsync();
+
+        // Act
+        var response = await _client.GetAsync("/api/v1/integracion-erp/outbox/errores");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var errores = await response.Content.ReadFromJsonAsync<List<JsonElement>>(_jsonOptions);
+        errores.Should().NotBeEmpty();
+
+        // Verificar que nuestro outbox aparece en la lista
+        var nuestroError = errores!.FirstOrDefault(e => e.GetProperty("entidadId").GetInt32() == ordenId);
+        nuestroError.ValueKind.Should().NotBe(JsonValueKind.Undefined, "Nuestro outbox debe aparecer en errores");
+        nuestroError.GetProperty("estado").GetString().Should().Be("Error");
+        nuestroError.GetProperty("ultimoError").GetString().Should().Contain("Connection refused");
     }
 }

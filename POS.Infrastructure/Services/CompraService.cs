@@ -325,15 +325,31 @@ public class CompraService : ICompraService
                 inventarioAcumulado[cuentaInventario] = 0;
             }
             inventarioAcumulado[cuentaInventario] += lineaSubtotal;
-            if (detalle.PorcentajeImpuesto > 0 && productoCompleto.Impuesto != null)
+            if (detalle.PorcentajeImpuesto > 0)
             {
-                var nombreImpuesto = productoCompleto.Impuesto.Nombre;
+                // Usar datos del impuesto del producto si existe, o fallback con datos del detalle
+                var nombreImpuesto = detalle.NombreImpuesto ?? $"IVA {detalle.PorcentajeImpuesto * 100:0.##}%";
+                var cuentaImpuesto = productoCompleto.Impuesto?.CodigoCuentaContable ?? "2408";
                 if (!impuestosAcumulados.ContainsKey(nombreImpuesto))
                 {
-                    impuestosAcumulados[nombreImpuesto] = (detalle.PorcentajeImpuesto, productoCompleto.Impuesto.CodigoCuentaContable, 0, 0);
+                    impuestosAcumulados[nombreImpuesto] = (detalle.PorcentajeImpuesto, cuentaImpuesto, 0, 0);
                 }
                 var actual = impuestosAcumulados[nombreImpuesto];
                 impuestosAcumulados[nombreImpuesto] = (actual.Porcentaje, actual.Cuenta, actual.MontoBase + lineaSubtotal, actual.Total + lineaImpuestoValor);
+            }
+
+            // Reconstruir impuesto para TaxEngine si fue especificado por porcentaje en la orden
+            var impuestoParaTax = productoCompleto.Impuesto;
+            if (impuestoParaTax == null && detalle.PorcentajeImpuesto > 0)
+            {
+                impuestoParaTax = new Impuesto
+                {
+                    Nombre = detalle.NombreImpuesto ?? $"IVA {detalle.PorcentajeImpuesto * 100:0.##}%",
+                    Porcentaje = detalle.PorcentajeImpuesto,
+                    Tipo = TipoImpuesto.IVA,
+                    AplicaSobreBase = true,
+                    CodigoCuentaContable = "2408"
+                };
             }
 
             // Calcular retenciones via TaxEngine (ReteFuente, ReteICA, ReteIVA)
@@ -341,7 +357,7 @@ public class CompraService : ICompraService
                 ProductoId: detalle.ProductoId,
                 Cantidad: lineaRecibida.CantidadRecibida,
                 PrecioUnitario: detalle.PrecioUnitario,
-                Impuesto: productoCompleto.Impuesto,
+                Impuesto: impuestoParaTax,
                 EsAlimentoUltraprocesado: productoCompleto.EsAlimentoUltraprocesado,
                 GramosAzucarPor100ml: productoCompleto.GramosAzucarPor100ml,
                 PerfilVendedor: orden.Proveedor.PerfilTributario,
