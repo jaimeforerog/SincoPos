@@ -28,8 +28,10 @@ public class ComprasTests
     // IDs de sucursales y categorías
     private int SucPP => _factory.SucursalPPId;
     private int SucFIFO => _factory.SucursalFIFOId;
+    private int SucRte => _factory.SucursalRetencionId;
     private int CatId => _factory.CategoriaTestId;
     private int TerceroId => _factory.TerceroTestId;
+    private int ConceptoComprasId => _factory.ConceptoComprasId;
 
     public ComprasTests(CustomWebApplicationFactory factory)
     {
@@ -56,7 +58,7 @@ public class ComprasTests
         return result!.Id;
     }
 
-    private async Task<int> CrearProveedorTest(string nombre)
+    private async Task<int> CrearProveedorTest(string nombre, string? perfilTributario = null)
     {
         var dto = new
         {
@@ -67,7 +69,8 @@ public class ComprasTests
             telefono = "3001234567",
             email = $"{nombre.ToLower().Replace(" ", "")}@test.com",
             direccion = "Calle Test 123",
-            ciudad = (string?)null
+            ciudad = (string?)null,
+            perfilTributario = perfilTributario ?? "REGIMEN_COMUN"
         };
         var response = await _client.PostAsJsonAsync("/api/v1/Terceros", dto);
         response.EnsureSuccessStatusCode();
@@ -784,70 +787,49 @@ public class ComprasTests
         outbox2.Estado.Should().Be(EstadoOutbox.Pendiente);
     }
 
-    [Fact(Skip = "Requiere sucursal dedicada para perfiles tributarios custom — la sucursal compartida SucPP se resetea entre tests de la colección")]
+    [Fact]
     public async Task OrdenCompra_ConRetencion_GeneraAsientosAdicionalesEnERP()
     {
-        // Arrange - Sembrar una regla de Retención y Producto con Concepto
-        var proveedorIdRegla = await CrearProveedorTest("Proveedor Retencion");
-        int conceptoId;
+        // Arrange - Usar SucRte (GRAN_CONTRIBUYENTE) + proveedor REGIMEN_ORDINARIO
+        // Esto matchea la regla seeded: ReteFuente Compras 2.5% (V=REGIMEN_ORDINARIO, C=GRAN_CONTRIBUYENTE)
+        // La regla tiene BaseMinUVT=4 → umbral = 4 × 47065 = $188,260. Base debe ser mayor.
+        var proveedorId = await CrearProveedorTest("Proveedor Retencion", "REGIMEN_ORDINARIO");
 
-        // Scope 1: Seed retention rules
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var concepto = new ConceptoRetencion { CodigoDian = "RTE", Nombre = "ReteFuente Compras", PorcentajeSugerido = 2.5m };
-            db.ConceptosRetencion.Add(concepto);
-            await db.SaveChangesAsync();
-            conceptoId = concepto.Id;
-
-            var prov = await db.Terceros.FindAsync(proveedorIdRegla);
-            var suc = await db.Sucursales.FindAsync(SucPP);
-
-            prov!.PerfilTributario = "PRUEBA_VENDEDOR";
-            suc!.PerfilTributario = "PRUEBA_COMPRADOR";
-            suc.ValorUVT = 47000m;
-            await db.SaveChangesAsync();
-
-            db.RetencionesReglas.Add(new RetencionRegla
-            {
-                Nombre = "Regla General",
-                Tipo = TipoRetencion.ReteFuente,
-                Porcentaje = 0.025m,
-                BaseMinUVT = 0,
-                PerfilVendedor = "PRUEBA_VENDEDOR",
-                PerfilComprador = "PRUEBA_COMPRADOR",
-                CodigoCuentaContable = "236540",
-                ConceptoRetencionId = conceptoId,
-                Activo = true
-            });
-            await db.SaveChangesAsync();
-        }
-
-        // Create product via API (outside the seed scope)
-        var dtoProd = new { codigoBarras = "PROD-RTE", nombre = "PROD RTE", categoriaId = CatId, precioVenta = 1000m, precioCosto = 1000m, conceptoRetencionId = conceptoId };
+        // Producto con ConceptoRetencion "Compras" (seeded, CodigoDian=2307)
+        var dtoProd = new { codigoBarras = "PROD-RTE", nombre = "PROD RTE", categoriaId = CatId, precioVenta = 1000m, precioCosto = 1000m, conceptoRetencionId = ConceptoComprasId };
         var responseProd = await _client.PostAsJsonAsync("/api/v1/Productos", dtoProd);
-        var prodIdStr = (await responseProd.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions)).GetProperty("id").GetString()!;
-        var prodId = Guid.Parse(prodIdStr);
+        responseProd.EnsureSuccessStatusCode();
+        var prodId = Guid.Parse((await responseProd.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions)).GetProperty("id").GetString()!);
 
-        // Act - Crear y Recibir
-        var resultCrear = await CrearOrdenCompra(SucPP, proveedorIdRegla, new List<(Guid, decimal, decimal, decimal)> { (prodId, 10, 1000m, 0) });
+        // Act - Orden por $200,000 (supera umbral 4 UVT = $188,260)
+        var resultCrear = await CrearOrdenCompra(SucRte, proveedorId,
+            new List<(Guid, decimal, decimal, decimal)> { (prodId, 100, 2000m, 0) });
         var ordenId = resultCrear.GetProperty("id").GetInt32();
         await AprobarOrdenCompra(ordenId);
-        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (prodId, 10, "Ok") });
+        await RecibirOrdenCompra(ordenId, new List<(Guid, decimal, string?)> { (prodId, 100, "Ok") });
 
-        // Scope 2: Assert
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var outboxes = await db.ErpOutboxMessages.Where(m => m.EntidadId == ordenId).ToListAsync();
-            var outbox = outboxes.First();
-            var payload = JsonSerializer.Deserialize<CompraErpPayload>(outbox.Payload, _jsonOptions);
+        // Assert
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var outbox = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var payload = JsonSerializer.Deserialize<CompraErpPayload>(outbox.Payload, _jsonOptions)!;
 
-            var reteAsientos = payload!.Asientos.Where(a => a.Cuenta == "236540").ToList();
-            reteAsientos.Should().ContainSingle("Debe existir 1 asiento de Retención en la fuente por el 2.5% de 10000");
-            reteAsientos[0].Valor.Should().Be(250m);
-            reteAsientos[0].Naturaleza.Should().Be("Credito");
-        }
+        // ReteFuente 2.5% de $200,000 = $5,000 (cuenta 1355)
+        var reteAsientos = payload.Asientos.Where(a => a.Cuenta == "1355").ToList();
+        reteAsientos.Should().ContainSingle("Debe existir 1 asiento de ReteFuente Compras 2.5%");
+        reteAsientos[0].Valor.Should().Be(5000m, "2.5% de $200,000");
+        reteAsientos[0].Naturaleza.Should().Be("Credito");
+
+        // ReteICA Bogotá 0.966% de $200,000 = $1,932 (cuenta 1356)
+        var reteIcaAsientos = payload.Asientos.Where(a => a.Cuenta == "1356").ToList();
+        reteIcaAsientos.Should().ContainSingle("Debe existir 1 asiento de ReteICA Bogotá");
+        reteIcaAsientos[0].Valor.Should().Be(1932m, "0.966% de $200,000");
+        reteIcaAsientos[0].Naturaleza.Should().Be("Credito");
+
+        // Partida doble: Débitos = Créditos
+        var totalDebitos = payload.Asientos.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor);
+        var totalCreditos = payload.Asientos.Where(a => a.Naturaleza == "Credito").Sum(a => a.Valor);
+        totalDebitos.Should().Be(totalCreditos, "La partida doble exige que Débitos = Créditos");
     }
 
     [Fact]

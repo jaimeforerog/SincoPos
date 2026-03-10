@@ -28,7 +28,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     public int SucursalPPId { get; private set; }
     public int SucursalFIFOId { get; private set; }
     public int SucursalLIFOId { get; private set; }
+    /// <summary>
+    /// Sucursal con PerfilTributario="GRAN_CONTRIBUYENTE" para tests de retenciones.
+    /// Las reglas seeded matchean PerfilVendedor=REGIMEN_ORDINARIO + PerfilComprador=GRAN_CONTRIBUYENTE.
+    /// </summary>
+    public int SucursalRetencionId { get; private set; }
     public int TerceroTestId { get; private set; }
+    public int ConceptoComprasId { get; private set; }
     public int UsuarioTestId { get; private set; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -126,6 +132,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         {
             Nombre = "Suc PromedioPonderado",
             MetodoCosteo = POS.Infrastructure.Data.Entities.MetodoCosteo.PromedioPonderado,
+            CentroCosto = "CC-TEST-01",
             Activo = true
         };
         var sucFIFO = new POS.Infrastructure.Data.Entities.Sucursal
@@ -140,11 +147,22 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             MetodoCosteo = POS.Infrastructure.Data.Entities.MetodoCosteo.UEPS,
             Activo = true
         };
-        context.Sucursales.AddRange(sucPP, sucFIFO, sucLIFO);
+        var sucRetencion = new POS.Infrastructure.Data.Entities.Sucursal
+        {
+            Nombre = "Suc Retencion (Gran Contribuyente)",
+            MetodoCosteo = POS.Infrastructure.Data.Entities.MetodoCosteo.PromedioPonderado,
+            CentroCosto = "CC-RTE-01",
+            PerfilTributario = "GRAN_CONTRIBUYENTE",
+            CodigoMunicipio = "11001", // Bogotá (para ReteICA)
+            ValorUVT = 47065m,
+            Activo = true
+        };
+        context.Sucursales.AddRange(sucPP, sucFIFO, sucLIFO, sucRetencion);
         await context.SaveChangesAsync();
         SucursalPPId = sucPP.Id;
         SucursalFIFOId = sucFIFO.Id;
         SucursalLIFOId = sucLIFO.Id;
+        SucursalRetencionId = sucRetencion.Id;
 
         // Seed: Usuario admin de prueba
         var usuarioAdmin = new POS.Infrastructure.Data.Entities.Usuario
@@ -188,6 +206,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
         await context.SaveChangesAsync();
         TerceroTestId = tercero.Id;
+        ConceptoComprasId = concepto2.Id;
     }
 
     public new async Task DisposeAsync()
