@@ -34,7 +34,8 @@ public class ProductoLocalService : IProductoService
         // Concepto Retención
         p.ConceptoRetencionId,
         p.ConceptoRetencion?.Nombre,
-        p.ManejaLotes
+        p.ManejaLotes,
+        p.DiasVidaUtil
     );
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -114,6 +115,7 @@ public class ProductoLocalService : IProductoService
             UnidadMedida = dto.UnidadMedida,
             ConceptoRetencionId = dto.ConceptoRetencionId,
             ManejaLotes = dto.ManejaLotes,
+            DiasVidaUtil = dto.DiasVidaUtil,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         };
@@ -156,6 +158,7 @@ public class ProductoLocalService : IProductoService
         producto.UnidadMedida = dto.UnidadMedida;
         producto.ConceptoRetencionId = dto.ConceptoRetencionId;
         producto.ManejaLotes = dto.ManejaLotes;
+        producto.DiasVidaUtil = dto.DiasVidaUtil;
         producto.FechaModificacion = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

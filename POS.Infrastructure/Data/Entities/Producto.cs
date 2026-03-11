@@ -32,6 +32,13 @@ public class Producto
     public bool ManejaLotes { get; set; } = false;
 
     /// <summary>
+    /// Vida útil del producto en días. Si se define, al recibir un lote sin fecha de
+    /// vencimiento explícita el sistema calcula: FechaEntrada + DiasVidaUtil.
+    /// Null = sin plazo predeterminado (la fecha debe ingresarse manualmente).
+    /// </summary>
+    public int? DiasVidaUtil { get; set; }
+
+    /// <summary>
     /// Solo para bebidas azucaradas: contenido de azúcar en g/100ml.
     /// El TaxEngine consulta la tabla de tramos DIAN para calcular el impuesto.
     /// Null = no aplica.

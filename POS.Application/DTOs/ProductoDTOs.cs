@@ -12,7 +12,8 @@ public record CrearProductoDto(
     decimal? GramosAzucarPor100ml = null,
     string UnidadMedida = "94",                 // 94 = Unidad DIAN (default)
     int? ConceptoRetencionId = null,            // Concepto retención DIAN
-    bool ManejaLotes = false
+    bool ManejaLotes = false,
+    int? DiasVidaUtil = null                    // Plazo de vencimiento en días (null = sin predeterminado)
 );
 
 public record ActualizarProductoDto(
@@ -25,7 +26,8 @@ public record ActualizarProductoDto(
     decimal? GramosAzucarPor100ml = null,
     string UnidadMedida = "94",
     int? ConceptoRetencionId = null,
-    bool ManejaLotes = false
+    bool ManejaLotes = false,
+    int? DiasVidaUtil = null
 );
 
 public record ProductoDto(
@@ -49,5 +51,6 @@ public record ProductoDto(
     // ── Concepto Retención ───────────────────────────────────────────────────
     int? ConceptoRetencionId = null,
     string? ConceptoRetencionNombre = null,
-    bool ManejaLotes = false
+    bool ManejaLotes = false,
+    int? DiasVidaUtil = null
 );

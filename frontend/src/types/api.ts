@@ -23,6 +23,7 @@ export interface ProductoDTO {
   conceptoRetencionNombre?: string;
   // Lotes
   manejaLotes: boolean;
+  diasVidaUtil?: number;
 }
 
 export interface CrearProductoDTO {
@@ -38,6 +39,7 @@ export interface CrearProductoDTO {
   unidadMedida?: string;
   conceptoRetencionId?: number;
   manejaLotes?: boolean;
+  diasVidaUtil?: number;
 }
 
 export interface ActualizarProductoDTO {
@@ -51,6 +53,7 @@ export interface ActualizarProductoDTO {
   unidadMedida?: string;
   conceptoRetencionId?: number;
   manejaLotes?: boolean;
+  diasVidaUtil?: number;
 }
 
 export interface CategoriaDTO {

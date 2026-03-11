@@ -86,6 +86,9 @@ public class ProductoConfiguration : IEntityTypeConfiguration<Producto>
             .HasDefaultValue(false)
             .HasColumnName("maneja_lotes");
 
+        builder.Property(p => p.DiasVidaUtil)
+            .HasColumnName("dias_vida_util");
+
         builder.Property(p => p.ConceptoRetencionId)
             .HasColumnName("concepto_retencion_id");
 

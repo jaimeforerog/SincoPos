@@ -19,6 +19,8 @@ import {
   Box,
   IconButton,
   Tooltip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useSnackbar } from 'notistack';
@@ -78,6 +80,8 @@ export function ProductoFormDialog({
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [backendError, setBackendError] = useState<string | null>(null);
   const [conceptoRetencionId, setConceptoRetencionId] = useState<number | ''>('');
+  const [manejaLotes, setManejaLotes] = useState(false);
+  const [diasVidaUtil, setDiasVidaUtil] = useState<number | ''>('');
 
   const isEdit = !!producto;
 
@@ -139,6 +143,8 @@ export function ProductoFormDialog({
           unidadMedida: producto.unidadMedida || '94',
         });
         setConceptoRetencionId(producto.conceptoRetencionId ?? '');
+        setManejaLotes(producto.manejaLotes ?? false);
+        setDiasVidaUtil(producto.diasVidaUtil ?? '');
       } else {
         resetCrear({
           codigoBarras: '',
@@ -152,6 +158,8 @@ export function ProductoFormDialog({
         // Buscar el concepto "Compras generales" (codigoDian: 2307) para asignarlo por defecto
         const conceptoComprasDefault = conceptosRetencion.find(c => c.codigoDian === '2307');
         setConceptoRetencionId(conceptoComprasDefault ? conceptoComprasDefault.id : '');
+        setManejaLotes(false);
+        setDiasVidaUtil('');
       }
       setShowCategoriaInput(false);
       setNuevaCategoria('');
@@ -182,6 +190,8 @@ export function ProductoFormDialog({
           ...(data as ActualizarProductoFormData),
           precioVenta: 0, // Precio de venta se maneja por sucursal
           conceptoRetencionId: conceptoRetencionId || undefined,
+          manejaLotes,
+          diasVidaUtil: diasVidaUtil !== '' ? diasVidaUtil : undefined,
         };
         await productosApi.update(producto!.id, updateData);
         return null;
@@ -190,6 +200,8 @@ export function ProductoFormDialog({
           ...(data as CrearProductoFormData),
           precioVenta: 0, // Precio de venta se maneja por sucursal
           conceptoRetencionId: conceptoRetencionId || undefined,
+          manejaLotes,
+          diasVidaUtil: diasVidaUtil !== '' ? diasVidaUtil : undefined,
         };
         return await productosApi.create(createData);
       }
@@ -525,6 +537,41 @@ export function ProductoFormDialog({
                 ))}
               </Select>
             </FormControl>
+
+            {/* Manejo de Lotes */}
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={manejaLotes}
+                  onChange={(e) => { setManejaLotes(e.target.checked); if (!e.target.checked) setDiasVidaUtil(''); }}
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Box component="span" sx={{ fontWeight: 500 }}>Maneja lotes y vencimiento</Box>
+                  <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>
+                    Activa el control FEFO por número de lote y fecha de vencimiento
+                  </Box>
+                </Box>
+              }
+            />
+
+            {/* Plazo de vencimiento — solo visible cuando manejaLotes = true */}
+            {manejaLotes && (
+              <TextField
+                type="number"
+                label="Plazo de vencimiento (días)"
+                value={diasVidaUtil}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setDiasVidaUtil(isNaN(val) || val <= 0 ? '' : val);
+                }}
+                fullWidth
+                inputProps={{ min: 1 }}
+                helperText="Vida útil en días. Al recibir un lote sin fecha explícita, se calcula automáticamente."
+              />
+            )}
 
             <Alert severity="info">
               Los precios de venta se configuran en el modulo de <strong>Precios por Sucursal</strong>.
