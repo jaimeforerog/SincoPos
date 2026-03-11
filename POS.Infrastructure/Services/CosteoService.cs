@@ -23,8 +23,9 @@ public class CosteoService
     /// Registrar un lote al recibir mercancia
     /// </summary>
     public Task RegistrarLoteEntrada(Guid productoId, int sucursalId,
-        decimal cantidad, decimal costoUnitario, decimal porcentajeImpuesto, decimal montoImpuestoUnitario, 
-        string? referencia, int? terceroId)
+        decimal cantidad, decimal costoUnitario, decimal porcentajeImpuesto, decimal montoImpuestoUnitario,
+        string? referencia, int? terceroId,
+        string? numeroLote = null, DateOnly? fechaVencimiento = null, int? ordenCompraId = null)
     {
         var lote = new LoteInventario
         {
@@ -35,6 +36,9 @@ public class CosteoService
             CostoUnitario = costoUnitario,
             PorcentajeImpuesto = porcentajeImpuesto,
             MontoImpuestoUnitario = montoImpuestoUnitario,
+            NumeroLote = numeroLote,
+            FechaVencimiento = fechaVencimiento,
+            OrdenCompraId = ordenCompraId,
             Referencia = referencia,
             TerceroId = terceroId,
             FechaEntrada = DateTime.UtcNow
@@ -96,6 +100,59 @@ public class CosteoService
                 await ConsumirLotesProporcional(productoId, sucursalId, cantidad);
                 return (costo, stock.CostoPromedio);
         }
+    }
+
+    /// <summary>
+    /// FEFO (First Expired, First Out): consume el lote con fecha de vencimiento más próxima primero.
+    /// Usado para productos con ManejaLotes = true.
+    /// Retorna el costo total, costo unitario, id del primer lote consumido y su número de lote.
+    /// </summary>
+    public async Task<(decimal costoTotal, decimal costoUnitarioPromedio, int? loteId, string? numeroLote)> ConsumirLotesFEFO(
+        Guid productoId, int sucursalId, decimal cantidadAConsumir)
+    {
+        // Primero lotes con vencimiento (FEFO), luego los sin fecha por FechaEntrada (FIFO)
+        var lotesConVencimiento = await _context.LotesInventario
+            .Where(l => l.ProductoId == productoId
+                     && l.SucursalId == sucursalId
+                     && l.CantidadDisponible > 0
+                     && l.FechaVencimiento != null)
+            .OrderBy(l => l.FechaVencimiento)
+            .ThenBy(l => l.FechaEntrada)
+            .ToListAsync();
+
+        var lotesSinVencimiento = await _context.LotesInventario
+            .Where(l => l.ProductoId == productoId
+                     && l.SucursalId == sucursalId
+                     && l.CantidadDisponible > 0
+                     && l.FechaVencimiento == null)
+            .OrderBy(l => l.FechaEntrada)
+            .ToListAsync();
+
+        var lotes = lotesConVencimiento.Concat(lotesSinVencimiento).ToList();
+
+        decimal costoTotal = 0;
+        decimal cantidadRestante = cantidadAConsumir;
+        int? primerLoteId = null;
+        string? primerNumeroLote = null;
+
+        foreach (var lote in lotes)
+        {
+            if (cantidadRestante <= 0) break;
+
+            if (primerLoteId == null)
+            {
+                primerLoteId = lote.Id;
+                primerNumeroLote = lote.NumeroLote;
+            }
+
+            var cantidadDelLote = Math.Min(lote.CantidadDisponible, cantidadRestante);
+            costoTotal += cantidadDelLote * lote.CostoUnitario;
+            lote.CantidadDisponible -= cantidadDelLote;
+            cantidadRestante -= cantidadDelLote;
+        }
+
+        var costoUnitario = cantidadAConsumir > 0 ? costoTotal / cantidadAConsumir : 0;
+        return (costoTotal, costoUnitario, primerLoteId, primerNumeroLote);
     }
 
     /// <summary>

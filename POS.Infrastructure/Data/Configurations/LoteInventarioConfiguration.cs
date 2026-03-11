@@ -40,6 +40,16 @@ public class LoteInventarioConfiguration : IEntityTypeConfiguration<LoteInventar
             .HasPrecision(18, 4)
             .HasColumnName("monto_impuesto_unitario");
 
+        builder.Property(l => l.NumeroLote)
+            .HasMaxLength(100)
+            .HasColumnName("numero_lote");
+
+        builder.Property(l => l.FechaVencimiento)
+            .HasColumnName("fecha_vencimiento");
+
+        builder.Property(l => l.OrdenCompraId)
+            .HasColumnName("orden_compra_id");
+
         builder.Property(l => l.Referencia)
             .HasMaxLength(100)
             .HasColumnName("referencia");
@@ -53,6 +63,11 @@ public class LoteInventarioConfiguration : IEntityTypeConfiguration<LoteInventar
         // Indice para buscar lotes con disponibilidad (FIFO/LIFO)
         builder.HasIndex(l => new { l.ProductoId, l.SucursalId, l.FechaEntrada })
             .HasDatabaseName("ix_lotes_producto_sucursal_fecha");
+
+        // Indice para FEFO: ordenar por fecha de vencimiento
+        builder.HasIndex(l => new { l.ProductoId, l.SucursalId, l.FechaVencimiento })
+            .HasDatabaseName("ix_lotes_fefo")
+            .HasFilter("cantidad_disponible > 0 AND fecha_vencimiento IS NOT NULL");
 
         // Partial index: solo lotes con stock disponible (FIFO/LIFO query crítica)
         builder.HasIndex(l => new { l.ProductoId, l.SucursalId, l.CantidadDisponible })

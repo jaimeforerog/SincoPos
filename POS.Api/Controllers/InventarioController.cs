@@ -321,37 +321,4 @@ public class InventarioController : ControllerBase
             .ToList());
     }
 
-    /// <summary>
-    /// [DEBUG] Consultar lotes de inventario (FIFO/LIFO). Útil para diagnóstico de costeo.
-    /// </summary>
-    [HttpGet("lotes")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> ObtenerLotes(
-        [FromQuery] Guid? productoId = null,
-        [FromQuery] int? sucursalId = null)
-    {
-        var query = _context.LotesInventario.AsQueryable();
-
-        if (productoId.HasValue)
-            query = query.Where(l => l.ProductoId == productoId.Value);
-        if (sucursalId.HasValue)
-            query = query.Where(l => l.SucursalId == sucursalId.Value);
-
-        var lotes = await query
-            .OrderBy(l => l.FechaEntrada)
-            .Select(l => new
-            {
-                l.Id,
-                l.ProductoId,
-                l.SucursalId,
-                l.CantidadInicial,
-                l.CantidadDisponible,
-                l.CostoUnitario,
-                l.Referencia,
-                l.FechaEntrada
-            })
-            .ToListAsync();
-
-        return Ok(lotes);
-    }
 }

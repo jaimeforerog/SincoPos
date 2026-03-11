@@ -116,6 +116,21 @@ export function VentaConfirmDialog({ open, venta, onClose }: VentaConfirmDialogP
           Productos: {venta.detalles.length} •{' '}
           Caja: {venta.nombreCaja}
         </Typography>
+
+        {venta.detalles.some((d) => d.numeroLote) && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+              Trazabilidad de lotes:
+            </Typography>
+            {venta.detalles
+              .filter((d) => d.numeroLote)
+              .map((d) => (
+                <Typography key={d.id} variant="caption" display="block">
+                  • {d.nombreProducto} — Lote: <strong>{d.numeroLote}</strong>
+                </Typography>
+              ))}
+          </Box>
+        )}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center' }}>

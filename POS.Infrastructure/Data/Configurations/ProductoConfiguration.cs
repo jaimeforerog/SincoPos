@@ -82,6 +82,10 @@ public class ProductoConfiguration : IEntityTypeConfiguration<Producto>
             .HasForeignKey(p => p.ImpuestoId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.Property(p => p.ManejaLotes)
+            .HasDefaultValue(false)
+            .HasColumnName("maneja_lotes");
+
         builder.Property(p => p.ConceptoRetencionId)
             .HasColumnName("concepto_retencion_id");
 

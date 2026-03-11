@@ -84,7 +84,7 @@ public class ComprasController : ControllerBase
         var query = _context.OrdenesCompra
             .Include(o => o.Sucursal)
             .Include(o => o.Proveedor)
-            .Include(o => o.Detalles)
+            .Include(o => o.Detalles).ThenInclude(d => d.Producto)
             .AsQueryable();
 
         if (sucursalId.HasValue) query = query.Where(o => o.SucursalId == sucursalId.Value);
@@ -127,7 +127,7 @@ public class ComprasController : ControllerBase
         var orden = await _context.OrdenesCompra
             .Include(o => o.Sucursal)
             .Include(o => o.Proveedor)
-            .Include(o => o.Detalles)
+            .Include(o => o.Detalles).ThenInclude(d => d.Producto)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (orden == null)

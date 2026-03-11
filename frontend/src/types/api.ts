@@ -21,6 +21,8 @@ export interface ProductoDTO {
   // Concepto Retención DIAN
   conceptoRetencionId?: number;
   conceptoRetencionNombre?: string;
+  // Lotes
+  manejaLotes: boolean;
 }
 
 export interface CrearProductoDTO {
@@ -35,6 +37,7 @@ export interface CrearProductoDTO {
   gramosAzucarPor100ml?: number;
   unidadMedida?: string;
   conceptoRetencionId?: number;
+  manejaLotes?: boolean;
 }
 
 export interface ActualizarProductoDTO {
@@ -47,6 +50,7 @@ export interface ActualizarProductoDTO {
   gramosAzucarPor100ml?: number;
   unidadMedida?: string;
   conceptoRetencionId?: number;
+  manejaLotes?: boolean;
 }
 
 export interface CategoriaDTO {
@@ -177,6 +181,7 @@ export interface LineaVentaDTO {
   id: number;
   productoId: string;
   nombreProducto: string;
+  numeroLote?: string;
   cantidad: number;
   precioUnitario: number;
   costoUnitario: number;
@@ -276,6 +281,7 @@ export interface DetalleOrdenCompraDTO {
   subtotal: number;
   nombreImpuesto?: string;
   observaciones?: string;
+  manejaLotes: boolean;
 }
 
 export interface CrearOrdenCompraDTO {
@@ -303,6 +309,8 @@ export interface LineaRecepcionOrdenCompraDTO {
   productoId: string;
   cantidadRecibida: number;
   observaciones?: string;
+  numeroLote?: string;
+  fechaVencimiento?: string; // 'YYYY-MM-DD'
 }
 
 export interface AprobarOrdenCompraDTO {
@@ -804,6 +812,43 @@ export interface DevolucionProveedorDTO {
   referencia?: string;
   observaciones?: string;
 }
+// ─── Lotes ─────────────────────────────────────────────
+
+export interface LoteDTO {
+  id: number;
+  productoId: string;
+  nombreProducto: string;
+  codigoBarras?: string;
+  sucursalId: number;
+  nombreSucursal: string;
+  numeroLote?: string;
+  fechaVencimiento?: string; // 'YYYY-MM-DD'
+  ordenCompraId?: number;
+  cantidadInicial: number;
+  cantidadDisponible: number;
+  costoUnitario: number;
+  referencia?: string;
+  fechaEntrada: string;
+}
+
+export interface AlertaLoteDTO {
+  loteId: number;
+  productoId: string;
+  nombreProducto: string;
+  codigoBarras?: string;
+  sucursalId: number;
+  nombreSucursal: string;
+  numeroLote?: string;
+  fechaVencimiento: string; // 'YYYY-MM-DD'
+  diasParaVencer: number;
+  cantidadDisponible: number;
+}
+
+export interface ActualizarLoteDTO {
+  numeroLote?: string;
+  fechaVencimiento?: string; // 'YYYY-MM-DD'
+}
+
 // ─── Traslados ─────────────────────────────────────────
 
 export interface TrasladoDTO {

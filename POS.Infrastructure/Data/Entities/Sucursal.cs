@@ -31,6 +31,12 @@ public class Sucursal : EntidadAuditable
     /// Se actualiza cada año según DIAN.
     /// </summary>
     public decimal ValorUVT { get; set; } = 47065m; // 2026
+
+    /// <summary>
+    /// Días de anticipación para alertar sobre lotes próximos a vencer.
+    /// 0 = alertas deshabilitadas.
+    /// </summary>
+    public int DiasAlertaVencimientoLotes { get; set; } = 30;
 }
 
 public enum MetodoCosteo

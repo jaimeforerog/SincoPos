@@ -69,6 +69,43 @@ public record AlertaStockDto(
     decimal StockMinimo
 );
 
+// ─── Lotes ─────────────────────────────────────────────
+
+public record LoteDto(
+    int Id,
+    Guid ProductoId,
+    string NombreProducto,
+    string? CodigoBarras,
+    int SucursalId,
+    string NombreSucursal,
+    string? NumeroLote,
+    DateOnly? FechaVencimiento,
+    int? OrdenCompraId,
+    decimal CantidadInicial,
+    decimal CantidadDisponible,
+    decimal CostoUnitario,
+    string? Referencia,
+    DateTime FechaEntrada
+);
+
+public record AlertaLoteDto(
+    int LoteId,
+    Guid ProductoId,
+    string NombreProducto,
+    string? CodigoBarras,
+    int SucursalId,
+    string NombreSucursal,
+    string? NumeroLote,
+    DateOnly FechaVencimiento,
+    int DiasParaVencer,
+    decimal CantidadDisponible
+);
+
+public record ActualizarLoteDto(
+    string? NumeroLote,
+    DateOnly? FechaVencimiento
+);
+
 // ─── Traslados ─────────────────────────────────────────
 
 // REQUEST - Crear traslado
@@ -165,7 +202,9 @@ public record RecibirOrdenCompraDto(
 public record LineaRecepcionOrdenCompraDto(
     Guid ProductoId,
     decimal CantidadRecibida,
-    string? Observaciones
+    string? Observaciones,
+    string? NumeroLote = null,
+    DateOnly? FechaVencimiento = null
 );
 
 // REQUEST - Aprobar orden de compra
@@ -224,5 +263,6 @@ public record DetalleOrdenCompraDto(
     decimal MontoImpuesto,
     decimal Subtotal,
     string? NombreImpuesto,
-    string? Observaciones
+    string? Observaciones,
+    bool ManejaLotes = false
 );

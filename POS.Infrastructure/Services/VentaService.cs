@@ -187,9 +187,25 @@ public class VentaService : IVentaService
                 linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta, null);
             pendingMartenEvents.Add((streamId, eventoVenta));
 
-            // Consumir stock con metodo de costeo
-            var (costoTotal, costoUnitario) = await _costeoService.ConsumirStock(
-                linea.ProductoId, dto.SucursalId, linea.Cantidad, sucursal.MetodoCosteo);
+            // Consumir stock con metodo de costeo (FEFO si el producto maneja lotes)
+            decimal costoUnitario;
+            int? loteId = null;
+            string? numeroLoteSnapshot = null;
+
+            if (producto.ManejaLotes)
+            {
+                var (ct, cu, lid, nlote) = await _costeoService.ConsumirLotesFEFO(
+                    linea.ProductoId, dto.SucursalId, linea.Cantidad);
+                costoUnitario = cu;
+                loteId = lid;
+                numeroLoteSnapshot = nlote;
+            }
+            else
+            {
+                var (_, cu) = await _costeoService.ConsumirStock(
+                    linea.ProductoId, dto.SucursalId, linea.Cantidad, sucursal.MetodoCosteo);
+                costoUnitario = cu;
+            }
 
             // Actualizar stock en EF Core
             stock.Cantidad -= linea.Cantidad;
@@ -202,6 +218,8 @@ public class VentaService : IVentaService
             {
                 ProductoId = linea.ProductoId,
                 NombreProducto = producto.Nombre,
+                LoteInventarioId = loteId,
+                NumeroLote = numeroLoteSnapshot,
                 Cantidad = linea.Cantidad,
                 PrecioUnitario = precioUnitario,
                 CostoUnitario = costoUnitario,
@@ -752,7 +770,7 @@ public class VentaService : IVentaService
                     ? Math.Round((d.PrecioUnitario - d.CostoUnitario) / d.PrecioUnitario * 100, 2)
                     : 0;
                 return new DetalleVentaDto(
-                    d.Id, d.ProductoId, d.NombreProducto,
+                    d.Id, d.ProductoId, d.NombreProducto, d.NumeroLote,
                     d.Cantidad, d.PrecioUnitario, d.CostoUnitario,
                     d.Descuento, d.PorcentajeImpuesto, d.MontoImpuesto,
                     d.Subtotal, margen);

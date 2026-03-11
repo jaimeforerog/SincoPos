@@ -46,6 +46,7 @@ public record DetalleVentaDto(
     int Id,
     Guid ProductoId,
     string NombreProducto,
+    string? NumeroLote,
     decimal Cantidad,
     decimal PrecioUnitario,
     decimal CostoUnitario,

@@ -26,6 +26,12 @@ public class Producto
     public bool EsAlimentoUltraprocesado { get; set; } = false;
 
     /// <summary>
+    /// Indica que este producto requiere registro de número de lote y fecha de vencimiento
+    /// al recibir mercancía. La venta usa lógica FEFO (primero en vencer, primero en salir).
+    /// </summary>
+    public bool ManejaLotes { get; set; } = false;
+
+    /// <summary>
     /// Solo para bebidas azucaradas: contenido de azúcar en g/100ml.
     /// El TaxEngine consulta la tabla de tramos DIAN para calcular el impuesto.
     /// Null = no aplica.

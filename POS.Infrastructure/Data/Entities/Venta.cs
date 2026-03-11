@@ -43,6 +43,8 @@ public class DetalleVenta
     public int VentaId { get; set; }
     public Guid ProductoId { get; set; }
     public string NombreProducto { get; set; } = string.Empty; // Snapshot al momento
+    public int? LoteInventarioId { get; set; }     // Lote consumido (si aplica)
+    public string? NumeroLote { get; set; }        // Snapshot del lote para trazabilidad
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }     // Precio al que se vendio
     public decimal CostoUnitario { get; set; }      // Costo al momento (para margen)

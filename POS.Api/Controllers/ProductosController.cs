@@ -13,13 +13,16 @@ namespace POS.Api.Controllers;
 public class ProductosController : ControllerBase
 {
     private readonly IProductoService _productoService;
+    private readonly ILoteService _loteService;
     private readonly ILogger<ProductosController> _logger;
 
     public ProductosController(
         IProductoService productoService,
+        ILoteService loteService,
         ILogger<ProductosController> logger)
     {
         _productoService = productoService;
+        _loteService = loteService;
         _logger = logger;
     }
 
@@ -113,6 +116,30 @@ public class ProductosController : ControllerBase
 
         _logger.LogInformation("Producto {Id} actualizado.", id);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Obtener los lotes de un producto en una sucursal específica.
+    /// Requiere que el producto tenga ManejaLotes = true.
+    /// </summary>
+    /// <param name="id">Id del producto.</param>
+    /// <param name="sucursalId">Id de la sucursal.</param>
+    /// <param name="soloVigentes">Si true (default), excluye lotes agotados.</param>
+    [HttpGet("{id:guid}/lotes")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(List<LoteDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<LoteDto>>> ObtenerLotesProducto(
+        Guid id,
+        [FromQuery] int sucursalId,
+        [FromQuery] bool soloVigentes = true)
+    {
+        var producto = await _productoService.ObtenerPorIdAsync(id);
+        if (producto == null)
+            return NotFound(new { error = $"Producto {id} no encontrado." });
+
+        var lotes = await _loteService.ObtenerLotesAsync(id, sucursalId, soloVigentes);
+        return Ok(lotes);
     }
 
     /// <summary>

@@ -20,6 +20,7 @@ import {
   Paper,
   Typography,
   Box,
+  Chip,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
@@ -31,6 +32,8 @@ const lineaRecepcionSchema = z.object({
   productoId: z.string(),
   cantidadRecibida: z.number().min(0, 'Cantidad debe ser mayor o igual a 0'),
   observaciones: z.string().optional(),
+  numeroLote: z.string().optional(),
+  fechaVencimiento: z.string().optional(),
 });
 
 const recibirSchema = z.object({
@@ -63,28 +66,22 @@ export function RecibirOrdenDialog({
     formState: { errors },
   } = useForm<RecibirFormData>({
     resolver: zodResolver(recibirSchema),
-    defaultValues: {
-      lineas: [],
-    },
+    defaultValues: { lineas: [] },
   });
 
-  const { fields } = useFieldArray({
-    control,
-    name: 'lineas',
-  });
+  const { fields } = useFieldArray({ control, name: 'lineas' });
 
-  // Inicializar líneas con las cantidades pendientes
   useEffect(() => {
     if (open) {
-      const lineasIniciales = orden.detalles.map((detalle) => {
-        const cantidadPendiente = detalle.cantidadSolicitada - detalle.cantidadRecibida;
-        return {
-          productoId: detalle.productoId,
-          cantidadRecibida: cantidadPendiente, // Pre-rellenar con cantidad pendiente
+      reset({
+        lineas: orden.detalles.map((d) => ({
+          productoId: d.productoId,
+          cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
           observaciones: '',
-        };
+          numeroLote: '',
+          fechaVencimiento: '',
+        })),
       });
-      reset({ lineas: lineasIniciales });
     }
   }, [open, orden, reset]);
 
@@ -100,21 +97,16 @@ export function RecibirOrdenDialog({
     },
     onError: (error: any) => {
       let mensaje = 'Error al recibir la mercancía';
-
       if (error.response) {
         const { status, data } = error.response;
         if (status === 400) {
           if (data.errors) {
-            // Errores de validación campo por campo
             const errores = Object.entries(data.errors)
               .map(([campo, mensajes]: [string, any]) => `${campo}: ${Array.isArray(mensajes) ? mensajes.join(', ') : mensajes}`)
               .join('; ');
             mensaje = `Errores de validación: ${errores}`;
-          } else if (data.error) {
-            // Mensaje específico del backend (ej: cantidad excede pendiente)
-            mensaje = data.error;
           } else {
-            mensaje = 'Datos de recepción inválidos. Verifica las cantidades.';
+            mensaje = data.error || 'Datos de recepción inválidos. Verifica las cantidades.';
           }
         } else if (status === 403) {
           mensaje = 'No tienes permisos para recibir mercancía. Se requiere rol Supervisor.';
@@ -126,14 +118,20 @@ export function RecibirOrdenDialog({
       } else if (error.request) {
         mensaje = 'No se pudo conectar con el servidor.';
       }
-
       enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });
 
   const onSubmit = (data: RecibirFormData) => {
-    // Filtrar solo las líneas con cantidad > 0
-    const lineasRecibidas = data.lineas.filter((l) => l.cantidadRecibida > 0);
+    const lineasRecibidas = data.lineas
+      .filter((l) => l.cantidadRecibida > 0)
+      .map((l) => ({
+        productoId: l.productoId,
+        cantidadRecibida: l.cantidadRecibida,
+        observaciones: l.observaciones || undefined,
+        numeroLote: l.numeroLote || undefined,
+        fechaVencimiento: l.fechaVencimiento || undefined,
+      }));
 
     if (lineasRecibidas.length === 0) {
       enqueueSnackbar('Debe recibir al menos un producto', { variant: 'warning' });
@@ -143,95 +141,125 @@ export function RecibirOrdenDialog({
     mutation.mutate({ lineas: lineasRecibidas });
   };
 
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
+  const handleClose = () => { reset(); onClose(); };
+
+  const tieneLotes = orden.detalles.some((d) => d.manejaLotes);
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>Recibir Mercancía - {orden.numeroOrden}</DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+      <DialogTitle>Recibir Mercancía — {orden.numeroOrden}</DialogTitle>
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Ingrese las cantidades recibidas para esta orden de <strong>{orden.formaPago}</strong> {orden.formaPago === 'Credito' ? `(${orden.diasPlazo} días)` : ''}.
+            Ingrese las cantidades recibidas para esta orden de <strong>{orden.formaPago}</strong>
+            {orden.formaPago === 'Credito' ? ` (${orden.diasPlazo} días)` : ''}.
+            {tieneLotes && (
+              <> Los productos marcados con <Chip label="Lote" size="small" color="warning" sx={{ mx: 0.5 }} /> requieren número de lote y fecha de vencimiento.</>
+            )}
           </Alert>
 
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell width="35%">Producto</TableCell>
+                  <TableCell width="25%">Producto</TableCell>
                   <TableCell align="center">Solicitada</TableCell>
-                  <TableCell align="center">Ya Recibida</TableCell>
+                  <TableCell align="center">Recibida</TableCell>
                   <TableCell align="center">Pendiente</TableCell>
-                  <TableCell align="center">Recibir Ahora</TableCell>
-                  <TableCell width="25%">Observaciones</TableCell>
+                  <TableCell align="center" width="110px">Recibir Ahora</TableCell>
+                  {tieneLotes && <TableCell width="130px">Nº Lote</TableCell>}
+                  {tieneLotes && <TableCell width="140px">Vencimiento</TableCell>}
+                  <TableCell>Observaciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {fields.map((field, index) => {
                   const detalle = orden.detalles[index];
-                  const cantidadPendiente = detalle.cantidadSolicitada - detalle.cantidadRecibida;
+                  const pendiente = detalle.cantidadSolicitada - detalle.cantidadRecibida;
 
                   return (
                     <TableRow key={field.id}>
                       <TableCell>
-                        <Typography variant="body2">{detalle.nombreProducto}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="body2">{detalle.nombreProducto}</Typography>
+                          {detalle.manejaLotes && (
+                            <Chip label="Lote" size="small" color="warning" variant="outlined" />
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell align="center">{detalle.cantidadSolicitada}</TableCell>
                       <TableCell align="center">
-                        <Typography
-                          variant="body2"
-                          color={detalle.cantidadRecibida > 0 ? 'success.main' : 'text.secondary'}
-                        >
+                        <Typography variant="body2" color={detalle.cantidadRecibida > 0 ? 'success.main' : 'text.secondary'}>
                           {detalle.cantidadRecibida}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography
-                          variant="body2"
-                          fontWeight="medium"
-                          color={cantidadPendiente > 0 ? 'warning.main' : 'success.main'}
-                        >
-                          {cantidadPendiente}
+                        <Typography variant="body2" fontWeight="medium" color={pendiente > 0 ? 'warning.main' : 'success.main'}>
+                          {pendiente}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
                         <Controller
                           name={`lineas.${index}.cantidadRecibida`}
                           control={control}
-                          render={({ field: { value, onChange, ...field } }) => (
+                          render={({ field: { value, onChange, ...f } }) => (
                             <TextField
-                              {...field}
+                              {...f}
                               type="number"
                               value={value}
                               onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
                               error={!!(errors.lineas?.[index] as LineaRecepcionError | undefined)?.cantidadRecibida}
                               helperText={(errors.lineas?.[index] as LineaRecepcionError | undefined)?.cantidadRecibida?.message}
                               size="small"
-                              sx={{ width: 100 }}
-                              inputProps={{
-                                min: 0,
-                                max: cantidadPendiente,
-                                step: 1,
-                              }}
+                              sx={{ width: 90 }}
+                              inputProps={{ min: 0, max: pendiente, step: 1 }}
                             />
                           )}
                         />
                       </TableCell>
+                      {tieneLotes && (
+                        <TableCell>
+                          <Controller
+                            name={`lineas.${index}.numeroLote`}
+                            control={control}
+                            render={({ field }) => (
+                              <TextField
+                                {...field}
+                                size="small"
+                                fullWidth
+                                placeholder={detalle.manejaLotes ? 'Requerido' : '—'}
+                                disabled={!detalle.manejaLotes}
+                              />
+                            )}
+                          />
+                        </TableCell>
+                      )}
+                      {tieneLotes && (
+                        <TableCell>
+                          <Controller
+                            name={`lineas.${index}.fechaVencimiento`}
+                            control={control}
+                            render={({ field }) => (
+                              <TextField
+                                {...field}
+                                type="date"
+                                size="small"
+                                fullWidth
+                                disabled={!detalle.manejaLotes}
+                                InputLabelProps={{ shrink: true }}
+                                inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                              />
+                            )}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Controller
                           name={`lineas.${index}.observaciones`}
                           control={control}
                           render={({ field }) => (
-                            <TextField
-                              {...field}
-                              size="small"
-                              fullWidth
-                              placeholder="Opcional"
-                            />
+                            <TextField {...field} size="small" fullWidth placeholder="Opcional" />
                           )}
                         />
                       </TableCell>
@@ -244,29 +272,18 @@ export function RecibirOrdenDialog({
 
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Alert severity="success">
-              <Typography variant="body2">
-                <strong>Resumen:</strong> Se recibirán{' '}
-                {lineas.reduce((sum, l) => sum + (l.cantidadRecibida || 0), 0)} unidades en total
-              </Typography>
+              <strong>Resumen:</strong> Se recibirán{' '}
+              {lineas.reduce((sum, l) => sum + (l.cantidadRecibida || 0), 0)} unidades en total
             </Alert>
-            <Alert severity="info" color="info" variant="outlined">
-              <Typography variant="body2">
-                <strong>Integración ERP Sinco:</strong> Al confirmar esta recepción, el sistema encolará automáticamente el respectivo comprobante y actualizará el estado en la tabla de órdenes de compra al procesarlo.
-              </Typography>
+            <Alert severity="info" variant="outlined">
+              <strong>Integración ERP Sinco:</strong> Al confirmar esta recepción, el sistema encolará automáticamente el respectivo comprobante y actualizará el estado en la tabla de órdenes de compra al procesarlo.
             </Alert>
           </Box>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleClose} disabled={mutation.isPending}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={mutation.isPending}
-          >
+          <Button onClick={handleClose} disabled={mutation.isPending}>Cancelar</Button>
+          <Button type="submit" variant="contained" color="primary" disabled={mutation.isPending}>
             {mutation.isPending ? 'Recibiendo...' : 'Recibir Mercancía'}
           </Button>
         </DialogActions>

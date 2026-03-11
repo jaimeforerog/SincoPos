@@ -79,6 +79,13 @@ public class DetalleVentaConfiguration : IEntityTypeConfiguration<DetalleVenta>
             .HasMaxLength(200)
             .HasColumnName("nombre_producto");
 
+        builder.Property(d => d.LoteInventarioId)
+            .HasColumnName("lote_inventario_id");
+
+        builder.Property(d => d.NumeroLote)
+            .HasMaxLength(100)
+            .HasColumnName("numero_lote");
+
         builder.Property(d => d.Cantidad).HasPrecision(18, 2).HasColumnName("cantidad");
         builder.Property(d => d.PrecioUnitario).HasPrecision(18, 2).HasColumnName("precio_unitario");
         builder.Property(d => d.CostoUnitario).HasPrecision(18, 2).HasColumnName("costo_unitario");

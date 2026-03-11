@@ -47,5 +47,9 @@ public class SucursalConfiguration : IEntityTypeConfiguration<Sucursal>
 
         builder.Property(s => s.FechaCreacion)
             .HasColumnName("fecha_creacion");
+
+        builder.Property(s => s.DiasAlertaVencimientoLotes)
+            .HasDefaultValue(30)
+            .HasColumnName("dias_alerta_vencimiento_lotes");
     }
 }

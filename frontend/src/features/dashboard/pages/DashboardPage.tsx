@@ -7,10 +7,12 @@ import PeopleIcon from '@mui/icons-material/People';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { reportesApi } from '@/api/reportes';
+import { lotesApi } from '@/api/lotes';
 import { MetricCard } from '../components/MetricCard';
 import { SalesChart } from '../components/SalesChart';
 import { TopProductsTable } from '../components/TopProductsTable';
 import { StockAlertsTable } from '../components/StockAlertsTable';
+import { AlertasVencimientoTable } from '../components/AlertasVencimientoTable';
 import { useAuth } from '@/hooks/useAuth';
 
 const formatCurrency = (value: number) => {
@@ -29,7 +31,17 @@ export function DashboardPage() {
   const { data: dashboard, isLoading, error } = useQuery({
     queryKey: ['dashboard', activeSucursalId],
     queryFn: () => reportesApi.dashboard({ sucursalId: activeSucursalId }),
-    refetchInterval: 60000, // Refrescar cada 60 segundos
+    refetchInterval: 60000,
+  });
+
+  const { data: alertasLotes = [] } = useQuery({
+    queryKey: ['lotes', 'proximos-vencer', activeSucursalId],
+    queryFn: () =>
+      activeSucursalId
+        ? lotesApi.proximosAVencer(activeSucursalId)
+        : lotesApi.obtenerAlertas(),
+    enabled: true,
+    refetchInterval: 300000, // 5 minutos
   });
 
   if (isLoading) {
@@ -141,16 +153,19 @@ export function DashboardPage() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            lg: '58.33% 41.67%',
-          },
+          gridTemplateColumns: { xs: '1fr', lg: '58.33% 41.67%' },
           gap: 3,
+          mb: 3,
         }}
       >
         <TopProductsTable products={dashboard.topProductos} />
         <StockAlertsTable alerts={dashboard.alertasStock} />
       </Box>
+
+      {/* Alertas de Vencimiento de Lotes */}
+      {alertasLotes.length > 0 && (
+        <AlertasVencimientoTable alertas={alertasLotes} />
+      )}
     </Container>
   );
 }

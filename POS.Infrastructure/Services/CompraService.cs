@@ -424,7 +424,7 @@ public class CompraService : ICompraService
                 pendingMartenEvents.Add((streamId, eventoEntrada, false));
             }
 
-            // 2. Registrar lote de entrada
+            // 2. Registrar lote de entrada (con número de lote y vencimiento si fue informado)
             await _costeoService.RegistrarLoteEntrada(
                 detalle.ProductoId,
                 orden.SucursalId,
@@ -433,7 +433,10 @@ public class CompraService : ICompraService
                 detalle.PorcentajeImpuesto,
                 detalle.MontoImpuesto,
                 orden.NumeroOrden,
-                orden.ProveedorId);
+                orden.ProveedorId,
+                numeroLote: lineaRecibida.NumeroLote,
+                fechaVencimiento: lineaRecibida.FechaVencimiento,
+                ordenCompraId: orden.Id);
 
             // 3. Actualizar stock desde el diccionario pre-cargado (crear si no existe)
             stocksDict.TryGetValue(detalle.ProductoId, out var stock);
@@ -754,7 +757,8 @@ public class CompraService : ICompraService
                 MontoImpuesto: d.MontoImpuesto,
                 Subtotal: d.Subtotal,
                 NombreImpuesto: d.NombreImpuesto,
-                Observaciones: d.Observaciones
+                Observaciones: d.Observaciones,
+                ManejaLotes: d.Producto?.ManejaLotes ?? false
             )).ToList()
         );
 }

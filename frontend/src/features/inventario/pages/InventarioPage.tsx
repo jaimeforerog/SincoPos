@@ -36,7 +36,9 @@ import HistoryIcon from '@mui/icons-material/History';
 import { EntradaInventarioDialog } from '../components/EntradaInventarioDialog';
 import { AjusteInventarioDialog } from '../components/AjusteInventarioDialog';
 import { DevolucionProveedorDialog } from '../components/DevolucionProveedorDialog';
+import { LotesTab } from '../components/LotesTab';
 import { useAuth } from '@/hooks/useAuth';
+import BarcodeIcon from '@mui/icons-material/QrCode2';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -231,6 +233,7 @@ export function InventarioPage() {
               iconPosition="start"
             />
             <Tab label="Movimientos" icon={<HistoryIcon />} iconPosition="start" />
+            <Tab label="Lotes" icon={<BarcodeIcon />} iconPosition="start" />
           </Tabs>
         </Box>
 
@@ -408,6 +411,11 @@ export function InventarioPage() {
               </Table>
             </TableContainer>
           )}
+        </TabPanel>
+
+        {/* Tab 4: Lotes */}
+        <TabPanel value={tabValue} index={3}>
+          <LotesTab sucursales={sucursales} activeSucursalId={activeSucursalId || undefined} />
         </TabPanel>
       </Card>
 

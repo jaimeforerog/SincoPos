@@ -46,6 +46,7 @@ builder.Services.AddScoped<POS.Application.Services.IVentaService, POS.Infrastru
 builder.Services.AddScoped<POS.Application.Services.ICompraService, POS.Infrastructure.Services.CompraService>();
 builder.Services.AddScoped<POS.Application.Services.ITrasladoService, POS.Infrastructure.Services.TrasladoService>();
 builder.Services.AddScoped<POS.Application.Services.IInventarioService, POS.Infrastructure.Services.InventarioService>();
+builder.Services.AddScoped<POS.Application.Services.ILoteService, POS.Infrastructure.Services.LoteService>();
 builder.Services.AddScoped<POS.Application.Services.IReportesService, POS.Infrastructure.Services.ReportesService>();
 
 // GeoService (Países y Ciudades)
@@ -150,6 +151,7 @@ else
 }
 
 builder.Services.AddHostedService<POS.Infrastructure.Services.Erp.ErpSyncBackgroundService>();
+builder.Services.AddHostedService<POS.Infrastructure.Services.AlertaVencimientoBackgroundService>();
 
 // Marten Event Store (PostgreSQL - schema events)
 builder.Services.AddMartenStore(

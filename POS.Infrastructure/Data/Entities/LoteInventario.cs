@@ -13,7 +13,10 @@ public class LoteInventario : EntidadAuditable
     public decimal CostoUnitario { get; set; }
     public decimal PorcentajeImpuesto { get; set; }       // Ej 0.19
     public decimal MontoImpuestoUnitario { get; set; }    // IVA pagado por unidad
-    public string? Referencia { get; set; }       // # factura de compra
+    public string? NumeroLote { get; set; }        // Número de lote del proveedor
+    public DateOnly? FechaVencimiento { get; set; }
+    public int? OrdenCompraId { get; set; }        // Origen del lote
+    public string? Referencia { get; set; }        // # factura de compra
     public int? TerceroId { get; set; }            // Proveedor
     public DateTime FechaEntrada { get; set; } = DateTime.UtcNow;
 

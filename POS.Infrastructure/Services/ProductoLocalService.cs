@@ -33,7 +33,8 @@ public class ProductoLocalService : IProductoService
         p.UnidadMedida,
         // Concepto Retención
         p.ConceptoRetencionId,
-        p.ConceptoRetencion?.Nombre
+        p.ConceptoRetencion?.Nombre,
+        p.ManejaLotes
     );
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -112,6 +113,7 @@ public class ProductoLocalService : IProductoService
             GramosAzucarPor100ml = dto.GramosAzucarPor100ml,
             UnidadMedida = dto.UnidadMedida,
             ConceptoRetencionId = dto.ConceptoRetencionId,
+            ManejaLotes = dto.ManejaLotes,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         };
@@ -153,6 +155,7 @@ public class ProductoLocalService : IProductoService
         producto.GramosAzucarPor100ml = dto.GramosAzucarPor100ml;
         producto.UnidadMedida = dto.UnidadMedida;
         producto.ConceptoRetencionId = dto.ConceptoRetencionId;
+        producto.ManejaLotes = dto.ManejaLotes;
         producto.FechaModificacion = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
