@@ -114,24 +114,27 @@ public class ReportesService : IReportesService
 
         var stock = await stockQuery.ToListAsync();
 
-        // Cargar precios por sucursal en batch para los productos del resultado
+        // Cargar precios por sucursal en batch (GroupBy para tolerar duplicados en DB)
         var productoIds = stock.Select(s => s.ProductoId).Distinct().ToList();
-        var preciosSucursal = await _context.PreciosSucursal
+        var preciosDict = (await _context.PreciosSucursal
             .Where(ps => productoIds.Contains(ps.ProductoId))
-            .ToListAsync();
-        var preciosDict = preciosSucursal
-            .ToDictionary(ps => (ps.ProductoId, ps.SucursalId), ps => ps.PrecioVenta);
+            .ToListAsync())
+            .GroupBy(ps => (ps.ProductoId, ps.SucursalId))
+            .ToDictionary(g => g.Key, g => g.Max(ps => ps.PrecioVenta));
 
         var productos = stock.Select(s =>
         {
-            // Cascada: PrecioSucursal → Producto.PrecioVenta → Costo × MargenCategoria
+            // Cascada: PrecioSucursal → Producto.PrecioVenta → PrecioCosto × (1 + Margen)
             decimal precioVenta;
             if (preciosDict.TryGetValue((s.ProductoId, s.SucursalId), out var psSucursal) && psSucursal > 0)
                 precioVenta = psSucursal;
             else if (s.Producto.PrecioVenta > 0)
                 precioVenta = s.Producto.PrecioVenta;
             else
-                precioVenta = s.CostoPromedio * (1 + (s.Producto.Categoria?.MargenGanancia ?? 0.30m));
+            {
+                var costo = s.CostoPromedio > 0 ? s.CostoPromedio : s.Producto.PrecioCosto;
+                precioVenta = Math.Round(costo * (1 + (s.Producto.Categoria?.MargenGanancia ?? 0m)), 2);
+            }
 
             var costoTotal = s.Cantidad * s.CostoPromedio;
             var valorVenta = s.Cantidad * precioVenta;
