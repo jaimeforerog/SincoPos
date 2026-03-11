@@ -324,7 +324,7 @@ export function OrdenCompraFormDialog({
                     // Si cambia a contado, reiniciar días
                     if (e.target.value === 'Contado') {
                       control._defaultValues.diasPlazo = 0; // Para no romper reset
-                      reset({ ...watch(), formaPago: 'Contado' as 'Contado', diasPlazo: 0 });
+                      reset({ ...watch(), formaPago: 'Contado' as const, diasPlazo: 0 });
                     }
                   }}
                   error={!!errors.formaPago}
@@ -353,7 +353,7 @@ export function OrdenCompraFormDialog({
                       onChange(newDias);
                       // Si ponen días > 0, cambiar automáticamente a Crédito
                       if (newDias > 0 && watch('formaPago') === 'Contado') {
-                        reset({ ...watch(), diasPlazo: newDias, formaPago: 'Credito' as 'Credito' });
+                        reset({ ...watch(), diasPlazo: newDias, formaPago: 'Credito' as const });
                       }
                     }}
                     error={!!errors.diasPlazo}
