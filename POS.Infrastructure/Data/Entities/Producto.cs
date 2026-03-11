@@ -1,6 +1,8 @@
+using POS.Domain;
+
 namespace POS.Infrastructure.Data.Entities;
 
-public class Producto
+public class Producto : ISoftDelete
 {
     public Guid Id { get; set; }  // Mismo Guid que el StreamId de Marten
     public string CodigoBarras { get; set; } = string.Empty;
@@ -11,6 +13,7 @@ public class Producto
     public decimal PrecioVenta { get; set; }
     public decimal PrecioCosto { get; set; }
     public bool Activo { get; set; } = true;
+    public DateTime? FechaDesactivacion { get; set; }
 
     // ── Impuestos Saludables (Ley 2277/2022) ──────────────────────────────────
     /// <summary>

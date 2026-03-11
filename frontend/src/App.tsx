@@ -13,12 +13,12 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { theme } from './theme/theme';
 
-// Rutas críticas — carga inmediata
-import { DashboardPage } from './features/dashboard/pages/DashboardPage';
-import { POSPage } from './features/pos/pages/POSPage';
-import { VentasPage } from './features/ventas/pages/VentasPage';
-import { CajasPage } from './features/cajas/pages/CajasPage';
-import { InventarioPage } from './features/inventario/pages';
+// Rutas con mayor frecuencia de uso — carga diferida con prefetch inmediato
+const DashboardPage = lazy(() => import('./features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const POSPage = lazy(() => import('./features/pos/pages/POSPage').then(m => ({ default: m.POSPage })));
+const VentasPage = lazy(() => import('./features/ventas/pages/VentasPage').then(m => ({ default: m.VentasPage })));
+const CajasPage = lazy(() => import('./features/cajas/pages/CajasPage').then(m => ({ default: m.CajasPage })));
+const InventarioPage = lazy(() => import('./features/inventario/pages').then(m => ({ default: m.InventarioPage })));
 
 // Rutas secundarias — carga diferida
 const ReporteVentasPage = lazy(() => import('./features/reportes/pages').then(m => ({ default: m.ReporteVentasPage })));

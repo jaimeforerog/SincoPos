@@ -44,6 +44,8 @@ builder.Services.AddScoped<POS.Infrastructure.Services.MigracionLogService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.ITaxEngine, POS.Infrastructure.Services.TaxEngine>();
 builder.Services.AddScoped<POS.Application.Services.IVentaService, POS.Infrastructure.Services.VentaService>();
 builder.Services.AddScoped<POS.Application.Services.ICompraService, POS.Infrastructure.Services.CompraService>();
+builder.Services.AddScoped<POS.Infrastructure.Services.IVentaCosteoService, POS.Infrastructure.Services.VentaCosteoService>();
+builder.Services.AddScoped<POS.Infrastructure.Services.ICompraErpService, POS.Infrastructure.Services.CompraErpService>();
 builder.Services.AddScoped<POS.Application.Services.ITrasladoService, POS.Infrastructure.Services.TrasladoService>();
 builder.Services.AddScoped<POS.Application.Services.IInventarioService, POS.Infrastructure.Services.InventarioService>();
 builder.Services.AddScoped<POS.Application.Services.ILoteService, POS.Infrastructure.Services.LoteService>();
@@ -210,8 +212,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = false,
-        ValidateAudience = false, // Temporarily disabled to diagnose 401
+        ValidateIssuer = authConfig.GetValue<bool>("ValidateIssuer"),
+        ValidateAudience = authConfig.GetValue<bool>("ValidateAudience"),
         ValidateLifetime = authConfig.GetValue<bool>("ValidateLifetime"),
         ValidateIssuerSigningKey = true,
         ClockSkew = TimeSpan.FromMinutes(5),

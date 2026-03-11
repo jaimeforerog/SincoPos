@@ -112,6 +112,20 @@ public record LineaDevolucionDto(
     decimal Cantidad
 );
 
+/// <summary>
+/// DTO para el endpoint POST /Ventas/devoluciones. Usa detalleVentaId (int) en lugar de productoId.
+/// </summary>
+public record CrearDevolucionDto(
+    int VentaId,
+    string Motivo,
+    List<LineaDevolucionPorDetalleDto> Lineas
+);
+
+public record LineaDevolucionPorDetalleDto(
+    int DetalleVentaId,
+    decimal CantidadDevuelta
+);
+
 public record DevolucionVentaDto(
     int Id,
     int VentaId,

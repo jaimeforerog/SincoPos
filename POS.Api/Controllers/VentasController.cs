@@ -218,6 +218,48 @@ public class VentasController : ControllerBase
     }
 
     /// <summary>
+    /// Crear devolución usando detalleVentaId (alternativa a devolucion-parcial).
+    /// Acepta { ventaId, motivo, lineas:[{ detalleVentaId, cantidadDevuelta }] }.
+    /// </summary>
+    [HttpPost("devoluciones")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(DevolucionVentaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<DevolucionVentaDto>> CrearDevolucion([FromBody] CrearDevolucionDto dto)
+    {
+        // Cargar la venta con sus detalles para resolver ProductoId desde DetalleVentaId
+        var venta = await _context.Ventas
+            .Include(v => v.Detalles)
+            .FirstOrDefaultAsync(v => v.Id == dto.VentaId);
+
+        if (venta == null)
+            return NotFound("Venta no encontrada.");
+
+        // Mapear detalleVentaId → productoId + cantidad
+        var lineasMapeadas = new List<LineaDevolucionDto>();
+        foreach (var linea in dto.Lineas)
+        {
+            var detalle = venta.Detalles.FirstOrDefault(d => d.Id == linea.DetalleVentaId);
+            if (detalle == null)
+                return BadRequest(new { error = $"Detalle {linea.DetalleVentaId} no pertenece a esta venta." });
+
+            lineasMapeadas.Add(new LineaDevolucionDto(detalle.ProductoId, linea.CantidadDevuelta));
+        }
+
+        var dtoMapeado = new CrearDevolucionParcialDto(dto.Motivo, lineasMapeadas);
+        var emailUsuario = User.FindFirst("email")?.Value ?? User.Identity?.Name;
+
+        var (devolucion, error) = await _ventaService.CrearDevolucionParcialAsync(dto.VentaId, dtoMapeado, emailUsuario);
+        if (devolucion == null)
+        {
+            if (error == "NOT_FOUND") return NotFound("Venta no encontrada.");
+            return BadRequest(new { error });
+        }
+        return Ok(devolucion);
+    }
+
+    /// <summary>
     /// Obtener todas las devoluciones de una venta específica.
     /// </summary>
     /// <response code="200">Lista de devoluciones (puede ser vacía si no hay devoluciones).</response>

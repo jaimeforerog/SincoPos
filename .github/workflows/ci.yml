@@ -69,6 +69,23 @@ jobs:
           path: coverage/**/coverage.cobertura.xml
           retention-days: 7
 
+      - name: Install Swashbuckle CLI
+        run: dotnet tool install --global Swashbuckle.AspNetCore.Cli
+
+      - name: Generate OpenAPI contract
+        run: |
+          dotnet build POS.Api/POS.Api.csproj --configuration Release --no-restore -o /tmp/api-build
+          swagger tofile --output openapi.json /tmp/api-build/POS.Api.dll v1
+        continue-on-error: true
+
+      - name: Upload OpenAPI contract
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: openapi-contract
+          path: openapi.json
+          retention-days: 30
+
   # ── Frontend: lint + build ───────────────────────────────────────────────────
   frontend:
     name: Frontend (lint + build)

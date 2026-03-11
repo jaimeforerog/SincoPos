@@ -169,87 +169,65 @@ public class ActivityLogTests
     //  TESTS: VENTAS
     // ═══════════════════════════════════════════════════════
 
-    [Fact(Skip = "TODO: Falla en endpoint de inventario - necesita investigación adicional")]
+    [Fact]
     public async Task CrearVenta_DebeRegistrarActivityLog_ConDetallesProductos()
     {
         // Arrange
-        var client = _factory.CreateAuthenticatedClient(CajeroEmail);
+        var cajeroClient = _factory.CreateAuthenticatedClient(CajeroEmail);
+        var adminClient = _factory.CreateAuthenticatedClient(AdminEmail); // Inventario requiere Supervisor+
 
-        using var db = GetDbContext();
-        var sucursal = await db.Sucursales.FirstAsync();
-
-        // Asegurar que hay un producto
-        var producto = await db.Productos.FirstOrDefaultAsync();
-        if (producto == null)
+        // Crear producto vía API (admin)
+        var productoDto = new
         {
-            var categoria = await db.Categorias.FirstOrDefaultAsync();
-            if (categoria == null)
-            {
-                categoria = new Categoria { Nombre = "Test", Activo = true };
-                db.Categorias.Add(categoria);
-                await db.SaveChangesAsync();
-            }
+            codigoBarras = "ACTLOG-V01",
+            nombre = "Producto ActivityLog Venta",
+            descripcion = "Test",
+            categoriaId = _factory.CategoriaTestId,
+            precioVenta = 25m,
+            precioCosto = 15m
+        };
+        var productoResp = await adminClient.PostAsJsonAsync("/api/v1/Productos", productoDto);
+        productoResp.EnsureSuccessStatusCode();
+        var producto = await productoResp.Content.ReadFromJsonAsync<ProductoDto>();
 
-            producto = new Producto
-            {
-                CodigoBarras = "TEST-VENTA",
-                Nombre = "Producto Test Venta",
-                CategoriaId = categoria.Id,
-                PrecioVenta = 25m,
-                PrecioCosto = 15m,
-                Activo = true
-            };
-            db.Productos.Add(producto);
-            await db.SaveChangesAsync();
-        }
+        // Crear y abrir caja para el cajero
+        var cajaResp = await adminClient.PostAsJsonAsync("/api/v1/Cajas",
+            new { nombre = "Caja ActivityLog Venta", sucursalId = _factory.SucursalPPId });
+        cajaResp.EnsureSuccessStatusCode();
+        var caja = await cajaResp.Content.ReadFromJsonAsync<CajaDto>();
 
-        var caja = await db.Cajas
-            .Where(c => c.Estado == EstadoCaja.Abierta)
-            .FirstOrDefaultAsync();
+        var abrirResp = await cajeroClient.PostAsJsonAsync($"/api/v1/Cajas/{caja!.Id}/abrir",
+            new { montoApertura = 100m });
+        abrirResp.EnsureSuccessStatusCode();
 
-        if (caja == null)
-        {
-            caja = new Caja
-            {
-                Nombre = "Caja Ventas Test",
-                SucursalId = sucursal.Id,
-                Estado = EstadoCaja.Abierta,
-                MontoApertura = 100m,
-                MontoActual = 100m,
-                Activo = true
-            };
-            db.Cajas.Add(caja);
-            await db.SaveChangesAsync();
-        }
-
-        // Crear inventario correctamente usando el endpoint
+        // Registrar inventario con cliente admin (Supervisor policy)
         var entradaDto = new
         {
-            productoId = producto.Id,
-            sucursalId = sucursal.Id,
+            productoId = producto!.Id,
+            sucursalId = _factory.SucursalPPId,
             terceroId = _factory.TerceroTestId,
             cantidad = 10m,
-            costoUnitario = 30m,
-            referencia = "ENT-ACTLOG-001",
+            costoUnitario = 15m,
+            referencia = "ENT-ACTLOG-V01",
             observaciones = "Entrada para test de activity log"
         };
-        var entradaResponse = await client.PostAsJsonAsync("/api/v1/Inventario/entrada", entradaDto);
+        var entradaResponse = await adminClient.PostAsJsonAsync("/api/v1/Inventario/entrada", entradaDto);
         entradaResponse.EnsureSuccessStatusCode();
 
-        // Act
+        // Act: el cajero realiza la venta
         var ventaDto = new
         {
-            sucursalId = sucursal.Id,
+            sucursalId = _factory.SucursalPPId,
             cajaId = caja.Id,
             metodoPago = 0, // Efectivo
-            montoPagado = 50m,
+            montoPagado = 999_999m,
             lineas = new[]
             {
-                new { productoId = producto.Id, cantidad = 1m, descuento = 0m }
+                new { productoId = producto.Id, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
 
-        var response = await client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
+        var response = await cajeroClient.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
         response.EnsureSuccessStatusCode();
 
         var venta = await response.Content.ReadFromJsonAsync<VentaDto>();

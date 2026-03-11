@@ -1,10 +1,12 @@
+using POS.Domain;
+
 namespace POS.Infrastructure.Data.Entities;
 
 /// <summary>
 /// Clase base para todas las entidades que requieren auditoría.
 /// Registra automáticamente quién y cuándo se creó/modificó cada registro.
 /// </summary>
-public abstract class EntidadAuditable
+public abstract class EntidadAuditable : ISoftDelete
 {
     public int Id { get; set; }
 
@@ -32,4 +34,9 @@ public abstract class EntidadAuditable
     /// Indica si el registro está activo (soft delete)
     /// </summary>
     public bool Activo { get; set; } = true;
+
+    /// <summary>
+    /// Fecha en que fue desactivado el registro. null = activo.
+    /// </summary>
+    public DateTime? FechaDesactivacion { get; set; }
 }
