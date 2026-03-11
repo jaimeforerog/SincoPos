@@ -125,6 +125,16 @@ public class DetalleTrasladoConfiguration : IEntityTypeConfiguration<DetalleTras
             .HasMaxLength(300)
             .HasColumnName("observaciones");
 
+        builder.Property(dt => dt.LoteInventarioId)
+            .HasColumnName("lote_inventario_id");
+
+        builder.Property(dt => dt.NumeroLote)
+            .HasMaxLength(100)
+            .HasColumnName("numero_lote");
+
+        builder.Property(dt => dt.FechaVencimiento)
+            .HasColumnName("fecha_vencimiento");
+
         builder.HasOne(dt => dt.Producto)
             .WithMany()
             .HasForeignKey(dt => dt.ProductoId)

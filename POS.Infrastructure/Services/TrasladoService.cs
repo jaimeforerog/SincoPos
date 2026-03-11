@@ -128,6 +128,12 @@ public class TrasladoService : ITrasladoService
 
         var sucursal = await _context.Sucursales.FindAsync(traslado.SucursalOrigenId);
 
+        // Pre-cargar productos para verificar ManejaLotes
+        var productoIds = traslado.Detalles.Select(d => d.ProductoId).ToList();
+        var productosDict = await _context.Productos
+            .Where(p => productoIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
         foreach (var detalle in traslado.Detalles)
         {
             var stock = await _context.Stock.FirstOrDefaultAsync(
@@ -136,12 +142,39 @@ public class TrasladoService : ITrasladoService
             if (stock == null || stock.Cantidad < detalle.CantidadSolicitada)
                 return (false, $"Stock insuficiente para {detalle.NombreProducto}. Disponible: {stock?.Cantidad ?? 0}, Solicitado: {detalle.CantidadSolicitada}");
 
-            var (costoTotal, costoUnitario) = await _costeoService.ConsumirStock(
-                detalle.ProductoId, traslado.SucursalOrigenId,
-                detalle.CantidadSolicitada, sucursal!.MetodoCosteo);
+            var producto = productosDict.GetValueOrDefault(detalle.ProductoId);
+            decimal costoTotal, costoUnitario;
+            int? loteId = null;
+            string? numeroLote = null;
+            DateOnly? fechaVencimiento = null;
+
+            if (producto?.ManejaLotes == true)
+            {
+                // Consumir por FEFO y capturar datos del lote para trazabilidad
+                decimal costoUnitarioFefo;
+                (costoTotal, costoUnitarioFefo, loteId, numeroLote) = await _costeoService.ConsumirLotesFEFO(
+                    detalle.ProductoId, traslado.SucursalOrigenId, detalle.CantidadSolicitada);
+                costoUnitario = costoUnitarioFefo;
+
+                // Capturar fecha de vencimiento del lote consumido
+                if (loteId.HasValue)
+                {
+                    var lote = await _context.LotesInventario.FindAsync(loteId.Value);
+                    fechaVencimiento = lote?.FechaVencimiento;
+                }
+            }
+            else
+            {
+                (costoTotal, costoUnitario) = await _costeoService.ConsumirStock(
+                    detalle.ProductoId, traslado.SucursalOrigenId,
+                    detalle.CantidadSolicitada, sucursal!.MetodoCosteo);
+            }
 
             detalle.CostoUnitario = costoUnitario;
             detalle.CostoTotal = costoTotal;
+            detalle.LoteInventarioId = loteId;
+            detalle.NumeroLote = numeroLote;
+            detalle.FechaVencimiento = fechaVencimiento;
 
             var streamId = InventarioAggregate.GenerarStreamId(
                 detalle.ProductoId, traslado.SucursalOrigenId);
@@ -258,6 +291,7 @@ public class TrasladoService : ITrasladoService
                     _session.Events.Append(streamId, eventoEntrada);
                 }
 
+                // Propagar número de lote y fecha de vencimiento del origen al destino
                 await _costeoService.RegistrarLoteEntrada(
                     detalle.ProductoId,
                     traslado.SucursalDestinoId,
@@ -265,7 +299,9 @@ public class TrasladoService : ITrasladoService
                     detalle.CostoUnitario,
                     0, 0,
                     traslado.NumeroTraslado,
-                    null);
+                    null,
+                    numeroLote: detalle.NumeroLote,
+                    fechaVencimiento: detalle.FechaVencimiento);
 
                 var stock = await _context.Stock.FirstOrDefaultAsync(
                     s => s.ProductoId == detalle.ProductoId && s.SucursalId == traslado.SucursalDestinoId);
@@ -363,10 +399,13 @@ public class TrasladoService : ITrasladoService
                 _session.Events.Append(streamId, eventoReversion);
             }
 
-            await _costeoService.RegistrarLoteEntrada(
-                detalle.ProductoId, traslado.SucursalOrigenId,
-                detalle.CantidadSolicitada, detalle.CostoUnitario,
-                0, 0, $"REV-{traslado.NumeroTraslado}", null);
+            if (detalle.LoteInventarioId.HasValue)
+                await _costeoService.ReintegrarLoteAsync(detalle.LoteInventarioId.Value, detalle.CantidadSolicitada);
+            else
+                await _costeoService.RegistrarLoteEntrada(
+                    detalle.ProductoId, traslado.SucursalOrigenId,
+                    detalle.CantidadSolicitada, detalle.CostoUnitario,
+                    0, 0, $"REV-{traslado.NumeroTraslado}", null);
 
             var stock = await _context.Stock.FirstOrDefaultAsync(
                 s => s.ProductoId == detalle.ProductoId && s.SucursalId == traslado.SucursalOrigenId);

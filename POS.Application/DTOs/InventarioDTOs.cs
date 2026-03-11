@@ -108,6 +108,31 @@ public record ActualizarLoteDto(
     DateOnly? FechaVencimiento
 );
 
+// ─── Trazabilidad de Lote ────────────────────────────────────────────────────
+
+public record TrazabilidadLoteDto(
+    LoteDto Lote,
+    TrazabilidadEntradaDto? Entrada,
+    List<TrazabilidadMovimientoDto> Movimientos
+);
+
+public record TrazabilidadEntradaDto(
+    string Tipo,           // "OrdenCompra" | "EntradaManual" | "Traslado"
+    string Referencia,
+    DateTime Fecha,
+    string? Proveedor,
+    decimal CantidadInicial,
+    decimal CostoUnitario
+);
+
+public record TrazabilidadMovimientoDto(
+    string Tipo,           // "Venta" | "Devolucion" | "Traslado"
+    string Referencia,
+    DateTime Fecha,
+    decimal Cantidad,
+    string? Detalle        // cliente, destino, motivo, etc.
+);
+
 // ─── Traslados ─────────────────────────────────────────
 
 // REQUEST - Crear traslado
@@ -172,7 +197,9 @@ public record DetalleTrasladoDto(
     decimal CantidadRecibida,
     decimal CostoUnitario,
     decimal CostoTotal,
-    string? Observaciones
+    string? Observaciones,
+    string? NumeroLote = null,
+    string? FechaVencimiento = null
 );
 
 // ─── Órdenes de Compra ─────────────────────────────────────────

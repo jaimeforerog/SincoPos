@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { LoteDTO, AlertaLoteDTO, ActualizarLoteDTO } from '@/types/api';
+import type { LoteDTO, AlertaLoteDTO, ActualizarLoteDTO, TrazabilidadLoteDTO } from '@/types/api';
 
 export const lotesApi = {
   /**
@@ -35,6 +35,11 @@ export const lotesApi = {
    */
   actualizar: async (id: number, dto: ActualizarLoteDTO) => {
     const response = await apiClient.put<LoteDTO>(`/lotes/${id}`, dto);
+    return response.data;
+  },
+
+  trazabilidad: async (id: number) => {
+    const response = await apiClient.get<TrazabilidadLoteDTO>(`/lotes/${id}/trazabilidad`);
     return response.data;
   },
 };

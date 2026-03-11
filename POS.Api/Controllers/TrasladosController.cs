@@ -274,7 +274,9 @@ public class TrasladosController : ControllerBase
             CantidadRecibida: d.CantidadRecibida,
             CostoUnitario: d.CostoUnitario,
             CostoTotal: d.CostoTotal,
-            Observaciones: d.Observaciones
+            Observaciones: d.Observaciones,
+            NumeroLote: d.NumeroLote,
+            FechaVencimiento: d.FechaVencimiento?.ToString("yyyy-MM-dd")
         )).ToList()
     );
 }

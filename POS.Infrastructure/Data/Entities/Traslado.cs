@@ -45,6 +45,10 @@ public class DetalleTraslado
     public decimal CostoUnitario { get; set; }                      // Del origen
     public decimal CostoTotal { get; set; }
     public string? Observaciones { get; set; }
+    // Trazabilidad de lote (snapshot del lote consumido en la sucursal origen)
+    public int? LoteInventarioId { get; set; }
+    public string? NumeroLote { get; set; }
+    public DateOnly? FechaVencimiento { get; set; }
 
     // Navegación
     public Traslado Traslado { get; set; } = null!;

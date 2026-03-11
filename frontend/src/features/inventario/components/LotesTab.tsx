@@ -16,11 +16,15 @@ import {
   MenuItem,
   Stack,
   Typography,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import { Timeline } from '@mui/icons-material';
 import { lotesApi } from '@/api/lotes';
 import { productosApi } from '@/api/productos';
 import type { SucursalDTO } from '@/types/api';
 import { formatCurrency } from '@/utils/format';
+import { TrazabilidadLoteModal } from './TrazabilidadLoteModal';
 
 interface Props {
   sucursales: SucursalDTO[];
@@ -38,6 +42,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
   const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
   const [soloVigentes, setSoloVigentes] = useState(true);
   const [productoQuery, setProductoQuery] = useState('');
+  const [trazabilidadLoteId, setTrazabilidadLoteId] = useState<number | null>(null);
 
   // Buscar productos para el selector
   const { data: productos = [] } = useQuery({
@@ -144,6 +149,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                   <TableCell align="right">Costo Unit.</TableCell>
                   <TableCell align="center">Vencimiento</TableCell>
                   <TableCell align="center">Estado</TableCell>
+                  <TableCell align="center"></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -181,6 +187,13 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                         {agotado
                           ? <Chip label="Agotado" size="small" variant="outlined" />
                           : <Chip label="Disponible" color="success" size="small" />}
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Ver trazabilidad">
+                          <IconButton size="small" onClick={() => setTrazabilidadLoteId(lote.id)}>
+                            <Timeline fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   );
@@ -232,6 +245,11 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
           </>
         )
       )}
+
+      <TrazabilidadLoteModal
+        loteId={trazabilidadLoteId}
+        onClose={() => setTrazabilidadLoteId(null)}
+      />
     </Box>
   );
 }

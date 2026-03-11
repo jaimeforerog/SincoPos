@@ -368,6 +368,83 @@ public class LotesTests
     }
 
     // ═══════════════════════════════════════════════════════
+    //  DEVOLUCIONES CON LOTES
+    // ═══════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task DevolucionConLotes_ReintegraAlLoteOriginal()
+    {
+        // Arrange: producto con lote, venta de 10 unidades
+        var productoId = await CrearProductoTest("DEV-L01", manejaLotes: true);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja DEV L01");
+
+        await RegistrarEntradaConLote(productoId, SucPp, 10, 1000, "FC-DEV-L01",
+            numeroLote: "LOTE-DEV-001", fechaVencimiento: "2027-03-01");
+
+        var venta = await CrearVenta(productoId, SucPp, cajaId, 10);
+
+        // Verificar que el lote quedó agotado
+        var lotesAntes = await ObtenerLotes(productoId, SucPp, soloVigentes: false);
+        lotesAntes[0].GetProperty("cantidadDisponible").GetDecimal().Should().Be(0);
+
+        // Act: devolver 5 unidades
+        var detalleVentaId = venta.Detalles[0].Id;
+        var devDto = new
+        {
+            ventaId = venta.Id,
+            motivo = "Prueba reintegración lote",
+            lineas = new[] { new { detalleVentaId, cantidadDevuelta = 5m } }
+        };
+        var devResp = await _client.PostAsJsonAsync("/api/v1/Ventas/devoluciones", devDto);
+        devResp.StatusCode.Should().Be(HttpStatusCode.OK,
+            $"Devolución debería ser exitosa. Body: {await devResp.Content.ReadAsStringAsync()}");
+
+        // Assert: el lote original recupera 5 unidades (no se crea uno nuevo)
+        var lotesDesues = await ObtenerLotes(productoId, SucPp, soloVigentes: true);
+        lotesDesues.Should().HaveCount(1, "debe ser el mismo lote reintegrado, no uno nuevo");
+        lotesDesues[0].GetProperty("numeroLote").GetString().Should().Be("LOTE-DEV-001");
+        lotesDesues[0].GetProperty("cantidadDisponible").GetDecimal().Should().Be(5);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  TRAZABILIDAD
+    // ═══════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task Trazabilidad_RetornaEntradaYMovimientos()
+    {
+        // Arrange: producto con lote, venta
+        var productoId = await CrearProductoTest("TRAZ-L01", manejaLotes: true);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja TRAZ L01");
+
+        await RegistrarEntradaConLote(productoId, SucPp, 20, 1000, "FC-TRAZ-L01",
+            numeroLote: "LOTE-TRAZ-001", fechaVencimiento: "2027-05-01");
+
+        await CrearVenta(productoId, SucPp, cajaId, 5);
+
+        // Obtener el ID del lote
+        var lotes = await ObtenerLotes(productoId, SucPp);
+        lotes.Should().HaveCount(1);
+        var loteId = lotes[0].GetProperty("id").GetInt32();
+
+        // Act
+        var response = await _client.GetAsync($"/api/v1/Lotes/{loteId}/trazabilidad");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var traz = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+
+        traz.GetProperty("lote").GetProperty("numeroLote").GetString().Should().Be("LOTE-TRAZ-001");
+        traz.GetProperty("lote").GetProperty("cantidadDisponible").GetDecimal().Should().Be(15);
+
+        var movimientos = traz.GetProperty("movimientos");
+        movimientos.GetArrayLength().Should().BeGreaterThan(0);
+        var primerMov = movimientos[0];
+        primerMov.GetProperty("tipo").GetString().Should().Be("Venta");
+        primerMov.GetProperty("cantidad").GetDecimal().Should().Be(5);
+    }
+
+    // ═══════════════════════════════════════════════════════
     //  RECEPCIÓN CON LOTES (vía ComprasController)
     // ═══════════════════════════════════════════════════════
 

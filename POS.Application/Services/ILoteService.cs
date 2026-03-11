@@ -8,4 +8,5 @@ public interface ILoteService
     Task<List<AlertaLoteDto>> ObtenerProximosAVencerAsync(int sucursalId, int diasAnticipacion);
     Task<(LoteDto? result, string? error)> ActualizarLoteAsync(int id, ActualizarLoteDto dto);
     Task<List<AlertaLoteDto>> ObtenerTodasLasAlertasAsync();
+    Task<(TrazabilidadLoteDto? result, string? error)> ObtenerTrazabilidadAsync(int loteId);
 }

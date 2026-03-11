@@ -853,6 +853,29 @@ export interface ActualizarLoteDTO {
   fechaVencimiento?: string; // 'YYYY-MM-DD'
 }
 
+export interface TrazabilidadEntradaDTO {
+  tipo: string;
+  referencia: string;
+  fecha: string;
+  proveedor?: string;
+  cantidadInicial: number;
+  costoUnitario: number;
+}
+
+export interface TrazabilidadMovimientoDTO {
+  tipo: string;
+  referencia: string;
+  fecha: string;
+  cantidad: number;
+  detalle?: string;
+}
+
+export interface TrazabilidadLoteDTO {
+  lote: LoteDTO;
+  entrada?: TrazabilidadEntradaDTO;
+  movimientos: TrazabilidadMovimientoDTO[];
+}
+
 // ─── Traslados ─────────────────────────────────────────
 
 export interface TrasladoDTO {

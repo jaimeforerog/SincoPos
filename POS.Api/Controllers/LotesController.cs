@@ -82,6 +82,21 @@ public class LotesController : ControllerBase
     /// </summary>
     /// <param name="id">Id del lote.</param>
     /// <param name="dto">Campos a actualizar.</param>
+    /// <summary>
+    /// Trazabilidad completa de un lote: entrada, ventas, devoluciones y traslados.
+    /// </summary>
+    [HttpGet("{id:int}/trazabilidad")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(TrazabilidadLoteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TrazabilidadLoteDto>> ObtenerTrazabilidad(int id)
+    {
+        var (result, error) = await _loteService.ObtenerTrazabilidadAsync(id);
+        if (error == "NOT_FOUND")
+            return NotFound(new { error = "Lote no encontrado." });
+        return Ok(result);
+    }
+
     [HttpPut("{id:int}")]
     [Authorize(Policy = "Supervisor")]
     [ProducesResponseType(typeof(LoteDto), StatusCodes.Status200OK)]

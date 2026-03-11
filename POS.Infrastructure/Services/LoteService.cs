@@ -115,6 +115,90 @@ public class LoteService : ILoteService
         return alertas.OrderBy(a => a.DiasParaVencer).ToList();
     }
 
+    public async Task<(TrazabilidadLoteDto? result, string? error)> ObtenerTrazabilidadAsync(int loteId)
+    {
+        var lote = await _context.LotesInventario
+            .Include(l => l.Producto)
+            .Include(l => l.Sucursal)
+            .FirstOrDefaultAsync(l => l.Id == loteId);
+
+        if (lote == null) return (null, "NOT_FOUND");
+
+        var loteDto = new LoteDto(
+            lote.Id, lote.ProductoId, lote.Producto.Nombre, lote.Producto.CodigoBarras,
+            lote.SucursalId, lote.Sucursal.Nombre, lote.NumeroLote, lote.FechaVencimiento,
+            lote.OrdenCompraId, lote.CantidadInicial, lote.CantidadDisponible,
+            lote.CostoUnitario, lote.Referencia, lote.FechaEntrada);
+
+        // ── Entrada original ──────────────────────────────────────────────────
+        TrazabilidadEntradaDto? entrada = null;
+        if (lote.OrdenCompraId.HasValue)
+        {
+            var orden = await _context.OrdenesCompra
+                .Include(o => o.Proveedor)
+                .FirstOrDefaultAsync(o => o.Id == lote.OrdenCompraId.Value);
+            if (orden != null)
+                entrada = new TrazabilidadEntradaDto(
+                    "OrdenCompra", orden.NumeroOrden,
+                    orden.FechaRecepcion ?? orden.FechaOrden,
+                    orden.Proveedor.Nombre,
+                    lote.CantidadInicial, lote.CostoUnitario);
+        }
+        else if (!string.IsNullOrEmpty(lote.Referencia))
+        {
+            var tipo = lote.Referencia.StartsWith("TRAS-") ? "Traslado" : "EntradaManual";
+            entrada = new TrazabilidadEntradaDto(
+                tipo, lote.Referencia, lote.FechaEntrada,
+                null, lote.CantidadInicial, lote.CostoUnitario);
+        }
+
+        // ── Movimientos: ventas, devoluciones, traslados ──────────────────────
+        var movimientos = new List<TrazabilidadMovimientoDto>();
+
+        // Ventas que consumieron este lote
+        var detallesVenta = await _context.DetalleVentas
+            .Include(dv => dv.Venta)
+            .Where(dv => dv.LoteInventarioId == loteId)
+            .OrderBy(dv => dv.Venta.FechaVenta)
+            .ToListAsync();
+
+        foreach (var dv in detallesVenta)
+            movimientos.Add(new TrazabilidadMovimientoDto(
+                "Venta", dv.Venta.NumeroVenta, dv.Venta.FechaVenta,
+                dv.Cantidad, $"Precio: ${dv.PrecioUnitario:N0}"));
+
+        // Devoluciones que reintegraron a este lote
+        var detallesDev = await _context.DetallesDevolucion
+            .Include(dd => dd.DevolucionVenta)
+            .Where(dd => dd.LoteInventarioId == loteId)
+            .OrderBy(dd => dd.DevolucionVenta.FechaDevolucion)
+            .ToListAsync();
+
+        foreach (var dd in detallesDev)
+            movimientos.Add(new TrazabilidadMovimientoDto(
+                "Devolucion", dd.DevolucionVenta.NumeroDevolucion,
+                dd.DevolucionVenta.FechaDevolucion,
+                dd.CantidadDevuelta, dd.DevolucionVenta.Motivo));
+
+        // Traslados donde este lote fue enviado
+        var detallesTraslado = await _context.DetallesTraslado
+            .Include(dt => dt.Traslado).ThenInclude(t => t.SucursalDestino)
+            .Where(dt => dt.LoteInventarioId == loteId)
+            .OrderBy(dt => dt.Traslado.FechaEnvio)
+            .ToListAsync();
+
+        foreach (var dt in detallesTraslado)
+            movimientos.Add(new TrazabilidadMovimientoDto(
+                "Traslado", dt.Traslado.NumeroTraslado,
+                dt.Traslado.FechaEnvio ?? dt.Traslado.FechaTraslado,
+                dt.CantidadSolicitada,
+                $"Destino: {dt.Traslado.SucursalDestino?.Nombre ?? "—"}"));
+
+        movimientos = movimientos.OrderBy(m => m.Fecha).ToList();
+
+        return (new TrazabilidadLoteDto(loteDto, entrada, movimientos), null);
+    }
+
     public async Task<(LoteDto? result, string? error)> ActualizarLoteAsync(int id, ActualizarLoteDto dto)
     {
         var lote = await _context.LotesInventario
