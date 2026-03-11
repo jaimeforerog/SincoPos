@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, type FieldError } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +34,8 @@ import { tercerosApi } from '@/api/terceros';
 import { productosApi } from '@/api/productos';
 import { impuestosApi } from '@/api/impuestos';
 import type { CrearOrdenCompraDTO } from '@/types/api';
+
+type LineaOrdenError = { productoId?: FieldError; cantidad?: FieldError; precioUnitario?: FieldError };
 
 const lineaSchema = z.object({
   productoId: z.string().min(1, 'Seleccione un producto'),
@@ -312,11 +314,19 @@ export function OrdenCompraFormDialog({
             <Controller
               name="formaPago"
               control={control}
-              render={({ field }) => (
+              render={({ field: { onChange, ...field } }) => (
                 <TextField
                   {...field}
                   select
                   label="Forma de Pago *"
+                  onChange={(e) => {
+                    onChange(e);
+                    // Si cambia a contado, reiniciar días
+                    if (e.target.value === 'Contado') {
+                      control._defaultValues.diasPlazo = 0; // Para no romper reset
+                      reset({ ...watch(), formaPago: 'Contado' as 'Contado', diasPlazo: 0 });
+                    }
+                  }}
                   error={!!errors.formaPago}
                   helperText={errors.formaPago?.message}
                   fullWidth
@@ -332,18 +342,23 @@ export function OrdenCompraFormDialog({
               name="diasPlazo"
               control={control}
               render={({ field: { value, onChange, ...field } }) => {
-                const isCredito = watch('formaPago') === 'Credito';
                 return (
                   <TextField
                     {...field}
                     type="number"
                     label="Días Plazo"
                     value={value}
-                    onChange={(e) => onChange(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newDias = Number(e.target.value);
+                      onChange(newDias);
+                      // Si ponen días > 0, cambiar automáticamente a Crédito
+                      if (newDias > 0 && watch('formaPago') === 'Contado') {
+                        reset({ ...watch(), diasPlazo: newDias, formaPago: 'Credito' as 'Credito' });
+                      }
+                    }}
                     error={!!errors.diasPlazo}
                     helperText={errors.diasPlazo?.message}
                     fullWidth
-                    disabled={!isCredito}
                     inputProps={{ min: 0 }}
                   />
                 );
@@ -466,8 +481,8 @@ export function OrdenCompraFormDialog({
                                 renderInput={(params) => (
                                   <TextField
                                     {...params}
-                                    error={!!(errors.lineas?.[index] as any)?.productoId}
-                                    helperText={(errors.lineas?.[index] as any)?.productoId?.message}
+                                    error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.productoId}
+                                    helperText={(errors.lineas?.[index] as LineaOrdenError | undefined)?.productoId?.message}
                                     size="small"
                                   />
                                 )}
@@ -486,7 +501,7 @@ export function OrdenCompraFormDialog({
                                 type="number"
                                 value={value}
                                 onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-                                error={!!(errors.lineas?.[index] as any)?.cantidad}
+                                error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.cantidad}
                                 size="small"
                                 fullWidth
                                 inputProps={{ min: 0, step: 1 }}
@@ -504,7 +519,7 @@ export function OrdenCompraFormDialog({
                                 type="number"
                                 value={value}
                                 onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-                                error={!!(errors.lineas?.[index] as any)?.precioUnitario}
+                                error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.precioUnitario}
                                 size="small"
                                 fullWidth
                                 inputProps={{ min: 0, step: 1 }}

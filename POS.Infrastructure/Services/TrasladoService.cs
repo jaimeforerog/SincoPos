@@ -203,6 +203,9 @@ public class TrasladoService : ITrasladoService
         if (traslado.Estado != EstadoTraslado.EnTransito)
             return (false, "Solo se pueden recibir traslados en estado EnTransito");
 
+        // Load sucursal once outside the loop (same for all lines)
+        var sucursalDestino = await _context.Sucursales.FindAsync(traslado.SucursalDestinoId);
+
         try
         {
             foreach (var lineaRecibida in dto.Lineas)
@@ -267,15 +270,24 @@ public class TrasladoService : ITrasladoService
                 var stock = await _context.Stock.FirstOrDefaultAsync(
                     s => s.ProductoId == detalle.ProductoId && s.SucursalId == traslado.SucursalDestinoId);
 
-                var sucursalDestino = await _context.Sucursales.FindAsync(traslado.SucursalDestinoId);
-                if (stock != null)
+                if (stock == null)
                 {
-                    await _costeoService.ActualizarCostoEntrada(
-                        stock,
-                        lineaRecibida.CantidadRecibida,
-                        detalle.CostoUnitario,
-                        sucursalDestino!.MetodoCosteo);
+                    stock = new Stock
+                    {
+                        ProductoId = detalle.ProductoId,
+                        SucursalId = traslado.SucursalDestinoId,
+                        Cantidad = 0,
+                        StockMinimo = 0,
+                        CostoPromedio = 0
+                    };
+                    _context.Stock.Add(stock);
                 }
+
+                await _costeoService.ActualizarCostoEntrada(
+                    stock,
+                    lineaRecibida.CantidadRecibida,
+                    detalle.CostoUnitario,
+                    sucursalDestino!.MetodoCosteo);
             }
         }
         catch (InvalidOperationException ex)
@@ -283,12 +295,7 @@ public class TrasladoService : ITrasladoService
             return (false, ex.Message);
         }
 
-        int? usuarioId = null;
-        if (!string.IsNullOrEmpty(emailUsuario))
-        {
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == emailUsuario);
-            usuarioId = usuario?.Id;
-        }
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
 
         traslado.Estado = EstadoTraslado.Recibido;
         traslado.FechaRecepcion = DateTime.UtcNow;

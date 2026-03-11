@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider, CssBaseline, LinearProgress, Box } from '@mui/material';
 import { SnackbarProvider } from 'notistack';
 import { AuthProvider } from './features/auth/AuthProvider';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { CallbackPage } from './features/auth/pages/CallbackPage';
 import { UnauthorizedPage } from './features/auth/pages/UnauthorizedPage';
@@ -72,6 +73,7 @@ function App() {
         >
           <AuthProvider>
             <BrowserRouter>
+              <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
@@ -174,6 +176,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </Suspense>
+              </ErrorBoundary>
             </BrowserRouter>
           </AuthProvider>
         </SnackbarProvider>

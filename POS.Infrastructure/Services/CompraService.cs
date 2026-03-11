@@ -14,6 +14,7 @@ public class CompraService : ICompraService
 {
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;
+    private readonly global::Marten.IDocumentStore _store;
     private readonly CosteoService _costeoService;
     private readonly ITaxEngine _taxEngine;
     private readonly ILogger<CompraService> _logger;
@@ -23,6 +24,7 @@ public class CompraService : ICompraService
     public CompraService(
         AppDbContext context,
         global::Marten.IDocumentSession session,
+        global::Marten.IDocumentStore store,
         CosteoService costeoService,
         ITaxEngine taxEngine,
         ILogger<CompraService> logger,
@@ -31,6 +33,7 @@ public class CompraService : ICompraService
     {
         _context = context;
         _session = session;
+        _store = store;
         _costeoService = costeoService;
         _taxEngine = taxEngine;
         _logger = logger;
@@ -190,7 +193,7 @@ public class CompraService : ICompraService
         if (orden.Estado != EstadoOrdenCompra.Pendiente)
             return (false, "Solo se pueden aprobar órdenes en estado Pendiente");
 
-        int? usuarioId = await ResolverUsuarioIdAsync(emailUsuario);
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
 
         orden.Estado = EstadoOrdenCompra.Aprobada;
         orden.FechaAprobacion = DateTime.UtcNow;
@@ -298,6 +301,9 @@ public class CompraService : ICompraService
         var impuestosAcumulados = new Dictionary<string, (decimal Porcentaje, string? Cuenta, decimal MontoBase, decimal Total)>();
         var retencionesAcumuladas = new Dictionary<string, (string Nombre, string? Cuenta, decimal Total)>();
 
+        // Eventos Marten pendientes para la transacción atómica
+        var pendingMartenEvents = new List<(Guid StreamId, object Evento, bool IsNew)>();
+
         // Procesar cada línea recibida
         foreach (var lineaRecibida in dto.Lineas)
         {
@@ -402,7 +408,7 @@ public class CompraService : ICompraService
                     null,
                     orden.SucursalId);
 
-                _session.Events.StartStream<InventarioAggregate>(streamId, primerEvento);
+                pendingMartenEvents.Add((streamId, primerEvento, true));
             }
             else
             {
@@ -415,7 +421,7 @@ public class CompraService : ICompraService
                     $"Recepción de compra - {orden.Proveedor.Nombre}",
                     null);
 
-                _session.Events.Append(streamId, eventoEntrada);
+                pendingMartenEvents.Add((streamId, eventoEntrada, false));
             }
 
             // 2. Registrar lote de entrada
@@ -429,10 +435,23 @@ public class CompraService : ICompraService
                 orden.NumeroOrden,
                 orden.ProveedorId);
 
-            // 3. Actualizar stock desde el diccionario pre-cargado
+            // 3. Actualizar stock desde el diccionario pre-cargado (crear si no existe)
             stocksDict.TryGetValue(detalle.ProductoId, out var stock);
 
-            if (stock != null)
+            if (stock == null)
+            {
+                stock = new Stock
+                {
+                    ProductoId = detalle.ProductoId,
+                    SucursalId = orden.SucursalId,
+                    Cantidad = 0,
+                    StockMinimo = 0,
+                    CostoPromedio = 0
+                };
+                _context.Stock.Add(stock);
+                stocksDict[detalle.ProductoId] = stock;
+            }
+
             {
                 lotesDict.TryGetValue(detalle.ProductoId, out var lotesProducto);
                 var lotesParaCosteo = lotesProducto ?? new List<LoteInventario>();
@@ -456,7 +475,7 @@ public class CompraService : ICompraService
         }
 
         // Resolver usuario
-        int? usuarioId = await ResolverUsuarioIdAsync(emailUsuario);
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
 
         // Actualizar estado de la orden
         var todasRecibidas = orden.Detalles.All(d => d.CantidadRecibida >= d.CantidadSolicitada);
@@ -591,8 +610,25 @@ public class CompraService : ICompraService
         });
         // ================================
 
-        await _session.SaveChangesAsync();
-        await _context.SaveChangesAsync();
+        // Guardar en una sola transacción atómica (Marten + EF Core)
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            var npgsqlConn = (Npgsql.NpgsqlConnection)_context.Database.GetDbConnection();
+            if (npgsqlConn.State != System.Data.ConnectionState.Open)
+                await npgsqlConn.OpenAsync();
+            await using var npgsqlTx = await npgsqlConn.BeginTransactionAsync();
+            await _context.Database.UseTransactionAsync(npgsqlTx);
+            await using var martenTx = _store.LightweightSession(
+                global::Marten.Services.SessionOptions.ForTransaction(npgsqlTx));
+            foreach (var (sid, evt, isNew) in pendingMartenEvents)
+                if (isNew)
+                    martenTx.Events.StartStream<InventarioAggregate>(sid, evt);
+                else
+                    martenTx.Events.Append(sid, evt);
+            await martenTx.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+            await npgsqlTx.CommitAsync();
+        });
 
         _logger.LogInformation("Orden de compra {NumeroOrden} recibida ({Estado})",
             orden.NumeroOrden, orden.Estado);
@@ -648,15 +684,6 @@ public class CompraService : ICompraService
         ));
 
         return (true, null);
-    }
-
-    // ─── Helpers privados ─────────────────────────────────────────────────────
-
-    private async Task<int?> ResolverUsuarioIdAsync(string? email)
-    {
-        if (string.IsNullOrEmpty(email)) return null;
-        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
-        return usuario?.Id;
     }
 
     // ─── Mappers públicos (usados también por el controller para lecturas) ────

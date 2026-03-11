@@ -18,7 +18,7 @@ public class ImpuestosTests
     private readonly CustomWebApplicationFactory _factory;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    private int SucPP => _factory.SucursalPPId;
+    private int SucPp => _factory.SucursalPPId;
     private int CatId => _factory.CategoriaTestId;
 
     public ImpuestosTests(CustomWebApplicationFactory factory)
@@ -29,6 +29,7 @@ public class ImpuestosTests
     
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+    
 
     private async Task<int> CrearImpuesto(string nombre, string tipo, decimal porcentaje,
         bool aplicaSobreBase = true, decimal? valorFijo = null)
@@ -80,7 +81,7 @@ public class ImpuestosTests
 
     private async Task<int> CrearYAbrirCaja(string nombre)
     {
-        var crear = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre, sucursalId = SucPP });
+        var crear = await _client.PostAsJsonAsync("/api/v1/Cajas", new { nombre, sucursalId = SucPp });
         crear.EnsureSuccessStatusCode();
         var caja = await crear.Content.ReadFromJsonAsync<CajaDto>(_jsonOptions);
         var abrir = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja!.Id}/abrir", new { montoApertura = 500_000m });
@@ -184,13 +185,13 @@ public class ImpuestosTests
     {
         // Arrange: producto con IVA 19% (seed: Id = 3)
         var productoId = await CrearProductoConImpuesto("IMP-IVA-001", impuestoId: 3, precio: 1000m);
-        await RegistrarStock(productoId, SucPP, 50);
+        await RegistrarStock(productoId, SucPp, 50);
         var cajaId = await CrearYAbrirCaja("Caja IVA Test");
 
         // Act: vender 5 unidades a $1000
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 10000m,
+            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 10000m,
             lineas = new[] { new { productoId, cantidad = 5m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -200,7 +201,7 @@ public class ImpuestosTests
 
         // Assert: Subtotal = 5000, Impuesto = 5000 × 0.19 = 950, Total = 5950
         venta.Should().NotBeNull();
-        venta!.Subtotal.Should().Be(5000m);
+        venta.Subtotal.Should().Be(5000m);
         venta.Impuestos.Should().Be(950m, "IVA 19% sobre base 5000");
         venta.Total.Should().Be(5950m);
         venta.Detalles[0].MontoImpuesto.Should().Be(950m);
@@ -212,13 +213,13 @@ public class ImpuestosTests
     {
         // Arrange: producto con Exento 0% (seed: Id = 1)
         var productoId = await CrearProductoConImpuesto("IMP-EXENTO-001", impuestoId: 1, precio: 2000m);
-        await RegistrarStock(productoId, SucPP, 100);
+        await RegistrarStock(productoId, SucPp, 100);
         var cajaId = await CrearYAbrirCaja("Caja Exento Test");
 
         // Act
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 20000m,
+            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 20000m,
             lineas = new[] { new { productoId, cantidad = 3m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -236,12 +237,12 @@ public class ImpuestosTests
     {
         // Arrange: producto sin ImpuestoId asignado
         var productoId = await CrearProductoConImpuesto("IMP-NULL-001", impuestoId: null, precio: 1500m);
-        await RegistrarStock(productoId, SucPP, 50);
+        await RegistrarStock(productoId, SucPp, 50);
         var cajaId = await CrearYAbrirCaja("Caja Sin Impuesto Test");
 
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 10000m,
+            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 10000m,
             lineas = new[] { new { productoId, cantidad = 2m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -262,12 +263,12 @@ public class ImpuestosTests
         // Venta de 3 productos a $100.000 = $300.000 > 5 UVT
 
         var productoId = await CrearProductoConImpuesto("IMP-5UVT-001", impuestoId: null, precio: 100_000m, costo: 50_000m);
-        await RegistrarStock(productoId, SucPP, 50);
+        await RegistrarStock(productoId, SucPp, 50);
         var cajaId = await CrearYAbrirCaja("Caja 5UVT Test");
 
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 500_000m,
+            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 500_000m,
             lineas = new[] { new { productoId, cantidad = 3m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -285,12 +286,12 @@ public class ImpuestosTests
     {
         // Venta de 1 producto a $10.000 = bien por debajo de 5 UVT
         var productoId = await CrearProductoConImpuesto("IMP-MINI-001", impuestoId: null, precio: 10_000m, costo: 5_000m);
-        await RegistrarStock(productoId, SucPP, 100);
+        await RegistrarStock(productoId, SucPp, 100);
         var cajaId = await CrearYAbrirCaja("Caja Mini Test");
 
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPP, cajaId, metodoPago = 0, montoPagado = 20_000m,
+            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 20_000m,
             lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,

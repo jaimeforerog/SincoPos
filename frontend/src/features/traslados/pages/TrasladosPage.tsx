@@ -13,22 +13,18 @@ import {
   TableRow,
   Chip,
   IconButton,
-  CircularProgress,
   Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Visibility as ViewIcon,
-  Send as SendIcon,
-  Check as CheckIcon,
-  Close as CloseIcon,
-  Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { trasladosApi } from '@/api/traslados';
 import { CrearTrasladoDialog } from '../components/CrearTrasladoDialog';
 import { DetallesTrasladoDialog } from '../components/DetallesTrasladoDialog';
 import { useAuth } from '@/hooks/useAuth';
+import { TableSkeleton } from '@/components/common/TableSkeleton';
 
 const getEstadoColor = (estado: string) => {
   switch (estado) {
@@ -63,10 +59,11 @@ export function TrasladosPage() {
   const [detallesDialogOpen, setDetallesDialogOpen] = useState(false);
   const [trasladoSeleccionado, setTrasladoSeleccionado] = useState<number | null>(null);
 
-  const { data: traslados, isLoading, error, refetch } = useQuery({
+  const { data: trasladosPage, isLoading, error, refetch } = useQuery({
     queryKey: ['traslados'],
     queryFn: () => trasladosApi.listar(),
   });
+  const traslados = trasladosPage?.items;
 
   const handleVerDetalles = (id: number) => {
     setTrasladoSeleccionado(id);
@@ -78,33 +75,6 @@ export function TrasladosPage() {
     setTrasladoSeleccionado(null);
     refetch();
   };
-
-  if (isLoading) {
-    return (
-      <Container maxWidth="xl">
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '60vh',
-          }}
-        >
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container maxWidth="xl">
-        <Alert severity="error" sx={{ mt: 3 }}>
-          Error al cargar los traslados. Por favor, intenta de nuevo.
-        </Alert>
-      </Container>
-    );
-  }
 
   return (
     <Container maxWidth="xl">
@@ -126,6 +96,15 @@ export function TrasladosPage() {
         </Button>
       </Box>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Error al cargar los traslados. Por favor, intenta de nuevo.
+        </Alert>
+      )}
+
+      {isLoading ? (
+        <TableSkeleton cols={7} />
+      ) : (
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -183,6 +162,7 @@ export function TrasladosPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      )}
 
       <CrearTrasladoDialog
         open={crearDialogOpen}

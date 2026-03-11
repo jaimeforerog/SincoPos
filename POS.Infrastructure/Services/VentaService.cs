@@ -14,7 +14,8 @@ public class VentaService : IVentaService
 {
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;
-    private readonly PrecioService _precioService;
+    private readonly global::Marten.IDocumentStore _store;
+    private readonly IPrecioService _precioService;
     private readonly CosteoService _costeoService;
     private readonly ITaxEngine _taxEngine;
     private readonly ILogger<VentaService> _logger;
@@ -26,7 +27,8 @@ public class VentaService : IVentaService
     public VentaService(
         AppDbContext context,
         global::Marten.IDocumentSession session,
-        PrecioService precioService,
+        global::Marten.IDocumentStore store,
+        IPrecioService precioService,
         CosteoService costeoService,
         ITaxEngine taxEngine,
         ILogger<VentaService> logger,
@@ -37,6 +39,7 @@ public class VentaService : IVentaService
     {
         _context = context;
         _session = session;
+        _store = store;
         _precioService = precioService;
         _costeoService = costeoService;
         _taxEngine = taxEngine;
@@ -114,6 +117,7 @@ public class VentaService : IVentaService
         // Procesar cada linea con el TaxEngine
         var detalles = new List<DetalleVenta>();
         var stocksVerificar = new List<(Stock stock, string nombre)>();
+        var pendingMartenEvents = new List<(Guid StreamId, object Evento)>();
         decimal subtotal = 0;
         decimal descuentoTotal = 0;
         decimal totalImpuestos = 0;
@@ -181,7 +185,7 @@ public class VentaService : IVentaService
 
             var eventoVenta = aggregate.RegistrarSalidaVenta(
                 linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta, null);
-            _session.Events.Append(streamId, eventoVenta);
+            pendingMartenEvents.Add((streamId, eventoVenta));
 
             // Consumir stock con metodo de costeo
             var (costoTotal, costoUnitario) = await _costeoService.ConsumirStock(
@@ -243,9 +247,22 @@ public class VentaService : IVentaService
         // Actualizar monto de caja
         caja.MontoActual += total;
 
-        // Guardar todo
-        await _session.SaveChangesAsync();
-        await _context.SaveChangesAsync();
+        // Guardar todo en una sola transacción atómica (Marten + EF Core)
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            var npgsqlConn = (Npgsql.NpgsqlConnection)_context.Database.GetDbConnection();
+            if (npgsqlConn.State != System.Data.ConnectionState.Open)
+                await npgsqlConn.OpenAsync();
+            await using var npgsqlTx = await npgsqlConn.BeginTransactionAsync();
+            await _context.Database.UseTransactionAsync(npgsqlTx);
+            await using var martenTx = _store.LightweightSession(
+                global::Marten.Services.SessionOptions.ForTransaction(npgsqlTx));
+            foreach (var (sid, evt) in pendingMartenEvents)
+                martenTx.Events.Append(sid, evt);
+            await martenTx.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+            await npgsqlTx.CommitAsync();
+        });
 
         _logger.LogInformation("Venta {NumeroVenta} completada. Total: {Total}, Items: {Items}",
             numeroVenta, total, detalles.Count);
@@ -313,6 +330,7 @@ public class VentaService : IVentaService
         var sucursal = await _context.Sucursales.FindAsync(venta.SucursalId);
 
         // Revertir cada linea
+        var pendingMartenEvents = new List<(Guid StreamId, object Evento)>();
         foreach (var detalle in venta.Detalles)
         {
             // Registrar entrada de devolucion en ES
@@ -325,7 +343,7 @@ public class VentaService : IVentaService
                     detalle.Cantidad, detalle.CostoUnitario,
                     null, null, $"Anulacion venta {venta.NumeroVenta}",
                     motivo ?? "Venta anulada", null);
-                _session.Events.Append(streamId, entradaEvento);
+                pendingMartenEvents.Add((streamId, entradaEvento));
             }
 
             // Registrar lote de entrada y actualizar stock
@@ -357,8 +375,22 @@ public class VentaService : IVentaService
         if (caja != null)
             caja.MontoActual -= venta.Total;
 
-        await _session.SaveChangesAsync();
-        await _context.SaveChangesAsync();
+        // Guardar en una sola transacción atómica (Marten + EF Core)
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            var npgsqlConn = (Npgsql.NpgsqlConnection)_context.Database.GetDbConnection();
+            if (npgsqlConn.State != System.Data.ConnectionState.Open)
+                await npgsqlConn.OpenAsync();
+            await using var npgsqlTx = await npgsqlConn.BeginTransactionAsync();
+            await _context.Database.UseTransactionAsync(npgsqlTx);
+            await using var martenTx = _store.LightweightSession(
+                global::Marten.Services.SessionOptions.ForTransaction(npgsqlTx));
+            foreach (var (sid, evt) in pendingMartenEvents)
+                martenTx.Events.Append(sid, evt);
+            await martenTx.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+            await npgsqlTx.CommitAsync();
+        });
 
         _logger.LogInformation("Venta {NumeroVenta} anulada. Motivo: {Motivo}",
             venta.NumeroVenta, motivo);
@@ -481,6 +513,7 @@ public class VentaService : IVentaService
             return (null, "Sucursal no encontrada.");
 
         // Procesar cada línea de devolución: restaurar inventario
+        var pendingMartenEvents = new List<(Guid StreamId, object Evento)>();
         foreach (var detalleDevolucion in detallesDevolucion)
         {
             var detalleOriginal = venta.Detalles.First(d => d.ProductoId == detalleDevolucion.ProductoId);
@@ -499,7 +532,7 @@ public class VentaService : IVentaService
                     $"Devolución {numeroDevolucion}",
                     dto.Motivo,
                     null);
-                _session.Events.Append(streamId, eventoEntrada);
+                pendingMartenEvents.Add((streamId, eventoEntrada));
             }
 
             // Registrar lote de entrada
@@ -532,12 +565,7 @@ public class VentaService : IVentaService
         }
 
         // Resolver usuarioId desde email
-        int? usuarioId = null;
-        if (!string.IsNullOrEmpty(emailUsuario))
-        {
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == emailUsuario);
-            usuarioId = usuario?.Id;
-        }
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
 
         // Crear registro de devolución
         var devolucion = new DevolucionVenta
@@ -560,11 +588,8 @@ public class VentaService : IVentaService
             caja.MontoActual -= totalDevuelto;
         }
 
-        // Guardar devolución + inventario + caja (genera devolucion.Id)
-        await _session.SaveChangesAsync();
-        await _context.SaveChangesAsync();
-
         // ===== NOTA CRÉDITO CONTABLE — ERP OUTBOX =====
+        // Preparar asientos en memoria (antes de la transacción)
         var productosIds = detallesDevolucion.Select(d => d.ProductoId).Distinct().ToList();
         var productosBatch = await _context.Productos
             .Include(p => p.Categoria)
@@ -575,7 +600,6 @@ public class VentaService : IVentaService
         var asientosNC = new List<AsientoContableErp>();
         var centroCosto = sucursal.CentroCosto ?? string.Empty;
 
-        // Acumuladores por cuenta
         var ingresosAcumulados = new Dictionary<string, decimal>();
         var ivaAcumulado = new Dictionary<string, (string? Cuenta, decimal Total)>();
 
@@ -585,14 +609,12 @@ public class VentaService : IVentaService
             var lineaSubtotal = det.CantidadDevuelta * det.PrecioUnitario;
             var lineaImpuesto = lineaSubtotal * detalleOrig.PorcentajeImpuesto;
 
-            // Acumular ingresos por cuenta (CuentaIngreso de la categoría)
             var prod = productosBatch.GetValueOrDefault(det.ProductoId);
             var cuentaIngreso = prod?.Categoria?.CuentaIngreso ?? "4135";
             if (!ingresosAcumulados.ContainsKey(cuentaIngreso))
                 ingresosAcumulados[cuentaIngreso] = 0;
             ingresosAcumulados[cuentaIngreso] += lineaSubtotal;
 
-            // Acumular IVA
             if (detalleOrig.PorcentajeImpuesto > 0)
             {
                 var nombreImp = $"IVA {detalleOrig.PorcentajeImpuesto * 100:0.##}%";
@@ -604,44 +626,23 @@ public class VentaService : IVentaService
             }
         }
 
-        // 1. Débitos: Reversión de Ingresos (devuelve lo vendido)
         foreach (var ing in ingresosAcumulados)
-        {
-            asientosNC.Add(new AsientoContableErp(
-                Cuenta: ing.Key,
-                CentroCosto: centroCosto,
-                Naturaleza: "Debito",
-                Valor: ing.Value,
-                Nota: $"NC - Reversión Ingreso por devolución {numeroDevolucion}"
-            ));
-        }
+            asientosNC.Add(new AsientoContableErp(ing.Key, centroCosto, "Debito", ing.Value,
+                $"NC - Reversión Ingreso por devolución {numeroDevolucion}"));
 
-        // 2. Débitos: Reversión de IVA por pagar
         foreach (var iva in ivaAcumulado)
-        {
-            asientosNC.Add(new AsientoContableErp(
-                Cuenta: iva.Value.Cuenta ?? "2408",
-                CentroCosto: centroCosto,
-                Naturaleza: "Debito",
-                Valor: iva.Value.Total,
-                Nota: $"NC - Reversión {iva.Key} por devolución {numeroDevolucion}"
-            ));
-        }
+            asientosNC.Add(new AsientoContableErp(iva.Value.Cuenta ?? "2408", centroCosto, "Debito", iva.Value.Total,
+                $"NC - Reversión {iva.Key} por devolución {numeroDevolucion}"));
 
-        // 3. Crédito: Devolución al cliente (Caja/Efectivo)
         var totalIvaNC = ivaAcumulado.Sum(i => i.Value.Total);
         var totalIngresoNC = ingresosAcumulados.Sum(i => i.Value);
-        asientosNC.Add(new AsientoContableErp(
-            Cuenta: _erpOptions.CuentaCaja,
-            CentroCosto: centroCosto,
-            Naturaleza: "Credito",
-            Valor: totalIngresoNC + totalIvaNC,
-            Nota: $"NC - Reembolso devolución {numeroDevolucion} de venta {venta.NumeroVenta}"
-        ));
+        asientosNC.Add(new AsientoContableErp(_erpOptions.CuentaCaja, centroCosto, "Credito",
+            totalIngresoNC + totalIvaNC,
+            $"NC - Reembolso devolución {numeroDevolucion} de venta {venta.NumeroVenta}"));
 
         var ncPayload = new CompraErpPayload(
             NumeroOrden: numeroDevolucion,
-            NitProveedor: "", // No aplica para notas crédito de venta
+            NitProveedor: "",
             FormaPago: venta.MetodoPago.ToString(),
             FechaVencimientoErp: DateTime.UtcNow,
             FechaRecepcion: DateTime.UtcNow,
@@ -649,41 +650,54 @@ public class VentaService : IVentaService
             Asientos: asientosNC,
             TotalOriginalDocumento: totalDevuelto
         );
-
-        var docContableNC = new DocumentoContable
-        {
-            NumeroSoporte = numeroDevolucion,
-            TipoDocumento = "NotaCredito",
-            TerceroId = venta.ClienteId,
-            SucursalId = venta.SucursalId,
-            FechaCausacion = DateTime.UtcNow,
-            FormaPago = venta.MetodoPago.ToString(),
-            TotalDebito = asientosNC.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor),
-            TotalCredito = asientosNC.Where(a => a.Naturaleza == "Credito").Sum(a => a.Valor),
-            Detalles = asientosNC.Select(a => new DetalleDocumentoContable
-            {
-                CuentaContable = a.Cuenta,
-                CentroCosto = a.CentroCosto,
-                Naturaleza = a.Naturaleza,
-                Valor = a.Valor,
-                Nota = a.Nota
-            }).ToList()
-        };
-
-        _context.DocumentosContables.Add(docContableNC);
-
-        _context.ErpOutboxMessages.Add(new ErpOutboxMessage
-        {
-            TipoDocumento = "NotaCreditoVenta",
-            EntidadId = devolucion.Id,
-            Payload = System.Text.Json.JsonSerializer.Serialize(ncPayload),
-            FechaCreacion = DateTime.UtcNow,
-            Estado = EstadoOutbox.Pendiente
-        });
         // ===================================================
 
-        // Guardar DocumentoContable + Outbox (segundo save)
-        await _context.SaveChangesAsync();
+        // Guardar todo en una sola transacción atómica (Marten + EF Core)
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            var npgsqlConn = (Npgsql.NpgsqlConnection)_context.Database.GetDbConnection();
+            if (npgsqlConn.State != System.Data.ConnectionState.Open)
+                await npgsqlConn.OpenAsync();
+            await using var npgsqlTx = await npgsqlConn.BeginTransactionAsync();
+            await _context.Database.UseTransactionAsync(npgsqlTx);
+            await using var martenTx = _store.LightweightSession(
+                global::Marten.Services.SessionOptions.ForTransaction(npgsqlTx));
+            foreach (var (sid, evt) in pendingMartenEvents)
+                martenTx.Events.Append(sid, evt);
+            await martenTx.SaveChangesAsync();
+            await _context.SaveChangesAsync(); // genera devolucion.Id
+
+            // Crear DocumentoContable + ErpOutbox con devolucion.Id ya disponible
+            _context.DocumentosContables.Add(new DocumentoContable
+            {
+                NumeroSoporte = numeroDevolucion,
+                TipoDocumento = "NotaCredito",
+                TerceroId = venta.ClienteId,
+                SucursalId = venta.SucursalId,
+                FechaCausacion = DateTime.UtcNow,
+                FormaPago = venta.MetodoPago.ToString(),
+                TotalDebito = asientosNC.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor),
+                TotalCredito = asientosNC.Where(a => a.Naturaleza == "Credito").Sum(a => a.Valor),
+                Detalles = asientosNC.Select(a => new DetalleDocumentoContable
+                {
+                    CuentaContable = a.Cuenta,
+                    CentroCosto = a.CentroCosto,
+                    Naturaleza = a.Naturaleza,
+                    Valor = a.Valor,
+                    Nota = a.Nota
+                }).ToList()
+            });
+            _context.ErpOutboxMessages.Add(new ErpOutboxMessage
+            {
+                TipoDocumento = "NotaCreditoVenta",
+                EntidadId = devolucion.Id,
+                Payload = System.Text.Json.JsonSerializer.Serialize(ncPayload),
+                FechaCreacion = DateTime.UtcNow,
+                Estado = EstadoOutbox.Pendiente
+            });
+            await _context.SaveChangesAsync();
+            await npgsqlTx.CommitAsync();
+        });
 
         _logger.LogInformation(
             "Devolución parcial {NumeroDevolucion} creada para venta {NumeroVenta}. Total devuelto: {Total}",

@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
-import type { OrdenCompraDTO, AprobarOrdenCompraDTO } from '@/types/api';
+import type { OrdenCompraDTO, AprobarOrdenCompraDTO, PaginatedResult } from '@/types/api';
 
 interface AprobarOrdenDialogProps {
   open: boolean;
@@ -37,12 +37,26 @@ export function AprobarOrdenDialog({
 
   const mutation = useMutation({
     mutationFn: (data: AprobarOrdenCompraDTO) => comprasApi.aprobar(orden.id, data),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['compras'] });
+      const snapshots = queryClient.getQueriesData<PaginatedResult<OrdenCompraDTO>>({ queryKey: ['compras'] });
+      queryClient.setQueriesData<PaginatedResult<OrdenCompraDTO>>(
+        { queryKey: ['compras'] },
+        (old) => old ? { ...old, items: old.items.map(o => o.id === orden.id ? { ...o, estado: 'Aprobada' } : o) } : old,
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, val]) => queryClient.setQueryData(key, val));
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compras'] });
       enqueueSnackbar('Orden aprobada exitosamente', { variant: 'success' });
       reset();
       onSuccess();
       onClose();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['compras'] });
     },
     onError: (error: any) => {
       let mensaje = 'Error al aprobar la orden';

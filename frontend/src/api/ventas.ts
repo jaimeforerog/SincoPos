@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { VentaDTO, CrearVentaDTO } from '@/types/api';
+import type { VentaDTO, CrearVentaDTO, PaginatedResult } from '@/types/api';
 
 export const ventasApi = {
   getAll: async (params?: {
@@ -8,9 +8,10 @@ export const ventasApi = {
     desde?: string;
     hasta?: string;
     estado?: string;
-    limite?: number;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const response = await apiClient.get<VentaDTO[]>('/ventas', {
+    const response = await apiClient.get<PaginatedResult<VentaDTO>>('/ventas', {
       params,
     });
     return response.data;

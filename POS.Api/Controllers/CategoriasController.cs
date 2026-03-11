@@ -390,31 +390,44 @@ public class CategoriasController : ControllerBase
 
     private async Task<bool> EsSubCategoria(int categoriaId, int posibleSubCategoriaId)
     {
-        // Obtener todas las subcategorías directas
-        var subCategorias = await _context.Categorias
-            .Where(c => c.CategoriaPadreId == categoriaId)
+        // Load entire tree in one query, then traverse in memory (avoids recursive N+1)
+        var nodos = await _context.Categorias
+            .Select(c => new { c.Id, c.CategoriaPadreId })
             .ToListAsync();
 
-        foreach (var sub in subCategorias)
+        var hijosPorPadre = nodos.ToLookup(c => c.CategoriaPadreId ?? -1, c => c.Id);
+        return EsSubCategoriaEnMemoria(categoriaId, posibleSubCategoriaId, hijosPorPadre);
+    }
+
+    private static bool EsSubCategoriaEnMemoria(
+        int categoriaId, int posibleSubCategoriaId,
+        ILookup<int, int> hijosPorPadre)
+    {
+        foreach (var hijoId in hijosPorPadre[categoriaId])
         {
-            // Si encontramos la categoría buscada, es una subcategoría
-            if (sub.Id == posibleSubCategoriaId) return true;
-
-            // Buscar recursivamente en las subcategorías
-            if (await EsSubCategoria(sub.Id, posibleSubCategoriaId)) return true;
+            if (hijoId == posibleSubCategoriaId) return true;
+            if (EsSubCategoriaEnMemoria(hijoId, posibleSubCategoriaId, hijosPorPadre)) return true;
         }
-
         return false;
     }
 
     private async Task ActualizarJerarquia(Categoria categoria, int? nuevoPadreId)
     {
+        // Load entire tree in one query, then update in memory (avoids recursive N+1)
+        var todasLasCategorias = await _context.Categorias.ToListAsync();
+        var padreDict = todasLasCategorias.ToDictionary(c => c.Id);
+        ActualizarJerarquiaEnMemoria(categoria, nuevoPadreId, todasLasCategorias, padreDict);
+    }
+
+    private static void ActualizarJerarquiaEnMemoria(
+        Categoria categoria, int? nuevoPadreId,
+        List<Categoria> todas, Dictionary<int, Categoria> padreDict)
+    {
         categoria.CategoriaPadreId = nuevoPadreId;
 
-        if (nuevoPadreId.HasValue)
+        if (nuevoPadreId.HasValue && padreDict.TryGetValue(nuevoPadreId.Value, out var padre))
         {
-            var padre = await _context.Categorias.FindAsync(nuevoPadreId.Value);
-            categoria.Nivel = padre!.Nivel + 1;
+            categoria.Nivel = padre.Nivel + 1;
             categoria.RutaCompleta = $"{padre.RutaCompleta} > {categoria.Nombre}";
         }
         else
@@ -423,15 +436,8 @@ public class CategoriasController : ControllerBase
             categoria.RutaCompleta = categoria.Nombre;
         }
 
-        // Actualizar recursivamente todas las subcategorías
-        var subCategorias = await _context.Categorias
-            .Where(c => c.CategoriaPadreId == categoria.Id)
-            .ToListAsync();
-
-        foreach (var sub in subCategorias)
-        {
-            await ActualizarJerarquia(sub, categoria.Id);
-        }
+        foreach (var sub in todas.Where(c => c.CategoriaPadreId == categoria.Id))
+            ActualizarJerarquiaEnMemoria(sub, categoria.Id, todas, padreDict);
     }
 
     #endregion

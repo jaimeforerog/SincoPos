@@ -523,7 +523,9 @@ public class FacturacionService : IFacturacionService
             c.NumeroResolucion, c.FechaResolucion, c.Prefijo,
             c.NumeroDesde, c.NumeroHasta, c.NumeroActual,
             c.FechaVigenciaDesde, c.FechaVigenciaHasta,
-            c.Ambiente, c.PinSoftware, c.IdSoftware,
+            c.Ambiente,
+            TienePinSoftware: !string.IsNullOrEmpty(c.PinSoftware),
+            c.IdSoftware,
             TieneCertificado: !string.IsNullOrEmpty(c.CertificadoBase64));
 
     private static string MapTipoIdentificacion(TipoIdentificacion tipo) => tipo switch

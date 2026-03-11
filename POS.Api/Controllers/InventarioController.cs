@@ -229,13 +229,25 @@ public class InventarioController : ControllerBase
         var stockRecords = await stockQuery.ToListAsync();
         var movimientos = new List<MovimientoInventarioDto>();
 
+        // Batch-load products and sucursales in 2 queries to avoid N+1
+        var productoIds = stockRecords.Select(s => s.ProductoId).Distinct().ToList();
+        var sucursalIds = stockRecords.Select(s => s.SucursalId).Distinct().ToList();
+
+        var productosDict = await _context.Productos
+            .Where(p => productoIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Nombre);
+
+        var sucursalesDict = await _context.Sucursales
+            .Where(s => sucursalIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Nombre);
+
         foreach (var sr in stockRecords)
         {
             var streamId = InventarioAggregate.GenerarStreamId(sr.ProductoId, sr.SucursalId);
             var events = await _session.Events.FetchStreamAsync(streamId);
 
-            var prod = await _context.Productos.FindAsync(sr.ProductoId);
-            var suc = await _context.Sucursales.FindAsync(sr.SucursalId);
+            var prodNombre = productosDict.GetValueOrDefault(sr.ProductoId, "");
+            var sucNombre = sucursalesDict.GetValueOrDefault(sr.SucursalId, "");
 
             foreach (var e in events.OrderByDescending(e => e.Timestamp))
             {
@@ -244,8 +256,8 @@ public class InventarioController : ControllerBase
                 {
                     case POS.Domain.Events.Inventario.EntradaCompraRegistrada entrada:
                         mov = new MovimientoInventarioDto(
-                            (int)e.Version, entrada.ProductoId, prod?.Nombre ?? "",
-                            entrada.SucursalId, suc?.Nombre ?? "",
+                            (int)e.Version, entrada.ProductoId, prodNombre,
+                            entrada.SucursalId, sucNombre,
                             "EntradaCompra", entrada.Cantidad, entrada.CostoUnitario,
                             entrada.CostoTotal, entrada.PorcentajeImpuesto, entrada.MontoImpuesto,
                             entrada.Referencia, entrada.Observaciones,
@@ -255,8 +267,8 @@ public class InventarioController : ControllerBase
 
                     case POS.Domain.Events.Inventario.DevolucionProveedorRegistrada devolucion:
                         mov = new MovimientoInventarioDto(
-                            (int)e.Version, devolucion.ProductoId, prod?.Nombre ?? "",
-                            devolucion.SucursalId, suc?.Nombre ?? "",
+                            (int)e.Version, devolucion.ProductoId, prodNombre,
+                            devolucion.SucursalId, sucNombre,
                             "DevolucionProveedor", devolucion.Cantidad, devolucion.CostoUnitario,
                             devolucion.CostoTotal, 0, 0,
                             devolucion.Referencia, devolucion.Observaciones,
@@ -266,8 +278,8 @@ public class InventarioController : ControllerBase
 
                     case POS.Domain.Events.Inventario.AjusteInventarioRegistrado ajuste:
                         mov = new MovimientoInventarioDto(
-                            (int)e.Version, ajuste.ProductoId, prod?.Nombre ?? "",
-                            ajuste.SucursalId, suc?.Nombre ?? "",
+                            (int)e.Version, ajuste.ProductoId, prodNombre,
+                            ajuste.SucursalId, sucNombre,
                             ajuste.EsPositivo ? "AjustePositivo" : "AjusteNegativo",
                             Math.Abs(ajuste.Diferencia), ajuste.CostoUnitario,
                             ajuste.CostoTotal, 0, 0,
@@ -278,8 +290,8 @@ public class InventarioController : ControllerBase
 
                     case POS.Domain.Events.Inventario.SalidaVentaRegistrada salida:
                         mov = new MovimientoInventarioDto(
-                            (int)e.Version, salida.ProductoId, prod?.Nombre ?? "",
-                            salida.SucursalId, suc?.Nombre ?? "",
+                            (int)e.Version, salida.ProductoId, prodNombre,
+                            salida.SucursalId, sucNombre,
                             "SalidaVenta", salida.Cantidad, salida.CostoUnitario,
                             salida.CostoTotal, salida.PorcentajeImpuesto, salida.MontoImpuesto,
                             salida.ReferenciaVenta, null,
@@ -289,8 +301,8 @@ public class InventarioController : ControllerBase
 
                     case POS.Domain.Events.Inventario.StockMinimoActualizado minimo:
                         mov = new MovimientoInventarioDto(
-                            (int)e.Version, minimo.ProductoId, prod?.Nombre ?? "",
-                            minimo.SucursalId, suc?.Nombre ?? "",
+                            (int)e.Version, minimo.ProductoId, prodNombre,
+                            minimo.SucursalId, sucNombre,
                             "StockMinimoActualizado", 0, 0, 0, 0, 0, null,
                             $"Stock minimo: {minimo.StockMinimoAnterior} → {minimo.StockMinimoNuevo}",
                             null, null,

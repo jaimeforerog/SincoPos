@@ -28,7 +28,6 @@ public class ReportesService : IReportesService
         var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
 
         var ventasQuery = _context.Ventas
-            .Include(v => v.Detalles)
             .Where(v => v.FechaVenta >= fechaDesdeUtc && v.FechaVenta <= fechaHastaUtc);
 
         if (sucursalId.HasValue)
@@ -37,33 +36,41 @@ public class ReportesService : IReportesService
         if (metodoPago.HasValue)
             ventasQuery = ventasQuery.Where(v => (int)v.MetodoPago == metodoPago.Value);
 
-        var ventas = await ventasQuery.ToListAsync();
-
-        var totalVentas = ventas.Sum(v => v.Total);
-        var cantidadVentas = ventas.Count;
-        var costoTotal = ventas.Sum(v => v.Detalles.Sum(d => d.CostoUnitario * d.Cantidad));
+        // Scalars: SUM/COUNT ejecutados en PostgreSQL
+        var totalVentas = await ventasQuery.SumAsync(v => (decimal?)v.Total) ?? 0m;
+        var cantidadVentas = await ventasQuery.CountAsync();
+        var costoTotal = await ventasQuery
+            .SelectMany(v => v.Detalles)
+            .SumAsync(d => (decimal?)(d.CostoUnitario * d.Cantidad)) ?? 0m;
         var utilidadTotal = totalVentas - costoTotal;
         var ticketPromedio = cantidadVentas > 0 ? totalVentas / cantidadVentas : 0;
         var margenPromedio = totalVentas > 0 ? (utilidadTotal / totalVentas) * 100 : 0;
 
-        var ventasPorMetodo = ventas
-            .GroupBy(v => v.MetodoPago.ToString())
-            .Select(g => new VentaPorMetodoPagoDto(
-                g.Key,
-                g.Sum(v => v.Total),
-                g.Count()
-            ))
+        // ventasPorMetodo: SQL GROUP BY MetodoPago
+        var ventasPorMetodoRaw = await ventasQuery
+            .GroupBy(v => v.MetodoPago)
+            .Select(g => new { MetodoPago = g.Key, Total = g.Sum(v => v.Total), Cantidad = g.Count() })
+            .ToListAsync();
+        var ventasPorMetodo = ventasPorMetodoRaw
+            .Select(r => new VentaPorMetodoPagoDto(r.MetodoPago.ToString(), r.Total, r.Cantidad))
             .ToList();
 
-        var ventasPorDia = ventas
+        // ventasPorDia: dos consultas SQL GROUP BY DATE, unidas en C#
+        var totalPorDiaRaw = await ventasQuery
             .GroupBy(v => v.FechaVenta.Date)
-            .Select(g => new VentaPorDiaDto(
-                g.Key.ToString("yyyy-MM-dd"),
-                g.Sum(v => v.Total),
-                g.Count(),
-                g.Sum(v => v.Detalles.Sum(d => d.CostoUnitario * d.Cantidad)),
-                g.Sum(v => v.Total) - g.Sum(v => v.Detalles.Sum(d => d.CostoUnitario * d.Cantidad))
-            ))
+            .Select(g => new { Fecha = g.Key, Total = g.Sum(v => v.Total), Cantidad = g.Count() })
+            .ToListAsync();
+        var costoPorDiaDict = await ventasQuery
+            .SelectMany(v => v.Detalles, (v, d) => new { FechaVenta = v.FechaVenta, Costo = d.CostoUnitario * d.Cantidad })
+            .GroupBy(x => x.FechaVenta.Date)
+            .Select(g => new { Fecha = g.Key, Costo = g.Sum(x => x.Costo) })
+            .ToDictionaryAsync(g => g.Fecha, g => g.Costo);
+        var ventasPorDia = totalPorDiaRaw
+            .Select(r =>
+            {
+                var costo = costoPorDiaDict.TryGetValue(r.Fecha, out var c) ? c : 0m;
+                return new VentaPorDiaDto(r.Fecha.ToString("yyyy-MM-dd"), r.Total, r.Cantidad, costo, r.Total - costo);
+            })
             .OrderBy(v => v.Fecha)
             .ToList();
 
@@ -263,11 +270,9 @@ public class ReportesService : IReportesService
         var ayerUtc = TimeZoneInfo.ConvertTimeToUtc(ayer, colombiaTimeZone);
 
         var ventasHoyQuery = _context.Ventas
-            .Include(v => v.Detalles)
             .Where(v => v.FechaVenta >= hoyUtc && v.FechaVenta < mañanaUtc);
 
         var ventasAyerQuery = _context.Ventas
-            .Include(v => v.Detalles)
             .Where(v => v.FechaVenta >= ayerUtc && v.FechaVenta < hoyUtc);
 
         if (sucursalId.HasValue)
@@ -276,43 +281,56 @@ public class ReportesService : IReportesService
             ventasAyerQuery = ventasAyerQuery.Where(v => v.SucursalId == sucursalId.Value);
         }
 
-        var ventasHoy = await ventasHoyQuery.ToListAsync();
-        var ventasAyer = await ventasAyerQuery.ToListAsync();
-
-        var totalHoy = ventasHoy.Sum(v => v.Total);
-        var totalAyer = ventasAyer.Sum(v => v.Total);
+        // Scalars: SUM/COUNT/DISTINCT ejecutados en PostgreSQL
+        var totalHoy = await ventasHoyQuery.SumAsync(v => (decimal?)v.Total) ?? 0m;
+        var totalAyer = await ventasAyerQuery.SumAsync(v => (decimal?)v.Total) ?? 0m;
         var porcentajeCambio = totalAyer > 0 ? ((totalHoy - totalAyer) / totalAyer) * 100 : 0;
 
-        var cantidadVentas = ventasHoy.Count;
-        var productosVendidos = ventasHoy.Sum(v => v.Detalles.Sum(d => d.Cantidad));
-        var clientesAtendidos = ventasHoy.Where(v => v.ClienteId.HasValue)
-            .Select(v => v.ClienteId!.Value).Distinct().Count();
+        var cantidadVentas = await ventasHoyQuery.CountAsync();
+        var productosVendidos = (int)(await ventasHoyQuery
+            .SelectMany(v => v.Detalles)
+            .SumAsync(d => (decimal?)d.Cantidad) ?? 0m);
+        var clientesAtendidos = await ventasHoyQuery
+            .Where(v => v.ClienteId.HasValue)
+            .Select(v => v.ClienteId!.Value)
+            .Distinct()
+            .CountAsync();
         var ticketPromedio = cantidadVentas > 0 ? totalHoy / cantidadVentas : 0;
 
-        var costoHoy = ventasHoy.Sum(v => v.Detalles.Sum(d => d.CostoUnitario * d.Cantidad));
+        var costoHoy = await ventasHoyQuery
+            .SelectMany(v => v.Detalles)
+            .SumAsync(d => (decimal?)(d.CostoUnitario * d.Cantidad)) ?? 0m;
         var utilidadHoy = totalHoy - costoHoy;
         var margenPromedio = totalHoy > 0 ? (utilidadHoy / totalHoy) * 100 : 0;
 
         var metricas = new MetricasDelDiaDto(
             totalHoy, totalAyer, porcentajeCambio,
-            cantidadVentas, (int)productosVendidos, clientesAtendidos,
+            cantidadVentas, productosVendidos, clientesAtendidos,
             ticketPromedio, utilidadHoy, margenPromedio
         );
 
-        // Ventas por hora
-        var ventasPorHora = ventasHoy
+        // Ventas por hora: solo {FechaVenta, Total} — timezone conversion en C#
+        var horaData = await ventasHoyQuery
+            .Select(v => new { v.FechaVenta, v.Total })
+            .ToListAsync();
+        var ventasPorHora = horaData
             .GroupBy(v => TimeZoneInfo.ConvertTimeFromUtc(v.FechaVenta, colombiaTimeZone).Hour)
             .Select(g => new VentaPorHoraDto(g.Key, g.Sum(v => v.Total), g.Count()))
             .OrderBy(v => v.Hora)
             .ToList();
 
-        // Top 5 productos
-        var detallesHoy = ventasHoy.SelectMany(v => v.Detalles).ToList();
+        // Top 5 productos: columnas mínimas, agrupación en C#
+        var detallesHoy = await ventasHoyQuery
+            .SelectMany(v => v.Detalles)
+            .Select(d => new { d.ProductoId, d.NombreProducto, d.Cantidad, d.PrecioUnitario, d.CostoUnitario, d.Subtotal })
+            .ToListAsync();
         var productoIdsTop = detallesHoy.Select(d => d.ProductoId).Distinct().ToList();
-        var codigosBarras = await _context.Productos
-            .Where(p => productoIdsTop.Contains(p.Id))
-            .Select(p => new { p.Id, p.CodigoBarras, p.Categoria!.Nombre })
-            .ToDictionaryAsync(p => p.Id);
+        var codigosBarras = productoIdsTop.Count > 0
+            ? await _context.Productos
+                .Where(p => productoIdsTop.Contains(p.Id))
+                .Select(p => new { p.Id, p.CodigoBarras, p.Categoria!.Nombre })
+                .ToDictionaryAsync(p => p.Id)
+            : [];
 
         var topProductos = detallesHoy
             .GroupBy(d => new { d.ProductoId, d.NombreProducto })
@@ -377,40 +395,45 @@ public class ReportesService : IReportesService
         var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
 
         var ventasQuery = _context.Ventas
-            .Include(v => v.Detalles)
             .Where(v => v.FechaVenta >= fechaDesdeUtc && v.FechaVenta <= fechaHastaUtc);
 
         if (sucursalId.HasValue)
             ventasQuery = ventasQuery.Where(v => v.SucursalId == sucursalId.Value);
 
-        var ventas = await ventasQuery.ToListAsync();
+        // GROUP BY en PostgreSQL via JOIN ventas→detalles
+        var topRaw = await ventasQuery
+            .SelectMany(v => v.Detalles)
+            .GroupBy(d => new { d.ProductoId, d.NombreProducto })
+            .Select(g => new
+            {
+                ProductoId = g.Key.ProductoId,
+                NombreProducto = g.Key.NombreProducto,
+                Cantidad = g.Sum(d => d.Cantidad),
+                TotalVtas = g.Sum(d => d.Subtotal),
+                Utilidad = g.Sum(d => (d.PrecioUnitario - d.CostoUnitario) * d.Cantidad)
+            })
+            .OrderByDescending(g => g.Cantidad)
+            .Take(limite)
+            .ToListAsync();
 
-        var detalles = ventas.SelectMany(v => v.Detalles).ToList();
-        var productoIds = detalles.Select(d => d.ProductoId).Distinct().ToList();
+        if (topRaw.Count == 0) return [];
+
+        var productoIds = topRaw.Select(t => t.ProductoId).ToList();
         var codigosBarras = await _context.Productos
             .Where(p => productoIds.Contains(p.Id))
             .Select(p => new { p.Id, p.CodigoBarras, CategoriaNombre = p.Categoria!.Nombre })
             .ToDictionaryAsync(p => p.Id);
 
-        var topProductos = detalles
-            .GroupBy(d => new { d.ProductoId, d.NombreProducto })
-            .Select(g =>
+        var topProductos = topRaw
+            .Select(t =>
             {
-                codigosBarras.TryGetValue(g.Key.ProductoId, out var prod);
-                var totalVtas = g.Sum(d => d.Subtotal);
-                var utilidad = g.Sum(d => (d.PrecioUnitario - d.CostoUnitario) * d.Cantidad);
+                codigosBarras.TryGetValue(t.ProductoId, out var prod);
                 return new TopProductoDto(
-                    g.Key.ProductoId,
-                    prod?.CodigoBarras ?? "",
-                    g.Key.NombreProducto,
-                    prod?.CategoriaNombre,
-                    (int)g.Sum(d => d.Cantidad),
-                    totalVtas, utilidad,
-                    totalVtas > 0 ? (utilidad / totalVtas) * 100 : 0
+                    t.ProductoId, prod?.CodigoBarras ?? "", t.NombreProducto,
+                    prod?.CategoriaNombre, (int)t.Cantidad, t.TotalVtas, t.Utilidad,
+                    t.TotalVtas > 0 ? (t.Utilidad / t.TotalVtas) * 100 : 0
                 );
             })
-            .OrderByDescending(p => p.CantidadVendida)
-            .Take(limite)
             .ToList();
 
         await _activityLogService.LogActivityAsync(new ActivityLogDto(

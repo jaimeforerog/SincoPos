@@ -7,11 +7,12 @@ import type {
   RecibirOrdenCompraDTO,
   CancelarOrdenCompraDTO,
   ErpOutboxErrorDTO,
+  PaginatedResult,
 } from '@/types/api';
 
 export const comprasApi = {
   /**
-   * Listar órdenes de compra con filtros
+   * Listar órdenes de compra con filtros y paginación
    */
   getAll: async (params?: {
     sucursalId?: number;
@@ -19,9 +20,10 @@ export const comprasApi = {
     estado?: string;
     desde?: string;
     hasta?: string;
-    limite?: number;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const response = await apiClient.get<OrdenCompraDTO[]>('/compras', { params });
+    const response = await apiClient.get<PaginatedResult<OrdenCompraDTO>>('/compras', { params });
     return response.data;
   },
 

@@ -17,7 +17,6 @@ import {
   TextField,
   MenuItem,
   Stack,
-  CircularProgress,
   Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -31,6 +30,7 @@ import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import CloudDoneIcon from '@mui/icons-material/CloudDone';
 import ReplayIcon from '@mui/icons-material/Replay';
 import { comprasApi } from '@/api/compras';
+import { TableSkeleton } from '@/components/common/TableSkeleton';
 import type { OrdenCompraDTO } from '@/types/api';
 import { OrdenCompraFormDialog } from '../components/OrdenCompraFormDialog';
 import { OrdenCompraDetalleDialog } from '../components/OrdenCompraDetalleDialog';
@@ -80,13 +80,14 @@ export function ComprasPage() {
 
   const queryClient = useQueryClient();
 
-  const { data: ordenes = [], isLoading, error, refetch } = useQuery({
+  const { data: ordenesPage, isLoading, error, refetch } = useQuery({
     queryKey: ['compras', { estado: estadoFiltro }],
     queryFn: () => comprasApi.getAll({
       estado: estadoFiltro || undefined,
-      limite: 100,
+      pageSize: 100,
     }),
   });
+  const ordenes = ordenesPage?.items ?? [];
 
   const { data: erroresErp = [] } = useQuery({
     queryKey: ['erp-outbox-errores'],
@@ -163,21 +164,16 @@ export function ComprasPage() {
         </Stack>
       </Paper>
 
-      {/* Loading & Error States */}
-      {isLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
-      )}
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          Error al cargar las órdenes de compra: {(error as any).message}
+          Error al cargar las órdenes de compra: {error instanceof Error ? error.message : 'Error desconocido'}
         </Alert>
       )}
 
       {/* Tabla */}
-      {!isLoading && !error && (
+      {isLoading ? (
+        <TableSkeleton cols={9} />
+      ) : !error && (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type HTMLAttributes } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -16,14 +16,16 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress,
   Tooltip,
   Autocomplete,
   Stack,
+  Pagination,
+  type ChipProps,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '@/hooks/useAuth';
+import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { ventasApi } from '@/api/ventas';
 import { sucursalesApi } from '@/api/sucursales';
 import { VentaDetalleDialog } from '../components/VentaDetalleDialog';
@@ -55,6 +57,8 @@ export function VentasPage() {
   const [fechaDesde, setFechaDesde] = useState<string>(getDaysAgo(5)); // 5 días atrás
   const [fechaHasta, setFechaHasta] = useState<string>(formatDateForInput(new Date())); // Hoy
   const [busquedaVenta, setBusquedaVenta] = useState<VentaDTO | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
   // Cargar sucursales para el filtro
   const { data: sucursales = [] } = useQuery({
@@ -62,19 +66,23 @@ export function VentasPage() {
     queryFn: () => sucursalesApi.getAll(true),
   });
 
-  // Cargar ventas
-  const { data: ventas = [], isLoading } = useQuery({
-    queryKey: ['ventas', filtroSucursal, filtroEstado, fechaDesde, fechaHasta],
+  // Cargar ventas con paginación real
+  const { data: ventasPage, isLoading } = useQuery({
+    queryKey: ['ventas', filtroSucursal, filtroEstado, fechaDesde, fechaHasta, page],
     queryFn: () =>
       ventasApi.getAll({
         sucursalId: filtroSucursal || undefined,
         estado: filtroEstado || undefined,
         desde: fechaDesde ? `${fechaDesde}T00:00:00Z` : undefined,
         hasta: fechaHasta ? `${fechaHasta}T23:59:59Z` : undefined,
-        limite: 100,
+        page,
+        pageSize,
       }),
     refetchInterval: 30000, // Refrescar cada 30 segundos
   });
+  const ventas = ventasPage?.items ?? [];
+  const totalCount = ventasPage?.totalCount ?? 0;
+  const totalPages = ventasPage?.totalPages ?? 1;
 
   // Filtrar ventas para el autocomplete (si hay búsqueda)
   const ventasFiltradas = useMemo(() => {
@@ -108,7 +116,7 @@ export function VentasPage() {
     });
   };
 
-  const getEstadoColor = (estado: string) => {
+  const getEstadoColor = (estado: string): ChipProps['color'] => {
     switch (estado) {
       case 'Completada':
         return 'success';
@@ -141,7 +149,8 @@ export function VentasPage() {
               value={fechaDesde}
               onChange={(e) => {
                 setFechaDesde(e.target.value);
-                setBusquedaVenta(null); // Limpiar búsqueda al cambiar fechas
+                setBusquedaVenta(null);
+                setPage(1);
               }}
               size="small"
               sx={{ minWidth: 170 }}
@@ -154,7 +163,8 @@ export function VentasPage() {
               value={fechaHasta}
               onChange={(e) => {
                 setFechaHasta(e.target.value);
-                setBusquedaVenta(null); // Limpiar búsqueda al cambiar fechas
+                setBusquedaVenta(null);
+                setPage(1);
               }}
               size="small"
               sx={{ minWidth: 170 }}
@@ -194,7 +204,7 @@ export function VentasPage() {
             <Box sx={{ flexGrow: 1 }} />
 
             <Typography variant="body2" color="text.secondary">
-              {isLoading ? 'Cargando...' : `${ventas.length} venta(s) encontradas`}
+              {isLoading ? 'Cargando...' : `${totalCount} venta(s) encontradas`}
             </Typography>
           </Box>
 
@@ -229,7 +239,7 @@ export function VentasPage() {
                 />
               )}
               renderOption={(props, option) => {
-                const { key, ...restProps } = props as any;
+                const { key, ...restProps } = props as HTMLAttributes<HTMLLIElement> & { key: string };
                 return (
                   <Box component="li" key={key} {...restProps}>
                     <Box sx={{ flexGrow: 1 }}>
@@ -242,7 +252,7 @@ export function VentasPage() {
                     </Box>
                     <Chip
                       label={option.estado}
-                      color={getEstadoColor(option.estado) as any}
+                      color={getEstadoColor(option.estado)}
                       size="small"
                     />
                   </Box>
@@ -266,9 +276,7 @@ export function VentasPage() {
 
       {/* Tabla de Ventas */}
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
+        <TableSkeleton cols={10} />
       ) : ventasFiltradas.length === 0 ? (
         <Alert severity="info">
           No se encontraron ventas con los filtros seleccionados.
@@ -325,7 +333,7 @@ export function VentasPage() {
                   <TableCell>
                     <Chip
                       label={venta.estado}
-                      color={getEstadoColor(venta.estado) as any}
+                      color={getEstadoColor(venta.estado)}
                       size="small"
                     />
                   </TableCell>
@@ -350,6 +358,20 @@ export function VentasPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, newPage) => setPage(newPage)}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       )}
 
       {/* Diálogo de Detalle */}

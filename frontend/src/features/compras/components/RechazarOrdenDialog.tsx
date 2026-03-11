@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
-import type { OrdenCompraDTO, RechazarOrdenCompraDTO } from '@/types/api';
+import type { OrdenCompraDTO, RechazarOrdenCompraDTO, PaginatedResult } from '@/types/api';
 
 const rechazarSchema = z.object({
   motivoRechazo: z.string().min(1, 'El motivo es requerido').min(5, 'Mínimo 5 caracteres'),
@@ -49,12 +49,26 @@ export function RechazarOrdenDialog({
 
   const mutation = useMutation({
     mutationFn: (data: RechazarOrdenCompraDTO) => comprasApi.rechazar(orden.id, data),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['compras'] });
+      const snapshots = queryClient.getQueriesData<PaginatedResult<OrdenCompraDTO>>({ queryKey: ['compras'] });
+      queryClient.setQueriesData<PaginatedResult<OrdenCompraDTO>>(
+        { queryKey: ['compras'] },
+        (old) => old ? { ...old, items: old.items.map(o => o.id === orden.id ? { ...o, estado: 'Rechazada' } : o) } : old,
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, val]) => queryClient.setQueryData(key, val));
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compras'] });
       enqueueSnackbar('Orden rechazada', { variant: 'success' });
       reset();
       onSuccess();
       onClose();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['compras'] });
     },
     onError: (error: any) => {
       let mensaje = 'Error al rechazar la orden';

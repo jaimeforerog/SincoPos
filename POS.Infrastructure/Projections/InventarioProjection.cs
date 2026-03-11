@@ -75,34 +75,20 @@ public class InventarioProjection : IProjection
         => EFC.FirstOrDefaultAsync(context.Stock
             .Where(s => s.ProductoId == productoId && s.SucursalId == sucursalId));
 
-    private async Task ProcesarEntrada(AppDbContext context, CosteoService costeoService,
+    private Task ProcesarEntrada(AppDbContext context, CosteoService costeoService,
         EntradaCompraRegistrada e)
     {
-        var sucursal = await context.Sucursales.FindAsync(e.SucursalId);
-        var metodoCosteo = sucursal?.MetodoCosteo ?? MetodoCosteo.PromedioPonderado;
+        // IMPORTANTE: Este método NO procesa el stock/lotes para evitar doble procesamiento.
+        //
+        // Todos los emisores de EntradaCompraRegistrada actualizan stock directamente:
+        // - InventarioService.RegistrarEntradaAsync: actualiza stock + lotes explícitamente
+        // - CompraService.RecibirOrdenAsync: actualiza stock + lotes explícitamente
+        // - VentaService.AnularVentaAsync: restaura stock + lotes explícitamente
+        // - VentaService.CrearDevolucionParcialAsync: restaura stock + lotes explícitamente
+        //
+        // Este evento se conserva SOLO para auditoría del Event Store.
 
-        var stock = await BuscarStock(context, e.ProductoId, e.SucursalId);
-
-        if (stock == null)
-        {
-            stock = new Stock
-            {
-                ProductoId = e.ProductoId,
-                SucursalId = e.SucursalId,
-                Cantidad = 0,
-                StockMinimo = 0,
-                CostoPromedio = 0
-            };
-            context.Stock.Add(stock);
-        }
-
-        await costeoService.RegistrarLoteEntrada(
-            e.ProductoId, e.SucursalId, e.Cantidad,
-            e.CostoUnitario, e.PorcentajeImpuesto,
-            e.Cantidad > 0 ? (e.MontoImpuesto / e.Cantidad) : 0,
-            e.Referencia, e.TerceroId);
-
-        await costeoService.ActualizarCostoEntrada(stock, e.Cantidad, e.CostoUnitario, metodoCosteo);
+        return Task.CompletedTask;
     }
 
     private async Task ProcesarDevolucion(AppDbContext context, CosteoService costeoService,

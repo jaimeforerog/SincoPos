@@ -5,18 +5,21 @@ import type {
   RecibirTrasladoDTO,
   RechazarTrasladoDTO,
   CancelarTrasladoDTO,
+  PaginatedResult,
 } from '@/types/api';
 
 export const trasladosApi = {
-  // Listar traslados
+  // Listar traslados con paginación
   listar: async (params?: {
     sucursalOrigenId?: number;
     sucursalDestinoId?: number;
     estado?: string;
     fechaDesde?: string;
     fechaHasta?: string;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const response = await apiClient.get<TrasladoDTO[]>('/traslados', { params });
+    const response = await apiClient.get<PaginatedResult<TrasladoDTO>>('/traslados', { params });
     return response.data;
   },
 

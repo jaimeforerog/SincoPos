@@ -5,6 +5,7 @@ using POS.Application.Services;
 using POS.Domain.Aggregates;
 using POS.Domain.Events.Inventario;
 using POS.Infrastructure.Data;
+using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
@@ -12,17 +13,20 @@ public class InventarioService : IInventarioService
 {
     private readonly global::Marten.IDocumentSession _session;
     private readonly AppDbContext _context;
+    private readonly CosteoService _costeoService;
     private readonly ILogger<InventarioService> _logger;
     private readonly IActivityLogService _activityLogService;
 
     public InventarioService(
         global::Marten.IDocumentSession session,
         AppDbContext context,
+        CosteoService costeoService,
         ILogger<InventarioService> logger,
         IActivityLogService activityLogService)
     {
         _session = session;
         _context = context;
+        _costeoService = costeoService;
         _logger = logger;
         _activityLogService = activityLogService;
     }
@@ -46,7 +50,7 @@ public class InventarioService : IInventarioService
             nombreTercero = tercero.Nombre;
         }
 
-        var currentUserId = await ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
         var streamId = InventarioAggregate.GenerarStreamId(dto.ProductoId, dto.SucursalId);
         var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
 
@@ -81,8 +85,33 @@ public class InventarioService : IInventarioService
             "Entrada registrada via Event Sourcing. Producto: {ProductoId}, Sucursal: {SucursalId}, Cantidad: {Cantidad}",
             dto.ProductoId, dto.SucursalId, dto.Cantidad);
 
+        // Actualizar stock y lotes directamente (la proyección es no-op para este evento)
         var stock = await _context.Stock
             .FirstOrDefaultAsync(s => s.ProductoId == dto.ProductoId && s.SucursalId == dto.SucursalId);
+
+        if (stock == null)
+        {
+            stock = new Stock
+            {
+                ProductoId = dto.ProductoId,
+                SucursalId = dto.SucursalId,
+                Cantidad = 0,
+                StockMinimo = 0,
+                CostoPromedio = 0
+            };
+            _context.Stock.Add(stock);
+        }
+
+        var montoImpuestoUnitario = dto.Cantidad > 0 ? montoImpuesto / dto.Cantidad : 0;
+        await _costeoService.RegistrarLoteEntrada(
+            dto.ProductoId, dto.SucursalId, dto.Cantidad,
+            dto.CostoUnitario, dto.PorcentajeImpuesto,
+            montoImpuestoUnitario,
+            dto.Referencia, dto.TerceroId);
+
+        await _costeoService.ActualizarCostoEntrada(stock, dto.Cantidad, dto.CostoUnitario, sucursal.MetodoCosteo);
+
+        await _context.SaveChangesAsync();
 
         await _activityLogService.LogActivityAsync(new ActivityLogDto(
             Accion: "EntradaInventario",
@@ -132,7 +161,7 @@ public class InventarioService : IInventarioService
         if (aggregate == null)
             return (null, "No existe inventario para este producto en esta sucursal.");
 
-        var currentUserId = await ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
 
         try
         {
@@ -190,7 +219,7 @@ public class InventarioService : IInventarioService
 
     public async Task<(object? resultado, string? error)> AjustarInventarioAsync(AjusteInventarioDto dto, string? emailUsuario)
     {
-        var currentUserId = await ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
         var streamId = InventarioAggregate.GenerarStreamId(dto.ProductoId, dto.SucursalId);
         var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
 
@@ -277,7 +306,7 @@ public class InventarioService : IInventarioService
         if (aggregate == null)
             return (false, "NOT_FOUND");
 
-        var currentUserId = await ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
 
         try
         {
@@ -296,10 +325,4 @@ public class InventarioService : IInventarioService
         return (true, null);
     }
 
-    private async Task<int?> ResolverUsuarioIdAsync(string? email)
-    {
-        if (string.IsNullOrEmpty(email)) return null;
-        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
-        return usuario?.Id;
-    }
 }

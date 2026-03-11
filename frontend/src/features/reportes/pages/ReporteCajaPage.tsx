@@ -28,6 +28,8 @@ import { cajasApi } from '@/api/cajas';
 import { sucursalesApi } from '@/api/sucursales';
 import { formatCurrency, formatDate } from '@/utils/format';
 import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
+import { exportarReporteCaja } from '@/utils/exportReportes';
 
 export function ReporteCajaPage() {
   const [sucursalId, setSucursalId] = useState<number | ''>('');
@@ -115,15 +117,25 @@ export function ReporteCajaPage() {
               </Select>
             </FormControl>
           </Stack>
-          <Button
-            variant="contained"
-            startIcon={<SearchIcon />}
-            onClick={() => refetch()}
-            fullWidth
-            disabled={!cajaId}
-          >
-            Generar Reporte
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              onClick={() => refetch()}
+              sx={{ flex: 1 }}
+              disabled={!cajaId}
+            >
+              Generar Reporte
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => reporte && exportarReporteCaja(reporte)}
+              disabled={!reporte}
+            >
+              Exportar Excel
+            </Button>
+          </Stack>
         </CardContent>
       </Card>
 

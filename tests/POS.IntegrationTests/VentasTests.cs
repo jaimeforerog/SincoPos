@@ -20,7 +20,7 @@ public class VentasTests
         PropertyNameCaseInsensitive = true
     };
 
-    private int SucPP => _factory.SucursalPPId;
+    private int SucPp => _factory.SucursalPPId;
     private int CatId => _factory.CategoriaTestId;
     private int TerceroId => _factory.TerceroTestId;
 
@@ -101,17 +101,17 @@ public class VentasTests
     {
         // Arrange: producto + stock + caja abierta
         var productoId = await CrearProductoTest("VENTA-001", precioVenta: 1500m, precioCosto: 800m);
-        await RegistrarEntradaInventario(productoId, SucPP, 50, 800);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 001");
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 800);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 001");
 
-        var stockAntes = await ObtenerStock(productoId, SucPP);
+        var stockAntes = await ObtenerStock(productoId, SucPp);
         stockAntes.Should().NotBeNull();
-        stockAntes!.Cantidad.Should().Be(50);
+        stockAntes.Cantidad.Should().Be(50);
 
         // Act: crear venta de 10 unidades
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0, // Efectivo
             montoPagado = 20000m,
@@ -128,14 +128,14 @@ public class VentasTests
 
         // Assert: venta creada correctamente
         venta.Should().NotBeNull();
-        venta!.NumeroVenta.Should().StartWith("V-");
+        venta.NumeroVenta.Should().StartWith("V-");
         venta.Estado.Should().Be("Completada");
         venta.Detalles.Should().HaveCount(1);
         venta.Detalles[0].Cantidad.Should().Be(10);
         venta.Total.Should().BeGreaterThan(0);
 
         // Assert: stock reducido
-        var stockDespues = await ObtenerStock(productoId, SucPP);
+        var stockDespues = await ObtenerStock(productoId, SucPp);
         stockDespues!.Cantidad.Should().Be(40);
     }
 
@@ -144,13 +144,13 @@ public class VentasTests
     {
         // Arrange
         var productoId = await CrearProductoTest("VENTA-002", precioVenta: 2000m, precioCosto: 1000m);
-        await RegistrarEntradaInventario(productoId, SucPP, 100, 1000);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 002");
+        await RegistrarEntradaInventario(productoId, SucPp, 100, 1000);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 002");
 
         // Act: venta de 5 unidades a precio manual de 2500
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0,
             montoPagado = 15000m,
@@ -180,14 +180,14 @@ public class VentasTests
     {
         // Arrange
         var productoId = await CrearProductoTest("VENTA-003", precioVenta: 1000m, precioCosto: 500m);
-        await RegistrarEntradaInventario(productoId, SucPP, 100, 500);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 003");
+        await RegistrarEntradaInventario(productoId, SucPp, 100, 500);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 003");
 
         // Configurar precio por sucursal (mayor que el precio base del producto)
         var precioSucResponse = await _client.PostAsJsonAsync("/api/v1/Precios", new
         {
             productoId,
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             precioVenta = 1800m,
             precioMinimo = 1500m
         });
@@ -196,7 +196,7 @@ public class VentasTests
         // Act: venta sin precio manual → debe usar precio de sucursal (1800)
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0,
             montoPagado = 20000m,
@@ -225,13 +225,13 @@ public class VentasTests
     {
         // Arrange: producto + stock, caja creada pero NO abierta
         var productoId = await CrearProductoTest("VENTA-004", precioVenta: 1000m);
-        await RegistrarEntradaInventario(productoId, SucPP, 50, 500);
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 500);
 
         // Crear caja sin abrirla
         var crearCaja = await _client.PostAsJsonAsync("/api/v1/Cajas", new
         {
             nombre = "Caja Cerrada Test",
-            sucursalId = SucPP
+            sucursalId = SucPp
         });
         crearCaja.EnsureSuccessStatusCode();
         var caja = await crearCaja.Content.ReadFromJsonAsync<CajaDto>(_jsonOptions);
@@ -239,7 +239,7 @@ public class VentasTests
         // Act: intentar vender con caja cerrada
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId = caja!.Id,
             metodoPago = 0,
             montoPagado = 5000m,
@@ -259,13 +259,13 @@ public class VentasTests
     {
         // Arrange: producto con solo 5 unidades
         var productoId = await CrearProductoTest("VENTA-005", precioVenta: 1000m);
-        await RegistrarEntradaInventario(productoId, SucPP, 5, 500);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 005");
+        await RegistrarEntradaInventario(productoId, SucPp, 5, 500);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 005");
 
         // Act: intentar vender 50 unidades (solo hay 5)
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0,
             montoPagado = 50000m,
@@ -283,11 +283,11 @@ public class VentasTests
     [Fact]
     public async Task VentaSinLineas_RetornaBadRequest()
     {
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 006");
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 006");
 
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0,
             montoPagado = 1000m,
@@ -302,13 +302,13 @@ public class VentasTests
     public async Task VentaConMontoPagadoInsuficiente_RetornaBadRequest()
     {
         var productoId = await CrearProductoTest("VENTA-007", precioVenta: 5000m);
-        await RegistrarEntradaInventario(productoId, SucPP, 10, 2000);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 007");
+        await RegistrarEntradaInventario(productoId, SucPp, 10, 2000);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 007");
 
         // Monto pagado = 1000, pero total = 5000 × 2 = 10000
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0,
             montoPagado = 1000m,
@@ -331,13 +331,13 @@ public class VentasTests
     {
         // Arrange: producto con 100 unidades
         var productoId = await CrearProductoTest("VENTA-008", precioVenta: 1000m, precioCosto: 500m);
-        await RegistrarEntradaInventario(productoId, SucPP, 100, 500);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 008");
+        await RegistrarEntradaInventario(productoId, SucPp, 100, 500);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 008");
 
         // Act 1: crear venta de 30 unidades → stock = 70
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0,
             montoPagado = 50000m,
@@ -353,7 +353,7 @@ public class VentasTests
         var venta = await crearResponse.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
         var ventaId = venta!.Id;
 
-        var stockDespuesVenta = await ObtenerStock(productoId, SucPP);
+        var stockDespuesVenta = await ObtenerStock(productoId, SucPp);
         stockDespuesVenta!.Cantidad.Should().Be(70);
 
         // Act 2: anular la venta → stock debe volver a 100
@@ -363,7 +363,7 @@ public class VentasTests
             $"Body: {await anularResponse.Content.ReadAsStringAsync()}");
 
         // Assert: stock restaurado
-        var stockDespuesAnulacion = await ObtenerStock(productoId, SucPP);
+        var stockDespuesAnulacion = await ObtenerStock(productoId, SucPp);
         stockDespuesAnulacion!.Cantidad.Should().Be(100);
     }
 
@@ -372,12 +372,12 @@ public class VentasTests
     {
         // Arrange
         var productoId = await CrearProductoTest("VENTA-009", precioVenta: 1000m);
-        await RegistrarEntradaInventario(productoId, SucPP, 50, 500);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 009");
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 500);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 009");
 
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 0,
             montoPagado = 10000m,
@@ -410,12 +410,12 @@ public class VentasTests
     {
         // Arrange
         var productoId = await CrearProductoTest("VENTA-010", precioVenta: 2000m, precioCosto: 1000m);
-        await RegistrarEntradaInventario(productoId, SucPP, 100, 1000);
-        var cajaId = await CrearYAbrirCaja(SucPP, "Caja Venta 010");
+        await RegistrarEntradaInventario(productoId, SucPp, 100, 1000);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja Venta 010");
 
         var ventaDto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             cajaId,
             metodoPago = 1, // Tarjeta
             lineas = new[]
@@ -435,7 +435,7 @@ public class VentasTests
 
         // Assert
         venta.Should().NotBeNull();
-        venta!.Id.Should().Be(ventaCreada.Id);
+        venta.Id.Should().Be(ventaCreada.Id);
         venta.NumeroVenta.Should().NotBeEmpty();
         venta.MetodoPago.Should().Be("Tarjeta");
         venta.Detalles.Should().HaveCount(1);
@@ -447,28 +447,28 @@ public class VentasTests
     public async Task ListarVentas_FiltrosPorSucursal()
     {
         // Act
-        var response = await _client.GetAsync($"/api/v1/Ventas?sucursalId={SucPP}&limite=100");
+        var response = await _client.GetAsync($"/api/v1/Ventas?sucursalId={SucPp}&pageSize=100");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var ventas = await response.Content.ReadFromJsonAsync<List<VentaDto>>(_jsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<PaginatedResult<VentaDto>>(_jsonOptions);
 
         // Assert: las ventas creadas en otros tests deben aparecer aquí
-        ventas.Should().NotBeNull();
-        ventas!.Should().OnlyContain(v => v.SucursalId == SucPP);
+        result.Should().NotBeNull();
+        result!.Items.Should().OnlyContain(v => v.SucursalId == SucPp);
     }
 
     [Fact]
     public async Task ResumenDeVentas_RetornaTotales()
     {
         // Act
-        var response = await _client.GetAsync($"/api/v1/Ventas/resumen?sucursalId={SucPP}");
+        var response = await _client.GetAsync($"/api/v1/Ventas/resumen?sucursalId={SucPp}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var resumen = await response.Content.ReadFromJsonAsync<ResumenVentaDto>(_jsonOptions);
 
         // Assert
         resumen.Should().NotBeNull();
-        resumen!.TotalVentas.Should().BeGreaterThanOrEqualTo(0);
+        resumen.TotalVentas.Should().BeGreaterThanOrEqualTo(0);
         resumen.MontoTotal.Should().BeGreaterThanOrEqualTo(0);
     }
 }

@@ -26,7 +26,7 @@ public record ConfiguracionEmisorDto(
     DateTime FechaVigenciaDesde,
     DateTime FechaVigenciaHasta,
     string Ambiente,
-    string PinSoftware,
+    bool TienePinSoftware,
     string IdSoftware,
     bool TieneCertificado
 );

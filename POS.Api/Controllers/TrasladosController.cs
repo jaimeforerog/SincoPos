@@ -173,17 +173,23 @@ public class TrasladosController : ControllerBase
     /// Listar traslados con filtros opcionales. Máximo 50 resultados.
     /// </summary>
     /// <param name="estado">Pendiente=0, Enviado=1, Recibido=2, Rechazado=3, Cancelado=4.</param>
+    /// <param name="page">Número de página (default 1).</param>
+    /// <param name="pageSize">Tamaño de página (default 50, máx 100).</param>
     [HttpGet]
     [Authorize(Policy = "Cajero")]
-    [ProducesResponseType(typeof(IEnumerable<TrasladoDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<TrasladoDto>>> ListarTraslados(
+    [ProducesResponseType(typeof(PaginatedResult<TrasladoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<TrasladoDto>>> ListarTraslados(
         [FromQuery] int? sucursalOrigenId,
         [FromQuery] int? sucursalDestinoId,
         [FromQuery] EstadoTraslado? estado,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
-        [FromQuery] int limite = 50)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
+        if (pageSize > 100) pageSize = 100;
+        if (page < 1) page = 1;
+
         var query = _context.Traslados
             .Include(t => t.SucursalOrigen)
             .Include(t => t.SucursalDestino)
@@ -201,13 +207,17 @@ public class TrasladosController : ControllerBase
         if (hasta.HasValue)
             query = query.Where(t => t.FechaTraslado <= hasta.Value);
 
+        var totalCount = await query.CountAsync();
         var traslados = await query
             .OrderByDescending(t => t.FechaTraslado)
-            .Take(Math.Min(limite, 50))
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         var usuariosDict = await CargarUsuariosAsync(traslados.Select(t => t.RecibidoPorUsuarioId));
-        return Ok(traslados.Select(t => MapToDto(t, usuariosDict)).ToList());
+        var items = traslados.Select(t => MapToDto(t, usuariosDict)).ToList();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new PaginatedResult<TrasladoDto>(items, totalCount, page, pageSize, totalPages));
     }
 
     /// <summary>Obtener detalle de un traslado incluyendo todas sus líneas.</summary>

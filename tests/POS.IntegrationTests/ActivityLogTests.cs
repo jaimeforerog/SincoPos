@@ -96,7 +96,7 @@ public class ActivityLogTests
             .FirstOrDefaultAsync();
 
         log.Should().NotBeNull();
-        log!.UsuarioEmail.Should().Be(CajeroEmail);
+        log.UsuarioEmail.Should().Be(CajeroEmail);
         log.Tipo.Should().Be(TipoActividad.Caja);
         log.Accion.Should().Be("AperturaCaja");
         log.SucursalId.Should().Be(cajaAbierta.SucursalId);
@@ -153,7 +153,7 @@ public class ActivityLogTests
             .FirstOrDefaultAsync();
 
         log.Should().NotBeNull();
-        log!.Accion.Should().Be("CierreCaja");
+        log.Accion.Should().Be("CierreCaja");
         log.Descripcion.Should().Contain("Esperado:");
         log.Descripcion.Should().Contain("Real:");
         log.Descripcion.Should().Contain("Diferencia:");
@@ -263,7 +263,7 @@ public class ActivityLogTests
             .FirstOrDefaultAsync();
 
         log.Should().NotBeNull();
-        log!.UsuarioEmail.Should().Be(CajeroEmail);
+        log.UsuarioEmail.Should().Be(CajeroEmail);
         log.Tipo.Should().Be(TipoActividad.Venta);
         log.Descripcion.Should().Contain("Venta");
         log.Descripcion.Should().Contain("Total:");
@@ -318,7 +318,7 @@ public class ActivityLogTests
             .FirstOrDefaultAsync();
 
         log.Should().NotBeNull();
-        log!.UsuarioEmail.Should().Be(AdminEmail);
+        log.UsuarioEmail.Should().Be(AdminEmail);
         log.Tipo.Should().Be(TipoActividad.Usuario);
         log.Descripcion.Should().Contain("Activo a Inactivo");
         log.Descripcion.Should().Contain("Suspendido por prueba");
@@ -347,11 +347,35 @@ public class ActivityLogTests
         var result = await response.Content.ReadFromJsonAsync<PaginatedResult<ActivityLogFullDto>>();
 
         result.Should().NotBeNull();
-        result!.PageSize.Should().Be(10);
+        result.PageSize.Should().Be(10);
         result.Items.Should().AllSatisfy(log =>
         {
             log.Tipo.Should().Be(TipoActividad.Caja);
         });
+    }
+
+    [Fact]
+    public async Task GetActivities_DebeFuncionar_ConFechasSinKindEspecificado()
+    {
+        // En Npgsql 6.0+, mandar un DateTime con Kind.Unspecified arroja error
+        // si se compara contra una columna timestamptz. 
+        // Este test verifica que el servicio maneje correctamente este caso.
+
+        // Arrange
+        var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
+        var hoy = DateTime.Now.Date; 
+        
+        // Simular lo que llega del API (DateTime con Kind Unspecified)
+        var fechaDesde = new DateTime(hoy.Year, hoy.Month, hoy.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        var fechaHasta = new DateTime(hoy.Year, hoy.Month, hoy.Day, 23, 59, 59, DateTimeKind.Unspecified);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/ActivityLogs?fechaDesde={fechaDesde:O}&fechaHasta={fechaHasta:O}");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<PaginatedResult<ActivityLogFullDto>>();
+        result.Should().NotBeNull();
     }
 
     [Fact]
@@ -391,7 +415,7 @@ public class ActivityLogTests
         var history = await response.Content.ReadFromJsonAsync<List<CambioEntidadDto>>();
 
         history.Should().NotBeNull();
-        history!.Count.Should().BeGreaterThanOrEqualTo(1);
+        history.Count.Should().BeGreaterThanOrEqualTo(1);
         history.Should().Contain(h => h.Accion == "AperturaCaja");
     }
 
@@ -409,7 +433,7 @@ public class ActivityLogTests
         var dashboard = await response.Content.ReadFromJsonAsync<DashboardActivityDto>();
 
         dashboard.Should().NotBeNull();
-        dashboard!.TotalAcciones.Should().BeGreaterThanOrEqualTo(0);
+        dashboard.TotalAcciones.Should().BeGreaterThanOrEqualTo(0);
         dashboard.AccionesExitosas.Should().BeGreaterThanOrEqualTo(0);
         dashboard.AccionesFallidas.Should().BeGreaterThanOrEqualTo(0);
         dashboard.AccionesPorTipo.Should().NotBeNull();
@@ -430,7 +454,7 @@ public class ActivityLogTests
         var types = await response.Content.ReadFromJsonAsync<Dictionary<int, string>>();
 
         types.Should().NotBeNull();
-        types!.Should().ContainKey(1); // Caja
+        types.Should().ContainKey(1); // Caja
         types.Should().ContainKey(2); // Venta
         types.Should().ContainKey(3); // Inventario
         types.Should().ContainKey(4); // Usuario

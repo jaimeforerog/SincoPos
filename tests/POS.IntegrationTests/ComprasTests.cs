@@ -26,7 +26,7 @@ public class ComprasTests
     };
 
     // IDs de sucursales y categorías
-    private int SucPP => _factory.SucursalPPId;
+    private int SucPp => _factory.SucursalPPId;
     private int SucFIFO => _factory.SucursalFIFOId;
     private int SucRte => _factory.SucursalRetencionId;
     private int CatId => _factory.CategoriaTestId;
@@ -162,12 +162,12 @@ public class ComprasTests
         var productoId = await CrearProductoTest("COMPRA-001", 2000m);
         var proveedorId = await CrearProveedorTest("Proveedor Test 001");
 
-        var stockInicial = await ObtenerStock(productoId, SucPP);
+        var stockInicial = await ObtenerStock(productoId, SucPp);
         var cantidadInicial = stockInicial?.Cantidad ?? 0;
 
         // Act - Crear orden de compra
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -181,7 +181,7 @@ public class ComprasTests
         // Verificar orden creada en estado Pendiente
         var ordenCreada = await ObtenerOrdenCompra(ordenId);
         ordenCreada.Should().NotBeNull();
-        ordenCreada!.Estado.Should().Be("Pendiente");
+        ordenCreada.Estado.Should().Be("Pendiente");
         ordenCreada.NumeroOrden.Should().StartWith("OC-");
         ordenCreada.Subtotal.Should().Be(50000m);  // 100 × 500
         ordenCreada.Impuestos.Should().Be(9500m);   // 50000 × 0.19
@@ -208,9 +208,9 @@ public class ComprasTests
         ordenRecibida.Detalles[0].CantidadRecibida.Should().Be(100);
 
         // Assert - Verificar stock actualizado
-        var stockFinal = await ObtenerStock(productoId, SucPP);
+        var stockFinal = await ObtenerStock(productoId, SucPp);
         stockFinal.Should().NotBeNull();
-        stockFinal!.Cantidad.Should().Be(cantidadInicial + 100);
+        stockFinal.Cantidad.Should().Be(cantidadInicial + 100);
 
         // Verificar costo promedio actualizado con la compra
         stockFinal.CostoPromedio.Should().BeGreaterThan(0, "El costo promedio debe actualizarse");
@@ -223,12 +223,12 @@ public class ComprasTests
         var productoId = await CrearProductoTest("COMPRA-002", 1500m);
         var proveedorId = await CrearProveedorTest("Proveedor Test 002");
 
-        var stockInicial = await ObtenerStock(productoId, SucPP);
+        var stockInicial = await ObtenerStock(productoId, SucPp);
         var cantidadInicial = stockInicial?.Cantidad ?? 0;
 
         // Act - Crear y aprobar orden de 200 unidades
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -252,7 +252,7 @@ public class ComprasTests
         ordenParcial.Detalles[0].CantidadRecibida.Should().Be(120);
 
         // Verificar stock aumentó 120
-        var stockDespuesPrimera = await ObtenerStock(productoId, SucPP);
+        var stockDespuesPrimera = await ObtenerStock(productoId, SucPp);
         stockDespuesPrimera!.Cantidad.Should().Be(cantidadInicial + 120);
 
         // Act - Recibir las 80 unidades restantes
@@ -268,7 +268,7 @@ public class ComprasTests
         ordenCompleta.Detalles[0].CantidadRecibida.Should().Be(200);
 
         // Verificar stock total
-        var stockFinal = await ObtenerStock(productoId, SucPP);
+        var stockFinal = await ObtenerStock(productoId, SucPp);
         stockFinal!.Cantidad.Should().Be(cantidadInicial + 200);
     }
 
@@ -280,7 +280,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor Test 003");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -315,7 +315,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor Test 004");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -343,7 +343,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor Test 005");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -371,7 +371,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor Test 006");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -399,7 +399,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor Test 007");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -433,13 +433,13 @@ public class ComprasTests
         var producto3Id = await CrearProductoTest("COMPRA-008C", 2000m);
         var proveedorId = await CrearProveedorTest("Proveedor Test 008");
 
-        var stock1Inicial = (await ObtenerStock(producto1Id, SucPP))?.Cantidad ?? 0;
-        var stock2Inicial = (await ObtenerStock(producto2Id, SucPP))?.Cantidad ?? 0;
-        var stock3Inicial = (await ObtenerStock(producto3Id, SucPP))?.Cantidad ?? 0;
+        var stock1Inicial = (await ObtenerStock(producto1Id, SucPp))?.Cantidad ?? 0;
+        var stock2Inicial = (await ObtenerStock(producto2Id, SucPp))?.Cantidad ?? 0;
+        var stock3Inicial = (await ObtenerStock(producto3Id, SucPp))?.Cantidad ?? 0;
 
         // Act - Crear orden con 3 productos
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -461,13 +461,13 @@ public class ComprasTests
             });
 
         // Assert - Verificar todos los stocks
-        var stock1Final = await ObtenerStock(producto1Id, SucPP);
+        var stock1Final = await ObtenerStock(producto1Id, SucPp);
         stock1Final!.Cantidad.Should().Be(stock1Inicial + 50);
 
-        var stock2Final = await ObtenerStock(producto2Id, SucPP);
+        var stock2Final = await ObtenerStock(producto2Id, SucPp);
         stock2Final!.Cantidad.Should().Be(stock2Inicial + 75);
 
-        var stock3Final = await ObtenerStock(producto3Id, SucPP);
+        var stock3Final = await ObtenerStock(producto3Id, SucPp);
         stock3Final!.Cantidad.Should().Be(stock3Inicial + 100);
 
         // Verificar orden completa
@@ -484,11 +484,11 @@ public class ComprasTests
         var proveedor1Id = await CrearProveedorTest("Proveedor A");
         var proveedor2Id = await CrearProveedorTest("Proveedor B");
 
-        var stockInicial = (await ObtenerStock(productoId, SucPP))?.Cantidad ?? 0;
+        var stockInicial = (await ObtenerStock(productoId, SucPp))?.Cantidad ?? 0;
 
         // Act - Crear y recibir orden del Proveedor A (50 unidades a $300)
         var resultado1 = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedor1Id,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -501,7 +501,7 @@ public class ComprasTests
 
         // Act - Crear y recibir orden del Proveedor B (100 unidades a $250)
         var resultado2 = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedor2Id,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -513,7 +513,7 @@ public class ComprasTests
             new List<(Guid, decimal, string?)> { (productoId, 100, null) });
 
         // Assert - Stock total debe ser 150 unidades
-        var stockFinal = await ObtenerStock(productoId, SucPP);
+        var stockFinal = await ObtenerStock(productoId, SucPp);
         stockFinal!.Cantidad.Should().Be(stockInicial + 150);
 
         // Verificar que ambas órdenes están completas
@@ -541,7 +541,7 @@ public class ComprasTests
         // Act & Assert - Orden sin líneas
         var dto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             proveedorId,
             fechaEntregaEsperada = (DateTime?)null,
             observaciones = "Sin productos",
@@ -564,7 +564,7 @@ public class ComprasTests
         // Act & Assert - Proveedor que no existe
         var dto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             proveedorId = 99999,  // ID inexistente
             fechaEntregaEsperada = (DateTime?)null,
             observaciones = (string?)null,
@@ -591,7 +591,7 @@ public class ComprasTests
         // Act & Assert - Precio unitario negativo
         var dto = new
         {
-            sucursalId = SucPP,
+            sucursalId = SucPp,
             proveedorId,
             fechaEntregaEsperada = (DateTime?)null,
             observaciones = (string?)null,
@@ -614,30 +614,30 @@ public class ComprasTests
     public async Task ListarOrdenes_FiltrosPorSucursal()
     {
         // Act
-        var response = await _client.GetAsync($"/api/v1/Compras?sucursalId={SucPP}&limite=100");
+        var response = await _client.GetAsync($"/api/v1/Compras?sucursalId={SucPp}&pageSize=100");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var ordenes = await response.Content.ReadFromJsonAsync<List<OrdenCompraDto>>(_jsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<PaginatedResult<OrdenCompraDto>>(_jsonOptions);
 
         // Assert
-        ordenes.Should().NotBeNull();
-        ordenes!.Should().OnlyContain(o => o.SucursalId == SucPP);
+        result.Should().NotBeNull();
+        result!.Items.Should().OnlyContain(o => o.SucursalId == SucPp);
     }
 
     [Fact]
     public async Task ListarOrdenes_FiltrosPorEstado()
     {
         // Act
-        var response = await _client.GetAsync($"/api/v1/Compras?estado=Aprobada&limite=100");
+        var response = await _client.GetAsync($"/api/v1/Compras?estado=Aprobada&pageSize=100");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var ordenes = await response.Content.ReadFromJsonAsync<List<OrdenCompraDto>>(_jsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<PaginatedResult<OrdenCompraDto>>(_jsonOptions);
 
         // Assert
-        ordenes.Should().NotBeNull();
-        if (ordenes!.Any())
+        result.Should().NotBeNull();
+        if (result!.Items.Any())
         {
-            ordenes.Should().OnlyContain(o => o.Estado == "Aprobada");
+            result.Items.Should().OnlyContain(o => o.Estado == "Aprobada");
         }
     }
 
@@ -649,7 +649,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor Test 010");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -668,7 +668,7 @@ public class ComprasTests
 
         // Assert
         orden.Should().NotBeNull();
-        orden!.Id.Should().Be(ordenId);
+        orden.Id.Should().Be(ordenId);
         orden.NumeroOrden.Should().StartWith("OC-");
         orden.Estado.Should().Be("Pendiente");
         orden.Detalles.Should().HaveCount(1);
@@ -689,7 +689,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor ERP 1");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -733,7 +733,7 @@ public class ComprasTests
         // 3. Verificar la carga útil (Payload JSON)
         var payload = JsonSerializer.Deserialize<CompraErpPayload>(msg.Payload, _jsonOptions);
         payload.Should().NotBeNull();
-        payload!.Asientos.Should().NotBeEmpty();
+        payload.Asientos.Should().NotBeEmpty();
         payload.NumeroOrden.Should().Be(numOrden);
         
         // Verifica que todos los asientos contengan el Centro de Costo (herencia de la Sucursal)
@@ -748,7 +748,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor ERP 2");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP,
+            SucPp,
             proveedorId,
             new List<(Guid, decimal, decimal, decimal)>
             {
@@ -840,7 +840,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor DTO ERP");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP, proveedorId,
+            SucPp, proveedorId,
             new List<(Guid, decimal, decimal, decimal)> { (productoId, 10, 500m, 0) });
         var ordenId = resultCrear.GetProperty("id").GetInt32();
 
@@ -871,7 +871,7 @@ public class ComprasTests
         var productoId = await CrearProductoTest("ERP-CUADRE-001", 5000m);
         var proveedorId = await CrearProveedorTest("Proveedor Cuadre");
 
-        var resultCrear = await CrearOrdenCompra(SucPP, proveedorId,
+        var resultCrear = await CrearOrdenCompra(SucPp, proveedorId,
             new List<(Guid, decimal, decimal, decimal)> { (productoId, 20, 1000m, 19) });
         var ordenId = resultCrear.GetProperty("id").GetInt32();
         await AprobarOrdenCompra(ordenId);
@@ -905,7 +905,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor NumSeq");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP, proveedorId,
+            SucPp, proveedorId,
             new List<(Guid, decimal, decimal, decimal)> { (productoId, 100, 500m, 0) });
         var ordenId = resultCrear.GetProperty("id").GetInt32();
         var numOrden = resultCrear.GetProperty("numeroOrden").GetString()!;
@@ -950,7 +950,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor IVA Test");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP, proveedorId,
+            SucPp, proveedorId,
             new List<(Guid, decimal, decimal, decimal)> { (productoId, 50, 2000m, 19) });
         var ordenId = resultCrear.GetProperty("id").GetInt32();
         await AprobarOrdenCompra(ordenId);
@@ -982,7 +982,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor Retry");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP, proveedorId,
+            SucPp, proveedorId,
             new List<(Guid, decimal, decimal, decimal)> { (productoId, 10, 500m, 0) });
         var ordenId = resultCrear.GetProperty("id").GetInt32();
         await AprobarOrdenCompra(ordenId);
@@ -1016,7 +1016,7 @@ public class ComprasTests
         var proveedorId = await CrearProveedorTest("Proveedor ErrList");
 
         var resultCrear = await CrearOrdenCompra(
-            SucPP, proveedorId,
+            SucPp, proveedorId,
             new List<(Guid, decimal, decimal, decimal)> { (productoId, 5, 200m, 0) });
         var ordenId = resultCrear.GetProperty("id").GetInt32();
         await AprobarOrdenCompra(ordenId);

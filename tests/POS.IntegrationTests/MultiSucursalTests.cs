@@ -20,7 +20,7 @@ public class MultiSucursalTests
     private const string CajeroEmail = "cajero@sincopos.com";
 
     private int UsuarioId => _factory.UsuarioTestId;
-    private int SucPP => _factory.SucursalPPId;
+    private int SucPp => _factory.SucursalPPId;
     private int SucFIFO => _factory.SucursalFIFOId;
     private int SucLIFO => _factory.SucursalLIFOId;
 
@@ -42,7 +42,7 @@ public class MultiSucursalTests
         var lista = await response.Content.ReadFromJsonAsync<List<JsonElement>>(_jsonOptions);
         lista.Should().NotBeNull();
         // El usuario seeded en el factory debe estar en la lista
-        lista!.Should().Contain(u => u.GetProperty("id").GetInt32() == UsuarioId);
+        lista.Should().Contain(u => u.GetProperty("id").GetInt32() == UsuarioId);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class MultiSucursalTests
     public async Task AsignarSucursales_ComoAdmin_Devuelve204()
     {
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
-        var dto = new { sucursalIds = new[] { SucPP, SucFIFO } };
+        var dto = new { sucursalIds = new[] { SucPp, SucFIFO } };
 
         var response = await client.PutAsJsonAsync($"/api/v1/Usuarios/{UsuarioId}/sucursales", dto);
 
@@ -131,7 +131,7 @@ public class MultiSucursalTests
     public async Task AsignarSucursales_ComoSupervisor_Devuelve403()
     {
         var client = _factory.CreateAuthenticatedClient(SupervisorEmail);
-        var dto = new { sucursalIds = new[] { SucPP } };
+        var dto = new { sucursalIds = new[] { SucPp } };
 
         var response = await client.PutAsJsonAsync($"/api/v1/Usuarios/{UsuarioId}/sucursales", dto);
 
@@ -162,7 +162,7 @@ public class MultiSucursalTests
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
 
         // Asignar las tres sucursales
-        var asignarDto = new { sucursalIds = new[] { SucPP, SucFIFO, SucLIFO } };
+        var asignarDto = new { sucursalIds = new[] { SucPp, SucFIFO, SucLIFO } };
         var asignarResp = await client.PutAsJsonAsync($"/api/v1/Usuarios/{UsuarioId}/sucursales", asignarDto);
         asignarResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -173,7 +173,7 @@ public class MultiSucursalTests
         var sucursales = usuario.GetProperty("sucursalesAsignadas").EnumerateArray().ToList();
         sucursales.Should().HaveCount(3);
         sucursales.Select(s => s.GetProperty("id").GetInt32())
-            .Should().Contain(new[] { SucPP, SucFIFO, SucLIFO });
+            .Should().Contain(new[] { SucPp, SucFIFO, SucLIFO });
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public class MultiSucursalTests
         // Primero asignar algunas
         await client.PutAsJsonAsync(
             $"/api/v1/Usuarios/{UsuarioId}/sucursales",
-            new { sucursalIds = new[] { SucPP } });
+            new { sucursalIds = new[] { SucPp } });
 
         // Luego limpiar con lista vacía
         var response = await client.PutAsJsonAsync(

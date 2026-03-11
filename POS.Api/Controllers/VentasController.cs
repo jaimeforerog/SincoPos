@@ -80,24 +80,29 @@ public class VentasController : ControllerBase
     }
 
     /// <summary>
-    /// Listar ventas con filtros opcionales.
+    /// Listar ventas con filtros opcionales y paginación.
     /// </summary>
     /// <param name="sucursalId">Filtrar por sucursal. Null = todas las sucursales.</param>
     /// <param name="cajaId">Filtrar por caja específica.</param>
     /// <param name="desde">Fecha de inicio del período (UTC).</param>
     /// <param name="hasta">Fecha fin del período (UTC).</param>
     /// <param name="estado">0 = Completada, 1 = Anulada, 2 = Devuelta. Null = todos.</param>
-    /// <param name="limite">Máximo de resultados. Default 50.</param>
+    /// <param name="page">Número de página (default 1).</param>
+    /// <param name="pageSize">Tamaño de página (default 50, máx 100).</param>
     [HttpGet]
-    [ProducesResponseType(typeof(List<VentaDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<VentaDto>>> ListarVentas(
+    [ProducesResponseType(typeof(PaginatedResult<VentaDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<VentaDto>>> ListarVentas(
         [FromQuery] int? sucursalId = null,
         [FromQuery] int? cajaId = null,
         [FromQuery] DateTime? desde = null,
         [FromQuery] DateTime? hasta = null,
         [FromQuery] EstadoVenta? estado = null,
-        [FromQuery] int limite = 50)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
+        if (pageSize > 100) pageSize = 100;
+        if (page < 1) page = 1;
+
         var query = _context.Ventas
             .Include(v => v.Detalles)
             .Include(v => v.Sucursal)
@@ -111,13 +116,17 @@ public class VentasController : ControllerBase
         if (hasta.HasValue) query = query.Where(v => v.FechaVenta <= hasta.Value);
         if (estado.HasValue) query = query.Where(v => v.Estado == estado.Value);
 
+        var totalCount = await query.CountAsync();
         var ventas = await query
             .OrderByDescending(v => v.FechaVenta)
-            .Take(limite)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        return Ok(ventas.Select(v =>
-            VentaService.MapToDto(v, v.Sucursal.Nombre, v.Caja.Nombre, v.Cliente?.Nombre)));
+        var items = ventas.Select(v =>
+            VentaService.MapToDto(v, v.Sucursal.Nombre, v.Caja.Nombre, v.Cliente?.Nombre)).ToList();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new PaginatedResult<VentaDto>(items, totalCount, page, pageSize, totalPages));
     }
 
     /// <summary>
@@ -228,18 +237,26 @@ public class VentasController : ControllerBase
             .OrderByDescending(d => d.FechaDevolucion)
             .ToListAsync();
 
-        var resultado = new List<DevolucionVentaDto>();
-        foreach (var devolucion in devoluciones)
-        {
-            string? autorizadoPor = null;
-            if (devolucion.AutorizadoPorUsuarioId.HasValue)
-            {
-                var usuario = await _context.Usuarios.FindAsync(devolucion.AutorizadoPorUsuarioId.Value);
-                autorizadoPor = usuario?.Email;
-            }
+        // Batch-load all referenced users in one query to avoid N+1
+        var usuarioIds = devoluciones
+            .Where(d => d.AutorizadoPorUsuarioId.HasValue)
+            .Select(d => d.AutorizadoPorUsuarioId!.Value)
+            .Distinct()
+            .ToList();
 
-            resultado.Add(VentaService.MapDevolucionToDto(devolucion, venta.NumeroVenta, autorizadoPor));
-        }
+        var usuariosDict = usuarioIds.Count > 0
+            ? await _context.Usuarios
+                .Where(u => usuarioIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.Email)
+            : new Dictionary<int, string>();
+
+        var resultado = devoluciones
+            .Select(d => VentaService.MapDevolucionToDto(
+                d, venta.NumeroVenta,
+                d.AutorizadoPorUsuarioId.HasValue
+                    ? usuariosDict.GetValueOrDefault(d.AutorizadoPorUsuarioId.Value)
+                    : null))
+            .ToList();
 
         return Ok(resultado);
     }
@@ -262,12 +279,12 @@ public class VentasController : ControllerBase
         if (devolucion == null)
             return NotFound("Devolución no encontrada.");
 
-        string? autorizadoPor = null;
-        if (devolucion.AutorizadoPorUsuarioId.HasValue)
-        {
-            var usuario = await _context.Usuarios.FindAsync(devolucion.AutorizadoPorUsuarioId.Value);
-            autorizadoPor = usuario?.Email;
-        }
+        var autorizadoPor = devolucion.AutorizadoPorUsuarioId.HasValue
+            ? await _context.Usuarios
+                .Where(u => u.Id == devolucion.AutorizadoPorUsuarioId.Value)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync()
+            : null;
 
         return Ok(VentaService.MapDevolucionToDto(devolucion, devolucion.Venta.NumeroVenta, autorizadoPor));
     }

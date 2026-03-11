@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, type FieldError } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +24,8 @@ import {
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
 import type { OrdenCompraDTO, RecibirOrdenCompraDTO } from '@/types/api';
+
+type LineaRecepcionError = { cantidadRecibida?: FieldError };
 
 const lineaRecepcionSchema = z.object({
   productoId: z.string(),
@@ -206,8 +208,8 @@ export function RecibirOrdenDialog({
                               type="number"
                               value={value}
                               onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-                              error={!!(errors.lineas?.[index] as any)?.cantidadRecibida}
-                              helperText={(errors.lineas?.[index] as any)?.cantidadRecibida?.message}
+                              error={!!(errors.lineas?.[index] as LineaRecepcionError | undefined)?.cantidadRecibida}
+                              helperText={(errors.lineas?.[index] as LineaRecepcionError | undefined)?.cantidadRecibida?.message}
                               size="small"
                               sx={{ width: 100 }}
                               inputProps={{

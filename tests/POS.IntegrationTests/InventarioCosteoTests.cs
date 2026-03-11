@@ -21,7 +21,7 @@ public class InventarioCosteoTests
     };
 
     // IDs de sucursales (asignados por DB en seed)
-    private int SucPP => _factory.SucursalPPId;
+    private int SucPp => _factory.SucursalPPId;
     private int SucFIFO => _factory.SucursalFIFOId;
     private int SucLIFO => _factory.SucursalLIFOId;
     private int CatId => _factory.CategoriaTestId;
@@ -104,11 +104,11 @@ public class InventarioCosteoTests
     public async Task PromedioPonderado_EntradaUnica_CostoIgualAlUnitario()
     {
         var productoId = await CrearProductoTest("PP-001");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-PP-001");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-PP-001");
 
-        var stock = await ObtenerStock(productoId, SucPP);
+        var stock = await ObtenerStock(productoId, SucPp);
         stock.Should().NotBeNull();
-        stock!.Cantidad.Should().Be(100);
+        stock.Cantidad.Should().Be(100);
         stock.CostoPromedio.Should().Be(50);
     }
 
@@ -116,11 +116,11 @@ public class InventarioCosteoTests
     public async Task PromedioPonderado_MultipleEntradas_CostoPromedioCalculado()
     {
         var productoId = await CrearProductoTest("PP-002");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-PP-002A");
-        await RegistrarEntrada(productoId, SucPP, 200, 80, "FC-PP-002B");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-PP-002A");
+        await RegistrarEntrada(productoId, SucPp, 200, 80, "FC-PP-002B");
 
         // (100*50 + 200*80) / 300 = 21000/300 = 70
-        var stock = await ObtenerStock(productoId, SucPP);
+        var stock = await ObtenerStock(productoId, SucPp);
         stock!.Cantidad.Should().Be(300);
         stock.CostoPromedio.Should().BeApproximately(70m, 0.01m);
     }
@@ -129,12 +129,12 @@ public class InventarioCosteoTests
     public async Task PromedioPonderado_TresEntradas_Acumulativo()
     {
         var productoId = await CrearProductoTest("PP-003");
-        await RegistrarEntrada(productoId, SucPP, 50, 100, "FC-PP-003A");
-        await RegistrarEntrada(productoId, SucPP, 150, 200, "FC-PP-003B");
-        await RegistrarEntrada(productoId, SucPP, 100, 150, "FC-PP-003C");
+        await RegistrarEntrada(productoId, SucPp, 50, 100, "FC-PP-003A");
+        await RegistrarEntrada(productoId, SucPp, 150, 200, "FC-PP-003B");
+        await RegistrarEntrada(productoId, SucPp, 100, 150, "FC-PP-003C");
 
         // (50*100 + 150*200 + 100*150) / 300 = 50000/300 = 166.67
-        var stock = await ObtenerStock(productoId, SucPP);
+        var stock = await ObtenerStock(productoId, SucPp);
         stock!.Cantidad.Should().Be(300);
         stock.CostoPromedio.Should().BeApproximately(166.67m, 0.01m);
     }
@@ -143,13 +143,13 @@ public class InventarioCosteoTests
     public async Task PromedioPonderado_DevolucionNoCambiaCosto()
     {
         var productoId = await CrearProductoTest("PP-004");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-PP-004A");
-        await RegistrarEntrada(productoId, SucPP, 100, 100, "FC-PP-004B");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-PP-004A");
+        await RegistrarEntrada(productoId, SucPp, 100, 100, "FC-PP-004B");
         // avg = (100*50 + 100*100)/200 = 75
 
-        await RegistrarDevolucion(productoId, SucPP, 50, "DEV-PP-001");
+        await RegistrarDevolucion(productoId, SucPp, 50, "DEV-PP-001");
 
-        var stock = await ObtenerStock(productoId, SucPP);
+        var stock = await ObtenerStock(productoId, SucPp);
         stock!.Cantidad.Should().Be(150);
         stock.CostoPromedio.Should().BeApproximately(75m, 0.01m);
     }
@@ -166,7 +166,7 @@ public class InventarioCosteoTests
 
         var stock = await ObtenerStock(productoId, SucFIFO);
         stock.Should().NotBeNull();
-        stock!.Cantidad.Should().Be(100);
+        stock.Cantidad.Should().Be(100);
         stock.CostoPromedio.Should().Be(50);
     }
 
@@ -225,7 +225,7 @@ public class InventarioCosteoTests
 
         var stock = await ObtenerStock(productoId, SucLIFO);
         stock.Should().NotBeNull();
-        stock!.Cantidad.Should().Be(100);
+        stock.Cantidad.Should().Be(100);
         stock.CostoPromedio.Should().Be(75);
     }
 
@@ -281,11 +281,11 @@ public class InventarioCosteoTests
     {
         var productoId = await CrearProductoTest("CROSS-001");
 
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-CROSS-PP");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-CROSS-PP");
         await RegistrarEntrada(productoId, SucFIFO, 100, 80, "FC-CROSS-FIFO");
         await RegistrarEntrada(productoId, SucLIFO, 100, 120, "FC-CROSS-LIFO");
 
-        var stockPP = await ObtenerStock(productoId, SucPP);
+        var stockPP = await ObtenerStock(productoId, SucPp);
         var stockFIFO = await ObtenerStock(productoId, SucFIFO);
         var stockLIFO = await ObtenerStock(productoId, SucLIFO);
 
@@ -303,14 +303,14 @@ public class InventarioCosteoTests
         var productoId = await CrearProductoTest("CROSS-002");
 
         // Sucursal PP: 100@50 + 100@100 = avg 75
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-CR2-PP-A");
-        await RegistrarEntrada(productoId, SucPP, 100, 100, "FC-CR2-PP-B");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-CR2-PP-A");
+        await RegistrarEntrada(productoId, SucPp, 100, 100, "FC-CR2-PP-B");
 
         // Sucursal FIFO: 100@50 + 100@100 = avg 75 (mismo resultado que PP en este caso)
         await RegistrarEntrada(productoId, SucFIFO, 100, 50, "FC-CR2-FIFO-A");
         await RegistrarEntrada(productoId, SucFIFO, 100, 100, "FC-CR2-FIFO-B");
 
-        var stockPP = await ObtenerStock(productoId, SucPP);
+        var stockPP = await ObtenerStock(productoId, SucPp);
         var stockFIFO = await ObtenerStock(productoId, SucFIFO);
 
         stockPP!.CostoPromedio.Should().BeApproximately(75m, 0.01m);
@@ -325,11 +325,11 @@ public class InventarioCosteoTests
     public async Task EventSourcing_MovimientosInmutables()
     {
         var productoId = await CrearProductoTest("ES-001");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-ES-001A");
-        await RegistrarEntrada(productoId, SucPP, 50, 80, "FC-ES-001B");
-        await RegistrarDevolucion(productoId, SucPP, 25, "DEV-ES-001");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-ES-001A");
+        await RegistrarEntrada(productoId, SucPp, 50, 80, "FC-ES-001B");
+        await RegistrarDevolucion(productoId, SucPp, 25, "DEV-ES-001");
 
-        var movimientos = await ObtenerMovimientos(productoId, SucPP);
+        var movimientos = await ObtenerMovimientos(productoId, SucPp);
 
         movimientos.Should().HaveCount(3);
         movimientos[0].TipoMovimiento.Should().Be("DevolucionProveedor");
@@ -342,16 +342,16 @@ public class InventarioCosteoTests
     public async Task EventSourcing_AjusteInventario()
     {
         var productoId = await CrearProductoTest("ES-002");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-ES-002");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-ES-002");
 
-        var ajusteDto = new { productoId, sucursalId = SucPP, cantidadNueva = 80m, observaciones = "Conteo fisico" };
+        var ajusteDto = new { productoId, sucursalId = SucPp, cantidadNueva = 80m, observaciones = "Conteo fisico" };
         var response = await _client.PostAsJsonAsync("/api/v1/Inventario/ajuste", ajusteDto);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var stock = await ObtenerStock(productoId, SucPP);
+        var stock = await ObtenerStock(productoId, SucPp);
         stock!.Cantidad.Should().Be(80);
 
-        var movimientos = await ObtenerMovimientos(productoId, SucPP);
+        var movimientos = await ObtenerMovimientos(productoId, SucPp);
         movimientos.Should().HaveCount(2);
         movimientos.Should().Contain(m => m.TipoMovimiento == "AjusteNegativo");
     }
@@ -364,11 +364,11 @@ public class InventarioCosteoTests
     public async Task DevolucionSinStock_RetornaBadRequest()
     {
         var productoId = await CrearProductoTest("VAL-001");
-        await RegistrarEntrada(productoId, SucPP, 10, 50, "FC-VAL-001");
+        await RegistrarEntrada(productoId, SucPp, 10, 50, "FC-VAL-001");
 
         var dto = new
         {
-            productoId, sucursalId = SucPP, cantidad = 999m,
+            productoId, sucursalId = SucPp, cantidad = 999m,
             terceroId = TerceroId, referencia = "DEV-VAL-001"
         };
         var response = await _client.PostAsJsonAsync("/api/v1/Inventario/devolucion-proveedor", dto);
@@ -381,7 +381,7 @@ public class InventarioCosteoTests
         var dto = new
         {
             productoId = Guid.NewGuid(),
-            sucursalId = SucPP, cantidad = 100m, costoUnitario = 50m,
+            sucursalId = SucPp, cantidad = 100m, costoUnitario = 50m,
             terceroId = TerceroId, referencia = "FC-NOEXISTE"
         };
         var response = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", dto);
@@ -392,15 +392,15 @@ public class InventarioCosteoTests
     public async Task StockMinimo_Alertas()
     {
         var productoId = await CrearProductoTest("ALERTA-001");
-        await RegistrarEntrada(productoId, SucPP, 5, 50, "FC-ALERTA-001");
+        await RegistrarEntrada(productoId, SucPp, 5, 50, "FC-ALERTA-001");
 
         var response = await _client.PutAsync(
-            $"/api/v1/Inventario/stock-minimo?productoId={productoId}&sucursalId={SucPP}&stockMinimo=10",
+            $"/api/v1/Inventario/stock-minimo?productoId={productoId}&sucursalId={SucPp}&stockMinimo=10",
             null);
         response.EnsureSuccessStatusCode();
 
         var alertas = await _client.GetFromJsonAsync<List<AlertaStockDto>>(
-            $"/api/v1/Inventario/alertas?sucursalId={SucPP}", _jsonOptions) ?? [];
+            $"/api/v1/Inventario/alertas?sucursalId={SucPp}", _jsonOptions) ?? [];
         alertas.Should().Contain(a => a.ProductoId == productoId);
     }
 }

@@ -22,7 +22,7 @@ builder.Services.AddAppDbContext(builder.Configuration);
 builder.Services.AddScoped<POS.Application.Services.ITerceroService, POS.Infrastructure.Services.TerceroLocalService>();
 builder.Services.AddScoped<POS.Application.Services.IProductoService, POS.Infrastructure.Services.ProductoLocalService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
-builder.Services.AddScoped<POS.Infrastructure.Services.PrecioService>();
+builder.Services.AddScoped<POS.Application.Services.IPrecioService, POS.Infrastructure.Services.PrecioService>();
 
 // Identity Provider abstraction: EntraIdService (prod) / LocalIdentityProviderService (dev)
 if (builder.Configuration.GetSection("MicrosoftGraph:TenantId").Exists())

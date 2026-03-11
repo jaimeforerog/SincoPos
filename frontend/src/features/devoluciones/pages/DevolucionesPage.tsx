@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type HTMLAttributes } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -24,8 +24,10 @@ import {
   CircularProgress,
   Divider,
   Autocomplete,
+  type ChipProps,
 } from '@mui/material';
 import { PageHeader } from '@/components/common/PageHeader';
+import { useAuth } from '@/hooks/useAuth';
 import { ventasApi } from '@/api/ventas';
 import { devolucionesApi } from '@/api/devoluciones';
 import { formatCurrency, formatDate } from '@/utils/format';
@@ -58,6 +60,7 @@ const getDaysAgo = (days: number): string => {
 };
 
 export function DevolucionesPage() {
+  const { activeSucursalId } = useAuth();
   const [ventaSeleccionada, setVentaSeleccionada] = useState<VentaDTO | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [motivo, setMotivo] = useState('');
@@ -68,17 +71,19 @@ export function DevolucionesPage() {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
 
-  // Cargar ventas completadas con filtros de fecha
-  const { data: ventas = [], isLoading: loadingVentas } = useQuery({
-    queryKey: ['ventas-devoluciones', fechaDesde, fechaHasta],
+  // Cargar ventas completadas con filtros de fecha y sucursal activa
+  const { data: ventasPage, isLoading: loadingVentas } = useQuery({
+    queryKey: ['ventas-devoluciones', activeSucursalId, fechaDesde, fechaHasta],
     queryFn: () =>
       ventasApi.getAll({
-        estado: 'Completada', // Solo ventas completadas
+        sucursalId: activeSucursalId || undefined,
+        estado: 'Completada',
         desde: fechaDesde ? `${fechaDesde}T00:00:00Z` : undefined,
         hasta: fechaHasta ? `${fechaHasta}T23:59:59Z` : undefined,
-        limite: 100,
+        pageSize: 100,
       }),
   });
+  const ventas = ventasPage?.items ?? [];
 
   // Cargar devoluciones de la venta seleccionada
   const { data: devoluciones = [], isLoading: loadingDevoluciones } = useQuery({
@@ -254,7 +259,7 @@ export function DevolucionesPage() {
       }, 0);
   };
 
-  const getEstadoColor = (estado: string) => {
+  const getEstadoColor = (estado: string): ChipProps['color'] => {
     switch (estado) {
       case 'Completada':
         return 'success';
@@ -344,7 +349,7 @@ export function DevolucionesPage() {
                   />
                 )}
                 renderOption={(props, option) => {
-                  const { key, ...restProps } = props as any;
+                  const { key, ...restProps } = props as HTMLAttributes<HTMLLIElement> & { key: string };
                   const diasTranscurridos = Math.floor(
                     (new Date().getTime() - new Date(option.fechaVenta).getTime()) / (1000 * 60 * 60 * 24)
                   );
@@ -363,7 +368,7 @@ export function DevolucionesPage() {
                       </Box>
                       <Chip
                         label={option.estado}
-                        color={getEstadoColor(option.estado) as any}
+                        color={getEstadoColor(option.estado)}
                         size="small"
                       />
                     </Box>

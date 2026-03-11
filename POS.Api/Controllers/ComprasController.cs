@@ -61,20 +61,26 @@ public class ComprasController : ControllerBase
     }
 
     /// <summary>
-    /// Listar órdenes de compra con filtros opcionales. Máximo 100 resultados.
+    /// Listar órdenes de compra con filtros opcionales y paginación.
     /// </summary>
     /// <param name="estado">Pendiente=0, Aprobada=1, Recibida=2, Rechazada=3, Cancelada=4.</param>
+    /// <param name="page">Número de página (default 1).</param>
+    /// <param name="pageSize">Tamaño de página (default 50, máx 100).</param>
     [HttpGet]
     [Authorize(Policy = "Cajero")]
-    [ProducesResponseType(typeof(IEnumerable<OrdenCompraDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<OrdenCompraDto>>> ListarOrdenes(
+    [ProducesResponseType(typeof(PaginatedResult<OrdenCompraDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<OrdenCompraDto>>> ListarOrdenes(
         [FromQuery] int? sucursalId,
         [FromQuery] int? proveedorId,
         [FromQuery] EstadoOrdenCompra? estado,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
-        [FromQuery] int limite = 50)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
+        if (pageSize > 100) pageSize = 100;
+        if (page < 1) page = 1;
+
         var query = _context.OrdenesCompra
             .Include(o => o.Sucursal)
             .Include(o => o.Proveedor)
@@ -87,9 +93,11 @@ public class ComprasController : ControllerBase
         if (desde.HasValue) query = query.Where(o => o.FechaOrden >= desde.Value);
         if (hasta.HasValue) query = query.Where(o => o.FechaOrden <= hasta.Value);
 
+        var totalCount = await query.CountAsync();
         var ordenes = await query
             .OrderByDescending(o => o.FechaOrden)
-            .Take(Math.Min(limite, 100))
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         var usuarioIds = ordenes
@@ -102,7 +110,9 @@ public class ComprasController : ControllerBase
                 .ToDictionaryAsync(u => u.Id, u => (string?)u.Email)
             : new Dictionary<int, string?>();
 
-        return Ok(ordenes.Select(o => CompraService.MapearOrdenCompraDtoSync(o, usuariosDict)).ToList());
+        var items = ordenes.Select(o => CompraService.MapearOrdenCompraDtoSync(o, usuariosDict)).ToList();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new PaginatedResult<OrdenCompraDto>(items, totalCount, page, pageSize, totalPages));
     }
 
     /// <summary>Obtener detalle de una orden de compra incluyendo líneas y estado de aprobación.</summary>

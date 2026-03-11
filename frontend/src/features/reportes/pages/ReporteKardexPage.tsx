@@ -18,7 +18,8 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import { Search } from '@mui/icons-material';
+import { Search, Download } from '@mui/icons-material';
+import { exportarReporteKardex } from '@/utils/exportReportes';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 import { format } from 'date-fns';
@@ -231,6 +232,16 @@ export function ReporteKardexPage() {
               sx={{ height: 56, flex: { xs: 1, md: 'auto' } }}
             >
               Consultar
+            </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              startIcon={<Download />}
+              onClick={() => reporte && exportarReporteKardex(reporte)}
+              disabled={!reporte}
+              sx={{ height: 56 }}
+            >
+              Excel
             </Button>
           </Stack>
         </CardContent>

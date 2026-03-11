@@ -6,7 +6,7 @@ using POS.Application.DTOs;
 using POS.Application.Validators;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
-using POS.Infrastructure.Services;
+using POS.Application.Services;
 
 namespace POS.Api.Controllers;
 
@@ -17,12 +17,12 @@ namespace POS.Api.Controllers;
 public class PreciosController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly PrecioService _precioService;
+    private readonly IPrecioService _precioService;
     private readonly ILogger<PreciosController> _logger;
 
     public PreciosController(
         AppDbContext context,
-        PrecioService precioService,
+        IPrecioService precioService,
         ILogger<PreciosController> logger)
     {
         _context = context;
@@ -64,8 +64,7 @@ public class PreciosController : ControllerBase
     [ProducesResponseType(typeof(List<PrecioResueltoLoteItemDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<PrecioResueltoLoteItemDto>>> ResolverPrecioLote([FromQuery] int sucursalId)
     {
-        var items = await _precioService.ResolverPrecioLote(sucursalId);
-        return Ok(items.Select(i => new PrecioResueltoLoteItemDto(i.ProductoId, i.PrecioVenta, i.PrecioMinimo, i.Origen)));
+        return Ok(await _precioService.ResolverPrecioLote(sucursalId));
     }
 
     /// <summary>
@@ -80,8 +79,7 @@ public class PreciosController : ControllerBase
     {
         try
         {
-            var precio = await _precioService.ResolverPrecio(productoId, sucursalId);
-            return Ok(new PrecioResueltoDto(precio.PrecioVenta, precio.PrecioMinimo, precio.Origen, precio.OrigenDato));
+            return Ok(await _precioService.ResolverPrecio(productoId, sucursalId));
         }
         catch (InvalidOperationException ex)
         {

@@ -23,7 +23,7 @@ public class DevolucionesTests
         PropertyNameCaseInsensitive = true
     };
 
-    private int SucPP => _factory.SucursalPPId;
+    private int SucPp => _factory.SucursalPPId;
     private int CatId => _factory.CategoriaTestId;
     private int TerceroId => _factory.TerceroTestId;
 
@@ -137,19 +137,19 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-001-{Guid.NewGuid():N}"[..15], 1000m, 500m);
-        await RegistrarEntradaInventario(producto, SucPP, 50, 500m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev1-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev1-{Guid.NewGuid():N}"[..20]);
 
         // Verificar stock inicial
-        var stockInicial = await ObtenerStock(producto, SucPP);
+        var stockInicial = await ObtenerStock(producto, SucPp);
         stockInicial.Should().NotBeNull();
-        stockInicial!.Cantidad.Should().Be(50);
+        stockInicial.Cantidad.Should().Be(50);
 
         // Crear venta de 10 unidades
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 10) }, 20_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 10) }, 20_000m);
 
         // Verificar stock después de venta
-        var stockDespuesVenta = await ObtenerStock(producto, SucPP);
+        var stockDespuesVenta = await ObtenerStock(producto, SucPp);
         stockDespuesVenta!.Cantidad.Should().Be(40);
 
         // Obtener info de caja antes de devolución
@@ -174,7 +174,7 @@ public class DevolucionesTests
         var devolucion = await responseDevolucion.Content.ReadFromJsonAsync<DevolucionVentaDto>(_jsonOptions);
 
         devolucion.Should().NotBeNull();
-        devolucion!.NumeroDevolucion.Should().StartWith("DEV-");
+        devolucion.NumeroDevolucion.Should().StartWith("DEV-");
         devolucion.VentaId.Should().Be(venta.Id);
         devolucion.Motivo.Should().Be("Producto defectuoso");
         devolucion.Detalles.Should().HaveCount(1);
@@ -182,7 +182,7 @@ public class DevolucionesTests
         devolucion.TotalDevuelto.Should().Be(3000); // 3 * 1000
 
         // Verificar stock restaurado
-        var stockFinal = await ObtenerStock(producto, SucPP);
+        var stockFinal = await ObtenerStock(producto, SucPp);
         stockFinal!.Cantidad.Should().Be(43); // 40 + 3
 
         // Verificar ajuste de caja
@@ -200,11 +200,11 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-002-{Guid.NewGuid():N}"[..15], 2000m, 1000m);
-        await RegistrarEntradaInventario(producto, SucPP, 100, 1000m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev2-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 100, 1000m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev2-{Guid.NewGuid():N}"[..20]);
 
         // Vender 10 unidades
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 10) }, 30_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 10) }, 30_000m);
 
         // Act & Assert
 
@@ -258,10 +258,10 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-003-{Guid.NewGuid():N}"[..15], 1500m, 750m);
-        await RegistrarEntradaInventario(producto, SucPP, 50, 750m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev3-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 750m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev3-{Guid.NewGuid():N}"[..20]);
 
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 5) }, 10_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 5) }, 10_000m);
 
         // Anular la venta
         var anularResponse = await _client.PostAsync(
@@ -291,13 +291,13 @@ public class DevolucionesTests
         var producto1 = await CrearProductoTest($"DEV-004A-{Guid.NewGuid():N}"[..15], 1000m, 500m);
         var producto2 = await CrearProductoTest($"DEV-004B-{Guid.NewGuid():N}"[..15], 1000m, 500m);
 
-        await RegistrarEntradaInventario(producto1, SucPP, 50, 500m);
-        await RegistrarEntradaInventario(producto2, SucPP, 50, 500m);
+        await RegistrarEntradaInventario(producto1, SucPp, 50, 500m);
+        await RegistrarEntradaInventario(producto2, SucPp, 50, 500m);
 
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev4-{Guid.NewGuid():N}"[..20]);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev4-{Guid.NewGuid():N}"[..20]);
 
         // Vender solo producto1
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto1, 5) }, 10_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto1, 5) }, 10_000m);
 
         // Act: Intentar devolver producto2 (no está en la venta)
         var devolucionDto = new
@@ -320,11 +320,11 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-005-{Guid.NewGuid():N}"[..15], 1000m, 500m);
-        await RegistrarEntradaInventario(producto, SucPP, 50, 500m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev5-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev5-{Guid.NewGuid():N}"[..20]);
 
         // Vender 5 unidades
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 5) }, 10_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 5) }, 10_000m);
 
         // Act: Intentar devolver 6 unidades (más de lo vendido)
         var devolucionDto = new
@@ -348,10 +348,10 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-006-{Guid.NewGuid():N}"[..15], 1000m, 500m);
-        await RegistrarEntradaInventario(producto, SucPP, 50, 500m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev6-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev6-{Guid.NewGuid():N}"[..20]);
 
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 5) }, 10_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 5) }, 10_000m);
 
         // Act: Intentar devolver sin motivo
         var devolucionDto = new
@@ -378,10 +378,10 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-007-{Guid.NewGuid():N}"[..15], 1000m, 500m);
-        await RegistrarEntradaInventario(producto, SucPP, 50, 500m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev7-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev7-{Guid.NewGuid():N}"[..20]);
 
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 10) }, 15_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 10) }, 15_000m);
 
         // Crear dos devoluciones
         var dev1 = new
@@ -405,7 +405,7 @@ public class DevolucionesTests
         // Assert
         response.Should().NotBeNull();
         response.Should().HaveCount(2);
-        response!.Sum(d => d.TotalDevuelto).Should().Be(5000); // 2000 + 3000
+        response.Sum(d => d.TotalDevuelto).Should().Be(5000); // 2000 + 3000
     }
 
     [Fact]
@@ -413,10 +413,10 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-008-{Guid.NewGuid():N}"[..15], 1500m, 750m);
-        await RegistrarEntradaInventario(producto, SucPP, 50, 750m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev8-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 750m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev8-{Guid.NewGuid():N}"[..20]);
 
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 8) }, 15_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 8) }, 15_000m);
 
         var devolucionDto = new
         {
@@ -434,7 +434,7 @@ public class DevolucionesTests
 
         // Assert
         response.Should().NotBeNull();
-        response!.Id.Should().Be(devolucionCreada.Id);
+        response.Id.Should().Be(devolucionCreada.Id);
         response.NumeroDevolucion.Should().Be(devolucionCreada.NumeroDevolucion);
         response.Motivo.Should().Be("Test consulta individual");
         response.TotalDevuelto.Should().Be(4500); // 3 * 1500
@@ -451,14 +451,14 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-009-{Guid.NewGuid():N}"[..15], 2000m, 800m);
-        await RegistrarEntradaInventario(producto, SucPP, 50, 800m); // Costo inicial 800
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaDev9-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 800m); // Costo inicial 800
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaDev9-{Guid.NewGuid():N}"[..20]);
 
         // Vender con costo 800
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 10) }, 25_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 10) }, 25_000m);
 
         // Cambiar el costo en inventario (nueva entrada con costo diferente)
-        await RegistrarEntradaInventario(producto, SucPP, 20, 1200m); // Nuevo costo 1200
+        await RegistrarEntradaInventario(producto, SucPp, 20, 1200m); // Nuevo costo 1200
 
         // Act: Devolver producto
         var devolucionDto = new
@@ -476,7 +476,7 @@ public class DevolucionesTests
 
         // Verificar que el detalle registró el costo original (800), no el nuevo (1200)
         devolucion.Should().NotBeNull();
-        devolucion!.Detalles[0].CostoUnitario.Should().Be(800m);
+        devolucion.Detalles[0].CostoUnitario.Should().Be(800m);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -488,10 +488,10 @@ public class DevolucionesTests
     {
         // Arrange
         var producto = await CrearProductoTest($"DEV-NC-001-{Guid.NewGuid():N}"[..15], 2000m, 1000m);
-        await RegistrarEntradaInventario(producto, SucPP, 100, 1000m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaNC1-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(producto, SucPp, 100, 1000m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaNC1-{Guid.NewGuid():N}"[..20]);
 
-        var venta = await CrearVentaTest(SucPP, caja, new() { (producto, 20) }, 50_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 20) }, 50_000m);
 
         // Act: Devolver 5 unidades
         var devolucionDto = new
@@ -534,7 +534,7 @@ public class DevolucionesTests
         var payload = JsonSerializer.Deserialize<POS.Application.DTOs.CompraErpPayload>(
             outbox.Payload, _jsonOptions);
         payload.Should().NotBeNull();
-        payload!.NumeroOrden.Should().Be(devolucion!.NumeroDevolucion);
+        payload.NumeroOrden.Should().Be(devolucion!.NumeroDevolucion);
 
         // Débitos: Reversión Ingreso + Reversión IVA
         var debitos = payload.Asientos.Where(a => a.Naturaleza == "Debito").ToList();
@@ -553,11 +553,11 @@ public class DevolucionesTests
     {
         // Arrange - Producto con IVA 19%
         var productoId = await CrearProductoTest($"DEV-NC-IVA-{Guid.NewGuid():N}"[..15], 5000m, 2500m);
-        await RegistrarEntradaInventario(productoId, SucPP, 50, 2500m);
-        var caja = await CrearYAbrirCaja(SucPP, $"CajaNCIVA-{Guid.NewGuid():N}"[..20]);
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 2500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaNCIVA-{Guid.NewGuid():N}"[..20]);
 
         // Venta con IVA (el TaxEngine calcula IVA automáticamente si el producto tiene impuesto)
-        var venta = await CrearVentaTest(SucPP, caja, new() { (productoId, 10) }, 100_000m);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (productoId, 10) }, 100_000m);
 
         // Act: Devolver 4 unidades
         var devolucionDto = new

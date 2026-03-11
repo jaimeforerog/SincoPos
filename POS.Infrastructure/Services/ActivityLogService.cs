@@ -115,10 +115,16 @@ public class ActivityLogService : IActivityLogService
 
         // Aplicar filtros
         if (filter.FechaDesde.HasValue)
-            query = query.Where(a => a.FechaHora >= filter.FechaDesde.Value);
+        {
+            var fechaDesdeUtc = DateTime.SpecifyKind(filter.FechaDesde.Value, DateTimeKind.Utc);
+            query = query.Where(a => a.FechaHora >= fechaDesdeUtc);
+        }
 
         if (filter.FechaHasta.HasValue)
-            query = query.Where(a => a.FechaHora <= filter.FechaHasta.Value);
+        {
+            var fechaHastaUtc = DateTime.SpecifyKind(filter.FechaHasta.Value, DateTimeKind.Utc);
+            query = query.Where(a => a.FechaHora <= fechaHastaUtc);
+        }
 
         if (!string.IsNullOrEmpty(filter.UsuarioEmail))
             query = query.Where(a => a.UsuarioEmail.Contains(filter.UsuarioEmail));
@@ -217,11 +223,14 @@ public class ActivityLogService : IActivityLogService
         DateTime fechaHasta,
         int? sucursalId = null)
     {
+        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde, DateTimeKind.Utc);
+        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta, DateTimeKind.Utc);
+
         using var scope = _serviceScopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var query = context.ActivityLogs
-            .Where(a => a.FechaHora >= fechaDesde && a.FechaHora <= fechaHasta);
+            .Where(a => a.FechaHora >= fechaDesdeUtc && a.FechaHora <= fechaHastaUtc);
 
         if (sucursalId.HasValue)
             query = query.Where(a => a.SucursalId == sucursalId.Value);
@@ -276,10 +285,16 @@ public class ActivityLogService : IActivityLogService
             .Where(a => a.UsuarioEmail == usuarioEmail);
 
         if (fechaDesde.HasValue)
-            query = query.Where(a => a.FechaHora >= fechaDesde.Value);
+        {
+            var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Value, DateTimeKind.Utc);
+            query = query.Where(a => a.FechaHora >= fechaDesdeUtc);
+        }
 
         if (fechaHasta.HasValue)
-            query = query.Where(a => a.FechaHora <= fechaHasta.Value);
+        {
+            var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Value, DateTimeKind.Utc);
+            query = query.Where(a => a.FechaHora <= fechaHastaUtc);
+        }
 
         var logs = await query.ToListAsync();
 

@@ -18,6 +18,7 @@ import {
   Divider,
   CircularProgress,
   TextField,
+  Alert,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
@@ -36,6 +37,8 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
   const [mostrarRechazo, setMostrarRechazo] = useState(false);
   const [mostrarCancelacion, setMostrarCancelacion] = useState(false);
+  const [confirmarEnvio, setConfirmarEnvio] = useState(false);
+  const [confirmarRecibo, setConfirmarRecibo] = useState(false);
 
   const { data: traslado, isLoading } = useQuery({
     queryKey: ['traslado', trasladoId],
@@ -261,7 +264,7 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
         )}
       </DialogContent>
       <DialogActions>
-        {!mostrarRechazo && !mostrarCancelacion && (
+        {!mostrarRechazo && !mostrarCancelacion && !confirmarEnvio && !confirmarRecibo && (
           <>
             <Button onClick={onClose}>Cerrar</Button>
             {traslado.estado === 'Pendiente' && (
@@ -275,8 +278,7 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
                 </Button>
                 <Button
                   variant="contained"
-                  onClick={() => enviarMutation.mutate()}
-                  disabled={enviarMutation.isPending}
+                  onClick={() => setConfirmarEnvio(true)}
                 >
                   Enviar
                 </Button>
@@ -294,13 +296,49 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
                 <Button
                   variant="contained"
                   color="success"
-                  onClick={() => recibirMutation.mutate()}
-                  disabled={recibirMutation.isPending}
+                  onClick={() => setConfirmarRecibo(true)}
                 >
                   Recibir
                 </Button>
               </>
             )}
+          </>
+        )}
+
+        {confirmarEnvio && (
+          <>
+            <Alert severity="warning" sx={{ flex: 1, mr: 1 }}>
+              ¿Confirma el envío de <strong>{traslado.numeroTraslado}</strong>? El traslado quedará En Tránsito.
+            </Alert>
+            <Button onClick={() => setConfirmarEnvio(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => { setConfirmarEnvio(false); enviarMutation.mutate(); }}
+              disabled={enviarMutation.isPending}
+            >
+              Confirmar Envío
+            </Button>
+          </>
+        )}
+
+        {confirmarRecibo && (
+          <>
+            <Alert severity="warning" sx={{ flex: 1, mr: 1 }}>
+              ¿Confirma la recepción completa de <strong>{traslado.numeroTraslado}</strong>? Esto actualizará el inventario.
+            </Alert>
+            <Button onClick={() => setConfirmarRecibo(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => { setConfirmarRecibo(false); recibirMutation.mutate(); }}
+              disabled={recibirMutation.isPending}
+            >
+              Confirmar Recepción
+            </Button>
           </>
         )}
 

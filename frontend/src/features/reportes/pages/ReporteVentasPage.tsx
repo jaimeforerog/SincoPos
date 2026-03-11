@@ -31,6 +31,8 @@ import { sucursalesApi } from '@/api/sucursales';
 import { formatCurrency } from '@/utils/format';
 import { format, subDays } from 'date-fns';
 import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
+import { exportarReporteVentas } from '@/utils/exportReportes';
 
 export function ReporteVentasPage() {
   const today = new Date();
@@ -133,14 +135,24 @@ export function ReporteVentasPage() {
               </Select>
             </FormControl>
           </Stack>
-          <Button
-            variant="contained"
-            startIcon={<SearchIcon />}
-            onClick={() => refetch()}
-            fullWidth
-          >
-            Generar Reporte
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              onClick={() => refetch()}
+              sx={{ flex: 1 }}
+            >
+              Generar Reporte
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => reporte && exportarReporteVentas(reporte, fechaDesde, fechaHasta)}
+              disabled={!reporte}
+            >
+              Exportar Excel
+            </Button>
+          </Stack>
         </CardContent>
       </Card>
 

@@ -21,7 +21,7 @@ public class TrasladosTests
     };
 
     // IDs de sucursales
-    private int SucPP => _factory.SucursalPPId;
+    private int SucPp => _factory.SucursalPPId;
     private int SucFIFO => _factory.SucursalFIFOId;
     private int SucLIFO => _factory.SucursalLIFOId;
     private int CatId => _factory.CategoriaTestId;
@@ -145,13 +145,13 @@ public class TrasladosTests
     {
         // Arrange
         var productoId = await CrearProductoTest("TRAS-001");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-TRAS-001");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-TRAS-001");
 
-        var stockOrigenInicial = await ObtenerStock(productoId, SucPP);
+        var stockOrigenInicial = await ObtenerStock(productoId, SucPp);
         stockOrigenInicial!.Cantidad.Should().Be(100);
 
         // Act - Crear traslado
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)> { (productoId, 30) },
             "Traslado de prueba");
 
@@ -160,7 +160,7 @@ public class TrasladosTests
         // Verificar traslado creado en estado Pendiente
         var trasladoCreado = await ObtenerTraslado(trasladoId);
         trasladoCreado.Should().NotBeNull();
-        trasladoCreado!.Estado.Should().Be("Pendiente");
+        trasladoCreado.Estado.Should().Be("Pendiente");
 
         // Act - Enviar traslado
         await EnviarTraslado(trasladoId);
@@ -169,7 +169,7 @@ public class TrasladosTests
         var trasladoEnviado = await ObtenerTraslado(trasladoId);
         trasladoEnviado!.Estado.Should().Be("EnTransito");
 
-        var stockOrigenDespuesEnvio = await ObtenerStock(productoId, SucPP);
+        var stockOrigenDespuesEnvio = await ObtenerStock(productoId, SucPp);
         stockOrigenDespuesEnvio!.Cantidad.Should().Be(70, "Origen debe tener 100 - 30 = 70");
 
         // Act - Recibir traslado
@@ -184,7 +184,7 @@ public class TrasladosTests
         stockDestinoDespuesRecepcion!.Cantidad.Should().Be(30, "Destino debe tener 0 + 30 = 30");
 
         // Verificar stock origen no cambió
-        var stockOrigenFinal = await ObtenerStock(productoId, SucPP);
+        var stockOrigenFinal = await ObtenerStock(productoId, SucPp);
         stockOrigenFinal!.Cantidad.Should().Be(70, "Origen debe mantenerse en 70");
     }
 
@@ -193,12 +193,12 @@ public class TrasladosTests
     {
         // Arrange
         var productoId = await CrearProductoTest("TRAS-002");
-        await RegistrarEntrada(productoId, SucPP, 10, 50, "FC-TRAS-002");
+        await RegistrarEntrada(productoId, SucPp, 10, 50, "FC-TRAS-002");
 
         // Act & Assert - Intentar crear traslado con más stock del disponible
         var dto = new
         {
-            sucursalOrigenId = SucPP,
+            sucursalOrigenId = SucPp,
             sucursalDestinoId = SucFIFO,
             observaciones = "Traslado que debe fallar",
             lineas = new[]
@@ -220,13 +220,13 @@ public class TrasladosTests
     {
         // Arrange
         var productoId = await CrearProductoTest("TRAS-003");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-TRAS-003");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-TRAS-003");
 
         // Act & Assert - Intentar crear traslado con origen == destino
         var dto = new
         {
-            sucursalOrigenId = SucPP,
-            sucursalDestinoId = SucPP,  // Misma sucursal
+            sucursalOrigenId = SucPp,
+            sucursalDestinoId = SucPp,  // Misma sucursal
             observaciones = "Traslado que debe fallar",
             lineas = new[]
             {
@@ -247,16 +247,16 @@ public class TrasladosTests
     {
         // Arrange
         var productoId = await CrearProductoTest("TRAS-004");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-TRAS-004");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-TRAS-004");
 
         // Act - Crear y enviar traslado de 20 unidades
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)> { (productoId, 20) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
 
         // Verificar stock origen disminuyó
-        var stockOrigen = await ObtenerStock(productoId, SucPP);
+        var stockOrigen = await ObtenerStock(productoId, SucPp);
         stockOrigen!.Cantidad.Should().Be(80, "Origen: 100 - 20 = 80");
 
         // Act - Recibir solo 15 unidades (mercancía dañada)
@@ -268,7 +268,7 @@ public class TrasladosTests
         trasladoFinal!.Detalles[0].CantidadSolicitada.Should().Be(20);
         trasladoFinal.Detalles[0].CantidadRecibida.Should().Be(15);
 
-        var stockOrigenFinal = await ObtenerStock(productoId, SucPP);
+        var stockOrigenFinal = await ObtenerStock(productoId, SucPp);
         stockOrigenFinal!.Cantidad.Should().Be(80, "Origen: se quedó con -20 aunque solo llegaron 15");
 
         var stockDestinoFinal = await ObtenerStock(productoId, SucFIFO);
@@ -280,9 +280,9 @@ public class TrasladosTests
     {
         // Arrange
         var productoId = await CrearProductoTest("TRAS-005");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-TRAS-005");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-TRAS-005");
 
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)> { (productoId, 10) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
@@ -310,13 +310,13 @@ public class TrasladosTests
     {
         // Arrange
         var productoId = await CrearProductoTest("TRAS-006");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-TRAS-006");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-TRAS-006");
 
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)> { (productoId, 10) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
 
-        var stockInicial = await ObtenerStock(productoId, SucPP);
+        var stockInicial = await ObtenerStock(productoId, SucPp);
         stockInicial!.Cantidad.Should().Be(100);
 
         // Act - Cancelar traslado
@@ -329,7 +329,7 @@ public class TrasladosTests
         trasladoCancelado!.Estado.Should().Be("Cancelado");
 
         // Stock no debe cambiar
-        var stockFinal = await ObtenerStock(productoId, SucPP);
+        var stockFinal = await ObtenerStock(productoId, SucPp);
         stockFinal!.Cantidad.Should().Be(100, "Stock no debe cambiar al cancelar en Pendiente");
     }
 
@@ -338,15 +338,15 @@ public class TrasladosTests
     {
         // Arrange
         var productoId = await CrearProductoTest("TRAS-007");
-        await RegistrarEntrada(productoId, SucPP, 100, 50, "FC-TRAS-007");
+        await RegistrarEntrada(productoId, SucPp, 100, 50, "FC-TRAS-007");
 
         // Act - Crear y enviar traslado
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)> { (productoId, 30) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
 
-        var stockDespuesEnvio = await ObtenerStock(productoId, SucPP);
+        var stockDespuesEnvio = await ObtenerStock(productoId, SucPp);
         stockDespuesEnvio!.Cantidad.Should().Be(70, "Después de enviar: 100 - 30 = 70");
 
         // Act - Rechazar traslado
@@ -359,7 +359,7 @@ public class TrasladosTests
         trasladoRechazado!.Estado.Should().Be("Rechazado");
         trasladoRechazado.MotivoRechazo.Should().Contain("dañada");
 
-        var stockRestaurado = await ObtenerStock(productoId, SucPP);
+        var stockRestaurado = await ObtenerStock(productoId, SucPp);
         stockRestaurado!.Cantidad.Should().Be(100, "Stock debe restaurarse: 70 + 30 = 100");
     }
 
@@ -368,13 +368,13 @@ public class TrasladosTests
     {
         // Arrange - Crear producto con costo $500 en sucursal origen
         var productoId = await CrearProductoTest("TRAS-008");
-        await RegistrarEntrada(productoId, SucPP, 100, 500, "FC-TRAS-008");
+        await RegistrarEntrada(productoId, SucPp, 100, 500, "FC-TRAS-008");
 
-        var stockOrigen = await ObtenerStock(productoId, SucPP);
+        var stockOrigen = await ObtenerStock(productoId, SucPp);
         stockOrigen!.CostoPromedio.Should().Be(500);
 
         // Act - Crear, enviar y recibir traslado
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)> { (productoId, 25) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
@@ -387,7 +387,7 @@ public class TrasladosTests
 
         var stockDestino = await ObtenerStock(productoId, SucFIFO);
         stockDestino.Should().NotBeNull();
-        stockDestino!.Cantidad.Should().Be(25);
+        stockDestino.Cantidad.Should().Be(25);
         stockDestino.CostoPromedio.Should().Be(500, "Costo promedio en destino debe ser $500");
     }
 
@@ -398,11 +398,11 @@ public class TrasladosTests
         var producto1Id = await CrearProductoTest("TRAS-009A");
         var producto2Id = await CrearProductoTest("TRAS-009B");
 
-        await RegistrarEntrada(producto1Id, SucPP, 100, 50, "FC-TRAS-009A");
-        await RegistrarEntrada(producto2Id, SucPP, 200, 75, "FC-TRAS-009B");
+        await RegistrarEntrada(producto1Id, SucPp, 100, 50, "FC-TRAS-009A");
+        await RegistrarEntrada(producto2Id, SucPp, 200, 75, "FC-TRAS-009B");
 
         // Act - Crear traslado con ambos productos
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)>
             {
                 (producto1Id, 20),
@@ -419,13 +419,13 @@ public class TrasladosTests
             });
 
         // Assert - Verificar ambos productos
-        var stock1Origen = await ObtenerStock(producto1Id, SucPP);
+        var stock1Origen = await ObtenerStock(producto1Id, SucPp);
         stock1Origen!.Cantidad.Should().Be(80);
 
         var stock1Destino = await ObtenerStock(producto1Id, SucFIFO);
         stock1Destino!.Cantidad.Should().Be(20);
 
-        var stock2Origen = await ObtenerStock(producto2Id, SucPP);
+        var stock2Origen = await ObtenerStock(producto2Id, SucPp);
         stock2Origen!.Cantidad.Should().Be(170);
 
         var stock2Destino = await ObtenerStock(producto2Id, SucFIFO);
@@ -452,7 +452,7 @@ public class TrasladosTests
         stockOrigen!.Cantidad.Should().Be(100);
 
         // Act - Trasladar 30 unidades a sucursal Promedio Ponderado
-        var resultCrear = await CrearTraslado(SucFIFO, SucPP,
+        var resultCrear = await CrearTraslado(SucFIFO, SucPp,
             new List<(Guid, decimal)> { (productoId, 30) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
@@ -465,7 +465,7 @@ public class TrasladosTests
             "FIFO debe consumir del lote más antiguo (costo $100)");
 
         // Destino (Promedio Ponderado) debe recibir con costo $100
-        var stockDestino = await ObtenerStock(productoId, SucPP);
+        var stockDestino = await ObtenerStock(productoId, SucPp);
         stockDestino!.Cantidad.Should().Be(30);
         stockDestino.CostoPromedio.Should().Be(100,
             "Promedio Ponderado con una sola entrada debe ser $100");
@@ -487,7 +487,7 @@ public class TrasladosTests
         stockOrigen!.Cantidad.Should().Be(100);
 
         // Act - Trasladar 30 unidades a sucursal Promedio Ponderado
-        var resultCrear = await CrearTraslado(SucLIFO, SucPP,
+        var resultCrear = await CrearTraslado(SucLIFO, SucPp,
             new List<(Guid, decimal)> { (productoId, 30) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
@@ -500,7 +500,7 @@ public class TrasladosTests
             "LIFO debe consumir del lote más reciente (costo $200)");
 
         // Destino (Promedio Ponderado) debe recibir con costo $200
-        var stockDestino = await ObtenerStock(productoId, SucPP);
+        var stockDestino = await ObtenerStock(productoId, SucPp);
         stockDestino!.Cantidad.Should().Be(30);
         stockDestino.CostoPromedio.Should().Be(200,
             "Promedio Ponderado con una sola entrada debe ser $200");
@@ -512,15 +512,15 @@ public class TrasladosTests
         // Arrange - Crear inventario en Promedio Ponderado con costo promedio $150
         var productoId = await CrearProductoTest("TRAS-012");
 
-        await RegistrarEntrada(productoId, SucPP, 50, 100, "FC-PP-001");
-        await RegistrarEntrada(productoId, SucPP, 50, 200, "FC-PP-002");
+        await RegistrarEntrada(productoId, SucPp, 50, 100, "FC-PP-001");
+        await RegistrarEntrada(productoId, SucPp, 50, 200, "FC-PP-002");
         // Promedio: (50*100 + 50*200) / 100 = 150
 
-        var stockOrigen = await ObtenerStock(productoId, SucPP);
+        var stockOrigen = await ObtenerStock(productoId, SucPp);
         stockOrigen!.CostoPromedio.Should().BeApproximately(150m, 0.01m);
 
         // Act - Trasladar 40 unidades a sucursal FIFO
-        var resultCrear = await CrearTraslado(SucPP, SucFIFO,
+        var resultCrear = await CrearTraslado(SucPp, SucFIFO,
             new List<(Guid, decimal)> { (productoId, 40) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
@@ -576,14 +576,14 @@ public class TrasladosTests
         await RegistrarEntrada(productoId, SucFIFO, 100, 100, "FC-FIFO-001");
 
         // Producto YA existe en sucursal Promedio Ponderado con costo diferente
-        await RegistrarEntrada(productoId, SucPP, 50, 200, "FC-PP-001");
+        await RegistrarEntrada(productoId, SucPp, 50, 200, "FC-PP-001");
 
-        var stockDestinoInicial = await ObtenerStock(productoId, SucPP);
+        var stockDestinoInicial = await ObtenerStock(productoId, SucPp);
         stockDestinoInicial!.CostoPromedio.Should().Be(200);
         stockDestinoInicial.Cantidad.Should().Be(50);
 
         // Act - Trasladar 30 unidades de FIFO ($100) a Promedio Ponderado
-        var resultCrear = await CrearTraslado(SucFIFO, SucPP,
+        var resultCrear = await CrearTraslado(SucFIFO, SucPp,
             new List<(Guid, decimal)> { (productoId, 30) });
         var trasladoId = resultCrear.GetProperty("trasladoId").GetInt32();
         await EnviarTraslado(trasladoId);
@@ -594,7 +594,7 @@ public class TrasladosTests
         // Stock anterior: 50 @ $200 = $10,000
         // Traslado: 30 @ $100 = $3,000
         // Nuevo promedio: $13,000 / 80 = $162.50
-        var stockDestinoFinal = await ObtenerStock(productoId, SucPP);
+        var stockDestinoFinal = await ObtenerStock(productoId, SucPp);
         stockDestinoFinal!.Cantidad.Should().Be(80);
         stockDestinoFinal.CostoPromedio.Should().BeApproximately(162.50m, 0.01m,
             "Promedio Ponderado debe recalcular: (50*200 + 30*100) / 80 = 162.50");

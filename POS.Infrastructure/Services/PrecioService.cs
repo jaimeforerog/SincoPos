@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using POS.Application.DTOs;
+using POS.Application.Services;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 
@@ -7,7 +9,7 @@ namespace POS.Infrastructure.Services;
 /// <summary>
 /// Resuelve precio con cascada: PrecioSucursal -> Producto.PrecioVenta -> Costo × (1 + Margen)
 /// </summary>
-public class PrecioService
+public class PrecioService : IPrecioService
 {
     private readonly AppDbContext _context;
 
@@ -17,21 +19,14 @@ public class PrecioService
     /// Resuelve el precio de venta para un producto en una sucursal.
     /// Prioridad: 1) PrecioSucursal, 2) Producto.PrecioVenta, 3) Costo × (1 + Margen)
     /// </summary>
-    public async Task<PrecioResuelto> ResolverPrecio(Guid productoId, int sucursalId)
+    public async Task<PrecioResueltoDto> ResolverPrecio(Guid productoId, int sucursalId)
     {
         // 1. Buscar precio especifico por sucursal
         var precioSuc = await _context.PreciosSucursal
             .FirstOrDefaultAsync(p => p.ProductoId == productoId && p.SucursalId == sucursalId);
 
         if (precioSuc != null)
-        {
-            return new PrecioResuelto(
-                precioSuc.PrecioVenta,
-                precioSuc.PrecioMinimo,
-                "Sucursal",
-                precioSuc.OrigenDato
-            );
-        }
+            return new PrecioResueltoDto(precioSuc.PrecioVenta, precioSuc.PrecioMinimo, "Sucursal", precioSuc.OrigenDato);
 
         // 2. Precio base del producto
         var producto = await _context.Productos
@@ -42,9 +37,7 @@ public class PrecioService
             throw new InvalidOperationException($"Producto {productoId} no encontrado.");
 
         if (producto.PrecioVenta > 0)
-        {
-            return new PrecioResuelto(producto.PrecioVenta, null, "Producto");
-        }
+            return new PrecioResueltoDto(producto.PrecioVenta, null, "Producto");
 
         // 3. Calcular desde costo + margen categoria
         var stock = await _context.Stock
@@ -54,7 +47,7 @@ public class PrecioService
         var margen = producto.Categoria.MargenGanancia;
         var precioCalculado = Math.Round(costo * (1 + margen), 2);
 
-        return new PrecioResuelto(precioCalculado, costo, "Margen");
+        return new PrecioResueltoDto(precioCalculado, costo, "Margen");
     }
 
     /// <summary>
@@ -62,7 +55,7 @@ public class PrecioService
     /// Usa la misma cascada: PrecioSucursal → Producto.PrecioVenta → Costo × (1 + Margen).
     /// Diseñado para el POS: evita N+1 al mostrar la lista de productos.
     /// </summary>
-    public async Task<List<PrecioResueltoLoteItem>> ResolverPrecioLote(int sucursalId)
+    public async Task<List<PrecioResueltoLoteItemDto>> ResolverPrecioLote(int sucursalId)
     {
         var productos = await _context.Productos
             .Include(p => p.Categoria)
@@ -82,15 +75,15 @@ public class PrecioService
         return productos.Select(producto =>
         {
             if (preciosSuc.TryGetValue(producto.Id, out var ps))
-                return new PrecioResueltoLoteItem(producto.Id, ps.PrecioVenta, ps.PrecioMinimo, "Sucursal");
+                return new PrecioResueltoLoteItemDto(producto.Id, ps.PrecioVenta, ps.PrecioMinimo, "Sucursal");
 
             if (producto.PrecioVenta > 0)
-                return new PrecioResueltoLoteItem(producto.Id, producto.PrecioVenta, null, "Producto");
+                return new PrecioResueltoLoteItemDto(producto.Id, producto.PrecioVenta, null, "Producto");
 
             var costo = stocks.TryGetValue(producto.Id, out var s) ? s.CostoPromedio : producto.PrecioCosto;
             var margen = producto.Categoria?.MargenGanancia ?? 0m;
             var precioCalc = Math.Round(costo * (1 + margen), 2);
-            return new PrecioResueltoLoteItem(producto.Id, precioCalc, costo, "Margen");
+            return new PrecioResueltoLoteItemDto(producto.Id, precioCalc, costo, "Margen");
         }).ToList();
     }
 
@@ -119,6 +112,3 @@ public class PrecioService
         return (true, null);
     }
 }
-
-public record PrecioResuelto(decimal PrecioVenta, decimal? PrecioMinimo, string Origen, string? OrigenDato = null);
-public record PrecioResueltoLoteItem(Guid ProductoId, decimal PrecioVenta, decimal? PrecioMinimo, string Origen);

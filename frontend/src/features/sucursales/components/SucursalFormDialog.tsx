@@ -94,7 +94,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
         telefono: sucursal.telefono || '',
         email: sucursal.email || '',
         centroCosto: sucursal.centroCosto || '',
-        metodoCosteo: sucursal.metodoCosteo as any,
+        metodoCosteo: sucursal.metodoCosteo as SucursalFormData['metodoCosteo'],
       });
     } else {
       setSelectedCodigoPais('CO');
