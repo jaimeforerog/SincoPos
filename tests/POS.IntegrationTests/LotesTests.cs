@@ -383,7 +383,7 @@ public class LotesTests
             sucursalId = SucPp,
             proveedorId = TerceroId,
             observaciones = "Test recepción con lote",
-            detalles = new[]
+            lineas = new[]
             {
                 new { productoId, cantidad = 20m, precioUnitario = 800m }
             }
@@ -392,6 +392,11 @@ public class LotesTests
         ordenResp.EnsureSuccessStatusCode();
         var orden = await ordenResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
         var ordenId = orden.GetProperty("id").GetInt32();
+
+        // Aprobar la orden (requerido antes de recibir)
+        var aprobarResp = await _client.PostAsJsonAsync(
+            $"/api/v1/Compras/{ordenId}/aprobar", new { observaciones = (string?)null });
+        aprobarResp.EnsureSuccessStatusCode();
 
         // Act: recibir la orden con número de lote y fecha de vencimiento
         var recepcionDto = new

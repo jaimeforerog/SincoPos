@@ -8,7 +8,9 @@ public record EntradaInventarioDto(
     decimal PorcentajeImpuesto,
     int? TerceroId,
     string? Referencia,
-    string? Observaciones
+    string? Observaciones,
+    string? NumeroLote = null,
+    DateOnly? FechaVencimiento = null
 );
 
 public record AjusteInventarioDto(
