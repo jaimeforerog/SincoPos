@@ -58,6 +58,7 @@ public class CategoriasController : ControllerBase
         if (dto.CategoriaPadreId.HasValue)
         {
             categoriaPadre = await _context.Categorias
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(c => c.Id == dto.CategoriaPadreId.Value);
 
             if (categoriaPadre == null)
@@ -100,6 +101,7 @@ public class CategoriasController : ControllerBase
     public async Task<ActionResult<CategoriaDto>> ObtenerCategoria(int id)
     {
         var categoria = await _context.Categorias
+            .IgnoreQueryFilters()
             .Include(c => c.CategoriaPadre)
             .Include(c => c.SubCategorias)
             .Include(c => c.Productos)
@@ -120,14 +122,14 @@ public class CategoriasController : ControllerBase
         [FromQuery] bool incluirInactivas = false,
         [FromQuery] int? categoriaPadreId = null)
     {
-        var query = _context.Categorias
-            .Include(c => c.CategoriaPadre)
-            .Include(c => c.SubCategorias)
-            .Include(c => c.Productos)
-            .AsQueryable();
+        var query = _context.Categorias.AsQueryable();
 
-        if (!incluirInactivas)
-            query = query.Where(c => c.Activo);
+        if (incluirInactivas)
+            query = query.IgnoreQueryFilters();
+
+        query = query.Include(c => c.CategoriaPadre)
+            .Include(c => c.SubCategorias)
+            .Include(c => c.Productos);
 
         // Filtrar por categoría padre (null = categorías raíz)
         if (categoriaPadreId.HasValue)
@@ -152,9 +154,12 @@ public class CategoriasController : ControllerBase
     [OutputCache(PolicyName = "Catalogo5m", VaryByQueryKeys = ["incluirInactivas"])]
     public async Task<ActionResult<List<CategoriaArbolDto>>> ObtenerArbol([FromQuery] bool incluirInactivas = false)
     {
-        var todasLasCategorias = await _context.Categorias
+        var query = _context.Categorias.AsQueryable();
+        if (incluirInactivas)
+            query = query.IgnoreQueryFilters();
+
+        var todasLasCategorias = await query
             .Include(c => c.Productos)
-            .Where(c => incluirInactivas || c.Activo)
             .OrderBy(c => c.Nivel)
             .ThenBy(c => c.Nombre)
             .ToListAsync();
@@ -193,12 +198,15 @@ public class CategoriasController : ControllerBase
         var categoriaExiste = await _context.Categorias.AnyAsync(c => c.Id == id);
         if (!categoriaExiste)
             return NotFound(new { error = $"Categoría {id} no encontrada." });
+        var query = _context.Categorias.AsQueryable();
+        if (incluirInactivas)
+            query = query.IgnoreQueryFilters();
 
-        var subCategorias = await _context.Categorias
+        var subCategorias = await query
             .Include(c => c.CategoriaPadre)
             .Include(c => c.SubCategorias)
             .Include(c => c.Productos)
-            .Where(c => c.CategoriaPadreId == id && (incluirInactivas || c.Activo))
+            .Where(c => c.CategoriaPadreId == id)
             .OrderBy(c => c.Nombre)
             .ToListAsync();
 

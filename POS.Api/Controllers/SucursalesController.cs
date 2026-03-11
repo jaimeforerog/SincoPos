@@ -89,6 +89,7 @@ public class SucursalesController : ControllerBase
     public async Task<ActionResult<SucursalDto>> ObtenerSucursal(int id)
     {
         var sucursal = await _context.Sucursales
+            .IgnoreQueryFilters() // Permitir ver por ID incluso si está inactiva
             .Where(s => s.Id == id)
             .Select(s => new SucursalDto(
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
@@ -111,8 +112,8 @@ public class SucursalesController : ControllerBase
     {
         var query = _context.Sucursales.AsQueryable();
 
-        if (!incluirInactivas)
-            query = query.Where(s => s.Activo);
+        if (incluirInactivas)
+            query = query.IgnoreQueryFilters();
 
         var sucursales = await query
             .OrderBy(s => s.Nombre)

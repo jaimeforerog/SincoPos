@@ -42,6 +42,7 @@ public class ProductoLocalService : IProductoService
 
     public async Task<ProductoDto?> ObtenerPorIdAsync(Guid id) =>
         await _context.Productos
+            .IgnoreQueryFilters()
             .Include(p => p.Impuesto)
             .Include(p => p.ConceptoRetencion)
             .Where(p => p.Id == id)
@@ -50,6 +51,7 @@ public class ProductoLocalService : IProductoService
 
     public async Task<ProductoDto?> ObtenerPorCodigoBarrasAsync(string codigoBarras) =>
         await _context.Productos
+            .IgnoreQueryFilters()
             .Include(p => p.Impuesto)
             .Include(p => p.ConceptoRetencion)
             .Where(p => p.CodigoBarras == codigoBarras)
@@ -58,9 +60,9 @@ public class ProductoLocalService : IProductoService
 
     public async Task<PaginatedResult<ProductoDto>> BuscarAsync(string? query, int? categoriaId, bool incluirInactivos, int page = 1, int pageSize = 50)
     {
-        var q = _context.Productos.Include(p => p.Impuesto).Include(p => p.ConceptoRetencion).AsQueryable();
-
-        if (!incluirInactivos) q = q.Where(p => p.Activo);
+        var q = incluirInactivos
+            ? _context.Productos.IgnoreQueryFilters().Include(p => p.Impuesto).Include(p => p.ConceptoRetencion)
+            : (IQueryable<Producto>)_context.Productos.Include(p => p.Impuesto).Include(p => p.ConceptoRetencion).Where(p => p.Activo);
 
         if (!string.IsNullOrWhiteSpace(query))
             q = q.Where(p => p.Nombre.Contains(query) ||

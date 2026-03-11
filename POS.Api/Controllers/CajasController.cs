@@ -57,7 +57,10 @@ public class CajasController : ControllerBase
         }
 
         // Verificar que la sucursal existe
-        var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
+        var sucursal = await _context.Sucursales
+            .IgnoreQueryFilters() // Permitir crear caja en sucursal si se conoce el ID (aunque esté inactiva?)
+            .FirstOrDefaultAsync(s => s.Id == dto.SucursalId);
+        
         if (sucursal == null)
             return BadRequest(new { error = $"La sucursal {dto.SucursalId} no existe." });
 
@@ -96,7 +99,8 @@ public class CajasController : ControllerBase
     public async Task<ActionResult<CajaDto>> ObtenerCaja(int id)
     {
         var caja = await _context.Cajas
-            .Include(c => c.Sucursal)
+            .IgnoreQueryFilters() // Permitir ver por ID incluso si está inactiva
+            .Include(c => c.Sucursal) // Se hereda el IgnoreQueryFilters de la raíz
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (caja == null)
@@ -115,18 +119,15 @@ public class CajasController : ControllerBase
         [FromQuery] string? estado = null,
         [FromQuery] bool incluirInactivas = false)
     {
-        var query = _context.Cajas
-            .Include(c => c.Sucursal)
-            .AsQueryable();
+        var query = incluirInactivas
+            ? _context.Cajas.IgnoreQueryFilters().Include(c => c.Sucursal).AsQueryable()
+            : _context.Cajas.Include(c => c.Sucursal).Where(c => c.Activo).AsQueryable();
 
         if (sucursalId.HasValue)
             query = query.Where(c => c.SucursalId == sucursalId.Value);
 
         if (!string.IsNullOrEmpty(estado) && Enum.TryParse<EstadoCaja>(estado, true, out var estadoCaja))
             query = query.Where(c => c.Estado == estadoCaja);
-
-        if (!incluirInactivas)
-            query = query.Where(c => c.Activo);
 
         var cajas = await query
             .OrderBy(c => c.Sucursal.Nombre)

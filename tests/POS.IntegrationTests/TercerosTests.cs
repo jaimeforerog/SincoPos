@@ -169,11 +169,12 @@ public class TercerosTests
         await CrearTerceroAsync();
 
         var response = await _client.GetAsync("/api/v1/Terceros");
-
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var lista = await response.Content.ReadFromJsonAsync<List<TerceroDto>>(_jsonOptions);
-        lista.Should().NotBeNull();
-        lista!.Count.Should().BeGreaterThan(0);
+
+        var paginado = await response.Content.ReadFromJsonAsync<PaginatedResult<TerceroDto>>(_jsonOptions);
+        paginado.Should().NotBeNull();
+        paginado!.Items.Should().NotBeNull();
+        paginado.TotalCount.Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -183,11 +184,11 @@ public class TercerosTests
         await CrearTerceroAsync(nombre: nombre);
 
         var response = await _client.GetAsync($"/api/v1/Terceros?q={Uri.EscapeDataString(nombre)}");
-
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var lista = await response.Content.ReadFromJsonAsync<List<TerceroDto>>(_jsonOptions);
-        lista.Should().NotBeNull();
-        lista!.Should().Contain(t => t.Nombre == nombre);
+
+        var paginado = await response.Content.ReadFromJsonAsync<PaginatedResult<TerceroDto>>(_jsonOptions);
+        paginado.Should().NotBeNull();
+        paginado!.Items.Should().Contain(t => t.Nombre == nombre);
     }
 
     [Fact]
@@ -266,8 +267,8 @@ public class TercerosTests
 
         // La búsqueda general sí filtra por activo (por defecto)
         var buscarResp = await _client.GetAsync($"/api/v1/Terceros?q={Uri.EscapeDataString(creado.Nombre)}");
-        var listaBusqueda = await buscarResp.Content.ReadFromJsonAsync<List<TerceroDto>>(_jsonOptions);
-        listaBusqueda!.Should().NotContain(t => t.Id == creado.Id);
+        var paginado = await buscarResp.Content.ReadFromJsonAsync<PaginatedResult<TerceroDto>>(_jsonOptions);
+        paginado!.Items.Should().NotContain(t => t.Id == creado.Id);
     }
 
     [Fact]

@@ -62,13 +62,18 @@ public class AppDbContext : DbContext
         {
             if (typeof(ISoftDelete).IsAssignableFrom(entityType.ClrType))
             {
-                var parameter = Expression.Parameter(entityType.ClrType, "e");
-                var body = Expression.Equal(
-                    Expression.Property(parameter, nameof(ISoftDelete.Activo)),
-                    Expression.Constant(true));
-                var lambda = Expression.Lambda(body, parameter);
+                // Solo si la propiedad Activo está mapeada (no ignorada)
+                var property = entityType.FindProperty(nameof(ISoftDelete.Activo));
+                if (property != null)
+                {
+                    var parameter = Expression.Parameter(entityType.ClrType, "e");
+                    var body = Expression.Equal(
+                        Expression.Property(parameter, nameof(ISoftDelete.Activo)),
+                        Expression.Constant(true));
+                    var lambda = Expression.Lambda(body, parameter);
 
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                    modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                }
             }
         }
     }

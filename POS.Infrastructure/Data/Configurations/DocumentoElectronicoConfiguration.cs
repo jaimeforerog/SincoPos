@@ -32,7 +32,8 @@ public class DocumentoElectronicoConfiguration : IEntityTypeConfiguration<Docume
         builder.Property(d => d.FechaCreacion).HasColumnName("fecha_creacion");
         builder.Property(d => d.ModificadoPor).HasMaxLength(200).HasColumnName("modificado_por");
         builder.Property(d => d.FechaModificacion).HasColumnName("fecha_modificacion");
-        builder.Ignore(d => d.Activo); // no aplica para documentos
+        builder.Property(d => d.Activo).HasDefaultValue(true); // Participa en el filtro global de Soft Delete
+        builder.Property(d => d.FechaDesactivacion).HasColumnName("fecha_desactivacion");
 
         builder.HasIndex(d => d.Cufe)
             .IsUnique()

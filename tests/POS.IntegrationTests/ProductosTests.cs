@@ -109,13 +109,13 @@ public class ProductosTests
 
         // No deberia aparecer en lista de activos
         var listResponse = await _client.GetAsync("/api/v1/productos");
-        var productos = await listResponse.Content.ReadFromJsonAsync<List<ProductoDto>>();
-        productos!.Should().NotContain(p => p.Id == created.Id);
+        var paginado = await listResponse.Content.ReadFromJsonAsync<PaginatedResult<ProductoDto>>();
+        paginado!.Items.Should().NotContain(p => p.Id == created.Id);
 
         // Deberia aparecer con incluirInactivos
         var allResponse = await _client.GetAsync("/api/v1/productos?incluirInactivos=true");
-        var todos = await allResponse.Content.ReadFromJsonAsync<List<ProductoDto>>();
-        todos!.Should().Contain(p => p.Id == created.Id && !p.Activo);
+        var todoPaginado = await allResponse.Content.ReadFromJsonAsync<PaginatedResult<ProductoDto>>();
+        todoPaginado!.Items.Should().Contain(p => p.Id == created.Id && !p.Activo);
     }
 
     [Fact]

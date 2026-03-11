@@ -23,6 +23,7 @@ public class TerceroLocalService : ITerceroService
     public async Task<TerceroDto?> ObtenerPorIdAsync(int id)
     {
         var t = await _context.Terceros
+            .IgnoreQueryFilters() // Permitir ver por ID incluso si está inactivo
             .Include(x => x.Actividades)
             .FirstOrDefaultAsync(x => x.Id == id);
 
@@ -32,6 +33,7 @@ public class TerceroLocalService : ITerceroService
     public async Task<TerceroDto?> ObtenerPorIdentificacionAsync(string identificacion)
     {
         var t = await _context.Terceros
+            .IgnoreQueryFilters() // Permitir buscar por Identificación incluso si está inactivo
             .Include(x => x.Actividades)
             .FirstOrDefaultAsync(x => x.Identificacion == identificacion);
 
@@ -40,10 +42,9 @@ public class TerceroLocalService : ITerceroService
 
     public async Task<PaginatedResult<TerceroDto>> BuscarAsync(string? query, string? tipoTercero, bool incluirInactivos, int page = 1, int pageSize = 50)
     {
-        var q = _context.Terceros.Include(x => x.Actividades).AsQueryable();
-
-        if (!incluirInactivos)
-            q = q.Where(t => t.Activo);
+        var q = incluirInactivos
+            ? _context.Terceros.IgnoreQueryFilters().Include(x => x.Actividades)
+            : (IQueryable<Tercero>)_context.Terceros.Include(x => x.Actividades).Where(t => t.Activo);
 
         if (!string.IsNullOrEmpty(tipoTercero) && Enum.TryParse<TipoTercero>(tipoTercero, true, out var tipo))
         {
@@ -152,9 +153,15 @@ public class TerceroLocalService : ITerceroService
 
     public async Task<(bool Success, string? Error)> DesactivarAsync(int id)
     {
-        var tercero = await _context.Terceros.FindAsync(id);
+        var tercero = await _context.Terceros
+            .IgnoreQueryFilters() // Buscar incluso si ya está inactivo
+            .FirstOrDefaultAsync(t => t.Id == id);
+        
         if (tercero == null)
             return (false, $"Tercero {id} no encontrado.");
+
+        if (!tercero.Activo)
+            return (false, $"Tercero {id} ya está inactivo.");
 
         tercero.Activo = false;
         tercero.FechaModificacion = DateTime.UtcNow;
