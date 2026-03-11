@@ -103,12 +103,17 @@ public class InventarioService : IInventarioService
         }
 
         var montoImpuestoUnitario = dto.Cantidad > 0 ? montoImpuesto / dto.Cantidad : 0;
+        var fechaVencimientoLote = dto.FechaVencimiento
+            ?? (producto.DiasVidaUtil.HasValue
+                ? DateOnly.FromDateTime(DateTime.Today.AddDays(producto.DiasVidaUtil.Value))
+                : (DateOnly?)null);
+
         await _costeoService.RegistrarLoteEntrada(
             dto.ProductoId, dto.SucursalId, dto.Cantidad,
             dto.CostoUnitario, dto.PorcentajeImpuesto,
             montoImpuestoUnitario,
             dto.Referencia, dto.TerceroId,
-            numeroLote: dto.NumeroLote, fechaVencimiento: dto.FechaVencimiento);
+            numeroLote: dto.NumeroLote, fechaVencimiento: fechaVencimientoLote);
 
         await _costeoService.ActualizarCostoEntrada(stock, dto.Cantidad, dto.CostoUnitario, sucursal.MetodoCosteo);
 

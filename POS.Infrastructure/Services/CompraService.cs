@@ -425,6 +425,12 @@ public class CompraService : ICompraService
             }
 
             // 2. Registrar lote de entrada (con número de lote y vencimiento si fue informado)
+            // Si no se informó fecha de vencimiento pero el producto tiene DiasVidaUtil, calcularla
+            var fechaVencimientoLote = lineaRecibida.FechaVencimiento
+                ?? (productoCompleto.DiasVidaUtil.HasValue
+                    ? DateOnly.FromDateTime(DateTime.Today.AddDays(productoCompleto.DiasVidaUtil.Value))
+                    : (DateOnly?)null);
+
             await _costeoService.RegistrarLoteEntrada(
                 detalle.ProductoId,
                 orden.SucursalId,
@@ -435,7 +441,7 @@ public class CompraService : ICompraService
                 orden.NumeroOrden,
                 orden.ProveedorId,
                 numeroLote: lineaRecibida.NumeroLote,
-                fechaVencimiento: lineaRecibida.FechaVencimiento,
+                fechaVencimiento: fechaVencimientoLote,
                 ordenCompraId: orden.Id);
 
             // 3. Actualizar stock desde el diccionario pre-cargado (crear si no existe)
