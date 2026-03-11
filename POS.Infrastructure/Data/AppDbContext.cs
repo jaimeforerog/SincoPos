@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using POS.Infrastructure.Data.Entities;
+using POS.Domain;
 using System.Security.Claims;
+using System.Linq.Expressions;
 
 namespace POS.Infrastructure.Data;
 
@@ -54,6 +56,21 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.HasDefaultSchema("public");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Aplicar filtro global de Soft Delete
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ISoftDelete).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
+                var body = Expression.Equal(
+                    Expression.Property(parameter, nameof(ISoftDelete.Activo)),
+                    Expression.Constant(true));
+                var lambda = Expression.Lambda(body, parameter);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+        }
     }
 
     /// <summary>
@@ -76,6 +93,16 @@ public class AppDbContext : DbContext
         // Obtener usuario actual del contexto HTTP
         var usuarioActual = ObtenerUsuarioActual();
         var ahora = DateTime.UtcNow;
+
+        // 0. Procesar Soft Delete (cuando el estado de Activo cambia a false)
+        var entriesSoftDelete = ChangeTracker.Entries<ISoftDelete>()
+            .Where(e => e.State == EntityState.Modified && e.OriginalValues.GetValue<bool>(nameof(ISoftDelete.Activo)) 
+                        && !e.CurrentValues.GetValue<bool>(nameof(ISoftDelete.Activo)));
+
+        foreach (var entry in entriesSoftDelete)
+        {
+            entry.Entity.FechaDesactivacion = ahora;
+        }
 
         // 1. Procesar entidades que heredan de EntidadAuditable
         var entriesAuditables = ChangeTracker.Entries<EntidadAuditable>()

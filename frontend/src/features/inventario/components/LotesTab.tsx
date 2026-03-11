@@ -45,11 +45,12 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
   const [trazabilidadLoteId, setTrazabilidadLoteId] = useState<number | null>(null);
 
   // Buscar productos para el selector
-  const { data: productos = [] } = useQuery({
+  const { data: productosData } = useQuery({
     queryKey: ['productos', 'buscar', productoQuery],
     queryFn: () => productosApi.getAll({ query: productoQuery || undefined }),
     enabled: true,
   });
+  const productos = productosData?.items || [];
 
   const [productoId, setProductoId] = useState<string>('');
 

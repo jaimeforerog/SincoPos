@@ -3,6 +3,7 @@ import type {
   ProductoDTO,
   CrearProductoDTO,
   ActualizarProductoDTO,
+  PaginatedResult,
 } from '@/types/api';
 
 export const productosApi = {
@@ -10,8 +11,11 @@ export const productosApi = {
     query?: string;
     categoriaId?: number;
     incluirInactivos?: boolean;
+    activo?: boolean;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const response = await apiClient.get<ProductoDTO[]>('/productos', {
+    const response = await apiClient.get<PaginatedResult<ProductoDTO>>('/productos', {
       params,
     });
     return response.data;
@@ -21,8 +25,11 @@ export const productosApi = {
     query?: string;
     categoriaId?: number;
     incluirInactivos?: boolean;
+    activo?: boolean;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const response = await apiClient.get<ProductoDTO[]>('/productos', {
+    const response = await apiClient.get<PaginatedResult<ProductoDTO>>('/productos', {
       params,
     });
     return response.data;

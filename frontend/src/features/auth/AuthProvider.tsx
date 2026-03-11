@@ -48,7 +48,12 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
         account,
       });
       const hasApiScope = loginRequest.scopes.some(s => s.startsWith('api://'));
-      return hasApiScope ? response.accessToken : response.idToken;
+      if (hasApiScope && response.accessToken) {
+        return response.accessToken;
+      }
+      // Para cuentas personales de Microsoft sin API scope configurado,
+      // usar el ID Token - el backend lo acepta como Bearer token
+      return response.idToken || account.idToken || null;
     } catch {
       return account.idToken ?? null;
     }

@@ -71,12 +71,18 @@ public class TercerosController : ControllerBase
 
     /// <summary>Buscar terceros por nombre o identificacion</summary>
     [HttpGet]
-    public async Task<ActionResult<List<TerceroDto>>> BuscarTerceros(
+    [ProducesResponseType(typeof(PaginatedResult<TerceroDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<TerceroDto>>> BuscarTerceros(
         [FromQuery] string? q = null,
         [FromQuery] string? tipoTercero = null,
-        [FromQuery] bool incluirInactivos = false)
+        [FromQuery] bool incluirInactivos = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
-        var terceros = await _service.BuscarAsync(q, tipoTercero, incluirInactivos);
+        if (pageSize > 100) pageSize = 100;
+        if (page < 1) page = 1;
+
+        var terceros = await _service.BuscarAsync(q, tipoTercero, incluirInactivos, page, pageSize);
         return Ok(terceros);
     }
 

@@ -49,15 +49,16 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
 
   const { data: sucursales } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: sucursalesApi.listar,
+    queryFn: () => sucursalesApi.listar(),
     enabled: open,
   });
 
-  const { data: productos } = useQuery({
+  const { data: productosData } = useQuery({
     queryKey: ['productos'],
-    queryFn: productosApi.listar,
+    queryFn: () => productosApi.listar(),
     enabled: open,
   });
+  const productos = productosData?.items || [];
 
   const { data: inventario } = useQuery({
     queryKey: ['inventario', sucursalOrigen?.id],
@@ -278,7 +279,7 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
                 : undefined
             }}
             error={
-              productoSeleccionado &&
+              !!productoSeleccionado &&
               cantidad > (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
             }
             helperText={

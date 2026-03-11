@@ -56,7 +56,7 @@ public class ProductoLocalService : IProductoService
             .Select(p => ToDto(p))
             .FirstOrDefaultAsync();
 
-    public async Task<List<ProductoDto>> BuscarAsync(string? query, int? categoriaId, bool incluirInactivos)
+    public async Task<PaginatedResult<ProductoDto>> BuscarAsync(string? query, int? categoriaId, bool incluirInactivos, int page = 1, int pageSize = 50)
     {
         var q = _context.Productos.Include(p => p.Impuesto).Include(p => p.ConceptoRetencion).AsQueryable();
 
@@ -70,8 +70,16 @@ public class ProductoLocalService : IProductoService
         if (categoriaId.HasValue)
             q = q.Where(p => p.CategoriaId == categoriaId.Value);
 
-        var productos = await q.OrderBy(p => p.Nombre).ToListAsync();
-        return productos.Select(ToDto).ToList();
+        var totalCount = await q.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var list = await q.OrderBy(p => p.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var items = list.Select(ToDto).ToList();
+        return new PaginatedResult<ProductoDto>(items, totalCount, page, pageSize, totalPages);
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────

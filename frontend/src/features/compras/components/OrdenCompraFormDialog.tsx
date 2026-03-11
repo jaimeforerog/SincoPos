@@ -78,23 +78,27 @@ export function OrdenCompraFormDialog({
     enabled: open,
   });
 
-  const { data: terceros = [] } = useQuery({
+  const { data: tercerosData } = useQuery({
     queryKey: ['terceros'],
     queryFn: () => tercerosApi.getAll(),
     enabled: open,
     staleTime: 10 * 60 * 1000,
   });
 
+  const terceros = tercerosData?.items || [];
+
   // Proveedores: tipo 'Proveedor' o 'Ambos'
   const proveedores = terceros.filter(
     (t) => t.tipoTercero === 'Proveedor' || t.tipoTercero === 'Ambos'
   );
 
-  const { data: productos = [] } = useQuery({
+  const { data: productosData } = useQuery({
     queryKey: ['productos'],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
     enabled: open,
   });
+
+  const productos = productosData?.items || [];
 
   const { data: impuestos = [] } = useQuery({
     queryKey: ['impuestos'],

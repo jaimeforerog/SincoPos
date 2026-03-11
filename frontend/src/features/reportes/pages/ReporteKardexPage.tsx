@@ -53,10 +53,11 @@ export function ReporteKardexPage() {
     queryFn: () => sucursalesApi.getAll(true),
   });
 
-  const { data: productos = [] } = useQuery({
+  const { data: productosData } = useQuery({
     queryKey: ['productos'],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
+  const productos = productosData?.items || [];
 
   const { data: reporte, isLoading, isError, error } = useQuery({
     queryKey: ['kardex', queryParams],

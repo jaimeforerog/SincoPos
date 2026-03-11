@@ -20,6 +20,7 @@ import {
   CircularProgress,
   Tooltip,
   InputAdornment,
+  TablePagination,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -43,18 +44,25 @@ export function ProductosPage() {
   const [busqueda, setBusqueda] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<number | undefined>(undefined);
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
 
   // Cargar productos
-  const { data: productos = [], isLoading } = useQuery({
-    queryKey: ['productos', busqueda, categoriaFiltro, mostrarInactivos],
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['productos', busqueda, categoriaFiltro, mostrarInactivos, page, pageSize],
     queryFn: () =>
       productosApi.getAll({
         query: busqueda || undefined,
         categoriaId: categoriaFiltro,
         incluirInactivos: mostrarInactivos,
+        page: page + 1,
+        pageSize: pageSize,
       }),
     refetchInterval: 30000,
   });
+
+  const productos = response?.items ?? [];
+  const totalCount = response?.totalCount ?? 0;
 
   // Cargar categorías para filtro
   const { data: categorias = [] } = useQuery({
@@ -182,7 +190,7 @@ export function ProductosPage() {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              Total: {productos.length} producto(s)
+              Total: {totalCount} producto(s)
             </Typography>
           </Box>
         </Box>
@@ -201,6 +209,7 @@ export function ProductosPage() {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
+              {/* ... TableHead stays the same ... */}
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Código de Barras</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
@@ -297,6 +306,21 @@ export function ProductosPage() {
               })}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={totalCount}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={(e) => {
+              setPageSize(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            labelRowsPerPage="Productos por página"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </TableContainer>
       )}
 

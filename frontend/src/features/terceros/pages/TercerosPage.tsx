@@ -24,6 +24,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   Tabs,
   TextField,
@@ -771,6 +772,9 @@ export default function TercerosPage() {
   const [busqueda, setBusqueda] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('');
   const [incluirInactivos, setIncluirInactivos] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
@@ -783,18 +787,21 @@ export default function TercerosPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await tercerosApi.getAll({
+      const response = await tercerosApi.getAll({
         q: busqueda || undefined,
         tipoTercero: tipoFiltro || undefined,
         incluirInactivos,
+        page: page + 1,
+        pageSize,
       });
-      setTerceros(data);
+      setTerceros(response.items);
+      setTotalCount(response.totalCount);
     } catch {
       setError('Error al cargar los terceros.');
     } finally {
       setLoading(false);
     }
-  }, [busqueda, tipoFiltro, incluirInactivos]);
+  }, [busqueda, tipoFiltro, incluirInactivos, page, pageSize]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -877,6 +884,10 @@ export default function TercerosPage() {
             }
             label="Incluir inactivos"
           />
+          <Box sx={{ flexGrow: 1 }} />
+          <Typography variant="body2" color="text.secondary">
+            Total: {totalCount} tercero(s)
+          </Typography>
         </Box>
       </Paper>
 
@@ -885,6 +896,7 @@ export default function TercerosPage() {
       {/* Tabla */}
       <TableContainer component={Paper}>
         <Table size="small">
+          {/* ... Table content ... */}
           <TableHead>
             <TableRow>
               <TableCell>Nombre</TableCell>
@@ -966,6 +978,21 @@ export default function TercerosPage() {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={totalCount}
+          page={page}
+          onPageChange={(_, newPage) => setPage(newPage)}
+          rowsPerPage={pageSize}
+          onRowsPerPageChange={(e) => {
+            setPageSize(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          labelRowsPerPage="Terceros por página"
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+          }
+        />
       </TableContainer>
 
       {/* Dialogs */}

@@ -38,7 +38,7 @@ public class TerceroLocalService : ITerceroService
         return t == null ? null : MapToDtoLocal(t);
     }
 
-    public async Task<List<TerceroDto>> BuscarAsync(string? query, string? tipoTercero, bool incluirInactivos)
+    public async Task<PaginatedResult<TerceroDto>> BuscarAsync(string? query, string? tipoTercero, bool incluirInactivos, int page = 1, int pageSize = 50)
     {
         var q = _context.Terceros.Include(x => x.Actividades).AsQueryable();
 
@@ -60,8 +60,16 @@ public class TerceroLocalService : ITerceroService
                 t.Identificacion.Contains(query));
         }
 
-        var list = await q.OrderBy(t => t.Nombre).Take(50).ToListAsync();
-        return list.Select(MapToDtoLocal).ToList();
+        var totalCount = await q.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var list = await q.OrderBy(t => t.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var items = list.Select(MapToDtoLocal).ToList();
+        return new PaginatedResult<TerceroDto>(items, totalCount, page, pageSize, totalPages);
     }
 
     public async Task<(TerceroDto? Result, string? Error)> CrearAsync(CrearTerceroDto dto)

@@ -118,16 +118,7 @@ public record ActivityLogFilterDto(
     int PageSize = 50
 );
 
-/// <summary>
-/// DTO para resultados paginados
-/// </summary>
-public record PaginatedResult<T>(
-    List<T> Items,
-    int TotalCount,
-    int PageNumber,
-    int PageSize,
-    int TotalPages
-);
+
 
 /// <summary>
 /// DTO para métricas del dashboard

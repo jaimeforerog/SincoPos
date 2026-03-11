@@ -90,13 +90,18 @@ public class ProductosController : ControllerBase
     /// Listar y buscar productos con filtros opcionales.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(List<ProductoDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<ProductoDto>>> ObtenerProductos(
+    [ProducesResponseType(typeof(PaginatedResult<ProductoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<ProductoDto>>> ObtenerProductos(
         [FromQuery] string? query = null,
         [FromQuery] int? categoriaId = null,
-        [FromQuery] bool incluirInactivos = false)
+        [FromQuery] bool incluirInactivos = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
-        var productos = await _productoService.BuscarAsync(query, categoriaId, incluirInactivos);
+        if (pageSize > 100) pageSize = 100;
+        if (page < 1) page = 1;
+
+        var productos = await _productoService.BuscarAsync(query, categoriaId, incluirInactivos, page, pageSize);
         return Ok(productos);
     }
 

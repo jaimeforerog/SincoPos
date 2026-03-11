@@ -37,13 +37,19 @@ export function POSPage() {
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
   const [showSeleccionarCaja, setShowSeleccionarCaja] = useState(false);
 
-  // Mostrar diálogo de selección de caja una vez que el perfil de usuario esté cargado
+  // Mostrar diálogo de selección de caja o auto-seleccionar si solo hay una
   useEffect(() => {
-    // Esperar a que el perfil del usuario esté completamente cargado
+    // Esperar a que el perfil del usuario y las cajas estén cargados
     if (isLoading) return;
 
-    setShowSeleccionarCaja(true);
-  }, [isLoading]);
+    // Si solo hay una caja abierta, seleccionarla automáticamente
+    if (_cajasAbiertas.length === 1 && !selectedCajaId) {
+      handleSelectCaja(_cajasAbiertas[0].id, _cajasAbiertas[0].sucursalId);
+    } else if (!selectedCajaId && _cajasAbiertas.length !== 1) {
+      // Si no hay cajas o hay múltiples, mostrar el diálogo
+      setShowSeleccionarCaja(true);
+    }
+  }, [isLoading, _cajasAbiertas, selectedCajaId]);
 
   // Handler para seleccionar caja (también recibe la sucursal del diálogo)
   const { setActiveSucursal } = useAuthStore();

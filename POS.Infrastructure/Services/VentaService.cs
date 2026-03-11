@@ -16,7 +16,8 @@ public class VentaService : IVentaService
     private readonly global::Marten.IDocumentSession _session;
     private readonly global::Marten.IDocumentStore _store;
     private readonly IPrecioService _precioService;
-    private readonly CosteoService _costeoService;
+    private readonly IVentaCosteoService _ventaCosteoService;
+    private readonly CosteoService _costeoService; // needed for Anular/Devolucion re-entry ops
     private readonly ITaxEngine _taxEngine;
     private readonly ILogger<VentaService> _logger;
     private readonly IActivityLogService _activityLogService;
@@ -29,6 +30,7 @@ public class VentaService : IVentaService
         global::Marten.IDocumentSession session,
         global::Marten.IDocumentStore store,
         IPrecioService precioService,
+        IVentaCosteoService ventaCosteoService,
         CosteoService costeoService,
         ITaxEngine taxEngine,
         ILogger<VentaService> logger,
@@ -41,6 +43,7 @@ public class VentaService : IVentaService
         _session = session;
         _store = store;
         _precioService = precioService;
+        _ventaCosteoService = ventaCosteoService;
         _costeoService = costeoService;
         _taxEngine = taxEngine;
         _logger = logger;
@@ -187,25 +190,10 @@ public class VentaService : IVentaService
                 linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta, null);
             pendingMartenEvents.Add((streamId, eventoVenta));
 
-            // Consumir stock con metodo de costeo (FEFO si el producto maneja lotes)
-            decimal costoUnitario;
-            int? loteId = null;
-            string? numeroLoteSnapshot = null;
-
-            if (producto.ManejaLotes)
-            {
-                var (ct, cu, lid, nlote) = await _costeoService.ConsumirLotesFEFO(
-                    linea.ProductoId, dto.SucursalId, linea.Cantidad);
-                costoUnitario = cu;
-                loteId = lid;
-                numeroLoteSnapshot = nlote;
-            }
-            else
-            {
-                var (_, cu) = await _costeoService.ConsumirStock(
-                    linea.ProductoId, dto.SucursalId, linea.Cantidad, sucursal.MetodoCosteo);
-                costoUnitario = cu;
-            }
+            // Consumir inventario con la estrategia de costeo (delegada a IVentaCosteoService)
+            var (costoUnitario, loteId, numeroLoteSnapshot) = await _ventaCosteoService.ConsumirAsync(
+                linea.ProductoId, dto.SucursalId, linea.Cantidad,
+                sucursal.MetodoCosteo, producto.ManejaLotes);
 
             // Actualizar stock en EF Core
             stock.Cantidad -= linea.Cantidad;

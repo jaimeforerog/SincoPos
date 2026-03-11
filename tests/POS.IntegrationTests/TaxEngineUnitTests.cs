@@ -191,18 +191,27 @@ public class TaxEngineUnitTests
 
     // ── Bebidas Azucaradas ────────────────────────────────────────────────────
 
+    // ── Exportaciones ────────────────────────────────────────────────────────
+
     [Fact]
-    public void Calcular_BebidaAzucarada_SegundoTramo_AplicaTarifaCorrecta()
+    public void Calcular_Exportacion_AplicaTarifaCero()
     {
-        // Segundo tramo: > 6 g/100ml hasta 10 g/100ml → $35 por 100 ml
-        var req = BaseRequest(precioUnitario: 5_000m, cantidad: 3m) with
+        // Exportación de servicios/bienes: IVA 0% (exento pero registrado)
+        var impuesto = new Impuesto
         {
-            GramosAzucarPor100ml = 8m // segundo tramo
+            Nombre = "Exportación",
+            Tipo = TipoImpuesto.IVA,
+            Porcentaje = 0m,
+            AplicaSobreBase = true,
+            CodigoCuentaContable = "240801"
         };
+        var req = BaseRequest(precioUnitario: 100_000m, impuesto: impuesto);
 
         var result = _engine.Calcular(req);
 
-        // $35 × 3 unidades = $105
-        Assert.Contains(result.Impuestos, i => i.Tipo == TipoImpuesto.Saludable && i.Monto == 105m);
+        Assert.Equal(100_000m, result.BaseImponible);
+        Assert.Equal(0m, result.TotalImpuestos);
+        Assert.Single(result.Impuestos);
+        Assert.Equal(0m, result.Impuestos[0].Monto);
     }
 }

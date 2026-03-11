@@ -10,7 +10,7 @@ public interface ITerceroService
 {
     Task<TerceroDto?> ObtenerPorIdAsync(int id);
     Task<TerceroDto?> ObtenerPorIdentificacionAsync(string identificacion);
-    Task<List<TerceroDto>> BuscarAsync(string? query, string? tipoTercero, bool incluirInactivos);
+    Task<PaginatedResult<TerceroDto>> BuscarAsync(string? query, string? tipoTercero, bool incluirInactivos, int page = 1, int pageSize = 50);
     Task<(TerceroDto? Result, string? Error)> CrearAsync(CrearTerceroDto dto);
     Task<(bool Success, string? Error)> ActualizarAsync(int id, ActualizarTerceroDto dto);
     Task<(bool Success, string? Error)> DesactivarAsync(int id);

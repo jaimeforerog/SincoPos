@@ -1,11 +1,11 @@
 import { LogLevel, PublicClientApplication, EventType } from '@azure/msal-browser';
 import type { Configuration, AuthenticationResult } from '@azure/msal-browser';
 
-const TENANT_ID = import.meta.env.VITE_ENTRA_TENANT_ID || 'consumers';
-const CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID || '';
-// Personal MS accounts cannot use custom API scopes (api://...).
-// Use VITE_ENTRA_API_SCOPE for org tenants; default to openid+profile for personal accounts.
-const API_SCOPE = import.meta.env.VITE_ENTRA_API_SCOPE || '';
+const TENANT_ID = import.meta.env.VITE_ENTRA_TENANT_ID || '8b534db0-e52d-4583-aa00-d17e0150af15';
+const CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID || '980857bd-0f1d-4723-a4b9-8e89e60a686e';
+// Scope real de la API backend. El token emitido tendrá aud = api://2dad9f98-...
+// Sin este scope, MSAL emite un token para Microsoft Graph (aud = Graph) que el backend rechaza con 401.
+const API_SCOPE = import.meta.env.VITE_ENTRA_API_SCOPE || 'api://2dad9f98-010e-4849-8ebd-bd40282e7d21/access_as_user';
 
 // Fallback a Keycloak si no hay config de Entra ID
 const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080';

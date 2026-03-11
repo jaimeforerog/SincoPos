@@ -38,10 +38,11 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
   const [observaciones, setObservaciones] = useState<string>('');
 
   // Cargar productos
-  const { data: productos = [] } = useQuery({
+  const { data: productosData } = useQuery({
     queryKey: ['productos'],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
+  const productos = productosData?.items || [];
 
   // Cargar sucursales
   const { data: sucursales = [] } = useQuery({
@@ -50,10 +51,11 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
   });
 
   // Cargar proveedores
-  const { data: terceros = [] } = useQuery({
+  const { data: tercerosData } = useQuery({
     queryKey: ['terceros', 'proveedor'],
     queryFn: () => tercerosApi.getAll({ esProveedor: true, activo: true }),
   });
+  const terceros = tercerosData?.items || [];
 
   const mutation = useMutation({
     mutationFn: inventarioApi.registrarEntrada,

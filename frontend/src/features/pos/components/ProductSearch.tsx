@@ -27,7 +27,7 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { activeSucursalId } = useAuth();
 
-  const { data: productos = [], isLoading } = useQuery({
+  const { data: productosData, isLoading } = useQuery({
     queryKey: ['productos', debouncedSearch],
     queryFn: () =>
       productosApi.getAll({
@@ -36,6 +36,8 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
       }),
     enabled: true,
   });
+
+  const productos = productosData?.items || [];
 
   // Cargar inventario para la sucursal activa
   const { data: inventarios = [] } = useQuery({
@@ -57,7 +59,11 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
   });
 
   // Mapa productoId → precioVenta resuelto para lookup O(1)
-  const precioMap = new Map(preciosResueltos.map((p) => [p.productoId, p.precioVenta]));
+  const precioMap = new Map(
+    Array.isArray(preciosResueltos) 
+      ? preciosResueltos.map((p) => [p.productoId, p.precioVenta]) 
+      : []
+  );
 
   useEffect(() => {
     // Focus en el campo de búsqueda al montar
@@ -110,9 +116,9 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
         )}
 
         <List sx={{ p: 0 }}>
-          {productos.map((producto) => {
+          {Array.isArray(productos) && productos.map((producto) => {
             // Buscar stock del producto
-            const stockInfo = inventarios.find((inv) => inv.productoId === producto.id);
+            const stockInfo = Array.isArray(inventarios) ? inventarios.find((inv) => inv.productoId === producto.id) : null;
             const stock = stockInfo?.cantidad || 0;
 
             // Precio resuelto (Sucursal → Base → Margen×Costo)

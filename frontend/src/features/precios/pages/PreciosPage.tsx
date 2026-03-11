@@ -63,7 +63,7 @@ export function PreciosPage() {
   });
 
   // Cargar productos activos (solo si hay sucursal seleccionada)
-  const { data: productos = [], isLoading: loadingProductos } = useQuery({
+  const { data: productosData, isLoading: loadingProductos } = useQuery({
     queryKey: ['productos', busqueda],
     queryFn: () =>
       productosApi.getAll({
@@ -74,6 +74,7 @@ export function PreciosPage() {
     staleTime: 30000, // Evitar recargas innecesarias
     refetchOnWindowFocus: false, // No recargar al cambiar de ventana
   });
+  const productos = productosData?.items || [];
 
   // Cargar precios resueltos para los productos visibles
   const [productosConPrecios, setProductosConPrecios] = useState<ProductoConPrecio[]>([]);

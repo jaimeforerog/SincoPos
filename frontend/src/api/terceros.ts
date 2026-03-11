@@ -6,6 +6,7 @@ import type {
   TerceroActividadDTO,
   AgregarActividadDTO,
   ResultadoImportacionTercerosDTO,
+  PaginatedResult,
 } from '@/types/api';
 
 export const tercerosApi = {
@@ -13,8 +14,13 @@ export const tercerosApi = {
     q?: string;
     tipoTercero?: string;
     incluirInactivos?: boolean;
+    esCliente?: boolean;
+    esProveedor?: boolean;
+    activo?: boolean;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const response = await apiClient.get<TerceroDTO[]>('/terceros', { params });
+    const response = await apiClient.get<PaginatedResult<TerceroDTO>>('/terceros', { params });
     return response.data;
   },
 

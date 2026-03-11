@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -29,17 +28,12 @@ export function CartHeader({
 }: CartHeaderProps) {
   const { data: cajas = [], isLoading: loadingCajas } = useCajasAbiertas();
 
-  const { data: clientes = [] } = useQuery({
+  const { data: clientesData } = useQuery({
     queryKey: ['terceros', 'clientes'],
     queryFn: () => tercerosApi.getAll({ esCliente: true, activo: true }),
   });
 
-  // Auto-seleccionar caja si solo hay una (usando useEffect)
-  useEffect(() => {
-    if (cajas.length === 1 && selectedCajaId === null) {
-      onCajaChange(cajas[0].id);
-    }
-  }, [cajas, selectedCajaId, onCajaChange]);
+  const clientes = clientesData?.items || [];
 
   if (loadingCajas) {
     return (
@@ -78,9 +72,10 @@ export function CartHeader({
 
       <Autocomplete
         options={clientes}
-        getOptionLabel={(option) =>
-          typeof option === 'string' ? option : option.nombre
-        }
+        getOptionLabel={(option) => {
+          if (!option) return '';
+          return typeof option === 'string' ? option : option.nombre;
+        }}
         value={selectedCliente || null}
         onChange={(_, newValue) => {
           onClienteChange(newValue ? newValue.id : null);
