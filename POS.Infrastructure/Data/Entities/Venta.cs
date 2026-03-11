@@ -103,6 +103,8 @@ public class DetalleDevolucion
     public decimal PrecioUnitario { get; set; }     // Del detalle original
     public decimal CostoUnitario { get; set; }      // Del detalle original
     public decimal SubtotalDevuelto { get; set; }
+    public int? LoteInventarioId { get; set; }      // Lote al que se reintegra (si aplica)
+    public string? NumeroLote { get; set; }         // Snapshot para trazabilidad
 
     // Navigation
     public DevolucionVenta DevolucionVenta { get; set; } = null!;

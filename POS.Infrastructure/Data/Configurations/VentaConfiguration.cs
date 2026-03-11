@@ -196,6 +196,13 @@ public class DetalleDevolucionConfiguration : IEntityTypeConfiguration<DetalleDe
             .HasPrecision(18, 2)
             .HasColumnName("subtotal_devuelto");
 
+        builder.Property(dd => dd.LoteInventarioId)
+            .HasColumnName("lote_inventario_id");
+
+        builder.Property(dd => dd.NumeroLote)
+            .HasMaxLength(100)
+            .HasColumnName("numero_lote");
+
         builder.HasOne(dd => dd.Producto)
             .WithMany()
             .HasForeignKey(dd => dd.ProductoId)

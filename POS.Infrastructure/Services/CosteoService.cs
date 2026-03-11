@@ -48,6 +48,18 @@ public class CosteoService
     }
 
     /// <summary>
+    /// Reintegra unidades a un lote existente (devolución de venta con trazabilidad de lote).
+    /// Incrementa CantidadDisponible del lote original en lugar de crear uno nuevo.
+    /// </summary>
+    public async Task<bool> ReintegrarLoteAsync(int loteId, decimal cantidad)
+    {
+        var lote = await _context.LotesInventario.FindAsync(loteId);
+        if (lote == null) return false;
+        lote.CantidadDisponible += cantidad;
+        return true;
+    }
+
+    /// <summary>
     /// Calcular y actualizar el costo en stock segun el metodo de la sucursal
     /// </summary>
     public async Task ActualizarCostoEntrada(Stock stock, decimal cantidadNueva,

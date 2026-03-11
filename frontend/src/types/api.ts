@@ -285,6 +285,7 @@ export interface DetalleOrdenCompraDTO {
   nombreImpuesto?: string;
   observaciones?: string;
   manejaLotes: boolean;
+  diasVidaUtil?: number;
 }
 
 export interface CrearOrdenCompraDTO {

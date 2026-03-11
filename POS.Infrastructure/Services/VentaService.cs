@@ -497,7 +497,7 @@ public class VentaService : IVentaService
             var subtotalDevuelto = (detalleOriginal.PrecioUnitario * linea.Cantidad);
             totalDevuelto += subtotalDevuelto;
 
-            // Crear detalle de devolución
+            // Crear detalle de devolución (con snapshot del lote si aplica)
             var detalleDevolucion = new DetalleDevolucion
             {
                 ProductoId = linea.ProductoId,
@@ -505,7 +505,9 @@ public class VentaService : IVentaService
                 CantidadDevuelta = linea.Cantidad,
                 PrecioUnitario = detalleOriginal.PrecioUnitario,
                 CostoUnitario = detalleOriginal.CostoUnitario,
-                SubtotalDevuelto = subtotalDevuelto
+                SubtotalDevuelto = subtotalDevuelto,
+                LoteInventarioId = detalleOriginal.LoteInventarioId,
+                NumeroLote = detalleOriginal.NumeroLote
             };
 
             detallesDevolucion.Add(detalleDevolucion);
@@ -553,20 +555,30 @@ public class VentaService : IVentaService
                 pendingMartenEvents.Add((streamId, eventoEntrada));
             }
 
-            // Registrar lote de entrada
+            // Reintegrar al lote original si la venta tenía trazabilidad de lote;
+            // de lo contrario crear una nueva entrada en el inventario
             var montoImpuestoUnitario = detalleOriginal.Cantidad > 0
                 ? detalleOriginal.MontoImpuesto / detalleOriginal.Cantidad
                 : 0;
 
-            await _costeoService.RegistrarLoteEntrada(
-                detalleDevolucion.ProductoId,
-                venta.SucursalId,
-                detalleDevolucion.CantidadDevuelta,
-                detalleDevolucion.CostoUnitario,
-                detalleOriginal.PorcentajeImpuesto,
-                montoImpuestoUnitario,
-                $"Devolución {numeroDevolucion}",
-                null);
+            if (detalleDevolucion.LoteInventarioId.HasValue)
+            {
+                await _costeoService.ReintegrarLoteAsync(
+                    detalleDevolucion.LoteInventarioId.Value,
+                    detalleDevolucion.CantidadDevuelta);
+            }
+            else
+            {
+                await _costeoService.RegistrarLoteEntrada(
+                    detalleDevolucion.ProductoId,
+                    venta.SucursalId,
+                    detalleDevolucion.CantidadDevuelta,
+                    detalleDevolucion.CostoUnitario,
+                    detalleOriginal.PorcentajeImpuesto,
+                    montoImpuestoUnitario,
+                    $"Devolución {numeroDevolucion}",
+                    null);
+            }
 
             // Actualizar stock
             var stock = await _context.Stock.FirstOrDefaultAsync(

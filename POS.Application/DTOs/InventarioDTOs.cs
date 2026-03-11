@@ -266,5 +266,6 @@ public record DetalleOrdenCompraDto(
     decimal Subtotal,
     string? NombreImpuesto,
     string? Observaciones,
-    bool ManejaLotes = false
+    bool ManejaLotes = false,
+    int? DiasVidaUtil = null
 );

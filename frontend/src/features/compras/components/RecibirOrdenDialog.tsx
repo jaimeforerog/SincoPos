@@ -74,13 +74,22 @@ export function RecibirOrdenDialog({
   useEffect(() => {
     if (open) {
       reset({
-        lineas: orden.detalles.map((d) => ({
-          productoId: d.productoId,
-          cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
-          observaciones: '',
-          numeroLote: '',
-          fechaVencimiento: '',
-        })),
+        lineas: orden.detalles.map((d) => {
+          // Pre-calcular fecha de vencimiento si el producto tiene diasVidaUtil configurado
+          let fechaVencimientoDefault = '';
+          if (d.manejaLotes && d.diasVidaUtil) {
+            const fecha = new Date();
+            fecha.setDate(fecha.getDate() + d.diasVidaUtil);
+            fechaVencimientoDefault = fecha.toISOString().split('T')[0];
+          }
+          return {
+            productoId: d.productoId,
+            cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
+            observaciones: '',
+            numeroLote: '',
+            fechaVencimiento: fechaVencimientoDefault,
+          };
+        }),
       });
     }
   }, [open, orden, reset]);

@@ -764,7 +764,8 @@ public class CompraService : ICompraService
                 Subtotal: d.Subtotal,
                 NombreImpuesto: d.NombreImpuesto,
                 Observaciones: d.Observaciones,
-                ManejaLotes: d.Producto?.ManejaLotes ?? false
+                ManejaLotes: d.Producto?.ManejaLotes ?? false,
+                DiasVidaUtil: d.Producto?.DiasVidaUtil
             )).ToList()
         );
 }
