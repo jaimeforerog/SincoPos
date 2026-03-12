@@ -103,7 +103,12 @@ public class PreciosController : ControllerBase
         var validator = new CrearPrecioSucursalValidator();
         var validResult = await validator.ValidateAsync(dto);
         if (!validResult.IsValid)
-            return BadRequest(validResult.Errors.Select(e => e.ErrorMessage));
+        {
+            var errors = validResult.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            return BadRequest(new { errors });
+        }
 
         var producto = await _context.Productos.FindAsync(dto.ProductoId);
         if (producto == null) return BadRequest("Producto no encontrado.");

@@ -34,6 +34,21 @@ public class MockErpClient : IErpClient
         ));
     }
 
+    public Task<ErpResponse> ContabilizarVentaAsync(VentaErpPayload payload)
+    {
+        var referencia = $"MOCK-VTA-{Interlocked.Increment(ref _secuencia)}";
+        _logger.LogWarning(
+            "[MockErpClient] Simulando contabilización de venta {NumeroVenta} → Ref: {Referencia}. " +
+            "Configure ErpSinco:BaseUrl para conectar con el ERP real",
+            payload.NumeroVenta, referencia);
+
+        return Task.FromResult(new ErpResponse(
+            Exitoso: true,
+            ErpReferencia: referencia,
+            MensajeError: null
+        ));
+    }
+
     public Task<ErpResponse> ConsultarEstadoDocumentoAsync(string erpReferencia)
     {
         _logger.LogWarning("[MockErpClient] Simulando consulta de documento {Referencia}", erpReferencia);

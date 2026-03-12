@@ -478,6 +478,8 @@ app.UseExceptionHandler(errorApp =>
         var traceId = System.Diagnostics.Activity.Current?.Id ?? context.TraceIdentifier;
         await context.Response.WriteAsJsonAsync(new
         {
+            status = 500,
+            title = "Error interno del servidor",
             error = "Ha ocurrido un error interno. Contacte soporte.",
             traceId
         });

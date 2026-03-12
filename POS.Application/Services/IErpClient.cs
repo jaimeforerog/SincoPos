@@ -16,6 +16,12 @@ public interface IErpClient
     Task<ErpResponse> ContabilizarCompraAsync(CompraErpPayload payload);
 
     /// <summary>
+    /// Envía el payload de una venta completada (o anulación) para que el ERP
+    /// contabilice los ingresos y asientos correspondientes.
+    /// </summary>
+    Task<ErpResponse> ContabilizarVentaAsync(VentaErpPayload payload);
+
+    /// <summary>
     /// Consulta el estado actual de un documento de integración en el ERP
     /// utilizando su identificador único o referencia cruzada.
     /// </summary>

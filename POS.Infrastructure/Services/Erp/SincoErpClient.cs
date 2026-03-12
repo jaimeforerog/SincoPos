@@ -58,6 +58,36 @@ public class SincoErpClient : IErpClient
         }
     }
 
+    public async Task<ErpResponse> ContabilizarVentaAsync(VentaErpPayload payload)
+    {
+        try
+        {
+            _logger.LogInformation("Enviando venta {NumeroVenta} al ERP Sinco", payload.NumeroVenta);
+
+            var response = await _httpClient.PostAsJsonAsync("api/v1/comprobantes/ventas", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<SincoCompraResponse>();
+                var referencia = body?.Referencia ?? body?.Id ?? $"SINCO-V-{response.Headers.Location?.Segments.LastOrDefault()}";
+                return new ErpResponse(Exitoso: true, ErpReferencia: referencia, MensajeError: null);
+            }
+
+            _logger.LogError("Fallo al enviar venta {NumeroVenta}: HTTP {Code}", payload.NumeroVenta, response.StatusCode);
+            var err = await response.Content.ReadAsStringAsync();
+            return new ErpResponse(false, null, $"Error HTTP {response.StatusCode}: {err}");
+        }
+        catch (TaskCanceledException)
+        {
+            return new ErpResponse(false, null, "Timeout conectando con el ERP");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error crítico conectando con el ERP Sinco (venta)");
+            return new ErpResponse(false, null, ex.Message);
+        }
+    }
+
     /// <summary>
     /// Estructura de respuesta esperada del ERP Sinco al crear un comprobante.
     /// </summary>

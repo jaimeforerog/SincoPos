@@ -68,13 +68,17 @@ public class ErpSyncBackgroundService : BackgroundService
 
         foreach (var mensaje in mensajes)
         {
-            _logger.LogInformation("Procesando Outbox {Id} para Entidad {Entidad} ({Tipo})", 
+            _logger.LogInformation("Procesando Outbox {Id} para Entidad {Entidad} ({Tipo})",
                 mensaje.Id, mensaje.EntidadId, mensaje.TipoDocumento);
 
             mensaje.Intentos++;
 
             // 2. Deserializar Payload según Tipo
-            if (mensaje.TipoDocumento == "CompraRecibida" || mensaje.TipoDocumento == "NotaCreditoVenta")
+            if (mensaje.TipoDocumento == "VentaCompletada" || mensaje.TipoDocumento == "AnulacionVenta")
+            {
+                await ProcesarVentaOutboxAsync(db, erpClient, notificationService, activityLogService, mensaje, stoppingToken);
+            }
+            else if (mensaje.TipoDocumento == "CompraRecibida" || mensaje.TipoDocumento == "NotaCreditoVenta")
             {
                 var payload = JsonSerializer.Deserialize<CompraErpPayload>(mensaje.Payload, new JsonSerializerOptions
                 {
@@ -192,6 +196,108 @@ public class ErpSyncBackgroundService : BackgroundService
 
         // 6. Guardar Cambios en la BD
         await db.SaveChangesAsync(stoppingToken);
+    }
+
+    private async Task ProcesarVentaOutboxAsync(
+        AppDbContext db,
+        IErpClient erpClient,
+        INotificationService notificationService,
+        IActivityLogService activityLogService,
+        ErpOutboxMessage mensaje,
+        CancellationToken stoppingToken)
+    {
+        var payload = JsonSerializer.Deserialize<VentaErpPayload>(mensaje.Payload, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        if (payload == null)
+        {
+            MarcarComoError(mensaje, "No se pudo deserializar el JSON de VentaErpPayload");
+            return;
+        }
+
+        var esAnulacion = mensaje.TipoDocumento == "AnulacionVenta";
+        var response = await erpClient.ContabilizarVentaAsync(payload);
+
+        if (response.Exitoso)
+        {
+            mensaje.Estado = EstadoOutbox.Procesado;
+            mensaje.FechaProcesamiento = DateTime.UtcNow;
+            mensaje.UltimoError = null;
+
+            var venta = await db.Ventas.FirstOrDefaultAsync(v => v.Id == mensaje.EntidadId, stoppingToken);
+            if (venta != null)
+            {
+                venta.SincronizadoErp = true;
+                venta.FechaSincronizacionErp = DateTime.UtcNow;
+                venta.ErpReferencia = response.ErpReferencia;
+                venta.ErrorSincronizacion = null;
+            }
+
+            var tipoDoc = esAnulacion ? "AnulacionVenta" : "VentaCompletada";
+            var numeroSoporte = esAnulacion ? $"ANU-{payload.NumeroVenta}" : payload.NumeroVenta;
+            var docContable = await db.DocumentosContables
+                .Where(d => d.TipoDocumento == tipoDoc && d.NumeroSoporte == numeroSoporte)
+                .OrderByDescending(d => d.FechaCausacion)
+                .FirstOrDefaultAsync(stoppingToken);
+            if (docContable != null)
+            {
+                docContable.SincronizadoErp = true;
+                docContable.ErpReferencia = response.ErpReferencia;
+                docContable.FechaSincronizacionErp = DateTime.UtcNow;
+            }
+
+            await activityLogService.LogActivityAsync(new ActivityLogDto(
+                Accion: "ERP_SYNC_EXITO",
+                Tipo: TipoActividad.Venta,
+                Descripcion: $"{tipoDoc} contabilizada en ERP Sinco. Ref: {response.ErpReferencia}",
+                SucursalId: payload.SucursalId,
+                TipoEntidad: "Venta",
+                EntidadId: mensaje.EntidadId.ToString(),
+                EntidadNombre: payload.NumeroVenta,
+                Exitosa: true
+            ));
+
+            await notificationService.EnviarNotificacionSucursalAsync(payload.SucursalId, new NotificacionDto(
+                "erp_sincronizado",
+                esAnulacion ? "Anulación contabilizada" : "Venta contabilizada",
+                $"{payload.NumeroVenta} sincronizada con ERP Sinco (Ref: {response.ErpReferencia})",
+                "success",
+                DateTime.UtcNow
+            ));
+        }
+        else
+        {
+            MarcarComoError(mensaje, response.MensajeError ?? "Error desconocido en ERP");
+
+            var venta = await db.Ventas.FirstOrDefaultAsync(v => v.Id == mensaje.EntidadId, stoppingToken);
+            if (venta != null)
+            {
+                venta.SincronizadoErp = false;
+                venta.ErrorSincronizacion = response.MensajeError;
+            }
+
+            await activityLogService.LogActivityAsync(new ActivityLogDto(
+                Accion: "ERP_SYNC_ERROR",
+                Tipo: TipoActividad.Venta,
+                Descripcion: $"Fallo sincronizando {mensaje.TipoDocumento} en ERP Sinco: {response.MensajeError}",
+                SucursalId: payload.SucursalId,
+                TipoEntidad: "Venta",
+                EntidadId: mensaje.EntidadId.ToString(),
+                EntidadNombre: payload.NumeroVenta,
+                Exitosa: false,
+                MensajeError: response.MensajeError
+            ));
+
+            await notificationService.EnviarNotificacionSucursalAsync(payload.SucursalId, new NotificacionDto(
+                "erp_error",
+                "Error de Sincronización Contable",
+                $"Fallo contabilizando {payload.NumeroVenta}: {response.MensajeError}",
+                "error",
+                DateTime.UtcNow
+            ));
+        }
     }
 
     private void MarcarComoError(ErpOutboxMessage mensaje, string error)

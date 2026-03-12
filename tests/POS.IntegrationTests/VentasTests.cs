@@ -2,7 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using POS.Application.DTOs;
+using POS.Infrastructure.Data;
+using POS.Infrastructure.Data.Entities;
 
 namespace POS.IntegrationTests;
 
@@ -470,5 +474,223 @@ public class VentasTests
         resumen.Should().NotBeNull();
         resumen.TotalVentas.Should().BeGreaterThanOrEqualTo(0);
         resumen.MontoTotal.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  TESTS DE INTEGRACIÓN ERP OUTBOX
+    // ═══════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task Venta_AlCrear_EscribeDocumentoContableYErpOutbox()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-VENTA-001", precioVenta: 2000m, precioCosto: 1000m);
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 1000m);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja ERP VENTA 001");
+
+        // Act
+        var ventaDto = new
+        {
+            sucursalId = SucPp,
+            cajaId,
+            clienteId = TerceroId,
+            metodoPago = 0, // Efectivo
+            montoPagado = 999_999m,
+            lineas = new[] { new { productoId, cantidad = 2m, precioUnitario = (decimal?)null, descuento = 0m } }
+        };
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var venta = await response.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
+        var ventaId = venta!.Id;
+        var numVenta = venta.NumeroVenta;
+
+        // Assert — DB
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // 1. DocumentoContable creado con tipo VentaCompletada
+        var docs = await db.DocumentosContables
+            .Include(d => d.Detalles)
+            .Where(d => d.TipoDocumento == "VentaCompletada" && d.NumeroSoporte == numVenta)
+            .ToListAsync();
+        docs.Should().HaveCount(1);
+        docs[0].Detalles.Should().NotBeEmpty();
+        docs[0].TotalDebito.Should().BeGreaterThan(0);
+        docs[0].TotalCredito.Should().BeGreaterThan(0);
+
+        // 2. ErpOutboxMessage encolado en estado Pendiente
+        var outbox = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ventaId && m.TipoDocumento == "VentaCompletada")
+            .ToListAsync();
+        outbox.Should().HaveCount(1);
+        outbox[0].Estado.Should().Be(EstadoOutbox.Pendiente);
+
+        // 3. Payload serializado correctamente
+        var payload = JsonSerializer.Deserialize<VentaErpPayload>(outbox[0].Payload, _jsonOptions);
+        payload.Should().NotBeNull();
+        payload!.NumeroVenta.Should().Be(numVenta);
+        payload.Asientos.Should().NotBeEmpty();
+        payload.Asientos.Should().Contain(a => a.Naturaleza == "Debito");
+        payload.Asientos.Should().Contain(a => a.Naturaleza == "Credito");
+    }
+
+    [Fact]
+    public async Task Venta_AlAnular_EscribeDocumentoContableAnulacionYErpOutbox()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-VENTA-002", precioVenta: 3000m, precioCosto: 1500m);
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 1500m);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja ERP VENTA 002");
+
+        var ventaDto = new
+        {
+            sucursalId = SucPp,
+            cajaId,
+            clienteId = TerceroId,
+            metodoPago = 0, // Efectivo
+            montoPagado = 999_999m,
+            lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m } }
+        };
+        var crearResponse = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
+        crearResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var venta = await crearResponse.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
+        var ventaId = venta!.Id;
+        var numVenta = venta.NumeroVenta;
+
+        // Act — anular
+        var anularResponse = await _client.PostAsJsonAsync($"/api/v1/Ventas/{ventaId}/anular",
+            new { motivo = "Test anulacion ERP" });
+        anularResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Assert — DB
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // 1. DocumentoContable de anulación creado
+        var docAnu = await db.DocumentosContables
+            .Include(d => d.Detalles)
+            .Where(d => d.TipoDocumento == "AnulacionVenta" && d.NumeroSoporte == $"ANU-{numVenta}")
+            .FirstOrDefaultAsync();
+        docAnu.Should().NotBeNull();
+        docAnu!.Detalles.Should().NotBeEmpty();
+
+        // 2. ErpOutboxMessage de anulación encolado
+        var outbox = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ventaId && m.TipoDocumento == "AnulacionVenta")
+            .ToListAsync();
+        outbox.Should().HaveCount(1);
+        outbox[0].Estado.Should().Be(EstadoOutbox.Pendiente);
+
+        // 3. Asientos invertidos respecto a la venta: la anulación debita ingresos
+        var payload = JsonSerializer.Deserialize<VentaErpPayload>(outbox[0].Payload, _jsonOptions);
+        payload.Should().NotBeNull();
+        payload!.NumeroVenta.Should().Be(numVenta);
+        payload.Asientos.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Venta_AlCrear_CamposErpSonFalseInicialmente()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-VENTA-003", precioVenta: 1500m, precioCosto: 700m);
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 700m);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja ERP VENTA 003");
+
+        // Act
+        var ventaDto = new
+        {
+            sucursalId = SucPp,
+            cajaId,
+            clienteId = TerceroId,
+            metodoPago = 0, // Efectivo
+            montoPagado = 999_999m,
+            lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m } }
+        };
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var venta = await response.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
+
+        // Assert — El background service no ha procesado aún
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ventaDb = await db.Ventas.FirstAsync(v => v.Id == venta!.Id);
+        ventaDb.SincronizadoErp.Should().BeFalse("El background service aún no procesó el outbox");
+        ventaDb.FechaSincronizacionErp.Should().BeNull();
+        ventaDb.ErpReferencia.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Venta_MultiplesVentas_OutboxContieneUnaEntradaPorVenta()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-VENTA-004", precioVenta: 1000m, precioCosto: 500m);
+        await RegistrarEntradaInventario(productoId, SucPp, 100, 500m);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja ERP VENTA 004");
+
+        // Act — crear dos ventas independientes
+        var dto = new
+        {
+            sucursalId = SucPp,
+            cajaId,
+            clienteId = TerceroId,
+            metodoPago = 0, // Efectivo
+            montoPagado = 999_999m,
+            lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m } }
+        };
+        var r1 = await _client.PostAsJsonAsync("/api/v1/Ventas", dto);
+        var r2 = await _client.PostAsJsonAsync("/api/v1/Ventas", dto);
+        r1.StatusCode.Should().Be(HttpStatusCode.OK);
+        r2.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var v1 = (await r1.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions))!;
+        var v2 = (await r2.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions))!;
+
+        // Assert — cada venta tiene su propio outbox
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var outboxV1 = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == v1.Id && m.TipoDocumento == "VentaCompletada")
+            .ToListAsync();
+        var outboxV2 = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == v2.Id && m.TipoDocumento == "VentaCompletada")
+            .ToListAsync();
+
+        outboxV1.Should().HaveCount(1);
+        outboxV2.Should().HaveCount(1);
+        outboxV1[0].EntidadId.Should().NotBe(outboxV2[0].EntidadId);
+    }
+
+    [Fact]
+    public async Task Venta_ConMetodoPagoTarjeta_AsientoDebitaEnCuentaTarjeta()
+    {
+        // Arrange
+        var productoId = await CrearProductoTest("ERP-VENTA-005", precioVenta: 5000m, precioCosto: 2000m);
+        await RegistrarEntradaInventario(productoId, SucPp, 50, 2000m);
+        var cajaId = await CrearYAbrirCaja(SucPp, "Caja ERP VENTA 005");
+
+        // Act — pago con tarjeta (MetodoPago = 1 = Tarjeta)
+        var ventaDto = new
+        {
+            sucursalId = SucPp,
+            cajaId,
+            clienteId = TerceroId,
+            metodoPago = 1, // Tarjeta
+            montoPagado = 999_999m,
+            lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m } }
+        };
+        var response = await _client.PostAsJsonAsync("/api/v1/Ventas", ventaDto);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var venta = await response.Content.ReadFromJsonAsync<VentaDto>(_jsonOptions);
+
+        // Assert — el asiento débito usa la cuenta de tarjeta (111005)
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var outbox = await db.ErpOutboxMessages
+            .FirstAsync(m => m.EntidadId == venta!.Id && m.TipoDocumento == "VentaCompletada");
+
+        var payload = JsonSerializer.Deserialize<VentaErpPayload>(outbox.Payload, _jsonOptions);
+        var debitoEntry = payload!.Asientos.First(a => a.Naturaleza == "Debito");
+        debitoEntry.Cuenta.Should().Be("111005", "pago con tarjeta debe debitar la cuenta 111005 (Bancos)");
     }
 }

@@ -51,7 +51,12 @@ public class VentasController : ControllerBase
     {
         var validResult = await new CrearVentaValidator().ValidateAsync(dto);
         if (!validResult.IsValid)
-            return BadRequest(validResult.Errors.Select(e => e.ErrorMessage));
+        {
+            var errors = validResult.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            return BadRequest(new { errors });
+        }
 
         var (venta, error) = await _ventaService.CrearVentaAsync(dto);
         return error != null ? BadRequest(new { error }) : Ok(venta);
@@ -228,7 +233,12 @@ public class VentasController : ControllerBase
     {
         var validResult = await new CrearDevolucionParcialValidator().ValidateAsync(dto);
         if (!validResult.IsValid)
-            return BadRequest(validResult.Errors.Select(e => e.ErrorMessage));
+        {
+            var errors = validResult.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            return BadRequest(new { errors });
+        }
 
         var emailUsuario = User.FindFirst("email")?.Value ?? User.Identity?.Name;
 

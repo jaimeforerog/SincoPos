@@ -277,7 +277,7 @@ export function VentasPage() {
 
       {/* Tabla de Ventas */}
       {isLoading ? (
-        <TableSkeleton cols={10} />
+        <TableSkeleton cols={11} />
       ) : ventasFiltradas.length === 0 ? (
         <Alert severity="info">
           No se encontraron ventas con los filtros seleccionados.
@@ -296,6 +296,7 @@ export function VentasPage() {
                 <TableCell sx={{ fontWeight: 700 }}>Método Pago</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>DIAN</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="center">ERP</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
@@ -342,6 +343,22 @@ export function VentasPage() {
                     {venta.requiereFacturaElectronica ? (
                       <Chip label="Requiere FE" size="small" color="info" variant="outlined" />
                     ) : null}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Tooltip
+                      title={
+                        venta.sincronizadoErp
+                          ? `Ref: ${venta.erpReferencia ?? ''}`
+                          : venta.errorSincronizacion ?? 'Pendiente de sincronización'
+                      }
+                    >
+                      <Chip
+                        label={venta.sincronizadoErp ? 'Sync' : venta.errorSincronizacion ? 'Error' : 'Pend.'}
+                        size="small"
+                        color={venta.sincronizadoErp ? 'success' : venta.errorSincronizacion ? 'error' : 'warning'}
+                        variant={venta.sincronizadoErp ? 'filled' : 'outlined'}
+                      />
+                    </Tooltip>
                   </TableCell>
                   <TableCell align="center">
                     <Tooltip title="Ver detalle">
