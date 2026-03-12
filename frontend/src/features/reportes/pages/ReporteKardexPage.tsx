@@ -172,7 +172,7 @@ export function ReporteKardexPage() {
           { label: 'Reportes', path: '/reportes' },
           { label: 'Kardex' },
         ]}
-        color="#7b1fa2"
+        color="#1976d2"
       />
 
       {/* Formulario de Filtros */}

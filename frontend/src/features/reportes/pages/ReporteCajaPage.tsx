@@ -73,7 +73,7 @@ export function ReporteCajaPage() {
           { label: 'Reportes', path: '/reportes' },
           { label: 'Caja' },
         ]}
-        color="#2e7d32"
+        color="#1976d2"
       />
 
       {/* Filtros */}

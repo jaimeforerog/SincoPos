@@ -244,7 +244,7 @@ export default function AuditoriaPage() {
           { label: 'Reportes', path: '/reportes' },
           { label: 'Auditoría' },
         ]}
-        color="#c62828"
+        color="#1976d2"
         action={
           <Button
             variant="outlined"

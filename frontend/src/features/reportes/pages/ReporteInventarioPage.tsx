@@ -88,7 +88,7 @@ export function ReporteInventarioPage() {
           { label: 'Reportes', path: '/reportes' },
           { label: 'Inventario Valorizado' },
         ]}
-        color="#ed6c02"
+        color="#1976d2"
       />
 
       {/* Filtros */}
