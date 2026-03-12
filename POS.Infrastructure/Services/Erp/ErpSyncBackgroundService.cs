@@ -120,6 +120,17 @@ public class ErpSyncBackgroundService : BackgroundService
                             entidadNombre = ordenCompra.NumeroOrden;
                         }
                     }
+                    else // NotaCreditoVenta
+                    {
+                        var devolucion = await db.DevolucionesVenta.FirstOrDefaultAsync(d => d.Id == mensaje.EntidadId, stoppingToken);
+                        if (devolucion != null)
+                        {
+                            devolucion.SincronizadoErp = true;
+                            devolucion.FechaSincronizacionErp = DateTime.UtcNow;
+                            devolucion.ErpReferencia = response.ErpReferencia;
+                            devolucion.ErrorSincronizacion = null;
+                        }
+                    }
 
                     // Actualizar DocumentoContable asociado
                     var docContable = await db.DocumentosContables
@@ -164,6 +175,15 @@ public class ErpSyncBackgroundService : BackgroundService
                         {
                             ordenCompra.SincronizadoErp = false;
                             ordenCompra.ErrorSincronizacion = response.MensajeError;
+                        }
+                    }
+                    else // NotaCreditoVenta
+                    {
+                        var devolucion = await db.DevolucionesVenta.FirstOrDefaultAsync(d => d.Id == mensaje.EntidadId, stoppingToken);
+                        if (devolucion != null)
+                        {
+                            devolucion.SincronizadoErp = false;
+                            devolucion.ErrorSincronizacion = response.MensajeError;
                         }
                     }
 

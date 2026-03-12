@@ -149,6 +149,21 @@ public class DevolucionVentaConfiguration : IEntityTypeConfiguration<DevolucionV
         builder.Property(d => d.AutorizadoPorUsuarioId)
             .HasColumnName("autorizado_por_usuario_id");
 
+        builder.Property(d => d.SincronizadoErp)
+            .HasColumnName("sincronizado_erp")
+            .HasDefaultValue(false);
+
+        builder.Property(d => d.FechaSincronizacionErp)
+            .HasColumnName("fecha_sincronizacion_erp");
+
+        builder.Property(d => d.ErpReferencia)
+            .HasMaxLength(100)
+            .HasColumnName("erp_referencia");
+
+        builder.Property(d => d.ErrorSincronizacion)
+            .HasMaxLength(500)
+            .HasColumnName("error_sincronizacion");
+
         builder.HasIndex(d => d.FechaDevolucion)
             .HasDatabaseName("ix_devoluciones_fecha");
 

@@ -925,6 +925,10 @@ public class VentaService : IVentaService
                 dd.PrecioUnitario,
                 dd.CostoUnitario,
                 dd.SubtotalDevuelto
-            )).ToList()
+            )).ToList(),
+            d.SincronizadoErp,
+            d.FechaSincronizacionErp,
+            d.ErpReferencia,
+            d.ErrorSincronizacion
         );
 }

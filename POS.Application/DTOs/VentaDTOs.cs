@@ -140,7 +140,11 @@ public record DevolucionVentaDto(
     decimal TotalDevuelto,
     DateTime FechaDevolucion,
     string? AutorizadoPor,
-    List<DetalleDevolucionDto> Detalles
+    List<DetalleDevolucionDto> Detalles,
+    bool SincronizadoErp,
+    DateTime? FechaSincronizacionErp,
+    string? ErpReferencia,
+    string? ErrorSincronizacion
 );
 
 public record DetalleDevolucionDto(

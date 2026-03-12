@@ -91,6 +91,12 @@ public class DevolucionVenta : EntidadAuditable
     public DateTime FechaDevolucion { get; set; } = DateTime.UtcNow;
     public int? AutorizadoPorUsuarioId { get; set; }
 
+    // ERP Sinco sync
+    public bool SincronizadoErp { get; set; } = false;
+    public DateTime? FechaSincronizacionErp { get; set; }
+    public string? ErpReferencia { get; set; }
+    public string? ErrorSincronizacion { get; set; }
+
     // Navigation
     public Venta Venta { get; set; } = null!;
     public ICollection<DetalleDevolucion> Detalles { get; set; } = new List<DetalleDevolucion>();

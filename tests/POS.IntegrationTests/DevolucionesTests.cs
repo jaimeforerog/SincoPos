@@ -594,4 +594,59 @@ public class DevolucionesTests
             a => !string.IsNullOrEmpty(a.CentroCosto),
             "Todos los asientos deben tener centro de costo");
     }
+
+    [Fact]
+    public async Task DevolucionParcial_DtoExponeCamposErp_SincronizadoFalseInicial()
+    {
+        // Arrange
+        var producto = await CrearProductoTest($"DEV-ERP-DTO-{Guid.NewGuid():N}"[..15], 3000m, 1500m);
+        await RegistrarEntradaInventario(producto, SucPp, 50, 1500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaErpDto-{Guid.NewGuid():N}"[..20]);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 10) }, 50_000m);
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial",
+            new { motivo = "Test ERP fields", lineas = new[] { new { productoId = producto, cantidad = 2m } } });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var devolucion = await response.Content.ReadFromJsonAsync<DevolucionVentaDto>(_jsonOptions);
+        devolucion.Should().NotBeNull();
+
+        // Assert — campos ERP expuestos en el DTO con valores iniciales correctos
+        devolucion!.SincronizadoErp.Should().BeFalse("El outbox no fue procesado por el background service aún");
+        devolucion.FechaSincronizacionErp.Should().BeNull();
+        devolucion.ErpReferencia.Should().BeNull();
+        devolucion.ErrorSincronizacion.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DevolucionParcial_DevolucionVentaDb_TieneCamposErpIniciales()
+    {
+        // Arrange
+        var producto = await CrearProductoTest($"DEV-ERP-DB-{Guid.NewGuid():N}"[..15], 4000m, 2000m);
+        await RegistrarEntradaInventario(producto, SucPp, 30, 2000m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaErpDb-{Guid.NewGuid():N}"[..20]);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 8) }, 50_000m);
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial",
+            new { motivo = "Test DB ERP fields", lineas = new[] { new { productoId = producto, cantidad = 3m } } });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dto = await response.Content.ReadFromJsonAsync<DevolucionVentaDto>(_jsonOptions);
+
+        // Act — leer entidad directamente desde DB
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+        var devolucionDb = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+            .FirstOrDefaultAsync(db.DevolucionesVenta, d => d.Id == dto!.Id);
+
+        // Assert — entidad tiene campos ERP con valores iniciales
+        devolucionDb.Should().NotBeNull();
+        devolucionDb!.SincronizadoErp.Should().BeFalse();
+        devolucionDb.FechaSincronizacionErp.Should().BeNull();
+        devolucionDb.ErpReferencia.Should().BeNull();
+        devolucionDb.ErrorSincronizacion.Should().BeNull();
+    }
 }
