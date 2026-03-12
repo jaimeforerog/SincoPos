@@ -46,6 +46,12 @@ public class VentaConfiguration : IEntityTypeConfiguration<Venta>
             .HasDatabaseName("ix_ventas_cliente_id")
             .HasFilter("cliente_id IS NOT NULL");
 
+        // ERP Sync
+        builder.Property(v => v.SincronizadoErp).HasColumnName("sincronizado_erp").HasDefaultValue(false);
+        builder.Property(v => v.FechaSincronizacionErp).HasColumnName("fecha_sincronizacion_erp");
+        builder.Property(v => v.ErpReferencia).HasMaxLength(100).HasColumnName("erp_referencia");
+        builder.Property(v => v.ErrorSincronizacion).HasMaxLength(500).HasColumnName("error_sincronizacion");
+
         builder.HasOne(v => v.Sucursal)
             .WithMany()
             .HasForeignKey(v => v.SucursalId)

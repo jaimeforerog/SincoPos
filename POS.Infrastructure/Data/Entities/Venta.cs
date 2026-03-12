@@ -27,6 +27,12 @@ public class Venta : EntidadAuditable
     /// </summary>
     public bool RequiereFacturaElectronica { get; set; } = false;
 
+    // ERP Sync
+    public bool SincronizadoErp { get; set; } = false;
+    public DateTime? FechaSincronizacionErp { get; set; }
+    public string? ErpReferencia { get; set; }
+    public string? ErrorSincronizacion { get; set; }
+
     // Navegacion
     public Sucursal Sucursal { get; set; } = null!;
     public Caja Caja { get; set; } = null!;
