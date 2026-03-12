@@ -24,6 +24,7 @@ public class VentaService : IVentaService
     private readonly FacturacionBackgroundService _facturacionBackground;
     private readonly INotificationService _notificationService;
     private readonly ErpSincoOptions _erpOptions;
+    private readonly IVentaErpService _ventaErpService;
 
     public VentaService(
         AppDbContext context,
@@ -37,7 +38,8 @@ public class VentaService : IVentaService
         IActivityLogService activityLogService,
         FacturacionBackgroundService facturacionBackground,
         INotificationService notificationService,
-        IOptions<ErpSincoOptions> erpOptions)
+        IOptions<ErpSincoOptions> erpOptions,
+        IVentaErpService ventaErpService)
     {
         _context = context;
         _session = session;
@@ -51,6 +53,7 @@ public class VentaService : IVentaService
         _facturacionBackground = facturacionBackground;
         _notificationService = notificationService;
         _erpOptions = erpOptions.Value;
+        _ventaErpService = ventaErpService;
     }
 
     public async Task<(VentaDto? venta, string? error)> CrearVentaAsync(CrearVentaDto dto)
@@ -70,11 +73,13 @@ public class VentaService : IVentaService
 
         // Verificar cliente (si aplica)
         string? nombreCliente = null;
+        string? nitCliente = null;
         if (dto.ClienteId.HasValue)
         {
             var cliente = await _context.Terceros.FindAsync(dto.ClienteId.Value);
             if (cliente == null) return (null, "Cliente no encontrado.");
             nombreCliente = cliente.Nombre;
+            nitCliente = cliente.Identificacion;
         }
 
         // Generar numero de venta
@@ -110,6 +115,7 @@ public class VentaService : IVentaService
         var productosMap = await _context.Productos
             .Include(p => p.Impuesto)
             .Include(p => p.ConceptoRetencion)
+            .Include(p => p.Categoria)
             .Where(p => productoIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
 
@@ -228,6 +234,48 @@ public class VentaService : IVentaService
         if (dto.MontoPagado.HasValue && dto.MontoPagado.Value < total)
             return (null, $"Monto pagado ({dto.MontoPagado.Value}) es menor al total ({total}).");
 
+        // ── Acumular asientos contables ERP ───────────────────────────────
+        var centroCosto = sucursal.CentroCosto ?? string.Empty;
+        var ingresosErp = new Dictionary<string, decimal>();   // cuentaIngreso → subtotal
+        var ivaErp = new Dictionary<string, (string Cuenta, decimal Total)>(); // "IVA 19%" → (cuenta, total)
+
+        foreach (var det in detalles)
+        {
+            var prod = productosMap[det.ProductoId];
+            var cuentaIngreso = prod.Categoria?.CuentaIngreso ?? "4135";
+            ingresosErp.TryAdd(cuentaIngreso, 0);
+            ingresosErp[cuentaIngreso] += det.Subtotal;
+
+            if (det.PorcentajeImpuesto > 0)
+            {
+                var nombreImp = $"IVA {det.PorcentajeImpuesto * 100:0.##}%";
+                var cuentaImp = prod.Impuesto?.CodigoCuentaContable ?? "2408";
+                ivaErp.TryGetValue(nombreImp, out var cur);
+                ivaErp[nombreImp] = (cuentaImp, cur.Total + det.MontoImpuesto);
+            }
+        }
+
+        var cuentaDebito = ((MetodoPago)dto.MetodoPago) switch
+        {
+            MetodoPago.Tarjeta       => _erpOptions.CuentaTarjeta,
+            MetodoPago.Transferencia => _erpOptions.CuentaTransferencia,
+            _                        => _erpOptions.CuentaCaja
+        };
+
+        var asientosVenta = new List<AsientoContableErp>();
+        asientosVenta.Add(new AsientoContableErp(
+            cuentaDebito, centroCosto, "Debito", total,
+            $"Cobro venta {numeroVenta} - {((MetodoPago)dto.MetodoPago)}"));
+        foreach (var ing in ingresosErp)
+            asientosVenta.Add(new AsientoContableErp(
+                ing.Key, centroCosto, "Credito", ing.Value,
+                $"Ingreso venta {numeroVenta}"));
+        foreach (var iva in ivaErp)
+            asientosVenta.Add(new AsientoContableErp(
+                iva.Value.Cuenta, centroCosto, "Credito", iva.Value.Total,
+                $"{iva.Key} generado venta {numeroVenta}"));
+        // ──────────────────────────────────────────────────────────────────
+
         // Crear venta
         var venta = new Venta
         {
@@ -266,7 +314,20 @@ public class VentaService : IVentaService
             foreach (var (sid, evt) in pendingMartenEvents)
                 martenTx.Events.Append(sid, evt);
             await martenTx.SaveChangesAsync();
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); // genera venta.Id
+
+            // ERP Outbox: emitir dentro de la transacción con venta.Id ya disponible
+            var ventaPayload = new VentaErpPayload(
+                NumeroVenta: venta.NumeroVenta,
+                NitCliente: nitCliente,
+                MetodoPago: ((MetodoPago)dto.MetodoPago).ToString(),
+                FechaVenta: venta.FechaVenta,
+                SucursalId: venta.SucursalId,
+                Asientos: asientosVenta,
+                TotalOriginalDocumento: total);
+            await _ventaErpService.EmitirVentaAsync(venta, asientosVenta, ventaPayload);
+            await _context.SaveChangesAsync(); // guarda DocumentoContable + ErpOutboxMessage
+
             await npgsqlTx.CommitAsync();
         });
 
@@ -381,6 +442,56 @@ public class VentaService : IVentaService
         if (caja != null)
             caja.MontoActual -= venta.Total;
 
+        // ── Asientos inversos ERP para anulación ──────────────────────────
+        var anuCentroCosto = sucursal?.CentroCosto ?? string.Empty;
+        var detalleIds = venta.Detalles.Select(d => d.ProductoId).Distinct().ToList();
+        var prodMapAnul = await _context.Productos
+            .Include(p => p.Categoria)
+            .Include(p => p.Impuesto)
+            .Where(p => detalleIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var ingresosAnul = new Dictionary<string, decimal>();
+        var ivaAnul = new Dictionary<string, (string Cuenta, decimal Total)>();
+
+        foreach (var det in venta.Detalles)
+        {
+            var prod = prodMapAnul.GetValueOrDefault(det.ProductoId);
+            var cuentaIngreso = prod?.Categoria?.CuentaIngreso ?? "4135";
+            ingresosAnul.TryAdd(cuentaIngreso, 0);
+            ingresosAnul[cuentaIngreso] += det.Subtotal;
+
+            if (det.PorcentajeImpuesto > 0)
+            {
+                var nombreImp = $"IVA {det.PorcentajeImpuesto * 100:0.##}%";
+                var cuentaImp = prod?.Impuesto?.CodigoCuentaContable ?? "2408";
+                ivaAnul.TryGetValue(nombreImp, out var cur);
+                ivaAnul[nombreImp] = (cuentaImp, cur.Total + det.MontoImpuesto);
+            }
+        }
+
+        var cuentaAcreditarAnul = venta.MetodoPago switch
+        {
+            MetodoPago.Tarjeta       => _erpOptions.CuentaTarjeta,
+            MetodoPago.Transferencia => _erpOptions.CuentaTransferencia,
+            _                        => _erpOptions.CuentaCaja
+        };
+
+        // Inversos: crédito en cobro, débito en ingresos e IVA
+        var asientosAnul = new List<AsientoContableErp>();
+        asientosAnul.Add(new AsientoContableErp(
+            cuentaAcreditarAnul, anuCentroCosto, "Credito", venta.Total,
+            $"Reversión cobro anulación {venta.NumeroVenta}"));
+        foreach (var ing in ingresosAnul)
+            asientosAnul.Add(new AsientoContableErp(
+                ing.Key, anuCentroCosto, "Debito", ing.Value,
+                $"Reversión ingreso anulación {venta.NumeroVenta}"));
+        foreach (var iva in ivaAnul)
+            asientosAnul.Add(new AsientoContableErp(
+                iva.Value.Cuenta, anuCentroCosto, "Debito", iva.Value.Total,
+                $"Reversión {iva.Key} anulación {venta.NumeroVenta}"));
+        // ──────────────────────────────────────────────────────────────────
+
         // Guardar en una sola transacción atómica (Marten + EF Core)
         await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
@@ -395,6 +506,19 @@ public class VentaService : IVentaService
                 martenTx.Events.Append(sid, evt);
             await martenTx.SaveChangesAsync();
             await _context.SaveChangesAsync();
+
+            // ERP Outbox: anulación
+            var anulPayload = new VentaErpPayload(
+                NumeroVenta: venta.NumeroVenta,
+                NitCliente: null,
+                MetodoPago: venta.MetodoPago.ToString(),
+                FechaVenta: DateTime.UtcNow,
+                SucursalId: venta.SucursalId,
+                Asientos: asientosAnul,
+                TotalOriginalDocumento: venta.Total);
+            await _ventaErpService.EmitirAnulacionAsync(venta, asientosAnul, anulPayload);
+            await _context.SaveChangesAsync(); // guarda DocumentoContable + ErpOutboxMessage
+
             await npgsqlTx.CommitAsync();
         });
 
