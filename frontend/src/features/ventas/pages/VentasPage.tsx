@@ -2,6 +2,7 @@ import { useState, useMemo, type HTMLAttributes } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
+  CircularProgress,
   Container,
   Paper,
   Typography,
