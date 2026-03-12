@@ -213,6 +213,43 @@ public class ComprasController : ControllerBase
         return Ok(new { mensaje = "Orden de compra recibida exitosamente" });
     }
 
+    /// <summary>
+    /// Reintentar manualmente la sincronización ERP de una orden de compra.
+    /// Reactiva los mensajes Outbox en estado Error o Descartado para que el background service los reprocese.
+    /// </summary>
+    /// <response code="200">Mensajes reactivados. El background service los procesará en los próximos 15 segundos.</response>
+    /// <response code="404">No se encontraron mensajes ERP pendientes para esta orden.</response>
+    [HttpPost("{id:int}/erp/reintentar")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ReinentarSincronizacionErp(int id)
+    {
+        var mensajes = await _context.ErpOutboxMessages
+            .Where(m => m.EntidadId == id
+                     && m.TipoDocumento == "CompraRecibida"
+                     && m.Estado != EstadoOutbox.Procesado)
+            .ToListAsync();
+
+        if (!mensajes.Any())
+            return NotFound(new { error = "No se encontraron mensajes ERP pendientes para esta orden de compra." });
+
+        foreach (var m in mensajes)
+        {
+            m.Estado = EstadoOutbox.Pendiente;
+            m.Intentos = 0;
+            m.UltimoError = null;
+        }
+
+        var orden = await _context.OrdenesCompra.FindAsync(id);
+        if (orden != null)
+            orden.ErrorSincronizacion = null;
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("ERP reintento manual activado para OrdenCompra {OrdenId} ({Count} mensajes)", id, mensajes.Count);
+        return Ok(new { mensaje = $"{mensajes.Count} mensaje(s) ERP reactivados. Se procesarán en los próximos 15 segundos." });
+    }
+
     /// <summary>Cancelar una orden de compra (Pendiente o Aprobada → Cancelada).</summary>
     /// <response code="200">Orden cancelada.</response>
     /// <response code="404">Orden no encontrada.</response>

@@ -215,6 +215,43 @@ public class VentasController : ControllerBase
     }
 
     /// <summary>
+    /// Reintentar manualmente la sincronización ERP de una venta.
+    /// Reactiva los mensajes Outbox en estado Error o Descartado para que el background service los reprocese.
+    /// </summary>
+    /// <response code="200">Mensajes reactivados. El background service los procesará en los próximos 15 segundos.</response>
+    /// <response code="404">No se encontraron mensajes ERP pendientes para esta venta.</response>
+    [HttpPost("{id:int}/erp/reintentar")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ReinentarSincronizacionErp(int id)
+    {
+        var mensajes = await _context.ErpOutboxMessages
+            .Where(m => m.EntidadId == id
+                     && (m.TipoDocumento == "VentaCompletada" || m.TipoDocumento == "AnulacionVenta")
+                     && m.Estado != EstadoOutbox.Procesado)
+            .ToListAsync();
+
+        if (!mensajes.Any())
+            return NotFound(new { error = "No se encontraron mensajes ERP pendientes para esta venta." });
+
+        foreach (var m in mensajes)
+        {
+            m.Estado = EstadoOutbox.Pendiente;
+            m.Intentos = 0;
+            m.UltimoError = null;
+        }
+
+        var venta = await _context.Ventas.FindAsync(id);
+        if (venta != null)
+            venta.ErrorSincronizacion = null;
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("ERP reintento manual activado para Venta {VentaId} ({Count} mensajes)", id, mensajes.Count);
+        return Ok(new { mensaje = $"{mensajes.Count} mensaje(s) ERP reactivados. Se procesarán en los próximos 15 segundos." });
+    }
+
+    /// <summary>
     /// Crear devolución parcial de productos de una venta.
     /// Reintegra el stock vía Event Sourcing y ajusta el monto de la caja.
     /// Se permiten múltiples devoluciones sobre la misma venta hasta agotar las cantidades originales.

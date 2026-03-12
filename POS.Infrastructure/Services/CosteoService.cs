@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 
@@ -13,10 +14,12 @@ namespace POS.Infrastructure.Services;
 public class CosteoService
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<CosteoService> _logger;
 
-    public CosteoService(AppDbContext context)
+    public CosteoService(AppDbContext context, ILogger<CosteoService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     /// <summary>
@@ -44,6 +47,8 @@ public class CosteoService
             FechaEntrada = DateTime.UtcNow
         };
         _context.LotesInventario.Add(lote);
+        _logger.LogDebug("Lote registrado: Producto {ProductoId} Sucursal {SucursalId} Cantidad {Cantidad} Costo {Costo} Lote {NumeroLote}",
+            productoId, sucursalId, cantidad, costoUnitario, numeroLote ?? "sin número");
         return Task.CompletedTask;
     }
 
@@ -54,8 +59,14 @@ public class CosteoService
     public async Task<bool> ReintegrarLoteAsync(int loteId, decimal cantidad)
     {
         var lote = await _context.LotesInventario.FindAsync(loteId);
-        if (lote == null) return false;
+        if (lote == null)
+        {
+            _logger.LogWarning("ReintegrarLote: Lote {LoteId} no encontrado. No se pudo reintegrar {Cantidad} unidades.", loteId, cantidad);
+            return false;
+        }
         lote.CantidadDisponible += cantidad;
+        _logger.LogInformation("Lote {LoteId} reintegrado: +{Cantidad} unidades (nuevo disponible: {Disponible})",
+            loteId, cantidad, lote.CantidadDisponible);
         return true;
     }
 
@@ -94,6 +105,9 @@ public class CosteoService
     public async Task<(decimal costoTotal, decimal costoUnitarioPromedio)> ConsumirStock(
         Guid productoId, int sucursalId, decimal cantidad, MetodoCosteo metodo)
     {
+        _logger.LogDebug("ConsumirStock: Producto {ProductoId} Sucursal {SucursalId} Cantidad {Cantidad} Método {Metodo}",
+            productoId, sucursalId, cantidad, metodo);
+
         switch (metodo)
         {
             case MetodoCosteo.PEPS: // FIFO - del mas antiguo al mas reciente
@@ -164,6 +178,14 @@ public class CosteoService
         }
 
         var costoUnitario = cantidadAConsumir > 0 ? costoTotal / cantidadAConsumir : 0;
+
+        if (cantidadRestante > 0)
+            _logger.LogWarning("ConsumirLotesFEFO: Stock insuficiente para Producto {ProductoId} Sucursal {SucursalId}. Faltaron {Faltante} unidades.",
+                productoId, sucursalId, cantidadRestante);
+        else
+            _logger.LogDebug("FEFO consumido: Producto {ProductoId} PrimerLote {LoteId} CostoTotal {Costo}",
+                productoId, primerLoteId, costoTotal);
+
         return (costoTotal, costoUnitario, primerLoteId, primerNumeroLote);
     }
 
