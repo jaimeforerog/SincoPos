@@ -39,7 +39,12 @@ public record VentaDto(
     string? Observaciones,
     DateTime FechaVenta,
     List<DetalleVentaDto> Detalles,
-    bool RequiereFacturaElectronica = false
+    bool RequiereFacturaElectronica = false,
+    // ERP Sync
+    bool SincronizadoErp = false,
+    DateTime? FechaSincronizacionErp = null,
+    string? ErpReferencia = null,
+    string? ErrorSincronizacion = null
 );
 
 public record DetalleVentaDto(

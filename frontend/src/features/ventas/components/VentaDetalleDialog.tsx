@@ -13,7 +13,12 @@ import {
   TableHead,
   TableRow,
   Chip,
+  Tooltip,
 } from '@mui/material';
+import SyncIcon from '@mui/icons-material/Sync';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import type { VentaDTO } from '@/types/api';
 
 interface VentaDetalleDialogProps {
@@ -214,6 +219,41 @@ export function VentaDetalleDialog({ open, venta, onClose }: VentaDetalleDialogP
               </Typography>
               <Typography variant="body2">{venta.observaciones}</Typography>
             </Box>
+          )}
+        </Box>
+
+        {/* Estado ERP */}
+        <Divider sx={{ my: 2 }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <SyncIcon fontSize="small" color="action" />
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+            Sincronización ERP:
+          </Typography>
+          {venta.sincronizadoErp ? (
+            <Tooltip title={`Ref: ${venta.erpReferencia ?? ''} · ${venta.fechaSincronizacionErp ? new Date(venta.fechaSincronizacionErp).toLocaleString('es-CO') : ''}`}>
+              <Chip
+                icon={<CheckCircleIcon />}
+                label="Sincronizado"
+                color="success"
+                size="small"
+              />
+            </Tooltip>
+          ) : venta.errorSincronizacion ? (
+            <Tooltip title={venta.errorSincronizacion}>
+              <Chip
+                icon={<ErrorIcon />}
+                label="Error ERP"
+                color="error"
+                size="small"
+              />
+            </Tooltip>
+          ) : (
+            <Chip
+              icon={<HourglassEmptyIcon />}
+              label="Pendiente ERP"
+              color="warning"
+              size="small"
+            />
           )}
         </Box>
       </DialogContent>

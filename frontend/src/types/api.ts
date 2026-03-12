@@ -178,6 +178,11 @@ export interface VentaDTO {
   fechaVenta: string;
   requiereFacturaElectronica: boolean;
   detalles: LineaVentaDTO[];
+  // ERP Sync
+  sincronizadoErp: boolean;
+  fechaSincronizacionErp?: string;
+  erpReferencia?: string;
+  errorSincronizacion?: string;
 }
 
 export interface LineaVentaDTO {

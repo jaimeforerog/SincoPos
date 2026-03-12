@@ -6,8 +6,10 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import PeopleIcon from '@mui/icons-material/People';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { reportesApi } from '@/api/reportes';
 import { lotesApi } from '@/api/lotes';
+import { ventasApi } from '@/api/ventas';
 import { MetricCard } from '../components/MetricCard';
 import { SalesChart } from '../components/SalesChart';
 import { TopProductsTable } from '../components/TopProductsTable';
@@ -32,6 +34,12 @@ export function DashboardPage() {
     queryKey: ['dashboard', activeSucursalId],
     queryFn: () => reportesApi.dashboard({ sucursalId: activeSucursalId }),
     refetchInterval: 60000,
+  });
+
+  const { data: erpPendientes = 0 } = useQuery({
+    queryKey: ['ventas', 'erp-pendientes', activeSucursalId],
+    queryFn: () => ventasApi.getErpPendientesCount(activeSucursalId ?? undefined),
+    refetchInterval: 30000,
   });
 
   const { data: alertasLotes = [] } = useQuery({
@@ -94,7 +102,7 @@ export function DashboardPage() {
             xs: '1fr',
             sm: 'repeat(2, 1fr)',
             md: 'repeat(3, 1fr)',
-            lg: 'repeat(6, 1fr)',
+            lg: 'repeat(7, 1fr)',
           },
           gap: 3,
           mb: 4,
@@ -141,6 +149,13 @@ export function DashboardPage() {
           icon={<TrendingUpIcon />}
           color="#d32f2f"
           subtitle={formatCurrency(metricas.utilidadDelDia)}
+        />
+        <MetricCard
+          title="Pendiente ERP"
+          value={erpPendientes}
+          icon={<SyncProblemIcon />}
+          color={erpPendientes > 0 ? '#f57c00' : '#388e3c'}
+          subtitle={erpPendientes > 0 ? 'Sin sincronizar' : 'Todo sincronizado'}
         />
       </Box>
 

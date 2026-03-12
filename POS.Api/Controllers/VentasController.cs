@@ -186,6 +186,30 @@ public class VentasController : ControllerBase
     }
 
     /// <summary>
+    /// Conteo de ventas pendientes de sincronización con el ERP.
+    /// Retorna cuántas ventas (o anulaciones) tienen outbox en estado Pendiente o Error.
+    /// </summary>
+    [HttpGet("erp/pendientes-count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult> ObtenerErpPendientesCount([FromQuery] int? sucursalId = null)
+    {
+        var query = _context.ErpOutboxMessages
+            .Where(m => (m.TipoDocumento == "VentaCompletada" || m.TipoDocumento == "AnulacionVenta")
+                     && (m.Estado == EstadoOutbox.Pendiente || m.Estado == EstadoOutbox.Error));
+
+        if (sucursalId.HasValue)
+        {
+            var ventaIds = _context.Ventas
+                .Where(v => v.SucursalId == sucursalId.Value)
+                .Select(v => v.Id);
+            query = query.Where(m => ventaIds.Contains(m.EntidadId));
+        }
+
+        var count = await query.CountAsync();
+        return Ok(new { pendientes = count });
+    }
+
+    /// <summary>
     /// Crear devolución parcial de productos de una venta.
     /// Reintegra el stock vía Event Sourcing y ajusta el monto de la caja.
     /// Se permiten múltiples devoluciones sobre la misma venta hasta agotar las cantidades originales.

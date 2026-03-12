@@ -899,7 +899,11 @@ public class VentaService : IVentaService
                     d.Descuento, d.PorcentajeImpuesto, d.MontoImpuesto,
                     d.Subtotal, margen);
             }).ToList(),
-            v.RequiereFacturaElectronica
+            v.RequiereFacturaElectronica,
+            v.SincronizadoErp,
+            v.FechaSincronizacionErp,
+            v.ErpReferencia,
+            v.ErrorSincronizacion
         );
 
     public static DevolucionVentaDto MapDevolucionToDto(

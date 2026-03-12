@@ -35,4 +35,11 @@ export const ventasApi = {
     );
     return response.data;
   },
+
+  getErpPendientesCount: async (sucursalId?: number) => {
+    const response = await apiClient.get<{ pendientes: number }>('/ventas/erp/pendientes-count', {
+      params: sucursalId ? { sucursalId } : undefined,
+    });
+    return response.data.pendientes;
+  },
 };
