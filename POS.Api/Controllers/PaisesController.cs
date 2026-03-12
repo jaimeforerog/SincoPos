@@ -40,7 +40,7 @@ public class PaisesController : ControllerBase
     public async Task<ActionResult<List<CiudadDto>>> ObtenerCiudades(string codigoPais)
     {
         if (string.IsNullOrWhiteSpace(codigoPais))
-            return BadRequest(new { error = "El código de país es requerido" });
+            return Problem(detail: "El código de país es requerido", statusCode: StatusCodes.Status400BadRequest);
 
         var ciudades = await _geoService.ObtenerCiudadesPorPais(codigoPais);
         return Ok(ciudades);

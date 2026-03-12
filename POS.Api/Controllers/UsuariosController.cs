@@ -121,7 +121,7 @@ public class UsuariosController : ControllerBase
     {
         var usuario = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuario == null)
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(usuario);
     }
@@ -137,7 +137,15 @@ public class UsuariosController : ControllerBase
     {
         var validationResult = await validator.ValidateAsync(dto);
         if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+        {
+            var errors = validationResult.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
+        }
 
         var externalId = User.GetExternalId();
         if (string.IsNullOrEmpty(externalId))
@@ -146,7 +154,7 @@ public class UsuariosController : ControllerBase
         var creadorRol = ObtenerRolActual();
         var (result, error) = await _usuarioService.CrearUsuarioAsync(dto, externalId, creadorRol);
         if (result == null)
-            return BadRequest(error);
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogInformation(
             "{Rol} {Email} creó usuario {NuevoEmail} con rol {RolNuevo}",
@@ -187,25 +195,33 @@ public class UsuariosController : ControllerBase
     {
         var validationResult = await validator.ValidateAsync(dto);
         if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+        {
+            var errors = validationResult.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
+        }
 
         // Obtener datos anteriores para auditoría
         var usuarioAnterior = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuarioAnterior == null)
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         // Self-protection: no puede cambiar su propio rol
         var currentExternalId = User.GetExternalId();
         if (dto.Rol != null && usuarioAnterior.KeycloakId == currentExternalId)
-            return BadRequest("No puedes cambiar tu propio rol");
+            return Problem(detail: "No puedes cambiar tu propio rol", statusCode: StatusCodes.Status400BadRequest);
 
         var creadorRol = ObtenerRolActual();
         var (success, error) = await _usuarioService.ActualizarUsuarioAsync(id, dto, creadorRol);
         if (!success)
         {
             if (error == "NOT_FOUND")
-                return NotFound($"Usuario con ID {id} no encontrado");
-            return BadRequest(error);
+                return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         _logger.LogInformation(
@@ -253,16 +269,24 @@ public class UsuariosController : ControllerBase
     {
         var validationResult = await validator.ValidateAsync(dto);
         if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+        {
+            var errors = validationResult.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
+        }
 
         // Self-protection: no puede cambiar su propio rol
         var usuario = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuario == null)
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         var currentExternalId = User.GetExternalId();
         if (usuario.KeycloakId == currentExternalId)
-            return BadRequest("No puedes cambiar tu propio rol");
+            return Problem(detail: "No puedes cambiar tu propio rol", statusCode: StatusCodes.Status400BadRequest);
 
         var creadorRol = ObtenerRolActual();
         var rolAnterior = usuario.Rol;
@@ -271,8 +295,8 @@ public class UsuariosController : ControllerBase
         if (!success)
         {
             if (error == "NOT_FOUND")
-                return NotFound($"Usuario con ID {id} no encontrado");
-            return BadRequest(error);
+                return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         _logger.LogInformation(
@@ -311,14 +335,14 @@ public class UsuariosController : ControllerBase
     {
         var usuario = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuario == null)
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         var (tempPassword, error) = await _usuarioService.ResetPasswordAsync(id);
         if (tempPassword == null)
         {
             if (error == "NOT_FOUND")
-                return NotFound($"Usuario con ID {id} no encontrado");
-            return BadRequest(error);
+                return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         _logger.LogInformation(
@@ -357,13 +381,13 @@ public class UsuariosController : ControllerBase
 
         var perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
         if (perfil == null)
-            return NotFound("Usuario no encontrado");
+            return Problem(detail: "Usuario no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         var actualizado = await _usuarioService.ActualizarSucursalDefaultAsync(
             perfil.Id, dto.SucursalId);
 
         if (!actualizado)
-            return BadRequest("No se pudo actualizar la sucursal. Verifique que la sucursal existe y está activa.");
+            return Problem(detail: "No se pudo actualizar la sucursal. Verifique que la sucursal existe y está activa.", statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogInformation(
             "Usuario {Email} cambió su sucursal default a {SucursalId}",
@@ -381,11 +405,11 @@ public class UsuariosController : ControllerBase
     {
         var usuario = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuario == null)
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         var actualizado = await _usuarioService.ActualizarSucursalDefaultAsync(id, dto.SucursalId);
         if (!actualizado)
-            return BadRequest("No se pudo actualizar la sucursal. Verifique que existe y está activa.");
+            return Problem(detail: "No se pudo actualizar la sucursal. Verifique que existe y está activa.", statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogInformation(
             "Admin {Email} asignó sucursal {SucursalId} a usuario {UsuarioEmail}",
@@ -403,7 +427,7 @@ public class UsuariosController : ControllerBase
     {
         var usuario = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuario == null)
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         try
         {
@@ -411,7 +435,7 @@ public class UsuariosController : ControllerBase
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(ex.Message);
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status404NotFound);
         }
 
         _logger.LogInformation(
@@ -430,18 +454,18 @@ public class UsuariosController : ControllerBase
     {
         var usuario = await _usuarioService.ObtenerPorIdAsync(id);
         if (usuario == null)
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         var currentExternalId = User.GetExternalId();
         if (usuario.KeycloakId == currentExternalId && !dto.Activo)
         {
-            return BadRequest("No puedes desactivarte a ti mismo");
+            return Problem(detail: "No puedes desactivarte a ti mismo", statusCode: StatusCodes.Status400BadRequest);
         }
 
         var estadoAnterior = usuario.Activo;
         var actualizado = await _usuarioService.CambiarEstadoAsync(id, dto.Activo);
         if (!actualizado)
-            return BadRequest("No se pudo cambiar el estado del usuario");
+            return Problem(detail: "No se pudo cambiar el estado del usuario", statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogWarning(
             "Admin {Email} cambió estado de usuario {UsuarioEmail} a {Estado}. Motivo: {Motivo}",

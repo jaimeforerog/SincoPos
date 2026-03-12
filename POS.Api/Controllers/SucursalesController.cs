@@ -39,18 +39,21 @@ public class SucursalesController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var existeNombre = await _context.Sucursales
             .AnyAsync(s => s.Nombre == dto.Nombre);
 
         if (existeNombre)
-            return Conflict(new { error = "Ya existe una sucursal con ese nombre." });
+            return Problem(detail: "Ya existe una sucursal con ese nombre.", statusCode: StatusCodes.Status409Conflict);
 
         var metodo = MetodoCosteo.PromedioPonderado;
         if (!string.IsNullOrEmpty(dto.MetodoCosteo) && !Enum.TryParse<MetodoCosteo>(dto.MetodoCosteo, true, out metodo))
-            return BadRequest(new { error = $"Metodo de costeo invalido. Valores: {string.Join(", ", Enum.GetNames<MetodoCosteo>())}" });
+            return Problem(detail: $"Metodo de costeo invalido. Valores: {string.Join(", ", Enum.GetNames<MetodoCosteo>())}", statusCode: StatusCodes.Status400BadRequest);
 
         var sucursal = new Sucursal
         {
@@ -97,7 +100,7 @@ public class SucursalesController : ControllerBase
             .FirstOrDefaultAsync();
 
         if (sucursal == null)
-            return NotFound(new { error = $"Sucursal {id} no encontrada." });
+            return Problem(detail: $"Sucursal {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(sucursal);
     }
@@ -193,18 +196,21 @@ public class SucursalesController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var sucursal = await _context.Sucursales.FindAsync(id);
         if (sucursal == null)
-            return NotFound(new { error = $"Sucursal {id} no encontrada." });
+            return Problem(detail: $"Sucursal {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         var existeNombre = await _context.Sucursales
             .AnyAsync(s => s.Nombre == dto.Nombre && s.Id != id);
 
         if (existeNombre)
-            return Conflict(new { error = "Ya existe otra sucursal con ese nombre." });
+            return Problem(detail: "Ya existe otra sucursal con ese nombre.", statusCode: StatusCodes.Status409Conflict);
 
         sucursal.Nombre = dto.Nombre;
         sucursal.Direccion = dto.Direccion;
@@ -218,7 +224,7 @@ public class SucursalesController : ControllerBase
         if (!string.IsNullOrEmpty(dto.MetodoCosteo))
         {
             if (!Enum.TryParse<MetodoCosteo>(dto.MetodoCosteo, true, out var metodoUpd))
-                return BadRequest(new { error = $"Metodo de costeo invalido. Valores: {string.Join(", ", Enum.GetNames<MetodoCosteo>())}" });
+                return Problem(detail: $"Metodo de costeo invalido. Valores: {string.Join(", ", Enum.GetNames<MetodoCosteo>())}", statusCode: StatusCodes.Status400BadRequest);
             sucursal.MetodoCosteo = metodoUpd;
         }
 
@@ -237,7 +243,7 @@ public class SucursalesController : ControllerBase
     {
         var sucursal = await _context.Sucursales.FindAsync(id);
         if (sucursal == null)
-            return NotFound(new { error = $"Sucursal {id} no encontrada." });
+            return Problem(detail: $"Sucursal {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         sucursal.Activo = false;
         await _context.SaveChangesAsync();

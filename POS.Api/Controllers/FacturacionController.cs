@@ -28,7 +28,7 @@ public class FacturacionController : ControllerBase
     public async Task<ActionResult<ConfiguracionEmisorDto>> ObtenerConfiguracion(int sucursalId)
     {
         var config = await _facturacion.ObtenerConfiguracionAsync(sucursalId);
-        return config == null ? NotFound(new { error = "No hay configuración para esta sucursal." }) : Ok(config);
+        return config == null ? Problem(detail: "No hay configuración para esta sucursal.", statusCode: StatusCodes.Status404NotFound) : Ok(config);
     }
 
     /// <summary>Crear o actualizar configuración del emisor para una sucursal.</summary>
@@ -96,7 +96,7 @@ public class FacturacionController : ControllerBase
     {
         var (doc, error) = await _facturacion.ReintentarAsync(id);
         if (error == "NOT_FOUND") return NotFound();
-        if (error != null) return BadRequest(new { error });
+        if (error != null) return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(doc);
     }
 
@@ -120,7 +120,7 @@ public class FacturacionController : ControllerBase
     {
         var (doc, error) = await _facturacion.EmitirFacturaVentaAsync(ventaId);
         if (error == "NOT_FOUND") return NotFound();
-        if (error != null) return BadRequest(new { error });
+        if (error != null) return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(doc);
     }
 }

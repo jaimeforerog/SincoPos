@@ -53,12 +53,15 @@ public class InventarioController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
         var (resultado, error) = await _inventarioService.RegistrarEntradaAsync(dto, email);
-        return error != null ? BadRequest(new { error }) : Ok(resultado);
+        return error != null ? Problem(detail: error, statusCode: StatusCodes.Status400BadRequest) : Ok(resultado);
     }
 
     /// <summary>
@@ -80,12 +83,15 @@ public class InventarioController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
         var (resultado, error) = await _inventarioService.DevolucionProveedorAsync(dto, email);
-        return error != null ? BadRequest(new { error }) : Ok(resultado);
+        return error != null ? Problem(detail: error, statusCode: StatusCodes.Status400BadRequest) : Ok(resultado);
     }
 
     /// <summary>
@@ -107,12 +113,15 @@ public class InventarioController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
         var (resultado, error) = await _inventarioService.AjustarInventarioAsync(dto, email);
-        return error != null ? BadRequest(new { error }) : Ok(resultado);
+        return error != null ? Problem(detail: error, statusCode: StatusCodes.Status400BadRequest) : Ok(resultado);
     }
 
     /// <summary>
@@ -132,7 +141,7 @@ public class InventarioController : ControllerBase
     {
         var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
         var (success, error) = await _inventarioService.ActualizarStockMinimoAsync(productoId, sucursalId, stockMinimo, email);
-        if (!success) return error == "NOT_FOUND" ? NotFound(new { error = "No existe inventario para este producto en esta sucursal." }) : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? Problem(detail: "No existe inventario para este producto en esta sucursal.", statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Stock minimo actualizado.", stockMinimo });
     }
 

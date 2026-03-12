@@ -47,12 +47,15 @@ public class ProductosController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (result, error) = await _productoService.CrearAsync(dto);
         if (error != null)
-            return Conflict(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status409Conflict);
 
         _logger.LogInformation("Producto creado: {Id} - {Nombre}", result!.Id, result.Nombre);
         return CreatedAtAction(nameof(ObtenerProducto), new { id = result.Id }, result);
@@ -68,7 +71,7 @@ public class ProductosController : ControllerBase
     {
         var producto = await _productoService.ObtenerPorIdAsync(id);
         if (producto == null)
-            return NotFound(new { error = $"Producto {id} no encontrado." });
+            return Problem(detail: $"Producto {id} no encontrado.", statusCode: StatusCodes.Status404NotFound);
         return Ok(producto);
     }
 
@@ -82,7 +85,7 @@ public class ProductosController : ControllerBase
     {
         var producto = await _productoService.ObtenerPorCodigoBarrasAsync(codigoBarras);
         if (producto == null)
-            return NotFound(new { error = $"Producto con codigo '{codigoBarras}' no encontrado." });
+            return Problem(detail: $"Producto con codigo '{codigoBarras}' no encontrado.", statusCode: StatusCodes.Status404NotFound);
         return Ok(producto);
     }
 
@@ -117,7 +120,7 @@ public class ProductosController : ControllerBase
     {
         var (success, error) = await _productoService.ActualizarAsync(id, dto);
         if (!success)
-            return error!.Contains("no encontrado") ? NotFound(new { error }) : BadRequest(new { error });
+            return error!.Contains("no encontrado") ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogInformation("Producto {Id} actualizado.", id);
         return NoContent();
@@ -141,7 +144,7 @@ public class ProductosController : ControllerBase
     {
         var producto = await _productoService.ObtenerPorIdAsync(id);
         if (producto == null)
-            return NotFound(new { error = $"Producto {id} no encontrado." });
+            return Problem(detail: $"Producto {id} no encontrado.", statusCode: StatusCodes.Status404NotFound);
 
         var lotes = await _loteService.ObtenerLotesAsync(id, sucursalId, soloVigentes);
         return Ok(lotes);
@@ -159,7 +162,7 @@ public class ProductosController : ControllerBase
     {
         var (success, error) = await _productoService.DesactivarAsync(id, motivo);
         if (!success)
-            return error!.Contains("no encontrado") ? NotFound(new { error }) : BadRequest(new { error });
+            return error!.Contains("no encontrado") ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogInformation("Producto {Id} desactivado.", id);
         return NoContent();

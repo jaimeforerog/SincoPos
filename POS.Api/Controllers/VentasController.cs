@@ -55,11 +55,14 @@ public class VentasController : ControllerBase
             var errors = validResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (venta, error) = await _ventaService.CrearVentaAsync(dto);
-        return error != null ? BadRequest(new { error }) : Ok(venta);
+        return error != null ? Problem(detail: error, statusCode: StatusCodes.Status400BadRequest) : Ok(venta);
     }
 
     /// <summary>
@@ -153,7 +156,7 @@ public class VentasController : ControllerBase
         if (!success)
         {
             if (error == "NOT_FOUND") return NotFound();
-            return BadRequest(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
         return Ok(new { mensaje = "Venta anulada", stockRevertido = true });
     }
@@ -233,7 +236,7 @@ public class VentasController : ControllerBase
             .ToListAsync();
 
         if (!mensajes.Any())
-            return NotFound(new { error = "No se encontraron mensajes ERP pendientes para esta venta." });
+            return Problem(detail: "No se encontraron mensajes ERP pendientes para esta venta.", statusCode: StatusCodes.Status404NotFound);
 
         foreach (var m in mensajes)
         {
@@ -274,7 +277,10 @@ public class VentasController : ControllerBase
             var errors = validResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var emailUsuario = User.FindFirst("email")?.Value ?? User.Identity?.Name;
@@ -282,8 +288,8 @@ public class VentasController : ControllerBase
         var (devolucion, error) = await _ventaService.CrearDevolucionParcialAsync(ventaId, dto, emailUsuario);
         if (devolucion == null)
         {
-            if (error == "NOT_FOUND") return NotFound("Venta no encontrada.");
-            return BadRequest(new { error });
+            if (error == "NOT_FOUND") return Problem(detail: "Venta no encontrada.", statusCode: StatusCodes.Status404NotFound);
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
         return Ok(devolucion);
     }
@@ -305,7 +311,7 @@ public class VentasController : ControllerBase
             .FirstOrDefaultAsync(v => v.Id == dto.VentaId);
 
         if (venta == null)
-            return NotFound("Venta no encontrada.");
+            return Problem(detail: "Venta no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         // Mapear detalleVentaId → productoId + cantidad
         var lineasMapeadas = new List<LineaDevolucionDto>();
@@ -313,7 +319,7 @@ public class VentasController : ControllerBase
         {
             var detalle = venta.Detalles.FirstOrDefault(d => d.Id == linea.DetalleVentaId);
             if (detalle == null)
-                return BadRequest(new { error = $"Detalle {linea.DetalleVentaId} no pertenece a esta venta." });
+                return Problem(detail: $"Detalle {linea.DetalleVentaId} no pertenece a esta venta.", statusCode: StatusCodes.Status400BadRequest);
 
             lineasMapeadas.Add(new LineaDevolucionDto(detalle.ProductoId, linea.CantidadDevuelta));
         }
@@ -324,8 +330,8 @@ public class VentasController : ControllerBase
         var (devolucion, error) = await _ventaService.CrearDevolucionParcialAsync(dto.VentaId, dtoMapeado, emailUsuario);
         if (devolucion == null)
         {
-            if (error == "NOT_FOUND") return NotFound("Venta no encontrada.");
-            return BadRequest(new { error });
+            if (error == "NOT_FOUND") return Problem(detail: "Venta no encontrada.", statusCode: StatusCodes.Status404NotFound);
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
         return Ok(devolucion);
     }
@@ -342,7 +348,7 @@ public class VentasController : ControllerBase
     {
         var venta = await _context.Ventas.FindAsync(ventaId);
         if (venta == null)
-            return NotFound("Venta no encontrada.");
+            return Problem(detail: "Venta no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         var devoluciones = await _context.DevolucionesVenta
             .Include(d => d.Detalles)
@@ -390,7 +396,7 @@ public class VentasController : ControllerBase
             .FirstOrDefaultAsync(d => d.Id == devolucionId);
 
         if (devolucion == null)
-            return NotFound("Devolución no encontrada.");
+            return Problem(detail: "Devolución no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         var autorizadoPor = devolucion.AutorizadoPorUsuarioId.HasValue
             ? await _context.Usuarios

@@ -34,10 +34,10 @@ public class IntegracionErpController : ControllerBase
         var mensaje = await _context.ErpOutboxMessages.FindAsync(id);
         
         if (mensaje == null)
-            return NotFound(new { error = "Mensaje Outbox no encontrado" });
+            return Problem(detail: "Mensaje Outbox no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         if (mensaje.Estado == EstadoOutbox.Procesado)
-            return BadRequest(new { error = "El mensaje ya se había procesado exitosamente." });
+            return Problem(detail: "El mensaje ya se había procesado exitosamente.", statusCode: StatusCodes.Status400BadRequest);
 
         mensaje.Estado = EstadoOutbox.Pendiente;
         mensaje.Intentos = 0;

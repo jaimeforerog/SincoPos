@@ -7,33 +7,38 @@ Sistema de Punto de Venta moderno para Colombia con facturación electrónica DI
 - **Clean Architecture**: Api → Application → Domain → Infrastructure
 - **Event Sourcing** con Marten para inventario (entradas, salidas, ajustes)
 - **PostgreSQL 16** para persistencia relacional y eventos
-- **Keycloak** para autenticación OAuth2/OIDC
+- **Entra ID** (producción) / **Keycloak** (desarrollo) para autenticación OAuth2/OIDC
 - **SignalR** para notificaciones en tiempo real (WebSocket)
-- **.NET 9** + **React 18 + TypeScript + MUI v7**
+- **.NET 9** + **React 19 + TypeScript + MUI v7**
 
 ## Módulos implementados
 
-| Módulo | Estado |
-|--------|--------|
-| Productos + UnidadMedida DIAN | ✅ |
-| Inventario (Event Sourcing, 4 métodos costeo) | ✅ |
-| Ventas + Devoluciones parciales | ✅ |
-| Cajas + POS (Punto de Venta) | ✅ |
-| Sucursales + Multi-sucursal por usuario | ✅ |
-| Traslados inter-sucursal | ✅ |
-| Precios por sucursal (cascada sin N+1) | ✅ |
-| Terceros (CRUD + Fiscal + CIIU) | ✅ |
-| Impuestos (TaxEngine: IVA, Inc, Retefuente) | ✅ |
-| Compras (órdenes + recepción) | ✅ |
-| Reportes + Dashboard | ✅ |
-| Geografía (Países / Depto / Municipio) | ✅ |
-| Auditoría (Activity Logs) | ✅ |
-| Facturación Electrónica DIAN (UBL 2.1 + CUFE) | ✅ |
-| Seguridad / Roles frontend | ✅ |
-| Notificaciones en tiempo real (SignalR) | ✅ |
-| CI/CD (GitHub Actions + Docker) | ✅ |
+| Módulo | Backend | Frontend |
+|--------|---------|----------|
+| Productos + UnidadMedida DIAN | ✅ 6 tests | - |
+| Inventario (Event Sourcing, FIFO/LIFO/PP) | ✅ 19 tests | ✅ 7 tests |
+| Lotes/Vencimiento (FEFO, DiasVidaUtil) | ✅ 14 tests | - |
+| Ventas + ERP Outbox + Devoluciones | ✅ 17 tests | ✅ 16 tests |
+| Compras + ERP Sinco + Retenciones | ✅ 24 tests | ✅ 18 tests |
+| Traslados (FEFO, propagación lotes) | ✅ 14 tests | ✅ 10 tests |
+| Precios por sucursal (batch sin N+1) | ✅ 11 tests | - |
+| POS (Punto de Venta) | ✅ 18 tests | ✅ 11 tests |
+| Cajas (apertura/cierre/arqueo) | ✅ | ✅ 10 tests |
+| Sucursales + Multi-sucursal por usuario | ✅ 16 tests | ✅ 22 tests |
+| Terceros (CRUD + Fiscal + CIIU) | ✅ 20 tests | ✅ 8 tests |
+| Impuestos + TaxEngine (DIAN: IVA, INC, retenciones) | ✅ 31 tests | - |
+| Reportes + Dashboard (Excel) | ✅ 15 tests | ✅ 9 tests |
+| Geografía (Países / Depto / Municipio) | ✅ 10 tests | - |
+| Auditoría (Activity Logs) | ✅ 23 tests | - |
+| Facturación Electrónica DIAN (UBL 2.1 + CUFE + firma) | ✅ 42 tests | - |
+| Seguridad / Roles frontend | ✅ 17 tests | ✅ 8 tests |
+| ERP Ventas (Outbox, VentaErpService) | ✅ 5 tests | ✅ 5 tests |
+| Migraciones contables ERP | ✅ 12 tests | - |
+| Usuarios | ✅ 10 tests | - |
+| CI/CD (GitHub Actions + Docker + Azure) | ✅ | - |
+| Cart store (POS) | - | ✅ 25 tests |
 
-**Suite de tests: 233/234 pruebas de integración (233 passing, 1 skip)**
+**Suite de tests: 363/363 backend · 137/137 frontend — 0 Skips**
 
 ## Inicio rápido
 
@@ -93,8 +98,12 @@ Frontend en `http://localhost:5173`
 ## Tests
 
 ```bash
+# Backend
 dotnet test                              # Todos los tests
 dotnet test tests/POS.IntegrationTests  # Solo integración
+
+# Frontend
+cd frontend && npm run test:run          # Todos los vitest (137 tests)
 ```
 
 ## Estructura del proyecto
@@ -163,12 +172,14 @@ Eventos que se envían automáticamente vía WebSocket al grupo `sucursal-{id}`:
 
 ## Tecnologías
 
-**Backend**: .NET 9, ASP.NET Core, EF Core 9, Marten, PostgreSQL 16, SignalR, FluentValidation, Rate Limiting, Response Compression, Health Checks
+**Backend**: .NET 9, ASP.NET Core, EF Core 9, Marten 8.22, PostgreSQL 16, SignalR, FluentValidation, ProblemDetails RFC 7807, Rate Limiting, Response Compression, Health Checks
 
-**Frontend**: React 18, TypeScript, Vite, MUI v7, TanStack Query, Zustand, notistack, @microsoft/signalr
+**Frontend**: React 19, TypeScript, Vite 7, MUI v7, TanStack Query v5, Zustand v5, notistack, @microsoft/signalr
 
-**Auth**: Keycloak JWT Bearer (realm `sincopos`)
+**Auth**: Entra ID (producción) / Keycloak (desarrollo) — dual provider via `isEntraId` flag
 
-**Testing**: xUnit, FluentAssertions, WebApplicationFactory (PostgreSQL local)
+**Testing backend**: xUnit, FluentAssertions, WebApplicationFactory + Testcontainers (PostgreSQL)
+
+**Testing frontend**: Vitest 4, @testing-library/react 16, MSW v2, jsdom
 
 **DevOps**: Docker, Docker Compose, GitHub Actions, ghcr.io

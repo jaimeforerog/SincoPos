@@ -32,7 +32,7 @@ public class ReportesController : ControllerBase
         [FromQuery] int? metodoPago = null)
     {
         if (fechaDesde > fechaHasta)
-            return BadRequest("La fecha desde no puede ser mayor que la fecha hasta.");
+            return Problem(detail: "La fecha desde no puede ser mayor que la fecha hasta.", statusCode: StatusCodes.Status400BadRequest);
 
         var reporte = await _reportesService.ObtenerReporteVentasAsync(
             fechaDesde, fechaHasta, sucursalId, metodoPago);
@@ -72,7 +72,7 @@ public class ReportesController : ControllerBase
             cajaId, fechaDesde, fechaHasta);
 
         if (error != null)
-            return NotFound(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(reporte);
     }
@@ -103,7 +103,7 @@ public class ReportesController : ControllerBase
         [FromQuery] int limite = 10)
     {
         if (fechaDesde > fechaHasta)
-            return BadRequest("La fecha desde no puede ser mayor que la fecha hasta.");
+            return Problem(detail: "La fecha desde no puede ser mayor que la fecha hasta.", statusCode: StatusCodes.Status400BadRequest);
 
         var topProductos = await _reportesService.ObtenerTopProductosAsync(
             fechaDesde, fechaHasta, sucursalId, limite);
@@ -124,10 +124,10 @@ public class ReportesController : ControllerBase
         [FromQuery] DateTime fechaHasta)
     {
         if (productoId == Guid.Empty)
-            return BadRequest("El ID del producto es requerido.");
+            return Problem(detail: "El ID del producto es requerido.", statusCode: StatusCodes.Status400BadRequest);
 
         if (fechaDesde > fechaHasta)
-            return BadRequest("La fecha desde no puede ser mayor que la fecha hasta.");
+            return Problem(detail: "La fecha desde no puede ser mayor que la fecha hasta.", statusCode: StatusCodes.Status400BadRequest);
 
         try
         {
@@ -138,7 +138,7 @@ public class ReportesController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { error = ex.Message });
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status404NotFound);
         }
     }
 }

@@ -144,6 +144,7 @@ export function TrasladosPage() {
                       size="small"
                       onClick={() => handleVerDetalles(traslado.id)}
                       color="primary"
+                      aria-label="ver detalles"
                     >
                       <ViewIcon />
                     </IconButton>

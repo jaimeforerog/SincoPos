@@ -52,11 +52,14 @@ public class TrasladosController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (resultado, error) = await _trasladoService.CrearTrasladoAsync(dto);
-        return error != null ? BadRequest(new { error }) : Ok(resultado);
+        return error != null ? Problem(detail: error, statusCode: StatusCodes.Status400BadRequest) : Ok(resultado);
     }
 
     /// <summary>
@@ -73,7 +76,7 @@ public class TrasladosController : ControllerBase
     public async Task<ActionResult> EnviarTraslado(int id)
     {
         var (success, error) = await _trasladoService.EnviarTrasladoAsync(id);
-        if (!success) return error == "NOT_FOUND" ? NotFound() : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? NotFound() : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = $"Traslado enviado exitosamente" });
     }
 
@@ -100,12 +103,15 @@ public class TrasladosController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var emailUsuario = User.FindFirst("email")?.Value ?? User.Identity?.Name;
         var (success, error) = await _trasladoService.RecibirTrasladoAsync(id, dto, emailUsuario);
-        if (!success) return error == "NOT_FOUND" ? NotFound() : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? NotFound() : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Traslado recibido exitosamente" });
     }
 
@@ -131,11 +137,14 @@ public class TrasladosController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (success, error) = await _trasladoService.RechazarTrasladoAsync(id, dto);
-        if (!success) return error == "NOT_FOUND" ? NotFound() : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? NotFound() : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Traslado rechazado y stock revertido" });
     }
 
@@ -161,11 +170,14 @@ public class TrasladosController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (success, error) = await _trasladoService.CancelarTrasladoAsync(id, dto);
-        if (!success) return error == "NOT_FOUND" ? NotFound() : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? NotFound() : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Traslado cancelado" });
     }
 

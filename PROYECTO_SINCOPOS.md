@@ -76,18 +76,21 @@
 
 | Componente | Tecnología | Versión |
 |------------|-----------|---------|
-| Framework | .NET | 8.0 |
-| API | ASP.NET Core Web API | 8.0 |
-| ORM | Entity Framework Core | 8.x |
-| Event Store | Marten | Latest |
+| Framework | .NET | 9.0 |
+| API | ASP.NET Core Web API | 9.0 |
+| ORM | Entity Framework Core | 9.x |
+| Event Store | Marten | 8.22 |
 | Base de Datos | PostgreSQL | 16+ |
 | Validación | FluentValidation | Latest |
-| Autenticación (Prod) | Azure AD B2C / Keycloak | - |
-| Autenticación (Dev) | Custom Handler | - |
-| Frontend | React + TypeScript | 18.x |
+| Autenticación (Prod) | Entra ID (MSAL) | - |
+| Autenticación (Dev) | Keycloak OIDC | - |
+| Frontend | React + TypeScript | 19.x |
 | UI Framework | Material-UI (MUI) | 7.x |
-| Estado | Zustand | Latest |
-| Query/Caché | TanStack Query | Latest |
+| Estado | Zustand | 5.x |
+| Query/Caché | TanStack Query | 5.x |
+| Build tool | Vite | 7.x |
+| Test backend | xUnit + Testcontainers | Latest |
+| Test frontend | Vitest + Testing Library | 4.x / 16.x |
 
 ---
 
@@ -883,34 +886,56 @@ dotnet run
    - 11 índices nuevos aplicados vía migración `AgregarIndicesRendimiento`.
    - Ver sección "Índices de Rendimiento" abajo.
 
-### 📋 Tests Automatizados ⭐ **ACTUALIZADO 2026-03-05**
+### 📋 Tests Automatizados ⭐ **ACTUALIZADO 2026-03-12**
 
-**Ubicación**: `tests/POS.IntegrationTests/`
+**Resultado Global**: ✅ **363/363 backend · 137/137 frontend — 0 Skips**
 
-**Resultado Global**: ✅ **191/192 tests passing (1 omitido con Skip)**
-
-**Tests por módulo**:
+**Tests backend** (`tests/POS.IntegrationTests/`):
 | Archivo | Tests | Estado |
 |---------|-------|--------|
-| `InventarioCosteoTests.cs` | 15 | ✅ 100% |
-| `ProductosTests.cs` | 4 | ✅ 100% |
-| `VentasTests.cs` | 9 | ✅ 100% |
+| `InventarioCosteoTests.cs` | 19 | ✅ 100% |
+| `LotesVencimientoTests.cs` | 14 | ✅ 100% |
+| `ProductosTests.cs` | 6 | ✅ 100% |
+| `VentasTests.cs` | 17 | ✅ 100% |
 | `DevolucionesTests.cs` | 9 | ✅ 100% |
 | `TrasladosTests.cs` | 14 | ✅ 100% |
 | `PreciosTests.cs` | 11 | ✅ 100% |
-| `ComprasTests.cs` | 15 | ✅ 100% |
-| `ImpuestosTests.cs` | ~10 | ✅ 100% |
+| `ComprasTests.cs` | 24 | ✅ 100% |
+| `TaxEngineUnitTests.cs` | 31 | ✅ 100% ⭐ ampliado 2026-03-12 |
 | `PaisesTests.cs` | 10 | ✅ 100% |
-| `MigracionesTests.cs` | 12 | ✅ 100% |
-| `AuditoriaTests.cs` | 24 | ✅ 100% |
-| `ActivityLogTests.cs` | 6/7 | ✅ (1 Skip) |
-| `PosTests.cs` | 20 | ✅ 100% ⭐ **NUEVO 2026-03-05** |
-| `ReportesTests.cs` | 12 | ✅ 100% ⭐ **NUEVO 2026-03-05** |
+| `MigracionesErpTests.cs` | 12 | ✅ 100% |
+| `AuditoriaTests.cs` | 23 | ✅ 100% |
+| `PosTests.cs` | 18 | ✅ 100% |
+| `ReportesTests.cs` | 15 | ✅ 100% |
+| `FacturacionTests.cs` | 42 | ✅ 100% |
+| `SeguridadTests.cs` | 17 | ✅ 100% |
+| `MultiSucursalTests.cs` | 16 | ✅ 100% |
+| `ErpVentasTests.cs` | 5 | ✅ 100% |
+| `UsuariosTests.cs` | 10 | ✅ 100% |
+
+**Tests frontend** (`frontend/src/features/*/`):
+| Archivo | Tests | Estado |
+|---------|-------|--------|
+| `cart.store.test.ts` | 25 | ✅ 100% |
+| `useAuth.test.ts` / `auth.store.test.ts` | 22 | ✅ 100% |
+| `POSPage.test.tsx` + `POSPaymentFlow.test.tsx` | 11 | ✅ 100% |
+| `VentaDetalleDialog.test.tsx` (incl. ERP badge) | 7 | ✅ 100% |
+| `VentasPage.test.tsx` | 9 | ✅ 100% ⭐ nuevo 2026-03-12 |
+| `ComprasPage.test.tsx` + `RecibirOrdenDialog.test.tsx` | 11 | ✅ 100% ⭐ nuevo 2026-03-12 |
+| `DashboardPage.test.tsx` | 9 | ✅ 100% ⭐ nuevo 2026-03-12 |
+| `TrasladosPage.test.tsx` | 10 | ✅ 100% ⭐ nuevo 2026-03-12 |
+| `DevolucionesPage.test.tsx` | 8 | ✅ 100% ⭐ nuevo 2026-03-12 |
+| `CajasPage.test.tsx` | 10 | ✅ 100% ⭐ nuevo 2026-03-12 |
+| `InventarioPage.test.tsx` | 7 | ✅ 100% |
+| `TercerosPage.test.tsx` | 8 | ✅ 100% |
+| `ProtectedRoute.test.tsx` | 6 | ✅ 100% |
+| `OrdenCompraDetalleDialog.test.tsx` | 7 | ✅ 100% |
 
 **Patrón de helpers de test de ventas**:
 - `precioUnitario = null` → usa precio resuelto del producto (evita `ValidarPrecio`)
 - `montoPagado = 999_999m` → valor seguro para cualquier total
 - `limite=1000` en `top-productos` cuando se busca un producto específico
+- `TRUNCATE RESTART IDENTITY` al inicio de cada colección → IDs predecibles
 
 ### 🏗️ Patrón IXxxService ⭐ **COMPLETADO 2026-03-05**
 
@@ -1061,11 +1086,39 @@ Migración `AgregarIndicesRendimiento` agrega 11 índices:
 - [x] Extraer lógica de `InventarioController` → `IInventarioService / InventarioService`
 - [x] Fix `Find()` síncrono en helpers de TrasladosController → `CargarUsuariosAsync` batch
 - [x] Agregar migración `AgregarIndicesRendimiento` con 11 índices PostgreSQL
-- [x] Crear `PosTests.cs` con 20 tests (CRUD Cajas + apertura/cierre + flujo POS completo)
-- [x] Crear `ReportesTests.cs` con 12 tests (ventas, inventario, caja, dashboard, top productos)
+- [x] Crear `PosTests.cs` con 18 tests (CRUD Cajas + apertura/cierre + flujo POS completo)
+- [x] Crear `ReportesTests.cs` con 15 tests (ventas, inventario, caja, dashboard, top productos)
 - [x] Fix helpers de test: `precioUnitario = null`, `montoPagado = 999_999m`
 - [x] Fix `top-productos` en suite completa: agregar `&limite=1000`
-- [x] **Suite final: 191/192 tests pasando (1 Skip pre-existente)** ✅
+
+### Fase 12: ProblemDetails RFC 7807 + Chunk Frontend ✅ (2026-03-12)
+- [x] Migrar todos los controllers (19) a `Problem()` / `ValidationProblem()` — RFC 7807
+- [x] Registrar `builder.Services.AddProblemDetails()` en `Program.cs`
+- [x] Handler de excepción global con `Content-Type: application/problem+json`
+- [x] Fix frontend `DevolucionesPage`: campo `.error` → `.detail` (ProblemDetails)
+- [x] Eliminar `@mui/icons-material` de `manualChunks` en Vite → vendor-mui de 1.6MB → 404KB
+- [x] Agregar chunks `vendor-xlsx` y `vendor-charts` para mejor code splitting
+
+### Fase 13: TaxEngine Tests Ampliados ✅ (2026-03-12)
+- [x] TaxEngineUnitTests: de 10 a 31 tests
+- [x] Cubrir IVA 5% (bienes primera necesidad), IVA cantidad > 1
+- [x] Cubrir Ultraprocesados con ImpuestoSaludable (aplica/no aplica por categoría)
+- [x] Cubrir Bebidas azucaradas — `[Theory]` 6 casos por tramos (≤6g/$18, >6≤10g/$35, >10g/$55) incluyendo exactos boundary
+- [x] Cubrir Impuesto Bolsa (valor fijo × cantidad)
+- [x] Cubrir ReteICA (sin municipio / coincide / distinto)
+- [x] Cubrir regla inactiva, perfil comprador distinto, conceptoId null, umbral exacto UVT
+- [x] Cubrir múltiples retenciones simultáneas (ReteFuente + ReteICA)
+- [x] Cubrir totalNeto = base + impuestos − retenciones
+
+### Fase 14: Tests Frontend Páginas Principales ✅ (2026-03-12)
+- [x] Crear `VentasPage.test.tsx` — 9 tests (título, vacío, filas, chips, detalle dialog, paginación)
+- [x] Crear `ComprasPage.test.tsx` — 10 tests (título, botón nuevo, Aprobar/Rechazar en Pendiente, Recibir en Aprobada, detalle, error, filtro)
+- [x] Crear `DashboardPage.test.tsx` — 9 tests (loading, métricas, ERP badges, SalesChart stub, TopProducts, error)
+- [x] Crear `TrasladosPage.test.tsx` — 10 tests (título, botón, vacío, filas, conteo productos, chips, dialogs, error)
+- [x] Crear `DevolucionesPage.test.tsx` — 8 tests (título, search, conteo, llamada API, selección via Autocomplete, botón deshabilitado)
+- [x] Crear `CajasPage.test.tsx` — 10 tests (título, selector, auto-selección, alerta vacío, secciones Abiertas/Cerradas, dialogs)
+- [x] Fix `TrasladosPage`: agregar `aria-label="ver detalles"` al `IconButton` para evitar ambigüedad
+- [x] **Suite total: 363/363 backend · 137/137 frontend — 0 Skips** ✅
 
 ---
 
@@ -1073,35 +1126,16 @@ Migración `AgregarIndicesRendimiento` agrega 11 índices:
 
 ### Prioridad Alta 🔴
 
-1. **Resolver Doble Consumo de Stock** ✅ RESUELTO
-   - [x] `InventarioProjection.ProcesarSalidaVenta()` retorna inmediato (solo auditoría)
-   - [x] Stock consumido una sola vez en VentasController
-   - [x] Comentarios en código documentan el diseño
-
-2. **Tests Automatizados**
-   - Ejecutar tests de integración existentes
-   - Verificar que todos pasen
-   - Agregar tests faltantes para casos edge
-
-3. **Validación de Métodos de Costeo**
-   - [x] Probar LIFO/UEPS con script ✅ (Completado 2026-03-01)
-   - [x] Probar Promedio Ponderado ✅ (Completado 2026-03-01)
-   - [x] Eliminar Costo Específico ✅ (No necesario, eliminado 2026-03-01)
+*(Sin deuda técnica crítica activa — suite 363+137 en verde)*
 
 ### Prioridad Media 🟡
 
-4. **Refactorización de Código** ✅ COMPLETADO (2026-03-05)
-   - [x] Extraer VentasController → IVentaService/VentaService ✅
-   - [x] Extraer ComprasController → ICompraService/CompraService ✅
-   - [x] Extraer TrasladosController → ITrasladoService/TrasladoService ✅
-   - [x] Extraer InventarioController → IInventarioService/InventarioService ✅
+1. **Lazy loading por feature** (mejora rendimiento inicial)
+   - [ ] Envolver páginas en `React.lazy()` + `<Suspense>` por ruta
+   - El chunk `vendor-mui` ya bajó a 404KB (2026-03-12), pero el bundle inicial aún carga todo
 
-5. **Reportes** ✅ COMPLETADO (2026-03-05)
-   - [x] Endpoint de reporte de ventas por periodo ✅
-   - [x] Endpoint de reporte de inventario valorizado ✅
-   - [x] Endpoint de reporte de movimientos de caja ✅
-   - [x] Endpoint de top productos vendidos ✅
-   - [x] 12 tests de integración (ReportesTests.cs) ✅
+2. **ValidateAudience en Keycloak dev**
+   - `ValidateAudience = false` en `appsettings.Development.json` — revisar cuando se configure audience en Keycloak
 
 6. **Devoluciones de Venta** ✅ COMPLETADO (2026-03-01)
    - [x] Endpoint para devolver líneas parciales ✅
@@ -1204,10 +1238,14 @@ public async Task<ActionResult> NuevaOperacion(
     NuevoDto dto,
     [FromServices] IValidator<NuevoDto> validator)
 {
-    // 1. Validar
+    // 1. Validar (ProblemDetails RFC 7807)
     var validationResult = await validator.ValidateAsync(dto);
     if (!validationResult.IsValid)
-        return BadRequest(new { errors = validationResult.Errors });
+    {
+        foreach (var error in validationResult.Errors)
+            ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+        return ValidationProblem();
+    }
 
     // 2. Lógica de negocio
     // ...

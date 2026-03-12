@@ -30,10 +30,9 @@ export default defineConfig({
         manualChunks: {
           // React runtime
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // MUI core (sin DataGrid/Charts que ya se separan solos)
+          // MUI core — sin @mui/icons-material para que Rollup tree-shake solo los íconos usados
           'vendor-mui': [
             '@mui/material',
-            '@mui/icons-material',
             '@emotion/react',
             '@emotion/styled',
           ],
@@ -48,6 +47,10 @@ export default defineConfig({
           'vendor-query': ['@tanstack/react-query', 'zustand', 'axios'],
           // Real-time
           'vendor-signalr': ['@microsoft/signalr'],
+          // Exportación Excel — solo se usa en reportes
+          'vendor-xlsx': ['xlsx'],
+          // Charts — solo se usa en dashboard/reportes
+          'vendor-charts': ['recharts'],
         },
       },
     },

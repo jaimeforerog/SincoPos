@@ -55,7 +55,7 @@ public class ImpuestosController : ControllerBase
     public async Task<ActionResult<ImpuestoDto>> GetImpuesto(int id)
     {
         var i = await _context.Impuestos.FindAsync(id);
-        if (i == null || !i.Activo) return NotFound("Impuesto no encontrado.");
+        if (i == null || !i.Activo) return Problem(detail: "Impuesto no encontrado.", statusCode: StatusCodes.Status404NotFound);
         return Ok(new ImpuestoDto(
             i.Id, i.Nombre, i.Tipo.ToString(), i.Porcentaje,
             i.ValorFijo, i.CodigoCuentaContable, i.AplicaSobreBase,
@@ -90,9 +90,9 @@ public class ImpuestosController : ControllerBase
     public async Task<ActionResult<ImpuestoDto>> CrearImpuesto([FromBody] CrearImpuestoDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Nombre))
-            return BadRequest("Nombre requerido.");
+            return Problem(detail: "Nombre requerido.", statusCode: StatusCodes.Status400BadRequest);
         if (dto.Porcentaje < 0 || dto.Porcentaje >= 1)
-            return BadRequest("Porcentaje debe estar entre 0 y 0.9999.");
+            return Problem(detail: "Porcentaje debe estar entre 0 y 0.9999.", statusCode: StatusCodes.Status400BadRequest);
 
         var impuesto = new Impuesto
         {
@@ -132,13 +132,13 @@ public class ImpuestosController : ControllerBase
     {
         var impuesto = await _context.Impuestos.FindAsync(id);
         if (impuesto == null || !impuesto.Activo)
-            return NotFound("Impuesto no encontrado.");
+            return Problem(detail: "Impuesto no encontrado.", statusCode: StatusCodes.Status404NotFound);
 
         if (!string.IsNullOrWhiteSpace(dto.Nombre)) impuesto.Nombre = dto.Nombre;
         if (dto.Porcentaje.HasValue)
         {
             if (dto.Porcentaje < 0 || dto.Porcentaje >= 1)
-                return BadRequest("Porcentaje debe estar entre 0 y 0.9999.");
+                return Problem(detail: "Porcentaje debe estar entre 0 y 0.9999.", statusCode: StatusCodes.Status400BadRequest);
             impuesto.Porcentaje = dto.Porcentaje.Value;
         }
         if (dto.ValorFijo.HasValue) impuesto.ValorFijo = dto.ValorFijo;
@@ -165,10 +165,10 @@ public class ImpuestosController : ControllerBase
     public async Task<ActionResult> DesactivarImpuesto(int id)
     {
         var impuesto = await _context.Impuestos.FindAsync(id);
-        if (impuesto == null || !impuesto.Activo) return NotFound("Impuesto no encontrado.");
+        if (impuesto == null || !impuesto.Activo) return Problem(detail: "Impuesto no encontrado.", statusCode: StatusCodes.Status404NotFound);
 
         var enUso = await _context.Productos.AnyAsync(p => p.ImpuestoId == id && p.Activo);
-        if (enUso) return BadRequest("El impuesto está asignado a productos activos. Desasígnelo primero.");
+        if (enUso) return Problem(detail: "El impuesto está asignado a productos activos. Desasígnelo primero.", statusCode: StatusCodes.Status400BadRequest);
 
         impuesto.Activo = false;
         await _context.SaveChangesAsync();
@@ -210,8 +210,8 @@ public class ImpuestosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> CrearRetencion([FromBody] CrearRetencionDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Nombre)) return BadRequest("Nombre requerido.");
-        if (dto.Porcentaje <= 0 || dto.Porcentaje >= 1) return BadRequest("Porcentaje inválido.");
+        if (string.IsNullOrWhiteSpace(dto.Nombre)) return Problem(detail: "Nombre requerido.", statusCode: StatusCodes.Status400BadRequest);
+        if (dto.Porcentaje <= 0 || dto.Porcentaje >= 1) return Problem(detail: "Porcentaje inválido.", statusCode: StatusCodes.Status400BadRequest);
 
         var regla = new RetencionRegla
         {
@@ -301,7 +301,7 @@ public class ImpuestosController : ControllerBase
         [FromBody] CrearConceptoRetencionDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Nombre))
-            return BadRequest("Nombre requerido.");
+            return Problem(detail: "Nombre requerido.", statusCode: StatusCodes.Status400BadRequest);
 
         var concepto = new ConceptoRetencion
         {
@@ -331,7 +331,7 @@ public class ImpuestosController : ControllerBase
         [FromBody] EditarConceptoRetencionDto dto)
     {
         var concepto = await _context.ConceptosRetencion.FindAsync(id);
-        if (concepto == null) return NotFound("Concepto de retención no encontrado.");
+        if (concepto == null) return Problem(detail: "Concepto de retención no encontrado.", statusCode: StatusCodes.Status404NotFound);
 
         if (!string.IsNullOrWhiteSpace(dto.Nombre)) concepto.Nombre = dto.Nombre;
         if (dto.CodigoDian != null) concepto.CodigoDian = dto.CodigoDian;
@@ -351,7 +351,7 @@ public class ImpuestosController : ControllerBase
     public async Task<ActionResult> DesactivarConceptoRetencion(int id)
     {
         var concepto = await _context.ConceptosRetencion.FindAsync(id);
-        if (concepto == null) return NotFound("Concepto de retención no encontrado.");
+        if (concepto == null) return Problem(detail: "Concepto de retención no encontrado.", statusCode: StatusCodes.Status404NotFound);
         concepto.Activo = false;
         await _context.SaveChangesAsync();
         return NoContent();

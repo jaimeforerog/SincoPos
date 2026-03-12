@@ -53,11 +53,14 @@ public class ComprasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (orden, error) = await _compraService.CrearOrdenAsync(dto);
-        return error != null ? BadRequest(new { error }) : Ok(orden);
+        return error != null ? Problem(detail: error, statusCode: StatusCodes.Status400BadRequest) : Ok(orden);
     }
 
     /// <summary>
@@ -131,7 +134,7 @@ public class ComprasController : ControllerBase
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (orden == null)
-            return NotFound(new { error = "Orden de compra no encontrada" });
+            return Problem(detail: "Orden de compra no encontrada", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(await CompraService.MapearOrdenCompraDtoAsync(orden, _context));
     }
@@ -149,7 +152,7 @@ public class ComprasController : ControllerBase
     {
         var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
         var (success, error) = await _compraService.AprobarOrdenAsync(id, dto, email);
-        if (!success) return error == "NOT_FOUND" ? NotFound(new { error }) : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Orden de compra aprobada exitosamente" });
     }
 
@@ -173,11 +176,14 @@ public class ComprasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (success, error) = await _compraService.RechazarOrdenAsync(id, dto);
-        if (!success) return error == "NOT_FOUND" ? NotFound(new { error }) : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Orden de compra rechazada" });
     }
 
@@ -204,12 +210,15 @@ public class ComprasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var email = User.FindFirst("email")?.Value ?? User.Identity?.Name;
         var (success, error) = await _compraService.RecibirOrdenAsync(id, dto, email);
-        if (!success) return error == "NOT_FOUND" ? NotFound(new { error }) : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Orden de compra recibida exitosamente" });
     }
 
@@ -232,7 +241,7 @@ public class ComprasController : ControllerBase
             .ToListAsync();
 
         if (!mensajes.Any())
-            return NotFound(new { error = "No se encontraron mensajes ERP pendientes para esta orden de compra." });
+            return Problem(detail: "No se encontraron mensajes ERP pendientes para esta orden de compra.", statusCode: StatusCodes.Status404NotFound);
 
         foreach (var m in mensajes)
         {
@@ -270,11 +279,14 @@ public class ComprasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (success, error) = await _compraService.CancelarOrdenAsync(id, dto);
-        if (!success) return error == "NOT_FOUND" ? NotFound(new { error }) : BadRequest(new { error });
+        if (!success) return error == "NOT_FOUND" ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Orden de compra cancelada" });
     }
 }

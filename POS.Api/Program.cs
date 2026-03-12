@@ -180,6 +180,7 @@ builder.Services.AddScoped<POS.Application.Services.INotificationService,
     POS.Api.Services.NotificationService>();
 
 // API
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -458,12 +459,12 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// ── Escalabilidad: Global Exception Handler (JSON consistente) ───────────
+// ── Escalabilidad: Global Exception Handler (ProblemDetails RFC 7807) ────
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
     {
-        context.Response.ContentType = "application/json";
+        context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
         var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
@@ -476,13 +477,16 @@ app.UseExceptionHandler(errorApp =>
         }
 
         var traceId = System.Diagnostics.Activity.Current?.Id ?? context.TraceIdentifier;
-        await context.Response.WriteAsJsonAsync(new
+        var problem = new Microsoft.AspNetCore.Mvc.ProblemDetails
         {
-            status = 500,
-            title = "Error interno del servidor",
-            error = "Ha ocurrido un error interno. Contacte soporte.",
-            traceId
-        });
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+            Title = "Error interno del servidor",
+            Status = StatusCodes.Status500InternalServerError,
+            Detail = "Ha ocurrido un error interno. Contacte soporte.",
+            Instance = context.Request.Path,
+            Extensions = { ["traceId"] = traceId }
+        };
+        await context.Response.WriteAsJsonAsync(problem);
     });
 });
 

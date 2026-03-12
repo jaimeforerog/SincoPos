@@ -53,23 +53,26 @@ public class CajasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         // Verificar que la sucursal existe
         var sucursal = await _context.Sucursales
             .IgnoreQueryFilters() // Permitir crear caja en sucursal si se conoce el ID (aunque esté inactiva?)
             .FirstOrDefaultAsync(s => s.Id == dto.SucursalId);
-        
+
         if (sucursal == null)
-            return BadRequest(new { error = $"La sucursal {dto.SucursalId} no existe." });
+            return Problem(detail: $"La sucursal {dto.SucursalId} no existe.", statusCode: StatusCodes.Status400BadRequest);
 
         // Verificar nombre unico dentro de la sucursal
         var existeNombre = await _context.Cajas
             .AnyAsync(c => c.SucursalId == dto.SucursalId && c.Nombre == dto.Nombre);
 
         if (existeNombre)
-            return Conflict(new { error = $"Ya existe la caja '{dto.Nombre}' en esta sucursal." });
+            return Problem(detail: $"Ya existe la caja '{dto.Nombre}' en esta sucursal.", statusCode: StatusCodes.Status409Conflict);
 
         var caja = new Caja
         {
@@ -104,7 +107,7 @@ public class CajasController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (caja == null)
-            return NotFound(new { error = $"Caja {id} no encontrada." });
+            return Problem(detail: $"Caja {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(MapToDto(caja, caja.Sucursal.Nombre));
     }
@@ -153,7 +156,7 @@ public class CajasController : ControllerBase
         var email = User.GetEmail();
 
         if (string.IsNullOrEmpty(externalId) || string.IsNullOrEmpty(email))
-            return BadRequest(new { error = "Usuario no autenticado correctamente" });
+            return Problem(detail: "Usuario no autenticado correctamente", statusCode: StatusCodes.Status400BadRequest);
 
         // Buscar el usuario en la base de datos
         var usuario = await _context.Usuarios
@@ -198,18 +201,21 @@ public class CajasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var caja = await _context.Cajas.FindAsync(id);
         if (caja == null)
-            return NotFound(new { error = $"Caja {id} no encontrada." });
+            return Problem(detail: $"Caja {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         if (caja.Estado == EstadoCaja.Abierta)
-            return Conflict(new { error = "La caja ya esta abierta." });
+            return Problem(detail: "La caja ya esta abierta.", statusCode: StatusCodes.Status409Conflict);
 
         if (!caja.Activo)
-            return BadRequest(new { error = "No se puede abrir una caja inactiva." });
+            return Problem(detail: "No se puede abrir una caja inactiva.", statusCode: StatusCodes.Status400BadRequest);
 
         caja.Estado = EstadoCaja.Abierta;
         caja.MontoApertura = dto.MontoApertura;
@@ -278,15 +284,18 @@ public class CajasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var caja = await _context.Cajas.FindAsync(id);
         if (caja == null)
-            return NotFound(new { error = $"Caja {id} no encontrada." });
+            return Problem(detail: $"Caja {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         if (caja.Estado == EstadoCaja.Cerrada)
-            return Conflict(new { error = "La caja ya esta cerrada." });
+            return Problem(detail: "La caja ya esta cerrada.", statusCode: StatusCodes.Status409Conflict);
 
         var diferencia = dto.MontoReal - caja.MontoActual;
         var montoEsperado = caja.MontoActual;
@@ -349,10 +358,10 @@ public class CajasController : ControllerBase
     {
         var caja = await _context.Cajas.FindAsync(id);
         if (caja == null)
-            return NotFound(new { error = $"Caja {id} no encontrada." });
+            return Problem(detail: $"Caja {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         if (caja.Estado == EstadoCaja.Abierta)
-            return Conflict(new { error = "No se puede desactivar una caja abierta. Cierre la caja primero." });
+            return Problem(detail: "No se puede desactivar una caja abierta. Cierre la caja primero.", statusCode: StatusCodes.Status409Conflict);
 
         caja.Activo = false;
         await _context.SaveChangesAsync();

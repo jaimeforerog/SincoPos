@@ -3,9 +3,9 @@
 ## ¿Qué es este proyecto?
 
 Sistema de Punto de Venta (POS) para Colombia con:
-- **Backend**: ASP.NET Core 9, EF Core, Marten (Event Sourcing), PostgreSQL 16
-- **Frontend**: React 18 + TypeScript + MUI v7
-- **Auth**: Keycloak JWT Bearer (realm `sincopos`)
+- **Backend**: ASP.NET Core 9, EF Core 9, Marten 8.22 (Event Sourcing), PostgreSQL 16
+- **Frontend**: React 19 + TypeScript + MUI v7
+- **Auth**: Entra ID (producción) / Keycloak (desarrollo)
 - **Tiempo real**: SignalR WebSocket
 - **DIAN**: Facturación electrónica UBL 2.1 + CUFE
 
@@ -66,14 +66,17 @@ Frontend: `http://localhost:5173`
 ## Tests
 
 ```bash
-# Suite completa (233/234 passing)
+# Backend — suite completa (363/363 passing)
 dotnet test tests/POS.IntegrationTests/POS.IntegrationTests.csproj
 
-# Grupo específico
+# Backend — grupo específico
 dotnet test --filter "VentasTests"
+
+# Frontend — Vitest (137/137 passing)
+cd frontend && npm run test:run
 ```
 
-Los tests usan `pos_test` como base de datos. PostgreSQL debe estar corriendo en `localhost:5432`.
+Los tests backend usan `pos_test` como base de datos. PostgreSQL debe estar corriendo en `localhost:5432`.
 
 ---
 
@@ -91,7 +94,7 @@ SincoPos/
 │   ├── Data/Entities/          # Entidades + configuraciones EF
 │   ├── Migrations/             # Migraciones EF Core
 │   └── Services/               # Implementaciones de IXxxService
-├── frontend/                   # React 18 + TypeScript + MUI v7
+├── frontend/                   # React 19 + TypeScript + MUI v7
 │   └── src/
 │       ├── features/           # Módulos por dominio
 │       ├── hooks/              # useAuth, useNotifications, ...
@@ -144,3 +147,6 @@ SincoPos/
 - **Facturación DIAN**: Background queue (Channel). No bloquea la venta. Reintentos automáticos.
 - **Rate Limiting**: Solo activo en producción (100 req/60s por IP).
 - **Output Cache**: 5 min en catálogos (categorías, impuestos, sucursales), 1h en geografía.
+- **ProblemDetails RFC 7807**: Todos los controllers emiten `Problem()` / `ValidationProblem()`. Frontend lee `.detail` (no `.error`).
+- **ERP Outbox**: `VentaErpService` y `CompraErpService` emiten eventos dentro de la transacción; `ErpSyncBackgroundService` los procesa en background.
+- **Vite chunks**: `@mui/icons-material` fuera de `manualChunks` → tree-shaking por icono (~404KB total MUI).

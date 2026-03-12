@@ -112,7 +112,7 @@ export function DevolucionesPage() {
       }
     },
     onError: (error: any) => {
-      enqueueSnackbar(error.response?.data?.error || 'Error al crear devolución', {
+      enqueueSnackbar(error.response?.data?.detail || 'Error al crear devolución', {
         variant: 'error',
       });
     },

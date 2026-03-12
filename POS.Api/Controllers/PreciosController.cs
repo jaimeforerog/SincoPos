@@ -83,7 +83,7 @@ public class PreciosController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ex.Message);
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
         }
     }
 
@@ -107,14 +107,17 @@ public class PreciosController : ControllerBase
             var errors = validResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var producto = await _context.Productos.FindAsync(dto.ProductoId);
-        if (producto == null) return BadRequest("Producto no encontrado.");
+        if (producto == null) return Problem(detail: "Producto no encontrado.", statusCode: StatusCodes.Status400BadRequest);
 
         var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
-        if (sucursal == null) return BadRequest("Sucursal no encontrada.");
+        if (sucursal == null) return Problem(detail: "Sucursal no encontrada.", statusCode: StatusCodes.Status400BadRequest);
 
         var existente = await _context.PreciosSucursal
             .FirstOrDefaultAsync(p => p.ProductoId == dto.ProductoId && p.SucursalId == dto.SucursalId);
@@ -161,7 +164,7 @@ public class PreciosController : ControllerBase
     public async Task<ActionResult<List<PrecioSucursalDto>>> ListarPreciosProducto(Guid productoId)
     {
         var producto = await _context.Productos.FindAsync(productoId);
-        if (producto == null) return NotFound("Producto no encontrado.");
+        if (producto == null) return Problem(detail: "Producto no encontrado.", statusCode: StatusCodes.Status404NotFound);
 
         var precios = await _context.PreciosSucursal
             .Include(p => p.Sucursal)

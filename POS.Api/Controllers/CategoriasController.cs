@@ -40,7 +40,10 @@ public class CategoriasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         // Verificar nombre único
@@ -48,7 +51,7 @@ public class CategoriasController : ControllerBase
             .AnyAsync(c => c.Nombre == dto.Nombre);
 
         if (existeNombre)
-            return Conflict(new { error = "Ya existe una categoría con ese nombre." });
+            return Problem(detail: "Ya existe una categoría con ese nombre.", statusCode: StatusCodes.Status409Conflict);
 
         // Verificar categoría padre si se especifica
         Categoria? categoriaPadre = null;
@@ -62,10 +65,10 @@ public class CategoriasController : ControllerBase
                 .FirstOrDefaultAsync(c => c.Id == dto.CategoriaPadreId.Value);
 
             if (categoriaPadre == null)
-                return BadRequest(new { error = "La categoría padre especificada no existe." });
+                return Problem(detail: "La categoría padre especificada no existe.", statusCode: StatusCodes.Status400BadRequest);
 
             if (categoriaPadre.Nivel >= NivelMaximo - 1)
-                return BadRequest(new { error = $"No se pueden crear subcategorías con más de {NivelMaximo} niveles de profundidad." });
+                return Problem(detail: $"No se pueden crear subcategorías con más de {NivelMaximo} niveles de profundidad.", statusCode: StatusCodes.Status400BadRequest);
 
             nivel = categoriaPadre.Nivel + 1;
             rutaCompleta = $"{categoriaPadre.RutaCompleta} > {dto.Nombre}";
@@ -108,7 +111,7 @@ public class CategoriasController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (categoria == null)
-            return NotFound(new { error = $"Categoría {id} no encontrada." });
+            return Problem(detail: $"Categoría {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(MapearACategoriaDto(categoria));
     }
@@ -197,7 +200,7 @@ public class CategoriasController : ControllerBase
     {
         var categoriaExiste = await _context.Categorias.AnyAsync(c => c.Id == id);
         if (!categoriaExiste)
-            return NotFound(new { error = $"Categoría {id} no encontrada." });
+            return Problem(detail: $"Categoría {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
         var query = _context.Categorias.AsQueryable();
         if (incluirInactivas)
             query = query.IgnoreQueryFilters();
@@ -229,7 +232,10 @@ public class CategoriasController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var categoria = await _context.Categorias
@@ -237,14 +243,14 @@ public class CategoriasController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (categoria == null)
-            return NotFound(new { error = $"Categoría {id} no encontrada." });
+            return Problem(detail: $"Categoría {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         // Verificar nombre único (excluyendo la misma categoría)
         var existeNombre = await _context.Categorias
             .AnyAsync(c => c.Nombre == dto.Nombre && c.Id != id);
 
         if (existeNombre)
-            return Conflict(new { error = "Ya existe otra categoría con ese nombre." });
+            return Problem(detail: "Ya existe otra categoría con ese nombre.", statusCode: StatusCodes.Status409Conflict);
 
         // Si está cambiando la categoría padre, validar
         if (dto.CategoriaPadreId != categoria.CategoriaPadreId)
@@ -253,18 +259,18 @@ public class CategoriasController : ControllerBase
             {
                 // No puede ser padre de sí misma
                 if (dto.CategoriaPadreId.Value == id)
-                    return BadRequest(new { error = "Una categoría no puede ser padre de sí misma." });
+                    return Problem(detail: "Una categoría no puede ser padre de sí misma.", statusCode: StatusCodes.Status400BadRequest);
 
                 // Verificar que no sea una subcategoría (evitar ciclos)
                 if (await EsSubCategoria(id, dto.CategoriaPadreId.Value))
-                    return BadRequest(new { error = "No se puede mover una categoría a una de sus subcategorías (crearía un ciclo)." });
+                    return Problem(detail: "No se puede mover una categoría a una de sus subcategorías (crearía un ciclo).", statusCode: StatusCodes.Status400BadRequest);
 
                 var nuevoPadre = await _context.Categorias.FindAsync(dto.CategoriaPadreId.Value);
                 if (nuevoPadre == null)
-                    return BadRequest(new { error = "La categoría padre especificada no existe." });
+                    return Problem(detail: "La categoría padre especificada no existe.", statusCode: StatusCodes.Status400BadRequest);
 
                 if (nuevoPadre.Nivel >= NivelMaximo - 1)
-                    return BadRequest(new { error = $"No se pueden crear subcategorías con más de {NivelMaximo} niveles de profundidad." });
+                    return Problem(detail: $"No se pueden crear subcategorías con más de {NivelMaximo} niveles de profundidad.", statusCode: StatusCodes.Status400BadRequest);
             }
 
             // Actualizar categoría padre y recalcular jerarquía
@@ -304,23 +310,23 @@ public class CategoriasController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == dto.CategoriaId);
 
         if (categoria == null)
-            return NotFound(new { error = "Categoría no encontrada." });
+            return Problem(detail: "Categoría no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         // Validaciones
         if (dto.NuevaCategoriaPadreId.HasValue)
         {
             if (dto.NuevaCategoriaPadreId.Value == dto.CategoriaId)
-                return BadRequest(new { error = "Una categoría no puede ser padre de sí misma." });
+                return Problem(detail: "Una categoría no puede ser padre de sí misma.", statusCode: StatusCodes.Status400BadRequest);
 
             if (await EsSubCategoria(dto.CategoriaId, dto.NuevaCategoriaPadreId.Value))
-                return BadRequest(new { error = "No se puede mover una categoría a una de sus subcategorías." });
+                return Problem(detail: "No se puede mover una categoría a una de sus subcategorías.", statusCode: StatusCodes.Status400BadRequest);
 
             var nuevoPadre = await _context.Categorias.FindAsync(dto.NuevaCategoriaPadreId.Value);
             if (nuevoPadre == null)
-                return BadRequest(new { error = "La categoría padre especificada no existe." });
+                return Problem(detail: "La categoría padre especificada no existe.", statusCode: StatusCodes.Status400BadRequest);
 
             if (nuevoPadre.Nivel >= NivelMaximo - 1)
-                return BadRequest(new { error = $"No se pueden crear subcategorías con más de {NivelMaximo} niveles." });
+                return Problem(detail: $"No se pueden crear subcategorías con más de {NivelMaximo} niveles.", statusCode: StatusCodes.Status400BadRequest);
         }
 
         await ActualizarJerarquia(categoria, dto.NuevaCategoriaPadreId);
@@ -342,13 +348,13 @@ public class CategoriasController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (categoria == null)
-            return NotFound(new { error = $"Categoría {id} no encontrada." });
+            return Problem(detail: $"Categoría {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
         if (categoria.SubCategorias.Any())
-            return BadRequest(new { error = "No se puede eliminar una categoría que tiene subcategorías. Elimine las subcategorías primero." });
+            return Problem(detail: "No se puede eliminar una categoría que tiene subcategorías. Elimine las subcategorías primero.", statusCode: StatusCodes.Status400BadRequest);
 
         if (categoria.Productos.Any())
-            return BadRequest(new { error = "No se puede eliminar una categoría que tiene productos asociados." });
+            return Problem(detail: "No se puede eliminar una categoría que tiene productos asociados.", statusCode: StatusCodes.Status400BadRequest);
 
         _context.Categorias.Remove(categoria);
         await _context.SaveChangesAsync();

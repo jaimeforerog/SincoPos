@@ -35,9 +35,9 @@ public class LotesController : ControllerBase
         [FromQuery] bool soloVigentes = true)
     {
         if (productoId == Guid.Empty)
-            return BadRequest(new { error = "productoId es requerido." });
+            return Problem(detail: "productoId es requerido.", statusCode: StatusCodes.Status400BadRequest);
         if (sucursalId <= 0)
-            return BadRequest(new { error = "sucursalId es requerido." });
+            return Problem(detail: "sucursalId es requerido.", statusCode: StatusCodes.Status400BadRequest);
 
         var lotes = await _loteService.ObtenerLotesAsync(productoId, sucursalId, soloVigentes);
         return Ok(lotes);
@@ -56,7 +56,7 @@ public class LotesController : ControllerBase
         [FromQuery] int diasAnticipacion = 30)
     {
         if (sucursalId <= 0)
-            return BadRequest(new { error = "sucursalId es requerido." });
+            return Problem(detail: "sucursalId es requerido.", statusCode: StatusCodes.Status400BadRequest);
 
         var alertas = await _loteService.ObtenerProximosAVencerAsync(sucursalId, diasAnticipacion);
         return Ok(alertas);
@@ -93,7 +93,7 @@ public class LotesController : ControllerBase
     {
         var (result, error) = await _loteService.ObtenerTrazabilidadAsync(id);
         if (error == "NOT_FOUND")
-            return NotFound(new { error = "Lote no encontrado." });
+            return Problem(detail: "Lote no encontrado.", statusCode: StatusCodes.Status404NotFound);
         return Ok(result);
     }
 
@@ -105,9 +105,9 @@ public class LotesController : ControllerBase
     {
         var (result, error) = await _loteService.ActualizarLoteAsync(id, dto);
         if (error == "NOT_FOUND")
-            return NotFound(new { error = "Lote no encontrado." });
+            return Problem(detail: "Lote no encontrado.", statusCode: StatusCodes.Status404NotFound);
         if (error != null)
-            return BadRequest(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(result);
     }
 }

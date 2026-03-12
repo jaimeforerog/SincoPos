@@ -28,7 +28,7 @@ public class TercerosController : ControllerBase
     public ActionResult CalcularDV([FromQuery] string nit)
     {
         if (string.IsNullOrWhiteSpace(nit) || !nit.Any(char.IsDigit))
-            return BadRequest(new { error = "NIT inválido." });
+            return Problem(detail: "NIT inválido.", statusCode: StatusCodes.Status400BadRequest);
 
         var dv = TerceroLocalService.CalcularDV(nit);
         return Ok(new { dv });
@@ -47,12 +47,15 @@ public class TercerosController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (result, error) = await _service.CrearAsync(dto);
         if (error != null)
-            return Conflict(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status409Conflict);
 
         _logger.LogInformation("Tercero creado. Id: {Id}, Nombre: {Nombre}", result!.Id, result.Nombre);
         return CreatedAtAction(nameof(ObtenerTercero), new { id = result.Id }, result);
@@ -64,7 +67,7 @@ public class TercerosController : ControllerBase
     {
         var tercero = await _service.ObtenerPorIdAsync(id);
         if (tercero == null)
-            return NotFound(new { error = $"Tercero {id} no encontrado." });
+            return Problem(detail: $"Tercero {id} no encontrado.", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(tercero);
     }
@@ -92,7 +95,7 @@ public class TercerosController : ControllerBase
     {
         var tercero = await _service.ObtenerPorIdentificacionAsync(identificacion);
         if (tercero == null)
-            return NotFound(new { error = $"No se encontro un tercero con identificacion {identificacion}." });
+            return Problem(detail: $"No se encontro un tercero con identificacion {identificacion}.", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(tercero);
     }
@@ -111,15 +114,18 @@ public class TercerosController : ControllerBase
             var errors = validationResult.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            return BadRequest(new { errors });
+            foreach (var (key, messages) in errors)
+                foreach (var msg in messages)
+                    ModelState.AddModelError(key, msg);
+            return ValidationProblem();
         }
 
         var (success, error) = await _service.ActualizarAsync(id, dto);
         if (!success)
         {
             if (error!.Contains("no encontrado"))
-                return NotFound(new { error });
-            return BadRequest(new { error });
+                return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
+            return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         _logger.LogInformation("Tercero {Id} actualizado.", id);
@@ -133,7 +139,7 @@ public class TercerosController : ControllerBase
     {
         var (success, error) = await _service.DesactivarAsync(id);
         if (!success)
-            return NotFound(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
 
         _logger.LogInformation("Tercero {Id} desactivado.", id);
         return NoContent();
@@ -158,11 +164,11 @@ public class TercerosController : ControllerBase
     public async Task<ActionResult<ResultadoImportacionTercerosDto>> ImportarDesdeExcel(IFormFile archivo)
     {
         if (archivo == null || archivo.Length == 0)
-            return BadRequest(new { error = "Archivo vacío o no adjunto." });
+            return Problem(detail: "Archivo vacío o no adjunto.", statusCode: StatusCodes.Status400BadRequest);
 
         var ext = Path.GetExtension(archivo.FileName).ToLowerInvariant();
         if (ext is not ".xlsx" and not ".xls")
-            return BadRequest(new { error = "Solo se aceptan archivos .xlsx o .xls." });
+            return Problem(detail: "Solo se aceptan archivos .xlsx o .xls.", statusCode: StatusCodes.Status400BadRequest);
 
         using var stream = archivo.OpenReadStream();
         var resultado = await _service.ImportarDesdeExcelAsync(stream);
@@ -182,16 +188,16 @@ public class TercerosController : ControllerBase
     public async Task<ActionResult<TerceroActividadDto>> AgregarActividad(int id, AgregarActividadDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.CodigoCIIU))
-            return BadRequest(new { error = "El código CIIU es obligatorio." });
+            return Problem(detail: "El código CIIU es obligatorio.", statusCode: StatusCodes.Status400BadRequest);
         if (string.IsNullOrWhiteSpace(dto.Descripcion))
-            return BadRequest(new { error = "La descripción es obligatoria." });
+            return Problem(detail: "La descripción es obligatoria.", statusCode: StatusCodes.Status400BadRequest);
 
         var (result, error) = await _service.AgregarActividadAsync(id, dto);
         if (error != null)
         {
             if (error.Contains("no encontrado"))
-                return NotFound(new { error });
-            return Conflict(new { error });
+                return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
+            return Problem(detail: error, statusCode: StatusCodes.Status409Conflict);
         }
 
         _logger.LogInformation("Actividad CIIU {CIIU} agregada al tercero {Id}.", dto.CodigoCIIU, id);
@@ -205,7 +211,7 @@ public class TercerosController : ControllerBase
     {
         var (success, error) = await _service.EliminarActividadAsync(id, actividadId);
         if (!success)
-            return NotFound(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
 
         _logger.LogInformation("Actividad {ActividadId} eliminada del tercero {Id}.", actividadId, id);
         return NoContent();
@@ -218,7 +224,7 @@ public class TercerosController : ControllerBase
     {
         var (success, error) = await _service.EstablecerPrincipalAsync(id, actividadId);
         if (!success)
-            return NotFound(new { error });
+            return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
 
         return NoContent();
     }
