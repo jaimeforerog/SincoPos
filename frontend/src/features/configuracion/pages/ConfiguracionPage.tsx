@@ -1,4 +1,4 @@
-import { Container, Box, Typography } from '@mui/material';
+import { Container, Box, Typography, Chip } from '@mui/material';
 import {
   StoreMallDirectory,
   PointOfSale,
@@ -9,14 +9,15 @@ import {
   Receipt,
   AdminPanelSettings,
   ReceiptLong,
+  StorefrontOutlined,
+  MenuBookOutlined,
+  TuneOutlined,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfigCard } from '../components/ConfigCard';
-import { PageHeader } from '@/components/common/PageHeader';
 import type { ConfigModule } from '../components/ConfigCard';
 
 const configModules: ConfigModule[] = [
-  // MAESTROS DE NEGOCIO
   {
     id: 'sucursales',
     title: 'Sucursales',
@@ -25,6 +26,7 @@ const configModules: ConfigModule[] = [
     path: '/sucursales',
     roles: ['admin'],
     category: 'negocio',
+    color: '#1565c0',
   },
   {
     id: 'cajas',
@@ -34,6 +36,7 @@ const configModules: ConfigModule[] = [
     path: '/cajas',
     roles: ['supervisor', 'admin'],
     category: 'negocio',
+    color: '#00796b',
   },
   {
     id: 'terceros',
@@ -43,9 +46,8 @@ const configModules: ConfigModule[] = [
     path: '/terceros',
     roles: ['supervisor', 'admin'],
     category: 'negocio',
+    color: '#7b1fa2',
   },
-
-  // CATÁLOGO DE PRODUCTOS
   {
     id: 'productos',
     title: 'Productos',
@@ -54,6 +56,7 @@ const configModules: ConfigModule[] = [
     path: '/productos',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
+    color: '#ed6c02',
   },
   {
     id: 'precios',
@@ -63,6 +66,7 @@ const configModules: ConfigModule[] = [
     path: '/precios',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
+    color: '#2e7d32',
   },
   {
     id: 'categorias',
@@ -72,9 +76,8 @@ const configModules: ConfigModule[] = [
     path: '/categorias',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
+    color: '#f57f17',
   },
-
-  // CONFIGURACIÓN FISCAL Y SISTEMA
   {
     id: 'impuestos',
     title: 'Impuestos',
@@ -83,6 +86,7 @@ const configModules: ConfigModule[] = [
     path: '/impuestos',
     roles: ['admin'],
     category: 'sistema',
+    color: '#c62828',
   },
   {
     id: 'usuarios',
@@ -92,6 +96,7 @@ const configModules: ConfigModule[] = [
     path: '/usuarios',
     roles: ['admin'],
     category: 'sistema',
+    color: '#283593',
   },
   {
     id: 'facturacion',
@@ -101,48 +106,182 @@ const configModules: ConfigModule[] = [
     path: '/configuracion/facturacion',
     roles: ['admin'],
     category: 'sistema',
+    color: '#6a1b9a',
   },
 ];
 
-const categories = {
-  negocio: 'Maestros de Negocio',
-  catalogo: 'Catálogo de Productos',
-  sistema: 'Configuración Fiscal y Sistema',
-};
+const categoryMeta = {
+  negocio: {
+    label: 'Maestros de Negocio',
+    icon: <StorefrontOutlined fontSize="small" />,
+    color: '#1565c0',
+  },
+  catalogo: {
+    label: 'Catálogo de Productos',
+    icon: <MenuBookOutlined fontSize="small" />,
+    color: '#ed6c02',
+  },
+  sistema: {
+    label: 'Configuración Fiscal y Sistema',
+    icon: <TuneOutlined fontSize="small" />,
+    color: '#6a1b9a',
+  },
+} as const;
 
 export function ConfiguracionPage() {
   const { hasAnyRole } = useAuth();
 
+  const availableModules = configModules.filter(
+    (m) => !m.roles || hasAnyRole(m.roles)
+  );
+
+  const countByCategory = (key: string) =>
+    availableModules.filter((m) => m.category === key).length;
+
+  let cardIndex = 0;
+
   return (
     <Container maxWidth="xl">
-      <PageHeader
-        title="Configuración del Sistema"
-        breadcrumbs={[
-          { label: 'Configuración' }
-        ]}
-      />
+      {/* Hero */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #4a148c 0%, #311b92 50%, #1a237e 100%)',
+          borderRadius: 3,
+          px: { xs: 3, md: 4 },
+          py: { xs: 2.5, md: 3 },
+          mb: 4,
+          mt: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: -60,
+            right: -60,
+            width: 200,
+            height: 200,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.05)',
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: -40,
+            right: 80,
+            width: 120,
+            height: 120,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.05)',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            alignItems: { xs: 'flex-start', md: 'center' },
+            justifyContent: 'space-between',
+            gap: { xs: 2.5, md: 0 },
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          {/* Título */}
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Chip
+                label={`${availableModules.length} MÓDULOS`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '0.65rem',
+                  height: 20,
+                }}
+              />
+            </Box>
+            <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+              Configuración del Sistema
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mt: 0.5 }}>
+              Administra los datos maestros y parámetros del negocio
+            </Typography>
+          </Box>
 
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Administra los datos maestros y configuración del sistema
-      </Typography>
+          {/* Conteos por categoría */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: { xs: 2.5, md: 4 },
+              '& > *': {
+                position: 'relative',
+                '&:not(:last-child)::after': {
+                  content: '""',
+                  position: 'absolute',
+                  right: { xs: 'unset', md: -16 },
+                  top: '10%',
+                  height: '80%',
+                  width: '1px',
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  display: { xs: 'none', md: 'block' },
+                },
+              },
+            }}
+          >
+            {(Object.keys(categoryMeta) as Array<keyof typeof categoryMeta>).map((key) => {
+              const count = countByCategory(key);
+              if (count === 0) return null;
+              const meta = categoryMeta[key];
+              return (
+                <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center' }}>
+                    {meta.icon}
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block', lineHeight: 1 }}>
+                      {meta.label.split(' ')[0]}
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+                      {count} módulo{count !== 1 ? 's' : ''}
+                    </Typography>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+      </Box>
 
-      {Object.entries(categories).map(([key, label]) => {
-        const modules = configModules.filter(
-          (m) =>
-            m.category === key &&
-            (!m.roles || hasAnyRole(m.roles))
-        );
-
+      {/* Secciones por categoría */}
+      {(Object.keys(categoryMeta) as Array<keyof typeof categoryMeta>).map((key) => {
+        const modules = availableModules.filter((m) => m.category === key);
         if (modules.length === 0) return null;
+        const meta = categoryMeta[key];
 
         return (
           <Box key={key} sx={{ mb: 4 }}>
-            <Typography
-              variant="h6"
-              sx={{ mb: 2, fontWeight: 600, color: 'text.primary' }}
+            {/* Encabezado de sección */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 2,
+                pb: 1,
+                borderBottom: '2px solid',
+                borderColor: meta.color,
+              }}
             >
-              {label}
-            </Typography>
+              <Box sx={{ color: meta.color, display: 'flex', alignItems: 'center' }}>
+                {meta.icon}
+              </Box>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ color: 'text.primary' }}>
+                {meta.label}
+              </Typography>
+            </Box>
+
             <Box
               sx={{
                 display: 'grid',
@@ -151,11 +290,11 @@ export function ConfiguracionPage() {
                   sm: 'repeat(2, 1fr)',
                   md: 'repeat(3, 1fr)',
                 },
-                gap: 3,
+                gap: 2.5,
               }}
             >
               {modules.map((module) => (
-                <ConfigCard key={module.id} module={module} />
+                <ConfigCard key={module.id} module={module} index={cardIndex++} />
               ))}
             </Box>
           </Box>
