@@ -28,7 +28,7 @@ import { es } from 'date-fns/locale';
 import { reportesApi } from '@/api/reportes';
 import { productosApi } from '@/api/productos';
 import { sucursalesApi } from '@/api/sucursales';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '../components/ReportePageHeader';
 import { formatCurrency } from '@/utils/format';
 import type { ProductoDTO } from '@/types/api';
 
@@ -165,14 +165,14 @@ export function ReporteKardexPage() {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 2, mb: 4 }}>
-      <PageHeader
+      <ReportePageHeader
         title="Kardex de Inventario"
-        showBackButton={true}
-        backPath="/reportes"
+        subtitle="Historial detallado de entradas, salidas y saldos por producto"
         breadcrumbs={[
           { label: 'Reportes', path: '/reportes' },
           { label: 'Kardex' },
         ]}
+        color="#7b1fa2"
       />
 
       {/* Formulario de Filtros */}

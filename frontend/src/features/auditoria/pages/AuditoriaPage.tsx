@@ -32,7 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { activityLogsApi } from '@/api/activityLogs';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import type { ActivityLogFullDTO } from '@/types/api';
 import { formatDateTime } from '@/utils/format';
 
@@ -237,16 +237,21 @@ export default function AuditoriaPage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      <PageHeader
-        title="Auditoría"
+      <ReportePageHeader
+        title="Auditoría de Actividad"
+        subtitle="Registro de la trazabilidad y eventos del sistema"
         breadcrumbs={[
           { label: 'Reportes', path: '/reportes' },
           { label: 'Auditoría' },
         ]}
-        showBackButton={true}
-        backPath="/reportes"
+        color="#c62828"
         action={
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => refetch()}
+            sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+          >
             Actualizar
           </Button>
         }

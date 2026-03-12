@@ -25,7 +25,7 @@ import {
   Switch,
   TextField,
 } from '@mui/material';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '../components/ReportePageHeader';
 import { reportesApi } from '@/api/reportes';
 import { sucursalesApi } from '@/api/sucursales';
 import { categoriasApi } from '@/api/categorias';
@@ -81,14 +81,14 @@ export function ReporteInventarioPage() {
 
   return (
     <Box>
-      <PageHeader 
-        title="Reporte de Inventario Valorizado"
-        showBackButton={true}
-        backPath="/reportes"
+      <ReportePageHeader
+        title="Inventario Valorizado"
+        subtitle="Resumen del valor total del stock actual en almacén por categoría"
         breadcrumbs={[
           { label: 'Reportes', path: '/reportes' },
           { label: 'Inventario Valorizado' },
         ]}
+        color="#ed6c02"
       />
 
       {/* Filtros */}

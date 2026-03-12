@@ -22,7 +22,7 @@ import {
   Paper,
   Chip,
 } from '@mui/material';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '../components/ReportePageHeader';
 import { reportesApi } from '@/api/reportes';
 import { cajasApi } from '@/api/cajas';
 import { sucursalesApi } from '@/api/sucursales';
@@ -66,14 +66,14 @@ export function ReporteCajaPage() {
 
   return (
     <Box>
-      <PageHeader 
-        title="Reporte de Caja" 
-        showBackButton={true}
-        backPath="/reportes"
+      <ReportePageHeader
+        title="Reporte de Caja"
+        subtitle="Cuadre de caja, ingresos, egresos y movimientos de dinero"
         breadcrumbs={[
           { label: 'Reportes', path: '/reportes' },
           { label: 'Caja' },
         ]}
+        color="#2e7d32"
       />
 
       {/* Filtros */}

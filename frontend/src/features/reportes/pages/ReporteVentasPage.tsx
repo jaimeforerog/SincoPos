@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { LineChart } from '@mui/x-charts/LineChart';
 import { PieChart } from '@mui/x-charts/PieChart';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '../components/ReportePageHeader';
 import { reportesApi } from '@/api/reportes';
 import { sucursalesApi } from '@/api/sucursales';
 import { formatCurrency } from '@/utils/format';
@@ -73,14 +73,14 @@ export function ReporteVentasPage() {
 
   return (
     <Box>
-      <PageHeader 
-        title="Reporte de Ventas" 
-        showBackButton={true}
-        backPath="/reportes"
+      <ReportePageHeader
+        title="Reporte de Ventas"
+        subtitle="Análisis de ventas por sucursal, método de pago y rango de fechas"
         breadcrumbs={[
           { label: 'Reportes', path: '/reportes' },
           { label: 'Ventas' },
         ]}
+        color="#1976d2"
       />
 
       {/* Filtros */}
