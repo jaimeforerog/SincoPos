@@ -20,4 +20,22 @@ public class ErpSincoOptions
     /// Default: 110505 (Caja General).
     /// </summary>
     public string CuentaCaja { get; set; } = "110505";
+
+    /// <summary>
+    /// Cuenta contable PUC para Cuentas por Cobrar a clientes.
+    /// Default: 130505 (Clientes Nacionales).
+    /// </summary>
+    public string CuentaCxCClientes { get; set; } = "130505";
+
+    /// <summary>
+    /// Cuenta contable PUC para pagos con tarjeta débito/crédito.
+    /// Default: 111005 (Bancos - Cuenta Corriente).
+    /// </summary>
+    public string CuentaTarjeta { get; set; } = "111005";
+
+    /// <summary>
+    /// Cuenta contable PUC para pagos por transferencia bancaria.
+    /// Default: 111010 (Bancos - Cuenta de Ahorros).
+    /// </summary>
+    public string CuentaTransferencia { get; set; } = "111010";
 }
