@@ -278,7 +278,7 @@ export function ComprasPage() {
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          Error al cargar las órdenes: {error instanceof Error ? error.message : 'Error desconocido'}
+          Error al cargar las órdenes de compra. Por favor, intenta de nuevo.
         </Alert>
       )}
 
