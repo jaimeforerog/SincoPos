@@ -32,7 +32,7 @@ import {
   alpha,
 } from '@mui/material';
 
-const HERO_COLOR = '#283593';
+const HERO_COLOR = '#1565c0';
 import {
   Search,
   StoreMallDirectory,
@@ -336,7 +336,7 @@ export function UsuariosPage() {
         subtitle="Gestión de usuarios del sistema y asignación de roles"
         breadcrumbs={[{ label: 'Configuración', path: '/configuracion' }, { label: 'Usuarios' }]}
         backPath="/configuracion"
-        color="#283593"
+        color="#1565c0"
         action={
           isAdmin() ? (
             <Button

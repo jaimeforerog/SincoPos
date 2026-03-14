@@ -23,7 +23,7 @@ import {
   alpha,
 } from '@mui/material';
 
-const HERO_COLOR = '#2e7d32';
+const HERO_COLOR = '#1565c0';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -228,7 +228,7 @@ export function PreciosPage() {
           { label: 'Precios Sucursal' },
         ]}
         backPath="/configuracion"
-        color="#2e7d32"
+        color="#1565c0"
       />
 
       {/* Selector de Sucursal */}

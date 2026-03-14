@@ -94,7 +94,7 @@ export function CajasPage() {
           { label: 'Cajas' },
         ]}
         backPath="/configuracion"
-        color="#00796b"
+        color="#1565c0"
         action={
           <Button
             variant="contained"

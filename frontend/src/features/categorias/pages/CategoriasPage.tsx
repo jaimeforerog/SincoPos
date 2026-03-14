@@ -99,7 +99,7 @@ export function CategoriasPage() {
           { label: 'Categorías' },
         ]}
         backPath="/configuracion"
-        color="#f57f17"
+        color="#1565c0"
         action={
           <Button
             variant="contained"

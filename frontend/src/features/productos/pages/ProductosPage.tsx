@@ -24,7 +24,7 @@ import {
   alpha,
 } from '@mui/material';
 
-const HERO_COLOR = '#ed6c02';
+const HERO_COLOR = '#1565c0';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -132,7 +132,7 @@ export function ProductosPage() {
           { label: 'Productos' },
         ]}
         backPath="/configuracion"
-        color="#ed6c02"
+        color="#1565c0"
         action={
           isSupervisor() ? (
             <Button

@@ -6,7 +6,7 @@ import {
   TableHead, TableRow, TextField, Tooltip, Typography, Alert, alpha,
 } from '@mui/material';
 
-const HERO_COLOR = '#c62828';
+const HERO_COLOR = '#1565c0';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -233,7 +233,7 @@ export default function ImpuestosPage() {
           { label: 'Motor de Impuestos' },
         ]}
         backPath="/configuracion"
-        color="#c62828"
+        color="#1565c0"
         action={
           <Box>
             {tab === 'impuestos' && (

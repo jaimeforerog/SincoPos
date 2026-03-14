@@ -160,7 +160,7 @@ export function ConfiguracionEmisorPage() {
           { label: 'Facturación Electrónica' },
         ]}
         backPath="/configuracion"
-        color="#6a1b9a"
+        color="#1565c0"
         action={
           config ? (
             <Chip

@@ -33,7 +33,7 @@ import {
   alpha,
 } from '@mui/material';
 
-const HERO_COLOR = '#7b1fa2';
+const HERO_COLOR = '#1565c0';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -840,7 +840,7 @@ export default function TercerosPage() {
           { label: 'Terceros' },
         ]}
         backPath="/configuracion"
-        color="#7b1fa2"
+        color="#1565c0"
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
