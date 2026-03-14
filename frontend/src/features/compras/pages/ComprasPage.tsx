@@ -60,7 +60,7 @@ const ESTADO_META: Record<string, { color: 'warning' | 'info' | 'primary' | 'suc
   Pendiente:         { color: 'warning',  label: 'Pendiente' },
   Aprobada:          { color: 'info',     label: 'Aprobada' },
   RecibidaParcial:   { color: 'primary',  label: 'Rec. Parcial' },
-  RecibidaCompleta:  { color: 'success',  label: 'Completada' },
+  RecibidaCompleta:  { color: 'success',  label: 'RecibidaCompleta' },
   Rechazada:         { color: 'error',    label: 'Rechazada' },
   Cancelada:         { color: 'default',  label: 'Cancelada' },
 };

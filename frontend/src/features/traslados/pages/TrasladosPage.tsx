@@ -312,7 +312,7 @@ export function TrasladosPage() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={`${traslado.detalles.length} producto${traslado.detalles.length !== 1 ? 's' : ''}`}
+                          label={`${traslado.detalles.length} producto(s)`}
                           size="small" variant="outlined"
                           sx={{ color: 'text.secondary', borderColor: 'divider' }}
                         />

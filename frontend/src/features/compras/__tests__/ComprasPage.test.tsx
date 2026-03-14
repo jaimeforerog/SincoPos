@@ -184,10 +184,9 @@ describe('ComprasPage', () => {
 
     renderWithProviders(<ComprasPage />);
 
-    const select = screen.getByRole('combobox', { name: /estado/i });
-    await userEvent.click(select);
-    const opcion = await screen.findByRole('option', { name: /pendiente/i });
-    await userEvent.click(opcion);
+    // El filtro usa Chips en lugar de Select — clic en el chip "Pendiente"
+    const chipPendiente = await screen.findByRole('button', { name: /^pendiente$/i });
+    await userEvent.click(chipPendiente);
 
     await waitFor(() => {
       expect(comprasApi.getAll).toHaveBeenCalledWith(
