@@ -36,7 +36,7 @@ const configModules: ConfigModule[] = [
     path: '/cajas',
     roles: ['supervisor', 'admin'],
     category: 'negocio',
-    color: '#00796b',
+    color: '#1565c0',
   },
   {
     id: 'terceros',
@@ -46,7 +46,7 @@ const configModules: ConfigModule[] = [
     path: '/terceros',
     roles: ['supervisor', 'admin'],
     category: 'negocio',
-    color: '#7b1fa2',
+    color: '#1565c0',
   },
   {
     id: 'productos',
@@ -56,7 +56,7 @@ const configModules: ConfigModule[] = [
     path: '/productos',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
-    color: '#ed6c02',
+    color: '#1565c0',
   },
   {
     id: 'precios',
@@ -66,7 +66,7 @@ const configModules: ConfigModule[] = [
     path: '/precios',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
-    color: '#2e7d32',
+    color: '#1565c0',
   },
   {
     id: 'categorias',
@@ -76,7 +76,7 @@ const configModules: ConfigModule[] = [
     path: '/categorias',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
-    color: '#f57f17',
+    color: '#1565c0',
   },
   {
     id: 'impuestos',
@@ -86,7 +86,7 @@ const configModules: ConfigModule[] = [
     path: '/impuestos',
     roles: ['admin'],
     category: 'sistema',
-    color: '#c62828',
+    color: '#1565c0',
   },
   {
     id: 'usuarios',
@@ -96,7 +96,7 @@ const configModules: ConfigModule[] = [
     path: '/usuarios',
     roles: ['admin'],
     category: 'sistema',
-    color: '#283593',
+    color: '#1565c0',
   },
   {
     id: 'facturacion',
@@ -106,7 +106,7 @@ const configModules: ConfigModule[] = [
     path: '/configuracion/facturacion',
     roles: ['admin'],
     category: 'sistema',
-    color: '#6a1b9a',
+    color: '#1565c0',
   },
 ];
 
@@ -119,12 +119,12 @@ const categoryMeta = {
   catalogo: {
     label: 'Catálogo de Productos',
     icon: <MenuBookOutlined fontSize="small" />,
-    color: '#ed6c02',
+    color: '#1565c0',
   },
   sistema: {
     label: 'Configuración Fiscal y Sistema',
     icon: <TuneOutlined fontSize="small" />,
-    color: '#6a1b9a',
+    color: '#1565c0',
   },
 } as const;
 
@@ -145,7 +145,7 @@ export function ConfiguracionPage() {
       {/* Hero */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #4a148c 0%, #311b92 50%, #1a237e 100%)',
+          background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 50%, #01579b 100%)',
           borderRadius: 3,
           px: { xs: 3, md: 4 },
           py: { xs: 2.5, md: 3 },
