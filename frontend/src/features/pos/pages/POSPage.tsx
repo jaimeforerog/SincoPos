@@ -384,9 +384,7 @@ export function POSPage() {
         {/* Banner de Información de Sesión */}
         <Box
           sx={{
-            background: cajaActual
-              ? 'linear-gradient(135deg, #1565c0 0%, #0d47a1 50%, #01579b 100%)'
-              : 'linear-gradient(135deg, #e65100 0%, #bf360c 100%)',
+            background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 50%, #01579b 100%)',
             borderRadius: 3,
             p: 2,
             mb: 3,

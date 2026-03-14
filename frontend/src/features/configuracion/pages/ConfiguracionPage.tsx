@@ -36,7 +36,7 @@ const configModules: ConfigModule[] = [
     path: '/cajas',
     roles: ['supervisor', 'admin'],
     category: 'negocio',
-    color: '#1565c0',
+    color: '#00796b',
   },
   {
     id: 'terceros',
@@ -46,7 +46,7 @@ const configModules: ConfigModule[] = [
     path: '/terceros',
     roles: ['supervisor', 'admin'],
     category: 'negocio',
-    color: '#1565c0',
+    color: '#7b1fa2',
   },
   {
     id: 'productos',
@@ -56,7 +56,7 @@ const configModules: ConfigModule[] = [
     path: '/productos',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
-    color: '#1565c0',
+    color: '#ed6c02',
   },
   {
     id: 'precios',
@@ -66,7 +66,7 @@ const configModules: ConfigModule[] = [
     path: '/precios',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
-    color: '#1565c0',
+    color: '#2e7d32',
   },
   {
     id: 'categorias',
@@ -76,7 +76,7 @@ const configModules: ConfigModule[] = [
     path: '/categorias',
     roles: ['supervisor', 'admin'],
     category: 'catalogo',
-    color: '#1565c0',
+    color: '#f57f17',
   },
   {
     id: 'impuestos',
@@ -86,7 +86,7 @@ const configModules: ConfigModule[] = [
     path: '/impuestos',
     roles: ['admin'],
     category: 'sistema',
-    color: '#1565c0',
+    color: '#c62828',
   },
   {
     id: 'usuarios',
@@ -96,7 +96,7 @@ const configModules: ConfigModule[] = [
     path: '/usuarios',
     roles: ['admin'],
     category: 'sistema',
-    color: '#1565c0',
+    color: '#283593',
   },
   {
     id: 'facturacion',
@@ -106,7 +106,7 @@ const configModules: ConfigModule[] = [
     path: '/configuracion/facturacion',
     roles: ['admin'],
     category: 'sistema',
-    color: '#1565c0',
+    color: '#6a1b9a',
   },
 ];
 
@@ -119,12 +119,12 @@ const categoryMeta = {
   catalogo: {
     label: 'Catálogo de Productos',
     icon: <MenuBookOutlined fontSize="small" />,
-    color: '#1565c0',
+    color: '#ed6c02',
   },
   sistema: {
     label: 'Configuración Fiscal y Sistema',
     icon: <TuneOutlined fontSize="small" />,
-    color: '#1565c0',
+    color: '#6a1b9a',
   },
 } as const;
 

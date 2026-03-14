@@ -26,6 +26,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  alpha,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -34,6 +35,8 @@ import { useSnackbar } from 'notistack';
 import { useAuth } from '@/hooks/useAuth';
 import { facturacionApi } from '@/api/facturacion';
 import type { DocumentoElectronicoDTO } from '@/types/api';
+
+const HERO_COLOR = '#1565c0';
 
 const ESTADO_LABELS: Record<number, { label: string; color: any }> = {
   0: { label: 'Pendiente', color: 'default' },
@@ -108,9 +111,36 @@ export function DocumentosElectronicosPage() {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 700 }}>
-        Documentos Electrónicos DIAN
-      </Typography>
+      {/* Hero */}
+      <Box
+        sx={{
+          background: `linear-gradient(135deg, ${HERO_COLOR} 0%, #0d47a1 50%, #01579b 100%)`,
+          borderRadius: 3,
+          px: { xs: 3, md: 4 },
+          py: { xs: 2.5, md: 3 },
+          mb: 3,
+          mt: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""', position: 'absolute', top: -60, right: -60,
+            width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+          },
+          '&::after': {
+            content: '""', position: 'absolute', bottom: -40, right: 80,
+            width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+          },
+        }}
+      >
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+            Documentos Electrónicos DIAN
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mt: 0.5 }}>
+            Facturación electrónica, notas crédito y débito
+          </Typography>
+        </Box>
+      </Box>
 
       {/* Filtros */}
       <Paper sx={{ p: 2, mb: 3 }}>
@@ -164,16 +194,26 @@ export function DocumentosElectronicosPage() {
           <TableContainer component={Paper}>
             <Table size="small">
               <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Número</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Fecha Emisión</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Sucursal</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Fecha Envío DIAN</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Código DIAN</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Intentos</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
+                <TableRow
+                  sx={{
+                    background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                    '& .MuiTableCell-head': {
+                      color: HERO_COLOR, fontWeight: 700,
+                      fontSize: '0.75rem', textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                    },
+                  }}
+                >
+                  <TableCell>Número</TableCell>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Fecha Emisión</TableCell>
+                  <TableCell>Sucursal</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell>Fecha Envío DIAN</TableCell>
+                  <TableCell>Código DIAN</TableCell>
+                  <TableCell>Intentos</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

@@ -83,15 +83,39 @@ export function DashboardPage() {
 
   const metricas = dashboard.metricasDelDia;
 
+  const HERO_COLOR = '#1565c0';
+
   return (
     <Container maxWidth="xl">
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          Dashboard
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Resumen de ventas y métricas del día
-        </Typography>
+      {/* Hero */}
+      <Box
+        sx={{
+          background: `linear-gradient(135deg, ${HERO_COLOR} 0%, #0d47a1 50%, #01579b 100%)`,
+          borderRadius: 3,
+          px: { xs: 3, md: 4 },
+          py: { xs: 2.5, md: 3 },
+          mb: 4,
+          mt: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""', position: 'absolute', top: -60, right: -60,
+            width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+          },
+          '&::after': {
+            content: '""', position: 'absolute', bottom: -40, right: 80,
+            width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+          },
+        }}
+      >
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+            Dashboard
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mt: 0.5 }}>
+            Resumen de ventas y métricas del día
+          </Typography>
+        </Box>
       </Box>
 
       {/* Métricas Principales */}
