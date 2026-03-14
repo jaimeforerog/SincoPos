@@ -381,21 +381,33 @@ export function POSPage() {
   return (
     <Box sx={{ flexGrow: 1, bgcolor: 'grey.100', minHeight: '100vh', py: 3 }}>
       <Container maxWidth="xl">
-        <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
-          Punto de Venta
-        </Typography>
-
         {/* Banner de Información de Sesión */}
-        <Paper
+        <Box
           sx={{
+            background: cajaActual
+              ? 'linear-gradient(135deg, #1565c0 0%, #0d47a1 50%, #01579b 100%)'
+              : 'linear-gradient(135deg, #e65100 0%, #bf360c 100%)',
+            borderRadius: 3,
             p: 2,
             mb: 3,
-            bgcolor: cajaActual ? 'primary.main' : 'warning.main',
-            color: 'white',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""', position: 'absolute', top: -40, right: -40,
+              width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.06)',
+            },
           }}
         >
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
             <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.1 }}>
+                  Punto de Venta
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                  Sesión activa
+                </Typography>
+              </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <AccountBalanceIcon />
                 <Box>
@@ -446,8 +458,9 @@ export function POSPage() {
                   onClick={handleCambiarCaja}
                   sx={{
                     color: 'white',
-                    bgcolor: 'rgba(255,255,255,0.2)',
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                    bgcolor: 'rgba(255,255,255,0.15)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
                   }}
                 >
                   <SwapHorizIcon />
@@ -455,7 +468,7 @@ export function POSPage() {
               </Tooltip>
             )}
           </Box>
-        </Paper>
+        </Box>
 
         <Box
           sx={{

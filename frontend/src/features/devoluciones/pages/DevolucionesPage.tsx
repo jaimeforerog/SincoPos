@@ -24,9 +24,10 @@ import {
   CircularProgress,
   Divider,
   Autocomplete,
+  Container,
   type ChipProps,
 } from '@mui/material';
-import { PageHeader } from '@/components/common/PageHeader';
+import UndoIcon2 from '@mui/icons-material/AssignmentReturn';
 import { useAuth } from '@/hooks/useAuth';
 import { ventasApi } from '@/api/ventas';
 import { devolucionesApi } from '@/api/devoluciones';
@@ -271,9 +272,43 @@ export function DevolucionesPage() {
     }
   };
 
+  const HERO_COLOR = '#1565c0';
+
   return (
-    <Box>
-      <PageHeader title="Devoluciones de Ventas" />
+    <Container maxWidth="xl">
+      {/* Hero */}
+      <Box
+        sx={{
+          background: `linear-gradient(135deg, ${HERO_COLOR} 0%, #0d47a1 50%, #01579b 100%)`,
+          borderRadius: 3,
+          px: { xs: 3, md: 4 },
+          py: { xs: 2.5, md: 3 },
+          mb: 3,
+          mt: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""', position: 'absolute', top: -60, right: -60,
+            width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+          },
+          '&::after': {
+            content: '""', position: 'absolute', bottom: -40, right: 80,
+            width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+          },
+        }}
+      >
+        <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <UndoIcon2 sx={{ color: 'rgba(255,255,255,0.8)', fontSize: 36 }} />
+          <Box>
+            <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+              Devoluciones de Ventas
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mt: 0.3 }}>
+              Busca una venta completada y procesa la devolución parcial o total
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
 
       {/* Búsqueda y Filtros */}
       <Card sx={{ mb: 3 }}>
@@ -642,6 +677,6 @@ export function DevolucionesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 }
