@@ -274,7 +274,7 @@ export function VentasPage() {
           </TextField>
           <Box sx={{ ml: 'auto' }}>
             <Typography variant="caption" color="text.secondary">
-              {isLoading ? 'Cargando...' : `${totalCount} venta${totalCount !== 1 ? 's' : ''}`}
+              {isLoading ? 'Cargando...' : `${totalCount} venta(s) encontradas`}
             </Typography>
           </Box>
         </Box>
@@ -399,7 +399,7 @@ export function VentasPage() {
                     </TableCell>
                     <TableCell>
                       {venta.nombreCliente || (
-                        <Typography variant="body2" color="text.disabled">—</Typography>
+                        <Typography variant="body2" color="text.disabled">Sin cliente</Typography>
                       )}
                     </TableCell>
                     <TableCell align="right">

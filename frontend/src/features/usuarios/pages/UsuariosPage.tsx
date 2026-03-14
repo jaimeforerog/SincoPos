@@ -29,7 +29,10 @@ import {
   Checkbox,
   FormControlLabel,
   FormGroup,
+  alpha,
 } from '@mui/material';
+
+const HERO_COLOR = '#283593';
 import {
   Search,
   StoreMallDirectory,
@@ -43,7 +46,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { usuariosApi, type UsuarioDto } from '@/api/usuarios';
 import { sucursalesApi } from '@/api/sucursales';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import { useAuthStore } from '@/stores/auth.store';
 import { useAuth } from '@/hooks/useAuth';
 import type { SucursalDTO } from '@/types/api';
@@ -328,25 +331,31 @@ export function UsuariosPage() {
 
   return (
     <Container maxWidth="xl">
-      <PageHeader
+      <ReportePageHeader
         title="Usuarios"
+        subtitle="Gestión de usuarios del sistema y asignación de roles"
         breadcrumbs={[{ label: 'Configuración', path: '/configuracion' }, { label: 'Usuarios' }]}
-        showBackButton={true}
         backPath="/configuracion"
+        color="#283593"
+        action={
+          isAdmin() ? (
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setCrearDialogOpen(true)}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.35)',
+                fontWeight: 700,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' },
+              }}
+            >
+              Nuevo Usuario
+            </Button>
+          ) : undefined
+        }
       />
-
-      {/* Acciones */}
-      {isAdmin() && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setCrearDialogOpen(true)}
-          >
-            Nuevo Usuario
-          </Button>
-        </Box>
-      )}
 
       {/* Filtros */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
@@ -389,7 +398,17 @@ export function UsuariosPage() {
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
-            <TableRow sx={{ '& th': { fontWeight: 600, bgcolor: 'grey.50' } }}>
+            <TableRow
+              sx={{
+                background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                '& .MuiTableCell-head': {
+                  color: HERO_COLOR, fontWeight: 700,
+                  fontSize: '0.75rem', textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                },
+              }}
+            >
               <TableCell>Nombre</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Rol</TableCell>

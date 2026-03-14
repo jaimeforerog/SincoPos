@@ -20,7 +20,10 @@ import {
   Tooltip,
   InputAdornment,
   Chip,
+  alpha,
 } from '@mui/material';
+
+const HERO_COLOR = '#2e7d32';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -31,7 +34,7 @@ import { sucursalesApi } from '@/api/sucursales';
 import { preciosApi } from '@/api/precios';
 import { EditarPrecioDialog } from '../components/EditarPrecioDialog';
 import { ImportarPreciosDialog } from '../components/ImportarPreciosDialog';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import type { ProductoDTO, PrecioResueltoDTO } from '@/types/api';
 
 interface ProductoConPrecio extends ProductoDTO {
@@ -217,14 +220,15 @@ export function PreciosPage() {
 
   return (
     <Container maxWidth="xl">
-      <PageHeader
+      <ReportePageHeader
         title="Precios Sucursal"
+        subtitle="Configuración de precios por sucursal e importación masiva"
         breadcrumbs={[
           { label: 'Configuración', path: '/configuracion' },
-          { label: 'Precios Sucursal' }
+          { label: 'Precios Sucursal' },
         ]}
-        showBackButton={true}
         backPath="/configuracion"
+        color="#2e7d32"
       />
 
       {/* Selector de Sucursal */}
@@ -289,29 +293,25 @@ export function PreciosPage() {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>Código Barras</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Producto</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">
-                  P. Costo
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">
-                  P. Venta
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">
-                  P. Mínimo
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">
-                  Margen
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">
-                  Origen
-                </TableCell>
-                {isSupervisor() && (
-                  <TableCell sx={{ fontWeight: 700 }} align="center">
-                    Acciones
-                  </TableCell>
-                )}
+              <TableRow
+                sx={{
+                  background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                  '& .MuiTableCell-head': {
+                    color: HERO_COLOR, fontWeight: 700,
+                    fontSize: '0.75rem', textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                  },
+                }}
+              >
+                <TableCell>Código Barras</TableCell>
+                <TableCell>Producto</TableCell>
+                <TableCell align="right">P. Costo</TableCell>
+                <TableCell align="right">P. Venta</TableCell>
+                <TableCell align="right">P. Mínimo</TableCell>
+                <TableCell align="right">Margen</TableCell>
+                <TableCell align="center">Origen</TableCell>
+                {isSupervisor() && <TableCell align="center">Acciones</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>

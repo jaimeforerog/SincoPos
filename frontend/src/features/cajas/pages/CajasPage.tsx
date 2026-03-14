@@ -23,7 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cajasApi } from '@/api/cajas';
 import { sucursalesApi } from '@/api/sucursales';
 import { AbrirCajaDialog } from '../components/AbrirCajaDialog';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import { CerrarCajaDialog } from '../components/CerrarCajaDialog';
 import type { CajaDTO } from '@/types/api';
 
@@ -86,21 +86,29 @@ export function CajasPage() {
 
   return (
     <Container maxWidth="xl">
-      <PageHeader
+      <ReportePageHeader
         title="Gestión de Cajas"
+        subtitle="Apertura, cierre y arqueo de cajas registradoras"
         breadcrumbs={[
           { label: 'Configuración', path: '/configuracion' },
-          { label: 'Cajas' }
+          { label: 'Cajas' },
         ]}
-        showBackButton={true}
         backPath="/configuracion"
+        color="#00796b"
         action={
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setAbrirDialogOpen(true)}
-            size="large"
             disabled={!selectedSucursalId}
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.15)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.35)',
+              fontWeight: 700,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' },
+              '&:disabled': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)' },
+            }}
           >
             Abrir Caja
           </Button>

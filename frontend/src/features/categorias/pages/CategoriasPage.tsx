@@ -19,7 +19,7 @@ import { useSnackbar } from 'notistack';
 import { CategoriaTreeView } from '../components/CategoriaTreeView';
 import { CategoriaFormDialog } from '../components/CategoriaFormDialog';
 import { MoverCategoriaDialog } from '../components/MoverCategoriaDialog';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 
 export function CategoriasPage() {
   const [openFormDialog, setOpenFormDialog] = useState(false);
@@ -91,19 +91,27 @@ export function CategoriasPage() {
 
   return (
     <Container maxWidth="xl">
-      <PageHeader
+      <ReportePageHeader
         title="Categorías"
+        subtitle="Estructura jerárquica de categorías y márgenes de ganancia"
         breadcrumbs={[
           { label: 'Configuración', path: '/configuracion' },
-          { label: 'Categorías' }
+          { label: 'Categorías' },
         ]}
-        showBackButton={true}
         backPath="/configuracion"
+        color="#f57f17"
         action={
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleCreate}
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.15)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.35)',
+              fontWeight: 700,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' },
+            }}
           >
             Nueva Categoría
           </Button>

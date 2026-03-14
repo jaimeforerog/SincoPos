@@ -21,7 +21,7 @@ import { sucursalesApi } from '@/api/sucursales';
 import type { SucursalDTO } from '@/types/api';
 import { useSnackbar } from 'notistack';
 import { SucursalFormDialog } from '../components/SucursalFormDialog';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 
 export function SucursalesPage() {
   const [openDialog, setOpenDialog] = useState(false);
@@ -147,19 +147,27 @@ export function SucursalesPage() {
 
   return (
     <Container maxWidth="xl">
-      <PageHeader
+      <ReportePageHeader
         title="Sucursales"
+        subtitle="Gestión de puntos de venta y ubicaciones físicas"
         breadcrumbs={[
           { label: 'Configuración', path: '/configuracion' },
-          { label: 'Sucursales' }
+          { label: 'Sucursales' },
         ]}
-        showBackButton={true}
         backPath="/configuracion"
+        color="#1565c0"
         action={
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleCreate}
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.15)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.35)',
+              fontWeight: 700,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' },
+            }}
           >
             Nueva Sucursal
           </Button>

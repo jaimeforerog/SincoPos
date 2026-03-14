@@ -3,8 +3,10 @@ import {
   Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControl, FormControlLabel, IconButton, InputLabel, MenuItem,
   Paper, Select, Switch, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, TextField, Tooltip, Typography, Alert,
+  TableHead, TableRow, TextField, Tooltip, Typography, Alert, alpha,
 } from '@mui/material';
+
+const HERO_COLOR = '#c62828';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -12,7 +14,7 @@ import {
 } from '@mui/icons-material';
 import { impuestosApi, retencionesApi, conceptosRetencionApi } from '@/api/impuestos';
 import type { ImpuestoDTO, RetencionReglaDTO, ConceptoRetencionDTO } from '@/types/api';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -218,40 +220,42 @@ export default function ImpuestosPage() {
     catch { setError('No se puede desactivar el concepto'); }
   };
 
-  // ── Action button based on tab ──────────────────────────────────────────
-
-  const getActionButton = () => {
-    if (tab === 'impuestos') return (
-      <Button id="btn-nuevo-impuesto" variant="contained" startIcon={<AddIcon />} onClick={openCrearImpuesto}>
-        Nuevo Impuesto
-      </Button>
-    );
-    if (tab === 'retenciones') return (
-      <Button id="btn-nueva-retencion" variant="contained" startIcon={<AddIcon />} onClick={openCrearRetencion}>
-        Nueva Retencion
-      </Button>
-    );
-    return (
-      <Button id="btn-nuevo-concepto" variant="contained" startIcon={<AddIcon />} onClick={openCrearConcepto}>
-        Nuevo Concepto
-      </Button>
-    );
-  };
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
 
-      <PageHeader
+      <ReportePageHeader
         title="Motor de Impuestos"
+        subtitle="Configuración de IVA, INC, retenciones DIAN y conceptos"
         breadcrumbs={[
-          { label: 'Configuracion', path: '/configuracion' },
+          { label: 'Configuración', path: '/configuracion' },
           { label: 'Motor de Impuestos' },
         ]}
-        showBackButton={true}
         backPath="/configuracion"
-        action={getActionButton()}
+        color="#c62828"
+        action={
+          <Box>
+            {tab === 'impuestos' && (
+              <Button id="btn-nuevo-impuesto" variant="contained" startIcon={<AddIcon />} onClick={openCrearImpuesto}
+                sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', fontWeight: 700, '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' } }}>
+                Nuevo Impuesto
+              </Button>
+            )}
+            {tab === 'retenciones' && (
+              <Button id="btn-nueva-retencion" variant="contained" startIcon={<AddIcon />} onClick={openCrearRetencion}
+                sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', fontWeight: 700, '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' } }}>
+                Nueva Retencion
+              </Button>
+            )}
+            {tab === 'conceptos' && (
+              <Button id="btn-nuevo-concepto" variant="contained" startIcon={<AddIcon />} onClick={openCrearConcepto}
+                sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', fontWeight: 700, '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' } }}>
+                Nuevo Concepto
+              </Button>
+            )}
+          </Box>
+        }
       />
 
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
@@ -275,15 +279,25 @@ export default function ImpuestosPage() {
       {tab === 'impuestos' && (
         <TableContainer component={Paper} variant="outlined">
           <Table id="tabla-impuestos" size="small">
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
-              <TableRow>
-                <TableCell><b>Nombre</b></TableCell>
-                <TableCell><b>Tipo</b></TableCell>
-                <TableCell align="right"><b>Tarifa</b></TableCell>
-                <TableCell><b>Acumulable</b></TableCell>
-                <TableCell><b>Cuenta Contable</b></TableCell>
-                <TableCell><b>Pais</b></TableCell>
-                <TableCell align="center"><b>Acciones</b></TableCell>
+            <TableHead>
+              <TableRow
+                sx={{
+                  background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                  '& .MuiTableCell-head': {
+                    color: HERO_COLOR, fontWeight: 700,
+                    fontSize: '0.75rem', textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                  },
+                }}
+              >
+                <TableCell>Nombre</TableCell>
+                <TableCell>Tipo</TableCell>
+                <TableCell align="right">Tarifa</TableCell>
+                <TableCell>Acumulable</TableCell>
+                <TableCell>Cuenta Contable</TableCell>
+                <TableCell>País</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -326,17 +340,27 @@ export default function ImpuestosPage() {
       {tab === 'retenciones' && (
         <TableContainer component={Paper} variant="outlined">
           <Table id="tabla-retenciones" size="small">
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
-              <TableRow>
-                <TableCell><b>Nombre</b></TableCell>
-                <TableCell><b>Tipo</b></TableCell>
-                <TableCell align="right"><b>%</b></TableCell>
-                <TableCell align="right"><b>Base min. (UVT)</b></TableCell>
-                <TableCell><b>Concepto DIAN</b></TableCell>
-                <TableCell><b>Municipio</b></TableCell>
-                <TableCell><b>Perfil Vendedor / Comprador</b></TableCell>
-                <TableCell><b>Estado</b></TableCell>
-                <TableCell align="center"><b>Acciones</b></TableCell>
+            <TableHead>
+              <TableRow
+                sx={{
+                  background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                  '& .MuiTableCell-head': {
+                    color: HERO_COLOR, fontWeight: 700,
+                    fontSize: '0.75rem', textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                  },
+                }}
+              >
+                <TableCell>Nombre</TableCell>
+                <TableCell>Tipo</TableCell>
+                <TableCell align="right">%</TableCell>
+                <TableCell align="right">Base mín. (UVT)</TableCell>
+                <TableCell>Concepto DIAN</TableCell>
+                <TableCell>Municipio</TableCell>
+                <TableCell>Perfil Vendedor / Comprador</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -374,13 +398,23 @@ export default function ImpuestosPage() {
       {tab === 'conceptos' && (
         <TableContainer component={Paper} variant="outlined">
           <Table id="tabla-conceptos-retencion" size="small">
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
-              <TableRow>
-                <TableCell><b>Nombre</b></TableCell>
-                <TableCell><b>Codigo DIAN</b></TableCell>
-                <TableCell align="right"><b>% Sugerido</b></TableCell>
-                <TableCell><b>Estado</b></TableCell>
-                <TableCell align="center"><b>Acciones</b></TableCell>
+            <TableHead>
+              <TableRow
+                sx={{
+                  background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                  '& .MuiTableCell-head': {
+                    color: HERO_COLOR, fontWeight: 700,
+                    fontSize: '0.75rem', textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                  },
+                }}
+              >
+                <TableCell>Nombre</TableCell>
+                <TableCell>Código DIAN</TableCell>
+                <TableCell align="right">% Sugerido</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

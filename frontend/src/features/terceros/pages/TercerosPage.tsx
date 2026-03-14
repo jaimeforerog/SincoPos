@@ -30,7 +30,10 @@ import {
   TextField,
   Tooltip,
   Typography,
+  alpha,
 } from '@mui/material';
+
+const HERO_COLOR = '#7b1fa2';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -47,7 +50,7 @@ import {
 } from '@mui/icons-material';
 import { tercerosApi } from '@/api/terceros';
 import type { TerceroDTO, TerceroActividadDTO, ResultadoImportacionTercerosDTO } from '@/types/api';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
@@ -829,24 +832,41 @@ export default function TercerosPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <PageHeader
+      <ReportePageHeader
         title="Terceros"
+        subtitle="Gestión de clientes, proveedores y terceros del sistema"
         breadcrumbs={[
           { label: 'Configuración', path: '/configuracion' },
           { label: 'Terceros' },
         ]}
-        showBackButton={true}
         backPath="/configuracion"
+        color="#7b1fa2"
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
               variant="outlined"
               startIcon={<FileUploadIcon />}
               onClick={() => setImportarOpen(true)}
+              sx={{
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.5)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)', borderColor: '#fff' },
+              }}
             >
               Importar Excel
             </Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleNuevo}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleNuevo}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.35)',
+                fontWeight: 700,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' },
+              }}
+            >
               Nuevo Tercero
             </Button>
           </Box>
@@ -898,7 +918,17 @@ export default function TercerosPage() {
         <Table size="small">
           {/* ... Table content ... */}
           <TableHead>
-            <TableRow>
+            <TableRow
+              sx={{
+                background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                '& .MuiTableCell-head': {
+                  color: HERO_COLOR, fontWeight: 700,
+                  fontSize: '0.75rem', textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                },
+              }}
+            >
               <TableCell>Nombre</TableCell>
               <TableCell>Identificación</TableCell>
               <TableCell>Tipo</TableCell>

@@ -21,7 +21,10 @@ import {
   Tooltip,
   InputAdornment,
   TablePagination,
+  alpha,
 } from '@mui/material';
+
+const HERO_COLOR = '#ed6c02';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -31,7 +34,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
 import { ProductoFormDialog } from '../components/ProductoFormDialog';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import type { ProductoDTO } from '@/types/api';
 
 export function ProductosPage() {
@@ -121,20 +124,28 @@ export function ProductosPage() {
 
   return (
     <Container maxWidth="xl">
-      <PageHeader
+      <ReportePageHeader
         title="Productos"
+        subtitle="Catálogo de productos, códigos de barras y costos"
         breadcrumbs={[
           { label: 'Configuración', path: '/configuracion' },
-          { label: 'Productos' }
+          { label: 'Productos' },
         ]}
-        showBackButton={true}
         backPath="/configuracion"
+        color="#ed6c02"
         action={
           isSupervisor() ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={handleNuevo}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.35)',
+                fontWeight: 700,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' },
+              }}
             >
               Nuevo Producto
             </Button>
@@ -209,21 +220,24 @@ export function ProductosPage() {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              {/* ... TableHead stays the same ... */}
-              <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>Código de Barras</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Categoría</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">
-                  P. Costo
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">
-                  Estado
-                </TableCell>
+              <TableRow
+                sx={{
+                  background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
+                  '& .MuiTableCell-head': {
+                    color: HERO_COLOR, fontWeight: 700,
+                    fontSize: '0.75rem', textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
+                  },
+                }}
+              >
+                <TableCell>Código de Barras</TableCell>
+                <TableCell>Nombre</TableCell>
+                <TableCell>Categoría</TableCell>
+                <TableCell align="right">P. Costo</TableCell>
+                <TableCell align="center">Estado</TableCell>
                 {(isSupervisor() || isAdmin()) && (
-                  <TableCell sx={{ fontWeight: 700 }} align="center">
-                    Acciones
-                  </TableCell>
+                  <TableCell align="center">Acciones</TableCell>
                 )}
               </TableRow>
             </TableHead>

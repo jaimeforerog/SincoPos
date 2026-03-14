@@ -15,6 +15,7 @@ import {
   Chip,
   Stack,
 } from '@mui/material';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SaveIcon from '@mui/icons-material/Save';
 import { useSnackbar } from 'notistack';
@@ -151,16 +152,26 @@ export function ConfiguracionEmisorPage() {
 
   return (
     <Container maxWidth="lg">
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Typography variant="h4" fontWeight={700}>
-          Configuración Emisor DIAN
-        </Typography>
-        <Chip
-          label={config?.ambiente === '1' ? 'PRODUCCIÓN' : 'PRUEBAS (HAB)'}
-          color={config?.ambiente === '1' ? 'error' : 'warning'}
-          size="small"
-        />
-      </Box>
+      <ReportePageHeader
+        title="Facturación Electrónica"
+        subtitle="Configuración del emisor DIAN: resolución, certificado digital y ambiente"
+        breadcrumbs={[
+          { label: 'Configuración', path: '/configuracion' },
+          { label: 'Facturación Electrónica' },
+        ]}
+        backPath="/configuracion"
+        color="#6a1b9a"
+        action={
+          config ? (
+            <Chip
+              label={config.ambiente === '1' ? 'PRODUCCIÓN' : 'PRUEBAS (HAB)'}
+              color={config.ambiente === '1' ? 'error' : 'warning'}
+              size="small"
+              sx={{ fontWeight: 700, fontSize: '0.8rem' }}
+            />
+          ) : undefined
+        }
+      />
 
       {!config && (
         <Alert severity="info" sx={{ mb: 3 }}>
