@@ -409,36 +409,36 @@ export function POSPage() {
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AccountBalanceIcon />
+                <BusinessIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
                 <Box>
-                  <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
-                    Caja
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    {cajaActual ? cajaActual.nombre : 'Sin caja seleccionada'}
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <BusinessIcon />
-                <Box>
-                  <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
                     Sucursal
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
                     {cajaActual?.nombreSucursal || 'Sin sucursal'}
                   </Typography>
                 </Box>
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PersonIcon />
+                <AccountBalanceIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
                 <Box>
-                  <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                    Caja
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
+                    {cajaActual ? cajaActual.nombre : 'Sin caja seleccionada'}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PersonIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
                     Cajero
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
                     {user?.nombre}
                   </Typography>
                 </Box>
