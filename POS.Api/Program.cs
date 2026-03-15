@@ -132,13 +132,13 @@ builder.Services.AddHttpClient<POS.Infrastructure.Services.DianSoapService>()
         options.CircuitBreaker.FailureRatio = 0.5;
         options.CircuitBreaker.MinimumThroughput = 3;
         options.CircuitBreaker.BreakDuration = TimeSpan.FromMinutes(30);
-        // Reintentos: 3 intentos con backoff exponencial (1s, 2s, 4s)
-        options.Retry.MaxRetryAttempts = 3;
+        // Reintentos: 2 intentos con backoff exponencial (1s, 2s)
+        options.Retry.MaxRetryAttempts = 2;
         options.Retry.Delay = TimeSpan.FromSeconds(1);
         options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
-        // Timeout por intento
+        // Timeout por intento: 30s × 3 intentos + 3s delays = 93s → total 100s
         options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
-        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(120);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(100);
     });
 builder.Services.AddScoped<POS.Application.Services.IDianSoapService, POS.Infrastructure.Services.DianSoapService>();
 builder.Services.AddScoped<POS.Application.Services.IFacturacionService, POS.Infrastructure.Services.FacturacionService>();
