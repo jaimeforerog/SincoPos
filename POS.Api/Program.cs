@@ -124,7 +124,22 @@ builder.Services.AddSingleton<POS.Application.Services.IActivityLogService, POS.
 // Facturación Electrónica DIAN
 builder.Services.AddScoped<POS.Application.Services.IUblBuilderService, POS.Infrastructure.Services.UblBuilderService>();
 builder.Services.AddScoped<POS.Application.Services.IFirmaDigitalService, POS.Infrastructure.Services.FirmaDigitalService>();
-builder.Services.AddHttpClient<POS.Infrastructure.Services.DianSoapService>();
+builder.Services.AddHttpClient<POS.Infrastructure.Services.DianSoapService>()
+    .AddStandardResilienceHandler(options =>
+    {
+        // Circuit breaker: abre si ≥50% de fallos en 3+ intentos dentro de 1 min → pausa 30 min
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(1);
+        options.CircuitBreaker.FailureRatio = 0.5;
+        options.CircuitBreaker.MinimumThroughput = 3;
+        options.CircuitBreaker.BreakDuration = TimeSpan.FromMinutes(30);
+        // Reintentos: 3 intentos con backoff exponencial (1s, 2s, 4s)
+        options.Retry.MaxRetryAttempts = 3;
+        options.Retry.Delay = TimeSpan.FromSeconds(1);
+        options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
+        // Timeout por intento
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(120);
+    });
 builder.Services.AddScoped<POS.Application.Services.IDianSoapService, POS.Infrastructure.Services.DianSoapService>();
 builder.Services.AddScoped<POS.Application.Services.IFacturacionService, POS.Infrastructure.Services.FacturacionService>();
 // BackgroundService Singleton (Channel fire-and-forget, igual que ActivityLog)
@@ -492,6 +507,29 @@ app.UseExceptionHandler(errorApp =>
 
 // ── Escalabilidad: Response Compression ──────────────────────────────────
 app.UseResponseCompression();
+
+// ── Seguridad: HTTP Security Headers ─────────────────────────────────────
+app.Use(async (context, next) =>
+{
+    // Evita MIME-type sniffing
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    // Evita clickjacking
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    // No exponer referrer fuera del origen
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    // CSP: para rutas API devuelve política restrictiva; Swagger UI necesita inline styles/scripts
+    if (context.Request.Path.StartsWithSegments("/swagger"))
+    {
+        context.Response.Headers.Append("Content-Security-Policy",
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'none'");
+    }
+    else
+    {
+        context.Response.Headers.Append("Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'");
+    }
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
