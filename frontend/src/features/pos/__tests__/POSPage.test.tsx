@@ -6,6 +6,20 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import type { UserInfo } from '@/types/api';
 
+// Mock offline para tests (simular siempre online, sin pendientes)
+vi.mock('@/offline/useOfflineSync', () => ({
+  useOfflineSync: () => ({
+    isOnline: true, pendingCount: 0, failedCount: 0,
+    isSyncing: false, syncStatus: 'idle', lastSyncAt: null, lastSyncError: null,
+    syncNow: vi.fn(),
+  }),
+}));
+vi.mock('@/offline/offlineQueue.service', () => ({
+  enqueueVenta: vi.fn().mockResolvedValue('offline-test-123'),
+  syncPending: vi.fn().mockResolvedValue({ synced: 0, failed: 0, tokenExpired: false, errors: [] }),
+  initOfflineCounts: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock @microsoft/signalr para evitar conexiones reales en tests
 vi.mock('@microsoft/signalr', () => ({
   HubConnectionBuilder: vi.fn(() => ({

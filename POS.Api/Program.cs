@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // HttpContextAccessor para auditoría
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<POS.Application.Services.ICurrentEmpresaProvider, POS.Infrastructure.Services.CurrentEmpresaProvider>();
 
 // Entity Framework Core (PostgreSQL - schema public)
 builder.Services.AddAppDbContext(builder.Configuration);
@@ -21,6 +22,12 @@ builder.Services.AddAppDbContext(builder.Configuration);
 // Services (ANTES de Marten - las projections usan BuildServiceProvider y necesitan estos servicios)
 builder.Services.AddScoped<POS.Application.Services.ITerceroService, POS.Infrastructure.Services.TerceroLocalService>();
 builder.Services.AddScoped<POS.Application.Services.IProductoService, POS.Infrastructure.Services.ProductoLocalService>();
+builder.Services.AddScoped<POS.Application.Services.IProductoAnticipacionService, POS.Infrastructure.Services.ProductoAnticipacionService>();
+builder.Services.AddScoped<POS.Application.Services.IAprendizajeService, POS.Infrastructure.Services.AprendizajeService>();
+builder.Services.AddScoped<POS.Application.Services.IRadarNegocioService, POS.Infrastructure.Services.RadarNegocioService>();
+builder.Services.AddScoped<POS.Application.Services.IPosContextoService, POS.Infrastructure.Services.PosContextoService>();
+builder.Services.AddScoped<POS.Application.Services.ISugerenciasService, POS.Infrastructure.Services.SugerenciasService>();
+builder.Services.AddScoped<POS.Application.Services.IClienteHistorialService, POS.Infrastructure.Services.ClienteHistorialService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
 builder.Services.AddScoped<POS.Application.Services.IPrecioService, POS.Infrastructure.Services.PrecioService>();
 
@@ -387,7 +394,14 @@ if (builder.Environment.IsDevelopment())
     {
         options.AddDefaultPolicy(policy =>
         {
-            policy.WithOrigins("http://localhost:5173")
+            policy.WithOrigins(
+                      "http://localhost:5173",
+                      "http://localhost:5174",
+                      "http://localhost:5175",
+                      "http://localhost:5176",
+                      "http://localhost:5177",
+                      "http://localhost:4173"
+                  )
                   .AllowAnyMethod()
                   .AllowAnyHeader()
                   .AllowCredentials();
@@ -557,6 +571,7 @@ if (!app.Environment.IsDevelopment())
 // PRODUCCION: Azure AD B2C
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<POS.Api.Middleware.EmpresaContextMiddleware>();
 app.UseOutputCache();
 app.MapControllers();
 app.MapHub<POS.Api.Hubs.NotificationHub>("/hubs/notificaciones");

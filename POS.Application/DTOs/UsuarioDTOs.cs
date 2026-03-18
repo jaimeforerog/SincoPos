@@ -3,7 +3,7 @@ namespace POS.Application.DTOs;
 /// <summary>
 /// Resumen de sucursal para listas de asignación
 /// </summary>
-public record SucursalResumenDto(int Id, string Nombre);
+public record SucursalResumenDto(int Id, string Nombre, int? EmpresaId = null, string? EmpresaNombre = null);
 
 /// <summary>
 /// DTO para información completa del usuario
@@ -39,7 +39,9 @@ public record PerfilUsuarioDto(
     string? SucursalDefaultNombre,
     DateTime? UltimoAcceso,
     IEnumerable<string> Permisos,
-    List<SucursalResumenDto> SucursalesAsignadas
+    List<SucursalResumenDto> SucursalesAsignadas,
+    int? EmpresaId = null,
+    string? EmpresaNombre = null
 );
 
 /// <summary>

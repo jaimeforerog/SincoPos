@@ -31,7 +31,7 @@ export function useNotifications() {
                    signalR.HttpTransportType.LongPolling,
       })
       .withAutomaticReconnect([0, 2000, 10000, 30000]) // Max 4 retries, then stop
-      .configureLogging(signalR.LogLevel.Information)
+      .configureLogging(signalR.LogLevel.None)
       .build();
 
     connection.on('Notificacion', (notif: NotificacionDto) => {
@@ -43,19 +43,27 @@ export function useNotifications() {
       });
     });
 
+    let isMounted = true;
+
     connection
       .start()
       .then(() => {
+        if (!isMounted) return;
         if (activeSucursalId != null) {
           connection.invoke('JoinSucursal', activeSucursalId).catch(console.error);
           prevSucursalRef.current = activeSucursalId;
         }
       })
-      .catch((err) => console.error('SignalR connection error:', err));
+      .catch((err: unknown) => {
+        // En React StrictMode el cleanup desmonta antes de que start() complete → ignorar
+        if (!isMounted) return;
+        console.error('SignalR connection error:', err);
+      });
 
     connectionRef.current = connection;
 
     return () => {
+      isMounted = false;
       connection.stop();
       connectionRef.current = null;
     };

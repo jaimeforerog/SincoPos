@@ -56,4 +56,11 @@ export const productosApi = {
   delete: async (id: string) => {
     await apiClient.delete(`/productos/${id}`);
   },
+
+  getAnticipated: async (limite = 20): Promise<ProductoDTO[]> => {
+    const response = await apiClient.get<ProductoDTO[]>('/productos/anticipados', {
+      params: { limite },
+    });
+    return response.data;
+  },
 };

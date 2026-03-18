@@ -1,17 +1,14 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Collapse,
+  Box,
 } from '@mui/material';
-import {
-  ExpandLess,
-  ExpandMore,
-  ViewModule,
-} from '@mui/icons-material';
+import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import type { NavItem } from './MenuSection';
 
 interface CollapsibleMenuItemProps {
@@ -21,68 +18,94 @@ interface CollapsibleMenuItemProps {
   landingPath?: string;
 }
 
-export function CollapsibleMenuItem({
-  text,
-  icon,
-  items,
-  landingPath,
-}: CollapsibleMenuItemProps) {
-  const [open, setOpen] = useState(false);
+export function CollapsibleMenuItem({ text, icon, items, landingPath }: CollapsibleMenuItemProps) {
+  const { pathname } = useLocation();
+  const isChildActive = items.some(
+    (item) => pathname === item.path || pathname.startsWith(item.path + '/')
+  );
+  const [open, setOpen] = useState(isChildActive);
   const navigate = useNavigate();
-
-  const handleToggle = () => {
-    setOpen(!open);
-  };
 
   return (
     <>
-      <ListItemButton onClick={handleToggle}>
-        <ListItemIcon>{icon}</ListItemIcon>
-        <ListItemText primary={text} />
-        {open ? <ExpandLess /> : <ExpandMore />}
-      </ListItemButton>
+      <Box sx={{ px: 1, mb: 0.5 }}>
+        <ListItemButton
+          onClick={() => setOpen(!open)}
+          sx={{
+            borderRadius: 2,
+            py: 1,
+            '&:hover': { bgcolor: 'action.hover' },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 38, color: 'primary.main' }}>
+            <Box sx={{ display: 'flex', fontSize: 20 }}>{icon}</Box>
+          </ListItemIcon>
+          <ListItemText
+            primary={text}
+            primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: isChildActive ? 600 : 400 }}
+          />
+          {open
+            ? <ExpandLess sx={{ color: 'text.secondary', fontSize: 18 }} />
+            : <ExpandMore sx={{ color: 'text.secondary', fontSize: 18 }} />}
+        </ListItemButton>
+      </Box>
 
       <Collapse in={open} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          {/* Mostrar landing page como primer item */}
           {landingPath && (
-            <ListItemButton
-              sx={{ pl: 4 }}
-              onClick={() => navigate(landingPath)}
-            >
-              <ListItemIcon>
-                <ViewModule fontSize="small" />
-              </ListItemIcon>
-              <ListItemText
-                primary="Ver todas"
-                primaryTypographyProps={{
-                  variant: 'body2',
-                  fontWeight: 500,
+            <Box sx={{ pl: 2, pr: 1, mb: 0.5 }}>
+              <ListItemButton
+                onClick={() => navigate(landingPath)}
+                selected={pathname === landingPath}
+                sx={{
+                  borderRadius: 2,
+                  py: 0.75,
+                  '&.Mui-selected': {
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                  },
+                  '&:hover': { bgcolor: 'action.hover' },
                 }}
-                secondary="Panel principal"
-                secondaryTypographyProps={{
-                  variant: 'caption',
-                }}
-              />
-            </ListItemButton>
+              >
+                <ListItemText
+                  primary="Ver todas"
+                  primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: pathname === landingPath ? 600 : 400 }}
+                />
+              </ListItemButton>
+            </Box>
           )}
 
-          {/* Items del submenu */}
-          {items.map((item) => (
-            <ListItemButton
-              key={item.text}
-              sx={{ pl: 4 }}
-              onClick={() => navigate(item.path)}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                primaryTypographyProps={{
-                  variant: 'body2',
-                }}
-              />
-            </ListItemButton>
-          ))}
+          {items.map((item) => {
+            const active = pathname === item.path || pathname.startsWith(item.path + '/');
+            return (
+              <Box key={item.text} sx={{ pl: 2, pr: 1, mb: 0.5 }}>
+                <ListItemButton
+                  onClick={() => navigate(item.path)}
+                  selected={active}
+                  sx={{
+                    borderRadius: 2,
+                    py: 0.75,
+                    '&.Mui-selected': {
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      '& .MuiListItemIcon-root': { color: 'white' },
+                      '&:hover': { bgcolor: 'primary.dark' },
+                    },
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 32, color: 'primary.main' }}>
+                    <Box sx={{ display: 'flex', fontSize: 18 }}>{item.icon}</Box>
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: active ? 600 : 400 }}
+                  />
+                </ListItemButton>
+              </Box>
+            );
+          })}
         </List>
       </Collapse>
     </>

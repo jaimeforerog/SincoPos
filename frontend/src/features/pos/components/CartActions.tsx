@@ -7,6 +7,7 @@ interface CartActionsProps {
   onCobrar: () => void;
   canCobrar: boolean;
   isLoading: boolean;
+  isOffline?: boolean;
 }
 
 export function CartActions({
@@ -14,6 +15,7 @@ export function CartActions({
   onCobrar,
   canCobrar,
   isLoading,
+  isOffline = false,
 }: CartActionsProps) {
   return (
     <Box sx={{ display: 'flex', gap: 2 }}>
@@ -43,7 +45,7 @@ export function CartActions({
           fontWeight: 700,
         }}
       >
-        {isLoading ? 'Procesando...' : 'COBRAR'}
+        {isLoading ? 'Procesando...' : isOffline ? 'GUARDAR OFFLINE' : 'COBRAR'}
       </Button>
     </Box>
   );

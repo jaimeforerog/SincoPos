@@ -1,9 +1,11 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using POS.Api.Extensions;
 using POS.Application.DTOs;
 using POS.Application.Services;
+using POS.Infrastructure.Data;
 
 namespace POS.Api.Controllers;
 
@@ -19,15 +21,18 @@ public class UsuariosController : ControllerBase
     private readonly IUsuarioService _usuarioService;
     private readonly ILogger<UsuariosController> _logger;
     private readonly IActivityLogService _activityLogService;
+    private readonly AppDbContext _db;
 
     public UsuariosController(
         IUsuarioService usuarioService,
         ILogger<UsuariosController> logger,
-        IActivityLogService activityLogService)
+        IActivityLogService activityLogService,
+        AppDbContext db)
     {
         _usuarioService = usuarioService;
         _logger = logger;
         _activityLogService = activityLogService;
+        _db = db;
     }
 
     /// <summary>
@@ -95,6 +100,16 @@ public class UsuariosController : ControllerBase
                 perfil.Email, perfil.Rol, sucursalesAsignadas.Count);
         }
 
+        // Resolver empresa a partir de las sucursales asignadas
+        var sucursalIds = sucursalesAsignadas.Select(s => s.Id).ToList();
+        var empresaInfo = sucursalIds.Any()
+            ? await _db.Sucursales
+                .IgnoreQueryFilters()
+                .Where(s => sucursalIds.Contains(s.Id) && s.EmpresaId != null)
+                .Select(s => new { s.EmpresaId, s.Empresa!.Nombre })
+                .FirstOrDefaultAsync()
+            : null;
+
         // Rebuild with permisos and potentially expanded sucursales
         var dto = new PerfilUsuarioDto(
             perfil.Id,
@@ -106,7 +121,9 @@ public class UsuariosController : ControllerBase
             perfil.SucursalDefaultNombre,
             perfil.UltimoAcceso,
             permisos,
-            sucursalesAsignadas
+            sucursalesAsignadas,
+            empresaInfo?.EmpresaId,
+            empresaInfo?.Nombre
         );
 
         return Ok(dto);

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using POS.Domain.Events.Inventario;
+using POS.Domain.Events.Venta;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Projections;
 
@@ -38,6 +39,9 @@ public static class MartenExtensions
             opts.Events.AddEventType<SalidaVentaRegistrada>();
             opts.Events.AddEventType<StockMinimoActualizado>();
 
+            // Venta events (Capa 5 — UserBehaviorProjection)
+            opts.Events.AddEventType<VentaCompletadaEvent>();
+
             // Auto-create schema solo en desarrollo
             if (isDevelopment)
             {
@@ -56,6 +60,31 @@ public static class MartenExtensions
             // El IServiceProvider aquí es del host, no de BuildServiceProvider
             opts.Projections.Add(
                 new InventarioProjection(sp),
+                ProjectionLifecycle.Inline);
+
+            // Capa 5 — Anticipación funcional: acumula comportamiento de venta por cajero
+            opts.Projections.Add(
+                new UserBehaviorProjection(),
+                ProjectionLifecycle.Inline);
+
+            // Capa 9 — Aprendizaje continuo (nivel individual): patrón enriquecido del cajero
+            opts.Projections.Add(
+                new CashierPatternProjection(),
+                ProjectionLifecycle.Inline);
+
+            // Capa 9 — Aprendizaje continuo (nivel organizacional): patrón de ventas por tienda
+            opts.Projections.Add(
+                new StorePatternProjection(),
+                ProjectionLifecycle.Inline);
+
+            // Capa 14 — Radar de Negocio: ingresos diarios + velocidad de productos por sucursal
+            opts.Projections.Add(
+                new BusinessRiskProjection(),
+                ProjectionLifecycle.Inline);
+
+            // Capa 4 — Dependencias inteligentes: historial acumulado de compras por cliente
+            opts.Projections.Add(
+                new ClienteHistorialProjection(),
                 ProjectionLifecycle.Inline);
         });
 

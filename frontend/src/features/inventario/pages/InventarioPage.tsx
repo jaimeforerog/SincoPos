@@ -23,7 +23,7 @@ import {
   Alert,
   Tooltip,
 } from '@mui/material';
-import { PageHeader } from '@/components/common/PageHeader';
+import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import { inventarioApi } from '@/api/inventario';
 import { sucursalesApi } from '@/api/sucursales';
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
@@ -137,8 +137,9 @@ export function InventarioPage() {
 
   return (
     <Box>
-      <PageHeader
+      <ReportePageHeader
         title="Gestión de Inventario"
+        subtitle="Consulta de stock, alertas y movimientos por sucursal"
         breadcrumbs={[
           { label: 'Reportes', path: '/reportes' },
           { label: 'Gestión de Inventario' }

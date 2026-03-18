@@ -10,12 +10,17 @@ import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { reportesApi } from '@/api/reportes';
 import { lotesApi } from '@/api/lotes';
 import { ventasApi } from '@/api/ventas';
+import { sugerenciasApi } from '@/api/sugerencias';
 import { MetricCard } from '../components/MetricCard';
 import { SalesChart } from '../components/SalesChart';
 import { TopProductsTable } from '../components/TopProductsTable';
 import { StockAlertsTable } from '../components/StockAlertsTable';
 import { AlertasVencimientoTable } from '../components/AlertasVencimientoTable';
+import { BusinessRadar } from '../components/BusinessRadar';
+import { SugerenciasPanel } from '../components/SugerenciasPanel';
+import { HeroBanner } from '@/components/common/HeroBanner';
 import { useAuth } from '@/hooks/useAuth';
+import { useUiConfig } from '@/hooks/useUiConfig';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('es-CO', {
@@ -28,6 +33,7 @@ const formatCurrency = (value: number) => {
 
 export function DashboardPage() {
   const { activeSucursalId } = useAuth();
+  const { showDashboard } = useUiConfig();
 
   // Cargar datos del dashboard
   const { data: dashboard, isLoading, error } = useQuery({
@@ -40,6 +46,13 @@ export function DashboardPage() {
     queryKey: ['ventas', 'erp-pendientes', activeSucursalId],
     queryFn: () => ventasApi.getErpPendientesCount(activeSucursalId ?? undefined),
     refetchInterval: 30000,
+  });
+
+  const { data: sugerencias = [] } = useQuery({
+    queryKey: ['sugerencias', 'reabastecimiento', activeSucursalId],
+    queryFn:  () => sugerenciasApi.getReabastecimiento(activeSucursalId!),
+    enabled:  !!activeSucursalId && showDashboard,
+    refetchInterval: 300000, // 5 minutos
   });
 
   const { data: alertasLotes = [] } = useQuery({
@@ -83,40 +96,12 @@ export function DashboardPage() {
 
   const metricas = dashboard.metricasDelDia;
 
-  const HERO_COLOR = '#1565c0';
-
   return (
     <Container maxWidth="xl">
-      {/* Hero */}
-      <Box
-        sx={{
-          background: `linear-gradient(135deg, ${HERO_COLOR} 0%, #0d47a1 50%, #01579b 100%)`,
-          borderRadius: 3,
-          px: { xs: 3, md: 4 },
-          py: { xs: 2.5, md: 3 },
-          mb: 4,
-          mt: 1,
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""', position: 'absolute', top: -60, right: -60,
-            width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
-          },
-          '&::after': {
-            content: '""', position: 'absolute', bottom: -40, right: 80,
-            width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
-          },
-        }}
-      >
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
-            Dashboard
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mt: 0.5 }}>
-            Resumen de ventas y métricas del día
-          </Typography>
-        </Box>
-      </Box>
+      <HeroBanner
+        title="Dashboard"
+        subtitle="Resumen de ventas y métricas del día"
+      />
 
       {/* Métricas Principales */}
       <Box
@@ -203,7 +188,23 @@ export function DashboardPage() {
 
       {/* Alertas de Vencimiento de Lotes */}
       {alertasLotes.length > 0 && (
-        <AlertasVencimientoTable alertas={alertasLotes} />
+        <Box sx={{ mb: 3 }}>
+          <AlertasVencimientoTable alertas={alertasLotes} />
+        </Box>
+      )}
+
+      {/* Capa 10 — Sugerencias inteligentes (solo Supervisor / Admin) */}
+      {showDashboard && sugerencias.length > 0 && (
+        <SugerenciasPanel sugerencias={sugerencias} />
+      )}
+
+      {/* Capa 14 — Radar de Negocio (solo Supervisor / Admin) */}
+      {showDashboard && (
+        <BusinessRadar
+          metricas={metricas}
+          ventasPorHora={dashboard.ventasPorHora}
+          stockRisks={dashboard.alertasStock}
+        />
       )}
     </Container>
   );

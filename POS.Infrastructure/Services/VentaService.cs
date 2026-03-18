@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Domain.Aggregates;
+using POS.Domain.Events.Venta;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 using POS.Infrastructure.Services.Erp;
@@ -25,6 +27,7 @@ public class VentaService : IVentaService
     private readonly INotificationService _notificationService;
     private readonly ErpSincoOptions _erpOptions;
     private readonly IVentaErpService _ventaErpService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public VentaService(
         AppDbContext context,
@@ -39,7 +42,8 @@ public class VentaService : IVentaService
         FacturacionBackgroundService facturacionBackground,
         INotificationService notificationService,
         IOptions<ErpSincoOptions> erpOptions,
-        IVentaErpService ventaErpService)
+        IVentaErpService ventaErpService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _session = session;
@@ -54,6 +58,7 @@ public class VentaService : IVentaService
         _notificationService = notificationService;
         _erpOptions = erpOptions.Value;
         _ventaErpService = ventaErpService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<(VentaDto? venta, string? error)> CrearVentaAsync(CrearVentaDto dto)
@@ -301,6 +306,12 @@ public class VentaService : IVentaService
         // Actualizar monto de caja
         caja.MontoActual += total;
 
+        // Capa 5 — Anticipación funcional: obtener externalId del cajero autenticado
+        var externalId = _httpContextAccessor.HttpContext?.User?.FindFirst("oid")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
+
         // Guardar todo en una sola transacción atómica (Marten + EF Core)
         await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
@@ -313,6 +324,23 @@ public class VentaService : IVentaService
                 global::Marten.Services.SessionOptions.ForTransaction(npgsqlTx));
             foreach (var (sid, evt) in pendingMartenEvents)
                 martenTx.Events.Append(sid, evt);
+
+            // Capa 5 — emitir VentaCompletadaEvent para UserBehaviorProjection
+            if (externalId != null && Guid.TryParse(externalId, out var userStreamId))
+            {
+                var ventaEvt = new VentaCompletadaEvent(
+                    ExternalUserId: externalId,
+                    SucursalId:     dto.SucursalId,
+                    CajaId:         dto.CajaId,
+                    HoraDelDia:     DateTime.UtcNow.Hour,
+                    DiaSemana:      (int)DateTime.UtcNow.DayOfWeek,
+                    Items:          detalles.Select(d => new VentaItemLine(d.ProductoId, d.NombreProducto, d.Cantidad, d.PrecioUnitario)).ToList(),
+                    Total:          total,
+                    ClienteId:      dto.ClienteId  // Capa 4
+                );
+                martenTx.Events.Append(userStreamId, ventaEvt);
+            }
+
             await martenTx.SaveChangesAsync();
             await _context.SaveChangesAsync(); // genera venta.Id
 

@@ -68,14 +68,14 @@ public class UsuarioService : IUsuarioService
     {
         var usuario = await _context.Usuarios
             .Include(u => u.SucursalDefault)
-            .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal)
+            .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal).ThenInclude(s => s.Empresa)
             .FirstOrDefaultAsync(u => u.KeycloakId == externalId);
 
         if (usuario == null)
             return null;
 
         var sucursalesAsignadas = usuario.Sucursales
-            .Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre))
+            .Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre, us.Sucursal.EmpresaId, us.Sucursal.Empresa?.Nombre))
             .ToList();
 
         return new PerfilUsuarioDto(
@@ -192,9 +192,10 @@ public class UsuarioService : IUsuarioService
     async Task<List<SucursalResumenDto>> IUsuarioService.ObtenerTodasSucursalesActivasAsync()
     {
         return await _context.Sucursales
+            .Include(s => s.Empresa)
             .Where(s => s.Activo)
             .OrderBy(s => s.Nombre)
-            .Select(s => new SucursalResumenDto(s.Id, s.Nombre))
+            .Select(s => new SucursalResumenDto(s.Id, s.Nombre, s.EmpresaId, s.Empresa!.Nombre))
             .ToListAsync();
     }
 

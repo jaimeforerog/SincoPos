@@ -1,103 +1,119 @@
 import { createTheme } from '@mui/material/styles';
+import { sincoColors, sincoSpacing } from './tokens';
 
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
-      contrastText: '#fff',
+      main:         sincoColors.brand[800],
+      light:        sincoColors.brand[600],
+      dark:         sincoColors.brand[900],
+      contrastText: sincoColors.text.inverse,
     },
     secondary: {
-      main: '#9c27b0',
-      light: '#ba68c8',
-      dark: '#7b1fa2',
-      contrastText: '#fff',
+      main:         sincoColors.brand[900],
+      light:        sincoColors.brand[700],
+      dark:         '#061829',
+      contrastText: sincoColors.text.inverse,
     },
-    error: {
-      main: '#d32f2f',
-      light: '#ef5350',
-      dark: '#c62828',
-    },
-    warning: {
-      main: '#ed6c02',
-      light: '#ff9800',
-      dark: '#e65100',
-    },
-    info: {
-      main: '#0288d1',
-      light: '#03a9f4',
-      dark: '#01579b',
-    },
-    success: {
-      main: '#2e7d32',
-      light: '#4caf50',
-      dark: '#1b5e20',
-    },
+    error:   { main: sincoColors.error.main,   light: sincoColors.error.light,   dark: sincoColors.error.dark },
+    warning: { main: sincoColors.warning.main, light: sincoColors.warning.light, dark: sincoColors.warning.dark },
+    info:    { main: sincoColors.info.main,    light: sincoColors.info.light,    dark: sincoColors.info.dark },
+    success: { main: sincoColors.success.main, light: sincoColors.success.light, dark: sincoColors.success.dark },
     background: {
-      default: '#f5f5f5',
-      paper: '#ffffff',
+      default: sincoColors.surface.page,
+      paper:   sincoColors.surface.paper,
+    },
+    text: {
+      primary:   sincoColors.text.primary,
+      secondary: sincoColors.text.secondary,
+      disabled:  sincoColors.text.disabled,
     },
   },
+
   typography: {
     fontFamily: [
       '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',
       'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
       'sans-serif',
     ].join(','),
-    h1: {
-      fontSize: '2.5rem',
-      fontWeight: 500,
-    },
-    h2: {
-      fontSize: '2rem',
-      fontWeight: 500,
-    },
-    h3: {
-      fontSize: '1.75rem',
-      fontWeight: 500,
-    },
-    h4: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
-    },
-    h5: {
-      fontSize: '1.25rem',
-      fontWeight: 500,
-    },
-    h6: {
-      fontSize: '1rem',
-      fontWeight: 500,
-    },
+    h1: { fontSize: '2rem',    fontWeight: 700, letterSpacing: '-0.01em' },
+    h2: { fontSize: '1.75rem', fontWeight: 600, letterSpacing: '-0.01em' },
+    h3: { fontSize: '1.5rem',  fontWeight: 600 },
+    h4: { fontSize: '1.25rem', fontWeight: 600 },
+    h5: { fontSize: '1.1rem',  fontWeight: 600 },
+    h6: { fontSize: '1rem',    fontWeight: 600 },
+    body1:   { fontSize: '0.9375rem', lineHeight: 1.6 },
+    body2:   { fontSize: '0.875rem',  lineHeight: 1.5 },
+    caption: { fontSize: '0.75rem',   letterSpacing: '0.02em' },
   },
-  shape: {
-    borderRadius: 8,
-  },
+
+  shape: { borderRadius: 10 },
+
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
           textTransform: 'none',
-          fontWeight: 500,
+          fontWeight: 600,
+          borderRadius: sincoSpacing.chipRadius,
+        },
+        containedPrimary: {
+          background: sincoColors.gradients.heroSubtle,
+          '&:hover': { background: sincoColors.gradients.heroBlue },
         },
       },
     },
+
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          borderRadius: sincoSpacing.cardRadius,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+          border: '1px solid rgba(0,0,0,0.06)',
         },
       },
     },
+
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: sincoSpacing.cardRadius,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        },
+      },
+    },
+
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          background: sincoColors.gradients.heroBlue,
+          boxShadow: '0 2px 8px rgba(13,47,94,0.3)',
         },
+      },
+    },
+
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          background: sincoColors.surface.paper,
+          color: sincoColors.text.primary,
+          borderRight: `1px solid rgba(0,0,0,0.08)`,
+          boxShadow: '2px 0 8px rgba(13,47,94,0.08)',
+        },
+      },
+    },
+
+    MuiChip: {
+      styleOverrides: {
+        root: { borderRadius: sincoSpacing.chipRadius, fontWeight: 500 },
+      },
+    },
+
+    MuiAlert: {
+      styleOverrides: {
+        root: { borderRadius: sincoSpacing.chipRadius },
       },
     },
   },

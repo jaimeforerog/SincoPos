@@ -7,6 +7,7 @@ import type {
   AgregarActividadDTO,
   ResultadoImportacionTercerosDTO,
   PaginatedResult,
+  ClienteHistorialDTO,
 } from '@/types/api';
 
 export const tercerosApi = {
@@ -86,5 +87,14 @@ export const tercerosApi = {
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return response.data;
+  },
+
+  /** Capa 4 — historial de compras acumulado de un cliente */
+  getHistorial: async (clienteId: number): Promise<ClienteHistorialDTO | null> => {
+    const response = await apiClient.get<ClienteHistorialDTO>(
+      `/terceros/${clienteId}/historial`,
+    );
+    // 204 No Content → sin historial aún
+    return response.status === 204 ? null : response.data;
   },
 };

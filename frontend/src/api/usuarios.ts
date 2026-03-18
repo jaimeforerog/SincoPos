@@ -13,6 +13,8 @@ interface PerfilUsuarioBackend {
   ultimoAcceso?: string;
   permisos: string[];
   sucursalesAsignadas: SucursalResumenDTO[];
+  empresaId?: number;
+  empresaNombre?: string;
 }
 
 export interface UsuarioDto {
@@ -85,6 +87,8 @@ export const usuariosApi = {
       sucursalId: d.sucursalDefaultId,
       sucursalNombre: d.sucursalDefaultNombre,
       sucursalesDisponibles: d.sucursalesAsignadas ?? [],
+      empresaId: d.empresaId,
+      empresaNombre: d.empresaNombre,
     };
   },
 

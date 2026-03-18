@@ -48,14 +48,15 @@ export function MenuSection({ section }: MenuSectionProps) {
       {/* Label de la sección */}
       <ListSubheader
         sx={{
-          bgcolor: 'background.paper',
-          fontWeight: 600,
-          fontSize: '0.75rem',
+          bgcolor: 'transparent',
+          fontWeight: 700,
+          fontSize: '0.7rem',
           textTransform: 'uppercase',
-          color: 'text.secondary',
-          lineHeight: '32px',
+          color: 'text.disabled',
+          lineHeight: '28px',
           mt: 1,
-          letterSpacing: '0.5px',
+          px: 2,
+          letterSpacing: '0.8px',
         }}
       >
         {section.title}
@@ -76,6 +77,7 @@ export function MenuSection({ section }: MenuSectionProps) {
               key={item.text}
               text={item.text}
               icon={item.icon}
+              path={item.path}
               onClick={() => navigate(item.path)}
             />
           ))}

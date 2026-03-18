@@ -11,6 +11,7 @@ import { CallbackPage } from './features/auth/pages/CallbackPage';
 import { UnauthorizedPage } from './features/auth/pages/UnauthorizedPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
+import { SeleccionarEmpresaDialog } from './components/common/SeleccionarEmpresaDialog';
 import { theme } from './theme/theme';
 
 // Rutas con mayor frecuencia de uso — carga diferida con prefetch inmediato
@@ -72,6 +73,7 @@ function App() {
           }}
         >
           <AuthProvider>
+            <SeleccionarEmpresaDialog />
             <BrowserRouter>
               <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>

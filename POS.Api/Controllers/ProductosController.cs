@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using POS.Api.Extensions;
 using POS.Application.DTOs;
 using POS.Application.Services;
 
@@ -14,15 +15,18 @@ public class ProductosController : ControllerBase
 {
     private readonly IProductoService _productoService;
     private readonly ILoteService _loteService;
+    private readonly IProductoAnticipacionService _anticipacionService;
     private readonly ILogger<ProductosController> _logger;
 
     public ProductosController(
         IProductoService productoService,
         ILoteService loteService,
+        IProductoAnticipacionService anticipacionService,
         ILogger<ProductosController> logger)
     {
         _productoService = productoService;
         _loteService = loteService;
+        _anticipacionService = anticipacionService;
         _logger = logger;
     }
 
@@ -166,5 +170,22 @@ public class ProductosController : ControllerBase
 
         _logger.LogInformation("Producto {Id} desactivado.", id);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Capa 5 — Retorna los productos más frecuentes del cajero autenticado.
+    /// Alimentado por UserBehaviorProjection vía eventos VentaCompletadaEvent.
+    /// </summary>
+    [HttpGet("anticipados")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<ProductoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ProductoDto>>> ObtenerAnticipados([FromQuery] int limite = 20)
+    {
+        var externalId = User.GetExternalId();
+        if (string.IsNullOrEmpty(externalId))
+            return Ok(Array.Empty<ProductoDto>());
+
+        var productos = await _anticipacionService.ObtenerProductosAnticipados(externalId, limite);
+        return Ok(productos);
     }
 }

@@ -5,6 +5,11 @@ namespace POS.Infrastructure.Data.Entities;
 public class Producto : ISoftDelete
 {
     public Guid Id { get; set; }  // Mismo Guid que el StreamId de Marten
+
+    /// <summary>
+    /// Empresa propietaria del producto. Null = catálogo global (legado).
+    /// </summary>
+    public int? EmpresaId { get; set; }
     public string CodigoBarras { get; set; } = string.Empty;
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
@@ -68,6 +73,11 @@ public class Producto : ISoftDelete
 
 public class Categoria : EntidadAuditable
 {
+    /// <summary>
+    /// Empresa propietaria de la categoría. Null = catálogo global (legado).
+    /// </summary>
+    public int? EmpresaId { get; set; }
+
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public decimal MargenGanancia { get; set; } = 0.30m; // 30% default

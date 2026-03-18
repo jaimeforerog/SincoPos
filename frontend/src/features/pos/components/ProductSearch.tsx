@@ -15,6 +15,7 @@ import { productosApi } from '@/api/productos';
 import { inventarioApi } from '@/api/inventario';
 import { preciosApi } from '@/api/precios';
 import { ProductCard } from './ProductCard';
+import { CameraInput } from './CameraInput';
 import type { ProductoDTO } from '@/types/api';
 
 interface ProductSearchProps {
@@ -50,7 +51,6 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
   });
 
   // Resolver precios de todos los productos activos para la sucursal (una sola llamada)
-  // Incluye fallback a Costo × Margen, igual que al agregar al carrito
   const { data: preciosResueltos = [] } = useQuery({
     queryKey: ['precios-resueltos', activeSucursalId],
     queryFn: () => preciosApi.resolverLote(activeSucursalId!),
@@ -60,16 +60,14 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
 
   // Mapa productoId → precioVenta resuelto para lookup O(1)
   const precioMap = new Map(
-    Array.isArray(preciosResueltos) 
-      ? preciosResueltos.map((p) => [p.productoId, p.precioVenta]) 
+    Array.isArray(preciosResueltos)
+      ? preciosResueltos.map((p) => [p.productoId, p.precioVenta])
       : []
   );
 
   useEffect(() => {
-    // Focus en el campo de búsqueda al montar
     searchInputRef.current?.focus();
 
-    // Shortcut Ctrl+K para enfocar búsqueda
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'k') {
         e.preventDefault();
@@ -96,9 +94,12 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
                 <SearchIcon />
               </InputAdornment>
             ),
-            endAdornment: isLoading && (
+            endAdornment: (
               <InputAdornment position="end">
-                <CircularProgress size={20} />
+                {isLoading
+                  ? <CircularProgress size={20} />
+                  : <CameraInput onDetected={(code) => setSearchTerm(code)} />
+                }
               </InputAdornment>
             ),
           }}
@@ -106,22 +107,24 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
         />
       </Box>
 
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden',
+          '&::-webkit-scrollbar': { width: 6 },
+          '&::-webkit-scrollbar-track': { bgcolor: 'grey.100', borderRadius: 3 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: 'grey.400', borderRadius: 3,
+            '&:hover': { bgcolor: 'grey.600' } },
+        }}>
         {productos.length === 0 && !isLoading && (
           <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 4 }}>
-            {searchTerm
-              ? 'No se encontraron productos'
-              : 'Escribe para buscar productos'}
+            {searchTerm ? 'No se encontraron productos' : 'Escribe para buscar productos'}
           </Typography>
         )}
 
         <List sx={{ p: 0 }}>
           {Array.isArray(productos) && productos.map((producto) => {
-            // Buscar stock del producto
-            const stockInfo = Array.isArray(inventarios) ? inventarios.find((inv) => inv.productoId === producto.id) : null;
+            const stockInfo = Array.isArray(inventarios)
+              ? inventarios.find((inv) => inv.productoId === producto.id)
+              : null;
             const stock = stockInfo?.cantidad || 0;
-
-            // Precio resuelto (Sucursal → Base → Margen×Costo)
             const precioDisplay = precioMap.get(producto.id);
 
             return (

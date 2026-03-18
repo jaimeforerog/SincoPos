@@ -56,11 +56,14 @@ public class TestAuthHandler : AuthenticationHandler<TestAuthHandlerOptions>
             _ => "vendedor" // Default role
         };
 
-        // Generate a stable external ID for each email (for GetExternalId() to work)
+        // Guid deterministas — necesario para que GetExternalId() sea parseable por las proyecciones Marten
+        // (UserBehaviorProjection, CashierPatternProjection, StorePatternProjection usan Guid.TryParse)
         var externalId = email.ToLower() switch
         {
-            "admin@sincopos.com" => "test-keycloak-admin-001",
-            _ => $"test-{email.ToLower().Replace("@", "-at-")}"
+            "admin@sincopos.com"      => "00000000-0000-0000-0000-000000000001",
+            "supervisor@sincopos.com" => "00000000-0000-0000-0000-000000000002",
+            "cajero@sincopos.com"     => "00000000-0000-0000-0000-000000000003",
+            _                         => $"00000000-0000-0000-0000-{(uint)email.GetHashCode():D12}"
         };
 
         var claims = new[]

@@ -144,6 +144,19 @@ public record TopProductoDto(
     decimal MargenPorcentaje
 );
 
+// ─── Capa 14 — Radar de Negocio ────────────────────────────────────────────
+
+/// <summary>
+/// Respuesta del endpoint GET /api/v1/radar/sucursal/{id}.
+/// Combina métricas del día (EF Core) con velocidad de productos (Marten)
+/// y riesgos de ruptura de stock para el Radar de Negocio.
+/// </summary>
+public record RadarNegocioDto(
+    MetricasDelDiaDto   MetricasHoy,
+    List<VentaPorHoraDto> VentasPorHora,
+    List<AlertaStockDto>  RiesgosStock
+);
+
 // ─── Kardex de Inventario ─────────────────────────────────────────
 
 public record ReporteKardexDto(

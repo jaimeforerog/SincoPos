@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/stores/auth.store';
 
 export const useAuth = () => {
-  const { user, isAuthenticated, isLoading, activeSucursalId } = useAuthStore();
+  const { user, isAuthenticated, isLoading, activeSucursalId, activeEmpresaId } = useAuthStore();
 
   const hasRole = (role: string): boolean => {
     return user?.roles?.some(r => r.toLowerCase() === role.toLowerCase()) ?? false;
@@ -28,6 +28,7 @@ export const useAuth = () => {
     isAuthenticated,
     isLoading,
     activeSucursalId,
+    activeEmpresaId,
     hasRole,
     hasAnyRole,
     isAdmin,

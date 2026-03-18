@@ -811,7 +811,10 @@ public class ComprasTests
         // Assert
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var outbox = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var outbox = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .OrderByDescending(m => m.Id)
+            .FirstAsync();
         var payload = JsonSerializer.Deserialize<CompraErpPayload>(outbox.Payload, _jsonOptions)!;
 
         // ReteFuente 2.5% de $200,000 = $5,000 (cuenta 1355)
@@ -880,7 +883,10 @@ public class ComprasTests
         // Assert - Verificar que Débitos = Créditos
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var msg = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var msg = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .OrderByDescending(m => m.Id)
+            .FirstAsync();
         var payload = JsonSerializer.Deserialize<CompraErpPayload>(msg.Payload, _jsonOptions)!;
 
         var totalDebitos = payload.Asientos.Where(a => a.Naturaleza == "Debito").Sum(a => a.Valor);
@@ -962,7 +968,10 @@ public class ComprasTests
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var msg = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var msg = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .OrderByDescending(m => m.Id)
+            .FirstAsync();
         var payload = JsonSerializer.Deserialize<CompraErpPayload>(msg.Payload, _jsonOptions)!;
 
         // Debe haber un asiento de IVA descontable (Débito) con cuenta 2408
@@ -991,7 +1000,10 @@ public class ComprasTests
         // Marcar manualmente como Descartado para simular fallo
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var outbox = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var outbox = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .OrderByDescending(m => m.Id)
+            .FirstAsync();
         outbox.Estado = EstadoOutbox.Descartado;
         outbox.Intentos = 5;
         outbox.UltimoError = "Simulación de fallo";
@@ -1025,7 +1037,10 @@ public class ComprasTests
         // Marcar como error
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var outbox = await db.ErpOutboxMessages.FirstAsync(m => m.EntidadId == ordenId);
+        var outbox = await db.ErpOutboxMessages
+            .Where(m => m.EntidadId == ordenId && m.TipoDocumento == "CompraRecibida")
+            .OrderByDescending(m => m.Id)
+            .FirstAsync();
         outbox.Estado = EstadoOutbox.Error;
         outbox.UltimoError = "Connection refused";
         outbox.Intentos = 3;

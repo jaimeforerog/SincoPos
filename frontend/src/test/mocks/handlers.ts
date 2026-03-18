@@ -1,6 +1,19 @@
 import { http, HttpResponse } from 'msw';
 
 export const handlers = [
+  // Productos anticipados (Capa 5 UserBehaviorProjection) — debe ir ANTES del wildcard de productos
+  http.get('*/api/v1/productos/anticipados', () =>
+    HttpResponse.json([
+      {
+        id: 'p1', codigoBarras: '1234567890', nombre: 'Coca-Cola 350ml',
+        precioVenta: 3500, precioCosto: 2000, porcentajeImpuesto: 0.19,
+        impuestoPorcentaje: 0.19, activo: true, categoriaId: 1,
+        esAlimentoUltraprocesado: false, unidadMedida: '94',
+        fechaCreacion: '2026-01-01T00:00:00Z',
+      },
+    ])
+  ),
+
   // Productos (Manejar con y sin query params mediante wildcard al final solo para esto)
   http.get('*/api/v1/productos*', () =>
     HttpResponse.json({

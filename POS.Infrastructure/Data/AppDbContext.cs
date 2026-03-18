@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using POS.Application.Services;
 using POS.Infrastructure.Data.Entities;
 using POS.Domain;
 using System.Security.Claims;
@@ -10,16 +11,20 @@ namespace POS.Infrastructure.Data;
 public class AppDbContext : DbContext
 {
     private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly ICurrentEmpresaProvider? _empresaProvider;
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public AppDbContext(
         DbContextOptions<AppDbContext> options,
-        IHttpContextAccessor httpContextAccessor) : base(options)
+        IHttpContextAccessor httpContextAccessor,
+        ICurrentEmpresaProvider empresaProvider) : base(options)
     {
         _httpContextAccessor = httpContextAccessor;
+        _empresaProvider = empresaProvider;
     }
 
+    public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Producto> Productos => Set<Producto>();
     public DbSet<Categoria> Categorias => Set<Categoria>();
     public DbSet<Sucursal> Sucursales => Set<Sucursal>();
@@ -76,6 +81,28 @@ public class AppDbContext : DbContext
                 }
             }
         }
+
+        // ── Filtros globales multi-empresa ──────────────────────────────────────
+        // Cuando EmpresaId == null en el proveedor (tests, background services, seed),
+        // el filtro pasa todo. Cuando está seteado, filtra por empresa o por registros
+        // sin empresa asignada (EmpresaId = null = catálogo global/legado).
+        modelBuilder.Entity<Producto>().HasQueryFilter(p =>
+            _empresaProvider == null ||
+            _empresaProvider.EmpresaId == null ||
+            p.EmpresaId == null ||
+            p.EmpresaId == _empresaProvider.EmpresaId);
+
+        modelBuilder.Entity<Categoria>().HasQueryFilter(c =>
+            _empresaProvider == null ||
+            _empresaProvider.EmpresaId == null ||
+            c.EmpresaId == null ||
+            c.EmpresaId == _empresaProvider.EmpresaId);
+
+        modelBuilder.Entity<Tercero>().HasQueryFilter(t =>
+            _empresaProvider == null ||
+            _empresaProvider.EmpresaId == null ||
+            t.EmpresaId == null ||
+            t.EmpresaId == _empresaProvider.EmpresaId);
     }
 
     /// <summary>

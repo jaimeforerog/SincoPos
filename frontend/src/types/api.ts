@@ -485,6 +485,8 @@ export interface ResultadoImportacionTercerosDTO {
 export interface SucursalResumenDTO {
   id: number;
   nombre: string;
+  empresaId?: number;
+  empresaNombre?: string;
 }
 
 export interface UserInfo {
@@ -496,6 +498,8 @@ export interface UserInfo {
   sucursalId?: number;
   sucursalNombre?: string;
   sucursalesDisponibles: SucursalResumenDTO[];
+  empresaId?: number;
+  empresaNombre?: string;
 }
 
 // ============================================
@@ -1100,4 +1104,63 @@ export interface KardexMovimientoDTO {
   saldoAcumulado: number;
   costoUnitario: number;
   costoTotalMovimiento: number;
+}
+
+// ─── Capa 3 — Contexto de turno POS ──────────────────────────────────────
+
+export interface ClienteRecienteDTO {
+  id: number;
+  nombre: string;
+  identificacion?: string;
+  ultimaVenta: string; // ISO date
+}
+
+export interface OrdenPendienteResumenDTO {
+  id: number;
+  numeroOrden: string;
+  nombreProveedor: string;
+  fechaOrden: string;
+  fechaEntregaEsperada?: string;
+  total: number;
+  itemsCount: number;
+}
+
+export interface TurnContextDTO {
+  clientesRecientes: ClienteRecienteDTO[];
+  ordenesPendientes: OrdenPendienteResumenDTO[];
+}
+
+// ─── Capa 10 — Explicabilidad ────────────────────────────────────────────────
+
+export interface AutomaticActionDTO {
+  tipoAccion:       string;
+  productoId?:      string;
+  nombreProducto:   string;
+  description:      string;
+  reason:           string;       // "Por qué" la sugerencia es relevante
+  dataSource:       string;       // Fuente de datos que respalda la sugerencia
+  confidence:       number;       // 0.0 – 1.0
+  canOverride:      boolean;
+  cantidadSugerida?: number;
+  diasRestantes?:   number;
+}
+
+// ─── Capa 4 — Historial de cliente ───────────────────────────────────────────
+
+export interface ProductoFrecuenteDTO {
+  productoId:    string;
+  nombreProducto: string;
+  cantidadTotal: number;
+}
+
+export interface ClienteHistorialDTO {
+  clienteId:          number;
+  totalCompras:       number;
+  totalGastado:       number;
+  gastoPromedio:      number;
+  primeraVisita?:     string;
+  ultimaVisita?:      string;
+  topProductos:       ProductoFrecuenteDTO[];
+  visitasPorDiaSemana: Record<string, number>;
+  visitasPorHora:     Record<string, number>;
 }

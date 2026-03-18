@@ -4,6 +4,7 @@ import { CartItems } from './CartItems';
 import { CartTotals } from './CartTotals';
 import { CartPayment } from './CartPayment';
 import { CartActions } from './CartActions';
+import { ClienteHistorialCard } from './ClienteHistorialCard';
 import type { CartItem } from '@/stores/cart.store';
 
 interface CartPanelProps {
@@ -37,6 +38,7 @@ interface CartPanelProps {
   onCobrar: () => void;
   canCobrar: boolean;
   isLoading: boolean;
+  isOffline?: boolean;
 }
 
 export function CartPanel({
@@ -61,21 +63,28 @@ export function CartPanel({
   onCobrar,
   canCobrar,
   isLoading,
+  isOffline = false,
 }: CartPanelProps) {
   return (
-    <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
+    <Paper sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '100%', overflow: 'hidden' }}>
+      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700, flexShrink: 0 }}>
         Carrito de Compra
       </Typography>
 
-      <CartHeader
-        selectedCajaId={selectedCajaId}
-        selectedClienteId={selectedClienteId}
-        onCajaChange={onCajaChange}
-        onClienteChange={onClienteChange}
-      />
+      <Box sx={{ flexShrink: 0 }}>
+        <CartHeader
+          selectedCajaId={selectedCajaId}
+          selectedClienteId={selectedClienteId}
+          onCajaChange={onCajaChange}
+          onClienteChange={onClienteChange}
+        />
+        {/* Capa 4 — historial del cliente seleccionado */}
+        {selectedClienteId && (
+          <ClienteHistorialCard clienteId={selectedClienteId} />
+        )}
+      </Box>
 
-      <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2, minHeight: 0, maxHeight: 'calc(100vh - 520px)' }}>
         <CartItems
           items={items}
           onUpdateQuantity={onUpdateQuantity}
@@ -85,28 +94,31 @@ export function CartPanel({
         />
       </Box>
 
-      <CartTotals
-        subtotal={subtotal}
-        totalDescuentos={totalDescuentos}
-        totalImpuestos={totalImpuestos}
-        total={total}
-      />
-
-      <Box sx={{ mt: 2 }}>
-        <CartPayment
-          metodoPago={metodoPago}
-          montoPagado={montoPagado}
+      <Box sx={{ flexShrink: 0 }}>
+        <CartTotals
+          subtotal={subtotal}
+          totalDescuentos={totalDescuentos}
+          totalImpuestos={totalImpuestos}
           total={total}
-          onMetodoPagoChange={onMetodoPagoChange}
-          onMontoPagadoChange={onMontoPagadoChange}
         />
 
-        <CartActions
-          onClear={onClear}
-          onCobrar={onCobrar}
-          canCobrar={canCobrar}
-          isLoading={isLoading}
-        />
+        <Box sx={{ mt: 2 }}>
+          <CartPayment
+            metodoPago={metodoPago}
+            montoPagado={montoPagado}
+            total={total}
+            onMetodoPagoChange={onMetodoPagoChange}
+            onMontoPagadoChange={onMontoPagadoChange}
+          />
+
+          <CartActions
+            onClear={onClear}
+            onCobrar={onCobrar}
+            canCobrar={canCobrar}
+            isLoading={isLoading}
+            isOffline={isOffline}
+          />
+        </Box>
       </Box>
     </Paper>
   );

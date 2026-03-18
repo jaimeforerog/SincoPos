@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ProductoDTO } from '@/types/api';
 
 export interface CartItem {
@@ -24,7 +25,9 @@ interface CartState {
   getTotal: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
   items: [],
 
   addItem: (producto, precioSucursal) => {
@@ -134,4 +137,11 @@ export const useCartStore = create<CartState>((set, get) => ({
     const impuestos = get().getTotalImpuestos();
     return subtotal - descuentos + impuestos;
   },
-}));
+    }),
+    {
+      name: 'pos-cart',
+      // Solo persistir los items; las funciones se reconstruyen en cada montaje
+      partialize: (state) => ({ items: state.items }),
+    }
+  )
+);

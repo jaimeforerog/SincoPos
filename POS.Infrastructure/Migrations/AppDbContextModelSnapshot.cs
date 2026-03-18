@@ -256,6 +256,9 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("descripcion");
 
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ExternalId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -1177,6 +1180,35 @@ namespace POS.Infrastructure.Migrations
                     b.ToTable("documentos_electronicos", "public");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Empresa", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nit")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RazonSocial")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Empresas", "public");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.ErpOutboxMessage", b =>
                 {
                     b.Property<long>("Id")
@@ -1870,6 +1902,9 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("dias_vida_util");
 
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("EsAlimentoUltraprocesado")
                         .HasColumnType("boolean");
 
@@ -2175,6 +2210,9 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("email");
 
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_creacion");
@@ -2216,6 +2254,8 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
 
                     b.HasIndex("Nombre")
                         .IsUnique()
@@ -2269,6 +2309,9 @@ namespace POS.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("email");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("EsAutorretenedor")
                         .ValueGeneratedOnAdd()
@@ -3082,6 +3125,15 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("Sucursal");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Sucursal", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.Empresa", "Empresa")
+                        .WithMany("Sucursales")
+                        .HasForeignKey("EmpresaId");
+
+                    b.Navigation("Empresa");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.TerceroActividad", b =>
                 {
                     b.HasOne("POS.Infrastructure.Data.Entities.Tercero", "Tercero")
@@ -3189,6 +3241,11 @@ namespace POS.Infrastructure.Migrations
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DocumentoContable", b =>
                 {
                     b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.Empresa", b =>
+                {
+                    b.Navigation("Sucursales");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Impuesto", b =>

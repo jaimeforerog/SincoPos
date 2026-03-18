@@ -33,6 +33,8 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { activityLogsApi } from '@/api/activityLogs';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
+import { AuditTimeline, activityLogToAuditEntry } from '../components/AuditTimeline';
+import { useUiConfig } from '@/hooks/useUiConfig';
 import type { ActivityLogFullDTO } from '@/types/api';
 import { formatDateTime } from '@/utils/format';
 
@@ -178,6 +180,7 @@ function tryPrettyJson(raw: string): string {
 // ── Componente principal ───────────────────────────────────────────────────
 
 export default function AuditoriaPage() {
+  const { showAuditLog } = useUiConfig();
   const [fechaDesde, setFechaDesde] = useState(today());
   const [fechaHasta, setFechaHasta] = useState(today());
   const [tipo, setTipo]             = useState<number | ''>('');
@@ -216,6 +219,19 @@ export default function AuditoriaPage() {
       applied.fechaDesde ? `${applied.fechaDesde}T00:00:00` : undefined,
       applied.fechaHasta ? `${applied.fechaHasta}T23:59:59` : undefined,
     ),
+  });
+
+  // Timeline reciente: últimas 8 acciones del día de hoy
+  const { data: recentLogs } = useQuery({
+    queryKey: ['activity-recent'],
+    queryFn: () => activityLogsApi.getLogs({
+      fechaDesde: `${today()}T00:00:00`,
+      fechaHasta: `${today()}T23:59:59`,
+      pageNumber: 1,
+      pageSize: 8,
+    }),
+    enabled: showAuditLog,
+    refetchInterval: 30_000,
   });
 
   const handleBuscar = () => {
@@ -279,6 +295,18 @@ export default function AuditoriaPage() {
             </Paper>
           ))}
         </Box>
+      )}
+
+      {/* Timeline reciente — Capa 11 · Transparencia operativa */}
+      {showAuditLog && recentLogs && recentLogs.items.length > 0 && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
+            Actividad reciente — hoy
+          </Typography>
+          <AuditTimeline
+            entries={recentLogs.items.map(activityLogToAuditEntry)}
+          />
+        </Paper>
       )}
 
       {/* Filtros */}

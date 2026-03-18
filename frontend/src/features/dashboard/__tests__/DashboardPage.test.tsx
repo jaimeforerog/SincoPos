@@ -46,6 +46,12 @@ vi.mock('../components/StockAlertsTable', () => ({
 vi.mock('../components/AlertasVencimientoTable', () => ({
   AlertasVencimientoTable: () => <div data-testid="alertas-vencimiento-table" />,
 }));
+vi.mock('../components/BusinessRadar', () => ({
+  BusinessRadar: () => <div data-testid="business-radar" />,
+}));
+vi.mock('@/hooks/useUiConfig', () => ({
+  useUiConfig: () => ({ showDashboard: false }),
+}));
 
 const makeDashboard = (overrides: Partial<DashboardDTO> = {}): DashboardDTO => ({
   metricasDelDia: {

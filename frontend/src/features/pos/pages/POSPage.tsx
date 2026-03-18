@@ -1,32 +1,40 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Box, Container, Paper, Typography, Alert, Chip, IconButton, Tooltip } from '@mui/material';
-import { useSnackbar } from 'notistack';
+import { useContextualNotification } from '@/hooks/useContextualNotification';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
+import { HeroBanner } from '@/components/common/HeroBanner';
 import { useCartStore } from '@/stores/cart.store';
 import { ventasApi } from '@/api/ventas';
 import { cajasApi } from '@/api/cajas';
 import { useCajasAbiertas } from '../hooks/useCajasAbiertas';
-import { ProductSearch } from '../components/ProductSearch';
+import { IntentSearch } from '../components/IntentSearch';
 import { CartPanel } from '../components/CartPanel';
 import { VentaConfirmDialog } from '../components/VentaConfirmDialog';
 import { SeleccionarCajaDialog } from '../components/SeleccionarCajaDialog';
+import { OfflineStatusBanner } from '../components/OfflineStatusBanner';
+import { useOfflineSync } from '@/offline/useOfflineSync';
+import { useTurnPreload } from '../hooks/useTurnPreload';
+import { enqueueVenta } from '@/offline/offlineQueue.service';
+import { posSessionCache } from '@/offline/posSessionCache';
 import type { ProductoDTO, CrearVentaDTO, VentaDTO } from '@/types/api';
 
 export function POSPage() {
-  const { enqueueSnackbar } = useSnackbar();
+  const { operacional, sistema } = useContextualNotification();
   const { user, isCajero, activeSucursalId, isLoading } = useAuth();
+  const { isOnline, pendingCount } = useOfflineSync();
 
   // Cargar cajas abiertas
   const { data: _cajasAbiertas = [] } = useCajasAbiertas();
 
   // Estado de caja y cliente
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
+  useTurnPreload(selectedCajaId, activeSucursalId ?? null);
 
   // Cargar detalles de la caja seleccionada
   const { data: cajaActual } = useQuery({
@@ -41,15 +49,31 @@ export function POSPage() {
   useEffect(() => {
     // Esperar a que el perfil del usuario y las cajas estén cargados
     if (isLoading) return;
+    if (selectedCajaId) return;
 
-    // Si solo hay una caja abierta, seleccionarla automáticamente
-    if (_cajasAbiertas.length === 1 && !selectedCajaId) {
+    // Si solo hay una caja abierta (online o cacheada), seleccionarla automáticamente
+    if (_cajasAbiertas.length === 1) {
       handleSelectCaja(_cajasAbiertas[0].id, _cajasAbiertas[0].sucursalId);
-    } else if (!selectedCajaId && _cajasAbiertas.length !== 1) {
-      // Si no hay cajas o hay múltiples, mostrar el diálogo
-      setShowSeleccionarCaja(true);
+      return;
     }
-  }, [isLoading, _cajasAbiertas, selectedCajaId]);
+
+    // Sin caja única: si offline, intentar restaurar la última sesión conocida
+    if (!isOnline) {
+      const lastSession = posSessionCache.loadSession();
+      if (lastSession) {
+        setSelectedCajaId(lastSession.cajaId);
+        if (!activeSucursalId || activeSucursalId !== lastSession.sucursalId) {
+          setActiveSucursal(lastSession.sucursalId);
+        }
+        operacional(`Offline: usando "${lastSession.cajaNombre}" de la última sesión`);
+        return;
+      }
+    }
+
+    // Mostrar diálogo (con datos cacheados si está offline)
+    setShowSeleccionarCaja(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, _cajasAbiertas, selectedCajaId, isOnline]);
 
   // Handler para seleccionar caja (también recibe la sucursal del diálogo)
   const { setActiveSucursal } = useAuthStore();
@@ -60,7 +84,18 @@ export function POSPage() {
       setActiveSucursal(sucursalId);
     }
     setShowSeleccionarCaja(false);
-    enqueueSnackbar('Caja seleccionada correctamente', { variant: 'success' });
+
+    // Guardar sesión en cache para restaurar offline en próximas aperturas
+    const allCajas = [..._cajasAbiertas, ...posSessionCache.loadCajas()];
+    const caja = allCajas.find((c) => c.id === cajaId);
+    posSessionCache.saveSession({
+      cajaId,
+      cajaNombre: caja?.nombre ?? `Caja ${cajaId}`,
+      sucursalId,
+      sucursalNombre: caja?.nombreSucursal ?? '',
+    });
+
+    // Capa 7: informacional — el cambio visual ya confirma la selección
   };
 
   // Handler para cambiar de caja
@@ -107,7 +142,7 @@ export function POSPage() {
       clearCart();
       setSelectedClienteId(null);
       setMontoPagado(0);
-      enqueueSnackbar('Venta completada exitosamente', { variant: 'success' });
+      // Capa 7: informacional — VentaConfirmDialog ya comunica el éxito
     },
     onError: (error: any) => {
       console.error('❌ Error al crear venta:', error);
@@ -121,7 +156,7 @@ export function POSPage() {
         error.errors
           ? (Array.isArray(error.errors) ? error.errors.join(', ') : JSON.stringify(error.errors))
           : (error.message || 'Error al procesar la venta');
-      enqueueSnackbar(mensaje, { variant: 'error' });
+      sistema(mensaje);
     },
   });
 
@@ -139,7 +174,15 @@ export function POSPage() {
   // Handler para agregar producto con validación de stock y precio de sucursal
   const handleSelectProduct = async (producto: ProductoDTO) => {
     if (!activeSucursalId) {
-      enqueueSnackbar(`El usuario ${user?.nombre ?? user?.email} no tiene una sucursal asignada`, { variant: 'error' });
+      sistema(`Sin sucursal: ${user?.nombre ?? user?.email}`, 'Asigna una sucursal en Configuración de Usuarios');
+      return;
+    }
+
+    // Modo offline: agregar directamente sin consultar API (backend valida en sync)
+    if (!isOnline) {
+      const cantidadEnCarrito = items.find((i) => i.producto.id === producto.id)?.cantidad ?? 0;
+      addItem(producto);
+      operacional(`${producto.nombre} agregado — sin verificación de stock (offline)`, `cantidad: ${cantidadEnCarrito + 1}`);
       return;
     }
 
@@ -154,7 +197,7 @@ export function POSPage() {
       });
 
       if (stock.length === 0 || stock[0].cantidad <= 0) {
-        enqueueSnackbar(`${producto.nombre} no tiene stock disponible`, { variant: 'warning' });
+        operacional(`Sin stock: ${producto.nombre}`, 'Disponible: 0 unidades');
         return;
       }
 
@@ -164,10 +207,7 @@ export function POSPage() {
       const stockDisponible = stock[0].cantidad;
 
       if (cantidadEnCarrito >= stockDisponible) {
-        enqueueSnackbar(
-          `Stock insuficiente. Disponible: ${stockDisponible}, en carrito: ${cantidadEnCarrito}`,
-          { variant: 'warning' }
-        );
+        operacional('Stock insuficiente', `Disponible: ${stockDisponible} — en carrito: ${cantidadEnCarrito}`);
         return;
       }
 
@@ -175,39 +215,28 @@ export function POSPage() {
       let precioSucursal: number | undefined = undefined;
       try {
         const precioResuelto = await preciosApi.resolver(producto.id, activeSucursalId);
-
         if (precioResuelto && precioResuelto.precioVenta > 0) {
           precioSucursal = precioResuelto.precioVenta;
-          console.log(`✅ Precio resuelto para ${producto.nombre}:`, {
-            base: producto.precioVenta,
-            sucursal: precioSucursal,
-            origen: precioResuelto.origen,
-          });
         }
       } catch (error) {
         console.warn('No se pudo resolver precio de sucursal, usando precio base:', error);
       }
 
-      // Agregar al carrito (con precio de sucursal si existe)
       addItem(producto, precioSucursal);
 
       const precioFinal = precioSucursal !== undefined ? precioSucursal : producto.precioVenta;
       const origenPrecio = precioSucursal !== undefined ? '(Precio Sucursal)' : '(Precio Base)';
-
-      enqueueSnackbar(
-        `${producto.nombre} agregado (${cantidadEnCarrito + 1}/${stockDisponible}) - $${precioFinal.toLocaleString()} ${origenPrecio}`,
-        { variant: 'success' }
-      );
+      // Capa 7: informacional — el ítem aparece en el carrito de forma inmediata
     } catch (error) {
       console.error('Error al verificar stock:', error);
-      enqueueSnackbar('Error al verificar stock del producto', { variant: 'error' });
+      sistema('Error al verificar stock del producto');
     }
   };
 
   // Handler para actualizar cantidad con validación de stock
   const handleUpdateQuantity = async (productoId: string, nuevaCantidad: number) => {
     if (!activeSucursalId) {
-      enqueueSnackbar(`El usuario ${user?.nombre ?? user?.email} no tiene una sucursal asignada`, { variant: 'error' });
+      sistema(`Sin sucursal: ${user?.nombre ?? user?.email}`, 'Asigna una sucursal en Configuración de Usuarios');
       return;
     }
 
@@ -218,7 +247,13 @@ export function POSPage() {
       return;
     }
 
-    // Si está aumentando, validar stock
+    // Modo offline: permitir aumentar sin validar (backend valida en sync)
+    if (!isOnline) {
+      updateQuantity(productoId, nuevaCantidad);
+      return;
+    }
+
+    // Si está aumentando online, validar stock
     try {
       const { inventarioApi } = await import('@/api/inventario');
       const stock = await inventarioApi.getStock({
@@ -227,17 +262,14 @@ export function POSPage() {
       });
 
       if (stock.length === 0 || nuevaCantidad > stock[0].cantidad) {
-        enqueueSnackbar(
-          `Stock insuficiente. Disponible: ${stock[0]?.cantidad || 0}`,
-          { variant: 'warning' }
-        );
+        operacional('Stock insuficiente', `Disponible: ${stock[0]?.cantidad || 0}`);
         return;
       }
 
       updateQuantity(productoId, nuevaCantidad);
     } catch (error) {
       console.error('Error al verificar stock:', error);
-      enqueueSnackbar('Error al verificar stock', { variant: 'error' });
+      sistema('Error al verificar stock');
     }
   };
 
@@ -247,7 +279,7 @@ export function POSPage() {
 
     if (window.confirm('¿Estás seguro de limpiar el carrito?')) {
       clearCart();
-      enqueueSnackbar('Carrito limpiado', { variant: 'info' });
+      // Capa 7: informacional — el carrito vacío es visualmente evidente
     }
   };
 
@@ -255,22 +287,22 @@ export function POSPage() {
   const handleCobrar = async () => {
     // Validaciones
     if (!isCajero()) {
-      enqueueSnackbar('No tienes permisos de cajero', { variant: 'error' });
+      sistema('No tienes permisos de cajero');
       return;
     }
 
     if (items.length === 0) {
-      enqueueSnackbar('El carrito está vacío', { variant: 'warning' });
+      operacional('El carrito está vacío');
       return;
     }
 
     if (!selectedCajaId) {
-      enqueueSnackbar('Debes seleccionar una caja', { variant: 'warning' });
+      operacional('Debes seleccionar una caja');
       return;
     }
 
     if (!activeSucursalId) {
-      enqueueSnackbar(`El usuario ${user?.nombre ?? user?.email} no tiene una sucursal asignada`, { variant: 'error' });
+      sistema(`Sin sucursal: ${user?.nombre ?? user?.email}`, 'Asigna una sucursal en Configuración de Usuarios');
       return;
     }
 
@@ -278,17 +310,14 @@ export function POSPage() {
 
     // Validar monto pagado solo para efectivo
     if (metodoPago === 0 && montoPagado < totalVentaValidacion) {
-      enqueueSnackbar(
-        `El monto pagado (${montoPagado}) es insuficiente. Total: ${totalVentaValidacion}`,
-        { variant: 'warning' }
-      );
+      operacional('Monto insuficiente', `Pagado: $${montoPagado.toLocaleString()} / Total: $${totalVentaValidacion.toLocaleString()}`);
       return;
     }
 
     // Validar precios
     const preciosInvalidos = items.filter((item) => item.precioUnitario <= 0);
     if (preciosInvalidos.length > 0) {
-      enqueueSnackbar('Hay productos con precio inválido', { variant: 'error' });
+      sistema('Hay productos con precio inválido');
       return;
     }
 
@@ -306,13 +335,7 @@ export function POSPage() {
         })
         .join(', ');
 
-      enqueueSnackbar(
-        `No se puede vender por debajo del costo. ${detalles}`,
-        {
-          variant: 'error',
-          autoHideDuration: 8000 // Mostrar más tiempo para leer
-        }
-      );
+      sistema(`Venta por debajo del costo: ${detalles}`);
       return;
     }
 
@@ -321,9 +344,7 @@ export function POSPage() {
       (item) => item.descuentoPorcentaje < 0 || item.descuentoPorcentaje > 100
     );
     if (descuentosInvalidos.length > 0) {
-      enqueueSnackbar('Hay descuentos inválidos (deben estar entre 0% y 100%)', {
-        variant: 'error',
-      });
+      operacional('Descuentos inválidos', 'Deben estar entre 0% y 100%');
       return;
     }
 
@@ -355,9 +376,22 @@ export function POSPage() {
       }),
     };
 
-    console.log('📤 Enviando venta:', crearVentaDto);
+    // ── Modo offline: encolar la venta en IndexedDB ──────────────────────
+    if (!isOnline) {
+      try {
+        const localId = await enqueueVenta(crearVentaDto);
+        clearCart();
+        setSelectedClienteId(null);
+        setMontoPagado(0);
+        operacional(`Venta guardada offline (ref: ${localId.slice(-6)})`, 'Se enviará al reconectar');
+      } catch {
+        sistema('Error al guardar la venta offline');
+      }
+      return;
+    }
 
-    // Ejecutar mutación
+    // ── Modo online: enviar al servidor ──────────────────────────────────
+    console.log('📤 Enviando venta:', crearVentaDto);
     try {
       await crearVentaMutation.mutateAsync(crearVentaDto);
     } catch (error) {
@@ -379,33 +413,17 @@ export function POSPage() {
     (metodoPago !== 0 || montoPagado >= total);
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: 'grey.100', minHeight: '100vh', py: 3 }}>
+    <Box sx={{ flexGrow: 1, bgcolor: selectedCajaId ? 'grey.100' : 'background.default', minHeight: '100vh', py: selectedCajaId ? 3 : 0 }}>
       <Container maxWidth="xl">
+        {/* Banner de estado offline */}
+        <OfflineStatusBanner />
+
         {/* Banner de Información de Sesión */}
-        <Box
-          sx={{
-            background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 50%, #01579b 100%)',
-            borderRadius: 3,
-            p: 2,
-            mb: 3,
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""', position: 'absolute', top: -40, right: -40,
-              width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.06)',
-            },
-          }}
-        >
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
-            <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Box>
-                <Typography variant="h6" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.1 }}>
-                  Punto de Venta
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                  Sesión activa
-                </Typography>
-              </Box>
+        <HeroBanner
+          title="Punto de Venta"
+          subtitle="Sesión activa"
+          info={
+            <>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <BusinessIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
                 <Box>
@@ -448,9 +466,10 @@ export function POSPage() {
                   sx={{ bgcolor: 'white', color: 'warning.main', fontWeight: 600 }}
                 />
               )}
-            </Box>
-
-            {cajaActual && (
+            </>
+          }
+          actions={
+            cajaActual ? (
               <Tooltip title="Cambiar de caja">
                 <IconButton
                   onClick={handleCambiarCaja}
@@ -464,16 +483,17 @@ export function POSPage() {
                   <SwapHorizIcon />
                 </IconButton>
               </Tooltip>
-            )}
-          </Box>
-        </Box>
+            ) : undefined
+          }
+        />
 
         <Box
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', md: '1.4fr 1fr' },
             gap: 3,
-            height: 'calc(100vh - 220px)',
+            height: 'calc(100vh - 280px)',
+            minHeight: 500,
           }}
         >
           {/* Panel Izquierdo - Búsqueda de Productos */}
@@ -481,7 +501,7 @@ export function POSPage() {
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
               Productos
             </Typography>
-            <ProductSearch onSelectProduct={handleSelectProduct} />
+            <IntentSearch onSelectProduct={handleSelectProduct} />
           </Paper>
 
           {/* Panel Derecho - Carrito y Pago */}
@@ -505,11 +525,17 @@ export function POSPage() {
             onMontoPagadoChange={setMontoPagado}
             onClear={handleClearCart}
             onCobrar={handleCobrar}
-            canCobrar={canCobrar}
+            canCobrar={canCobrar || (!isOnline && items.length > 0 && selectedCajaId !== null)}
             isLoading={crearVentaMutation.isPending}
+            isOffline={!isOnline}
           />
         </Box>
       </Container>
+
+      {/* Overlay blanco cuando no hay caja seleccionada */}
+      {!selectedCajaId && (
+        <Box sx={{ position: 'fixed', inset: 0, bgcolor: 'background.default', zIndex: 1200 }} />
+      )}
 
       {/* Dialog de Selección de Caja */}
       <SeleccionarCajaDialog

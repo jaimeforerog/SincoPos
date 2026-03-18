@@ -11,6 +11,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
 import WarningIcon from '@mui/icons-material/Warning';
 import type { CartItem } from '@/stores/cart.store';
+import { useUiConfig } from '@/hooks/useUiConfig';
 
 interface CartItemProps {
   item: CartItem;
@@ -27,6 +28,7 @@ export function CartItemComponent({
   onUpdateDiscount,
   onRemove,
 }: CartItemProps) {
+  const { showPriceOverride, showDiscountOverride } = useUiConfig();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -105,7 +107,7 @@ export function CartItemComponent({
         </Box>
 
         <TextField
-          label={item.precioEditable ? "Precio" : "Precio (Sucursal)"}
+          label={item.precioEditable && showPriceOverride ? "Precio" : "Precio (Sucursal)"}
           type="number"
           value={item.precioUnitario}
           onChange={(e) => {
@@ -115,23 +117,25 @@ export function CartItemComponent({
           size="small"
           sx={{ flexGrow: 1 }}
           InputProps={{
-            readOnly: !item.precioEditable,
+            readOnly: !(item.precioEditable && showPriceOverride),
           }}
-          helperText={!item.precioEditable ? "Precio fijo de sucursal" : undefined}
+          helperText={!(item.precioEditable && showPriceOverride) ? 'Precio fijo' : undefined}
         />
 
-        <TextField
-          label="Desc %"
-          type="number"
-          value={item.descuentoPorcentaje}
-          onChange={(e) => {
-            const val = parseFloat(e.target.value);
-            if (val >= 0 && val <= 100) onUpdateDiscount(item.producto.id, val);
-          }}
-          size="small"
-          sx={{ width: '80px' }}
-          inputProps={{ min: 0, max: 100 }}
-        />
+        {showDiscountOverride && (
+          <TextField
+            label="Desc %"
+            type="number"
+            value={item.descuentoPorcentaje}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              if (val >= 0 && val <= 100) onUpdateDiscount(item.producto.id, val);
+            }}
+            size="small"
+            sx={{ width: '80px' }}
+            inputProps={{ min: 0, max: 100 }}
+          />
+        )}
       </Box>
 
       {precioMenorAlCosto && (

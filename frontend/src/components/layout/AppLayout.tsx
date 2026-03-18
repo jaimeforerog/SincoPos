@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
+  Chip,
   Drawer,
   IconButton,
   Toolbar,
@@ -23,6 +24,8 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
+import { useUiConfig } from '@/hooks/useUiConfig';
+import { sincoColors } from '@/theme/tokens';
 import { APP_NAME } from '@/utils/constants';
 import { MenuSection } from './MenuSection';
 import { menuSections } from './menuSections';
@@ -37,7 +40,13 @@ export function AppLayout() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { activeSucursalId, setActiveSucursal, logout } = useAuthStore();
+  const { activeSucursalId, setActiveSucursal, activeEmpresaId, empresasDisponibles, setActiveEmpresa, logout } = useAuthStore();
+
+  // Sucursales visibles = las de la empresa activa (o todas si no hay empresa configurada)
+  const sucursalesVisibles = user?.sucursalesDisponibles.filter(
+    s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+  ) ?? [];
+  const uiConfig = useUiConfig();
 
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
@@ -67,13 +76,26 @@ export function AppLayout() {
     <Box sx={{ overflowY: 'auto' }}>
       <Toolbar
         sx={{
-          background: theme.palette.primary.main,
+          background: sincoColors.gradients.heroBlue,
           color: 'white',
+          gap: 1,
+          justifyContent: 'space-between',
         }}
       >
-        <Typography variant="h6" fontWeight={600}>
+        <Typography variant="h6" fontWeight={700} color="white">
           {APP_NAME}
         </Typography>
+        <Chip
+          label={uiConfig.rolLabel}
+          size="small"
+          sx={{
+            bgcolor: 'rgba(255,255,255,0.15)',
+            color: 'white',
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            border: '1px solid rgba(255,255,255,0.25)',
+          }}
+        />
       </Toolbar>
       <Divider />
 
@@ -102,30 +124,41 @@ export function AppLayout() {
             <MenuIcon />
           </IconButton>
 
-          {user && user.sucursalesDisponibles.length > 1 ? (
-            <Select
-              value={activeSucursalId ?? ''}
-              onChange={(e) => setActiveSucursal(Number(e.target.value))}
-              variant="standard"
-              disableUnderline
-              sx={{
-                color: 'white',
-                flexGrow: 1,
-                fontWeight: 600,
-                fontSize: '1.25rem',
-                '& .MuiSvgIcon-root': { color: 'white' },
-                '& .MuiSelect-select': { py: 0 },
-              }}
-            >
-              {user.sucursalesDisponibles.map((s) => (
-                <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
-              ))}
-            </Select>
-          ) : (
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              {user?.sucursalNombre || 'Sin sucursal'}
-            </Typography>
-          )}
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            {/* Empresa: solo lectura — para cambiar hay que cerrar sesión */}
+            {empresasDisponibles.length > 0 && (
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 400, flexShrink: 0 }}>
+                {empresasDisponibles.find(e => e.id === activeEmpresaId)?.nombre ?? empresasDisponibles[0].nombre}
+              </Typography>
+            )}
+            {empresasDisponibles.length >= 1 && (
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>›</Typography>
+            )}
+            {/* Selector de sucursal */}
+            {sucursalesVisibles.length > 1 ? (
+              <Select
+                value={activeSucursalId ?? ''}
+                onChange={(e) => setActiveSucursal(Number(e.target.value))}
+                variant="standard"
+                disableUnderline
+                sx={{
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '1.1rem',
+                  '& .MuiSvgIcon-root': { color: 'white' },
+                  '& .MuiSelect-select': { py: 0 },
+                }}
+              >
+                {sucursalesVisibles.map((s) => (
+                  <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
+                ))}
+              </Select>
+            ) : (
+              <Typography variant="h6" component="div">
+                {sucursalesVisibles[0]?.nombre || user?.sucursalNombre || 'Sin sucursal'}
+              </Typography>
+            )}
+          </Box>
 
           <NotificationBell />
 

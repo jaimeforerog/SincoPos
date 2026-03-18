@@ -2,6 +2,14 @@ namespace POS.Infrastructure.Data.Entities;
 
 public class Sucursal : EntidadAuditable
 {
+    /// <summary>
+    /// Empresa a la que pertenece esta sucursal.
+    /// Null = sucursal sin empresa asignada (legado / seed inicial).
+    /// Se asigna manualmente en la tabla Empresas.
+    /// </summary>
+    public int? EmpresaId { get; set; }
+    public Empresa? Empresa { get; set; }
+
     public string Nombre { get; set; } = string.Empty;
     public string? Direccion { get; set; }
     public string? CodigoPais { get; set; } = "CO"; // ISO 3166-1 alpha-2

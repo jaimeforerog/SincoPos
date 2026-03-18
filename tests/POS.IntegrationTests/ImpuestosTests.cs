@@ -29,7 +29,6 @@ public class ImpuestosTests
     
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
     private async Task<int> CrearImpuesto(string nombre, string tipo, decimal porcentaje,
         bool aplicaSobreBase = true, decimal? valorFijo = null)
     {

@@ -9,9 +9,12 @@ import {
   TextField,
   Alert,
   CircularProgress,
+  Chip,
 } from '@mui/material';
 import { useCajasAbiertas } from '../hooks/useCajasAbiertas';
 import { tercerosApi } from '@/api/terceros';
+import { useTurnContextStore } from '@/stores/turnContext.store';
+import type { TerceroDTO } from '@/types/api';
 
 interface CartHeaderProps {
   selectedCajaId: number | null;
@@ -27,13 +30,23 @@ export function CartHeader({
   onClienteChange,
 }: CartHeaderProps) {
   const { data: cajas = [], isLoading: loadingCajas } = useCajasAbiertas();
+  const clientesRecientes = useTurnContextStore((s) => s.clientesRecientes);
 
   const { data: clientesData } = useQuery({
     queryKey: ['terceros', 'clientes'],
     queryFn: () => tercerosApi.getAll({ esCliente: true, activo: true }),
   });
 
-  const clientes = clientesData?.items || [];
+  const clientes = clientesData?.items ?? [];
+
+  // Capa 3: IDs de clientes recientes para ordenar primero
+  const recentIds = new Set(clientesRecientes.map((c) => c.id));
+
+  // Recientes al principio, resto en orden alfabético
+  const clientesOrdenados: TerceroDTO[] = [
+    ...clientes.filter((c) => recentIds.has(c.id)),
+    ...clientes.filter((c) => !recentIds.has(c.id)),
+  ];
 
   if (loadingCajas) {
     return (
@@ -71,15 +84,25 @@ export function CartHeader({
       </FormControl>
 
       <Autocomplete
-        options={clientes}
-        getOptionLabel={(option) => {
-          if (!option) return '';
-          return typeof option === 'string' ? option : option.nombre;
-        }}
-        value={selectedCliente || null}
-        onChange={(_, newValue) => {
-          onClienteChange(newValue ? newValue.id : null);
-        }}
+        options={clientesOrdenados}
+        getOptionLabel={(option) =>
+          typeof option === 'string' ? option : option.nombre
+        }
+        groupBy={(option) =>
+          recentIds.has(option.id) ? 'Recientes' : 'Todos los clientes'
+        }
+        value={selectedCliente ?? null}
+        onChange={(_, newValue) => onClienteChange(newValue ? newValue.id : null)}
+        renderOption={(props, option) => (
+          <li {...props} key={option.id}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+              <span>{option.nombre}</span>
+              {recentIds.has(option.id) && (
+                <Chip label="reciente" size="small" sx={{ height: 18, fontSize: '0.65rem' }} />
+              )}
+            </Box>
+          </li>
+        )}
         renderInput={(params) => (
           <TextField {...params} label="Cliente (opcional)" placeholder="Buscar cliente..." />
         )}

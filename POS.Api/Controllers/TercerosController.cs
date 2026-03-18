@@ -14,11 +14,16 @@ namespace POS.Api.Controllers;
 public class TercerosController : ControllerBase
 {
     private readonly ITerceroService _service;
+    private readonly IClienteHistorialService _historialService;
     private readonly ILogger<TercerosController> _logger;
 
-    public TercerosController(ITerceroService service, ILogger<TercerosController> logger)
+    public TercerosController(
+        ITerceroService service,
+        IClienteHistorialService historialService,
+        ILogger<TercerosController> logger)
     {
         _service = service;
+        _historialService = historialService;
         _logger = logger;
     }
 
@@ -227,5 +232,22 @@ public class TercerosController : ControllerBase
             return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
 
         return NoContent();
+    }
+
+    // ─── Capa 4 — Dependencias inteligentes ────────────────────────────────
+
+    /// <summary>
+    /// Capa 4 — Retorna el historial de compras acumulado de un cliente.
+    /// Alimentado automáticamente por ClienteHistorialProjection en cada venta.
+    /// </summary>
+    [HttpGet("{id:int}/historial")]
+    [Authorize(Policy = "Cajero")]
+    [ProducesResponseType(typeof(ClienteHistorialDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<ActionResult<ClienteHistorialDto>> ObtenerHistorial(int id)
+    {
+        var historial = await _historialService.ObtenerHistorialAsync(id);
+        if (historial is null) return NoContent();
+        return Ok(historial);
     }
 }
