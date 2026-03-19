@@ -9,6 +9,8 @@ import {
   Settings,
   ReceiptLong,
   Business,
+  Inventory,
+  Article,
 } from '@mui/icons-material';
 import { MenuSection } from './MenuSection';
 
@@ -60,6 +62,18 @@ export const menuSections: MenuSection[] = [
         text: 'Devoluciones',
         icon: <KeyboardReturn />,
         path: '/devoluciones',
+        roles: ['supervisor', 'admin'],
+      },
+      {
+        text: 'Inventario',
+        icon: <Inventory />,
+        path: '/reportes/gestion-inventario',
+        roles: ['supervisor', 'admin'],
+      },
+      {
+        text: 'Facturación DIAN',
+        icon: <Article />,
+        path: '/facturacion',
         roles: ['supervisor', 'admin'],
       },
     ],
