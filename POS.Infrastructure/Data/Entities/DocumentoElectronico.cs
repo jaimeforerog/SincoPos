@@ -3,6 +3,7 @@ namespace POS.Infrastructure.Data.Entities;
 public class DocumentoElectronico : EntidadAuditable
 {
     public int? VentaId { get; set; }
+    public int? EmpresaId { get; set; }
     public int SucursalId { get; set; }
     public string TipoDocumento { get; set; } = ""; // "FV","NC","ND"
     public string Prefijo { get; set; } = "";

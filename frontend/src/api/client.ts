@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '@/types/api';
+import { useAuthStore } from '@/stores/auth.store';
 
 // Use empty string (relative paths) when VITE_API_URL is not set so requests
 // go through the Vite dev proxy (same-origin, no CORS).
@@ -15,14 +16,17 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and empresa context
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Get token from session storage or from OIDC context
     const token = sessionStorage.getItem('access_token');
-
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const { activeEmpresaId } = useAuthStore.getState();
+    if (activeEmpresaId != null && config.headers) {
+      config.headers['X-Empresa-Id'] = String(activeEmpresaId);
     }
 
     return config;

@@ -102,12 +102,12 @@ describe('DevolucionesPage', () => {
 
     renderWithProviders(<DevolucionesPage />);
 
-    expect(await screen.findByText(/2 venta\(s\) completada\(s\) encontradas/i)).toBeInTheDocument();
+    expect(await screen.findByText(/2 venta\(s\) encontradas/i)).toBeInTheDocument();
   });
 
   it('muestra "0 venta(s)" cuando la API retorna lista vacía', async () => {
     renderWithProviders(<DevolucionesPage />);
-    expect(await screen.findByText(/0 venta\(s\) completada\(s\) encontradas/i)).toBeInTheDocument();
+    expect(await screen.findByText(/0 venta\(s\) encontradas/i)).toBeInTheDocument();
   });
 
   it('llama a ventasApi con sucursalId del usuario y estado Completada', async () => {

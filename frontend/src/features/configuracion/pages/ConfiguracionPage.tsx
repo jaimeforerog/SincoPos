@@ -149,7 +149,7 @@ export function ConfiguracionPage() {
           borderRadius: 3,
           px: { xs: 3, md: 4 },
           py: { xs: 2.5, md: 3 },
-          mb: 4,
+          mb: 2,
           mt: 1,
           position: 'relative',
           overflow: 'hidden',
@@ -261,15 +261,15 @@ export function ConfiguracionPage() {
         const meta = categoryMeta[key];
 
         return (
-          <Box key={key} sx={{ mb: 4 }}>
+          <Box key={key} sx={{ mb: 2 }}>
             {/* Encabezado de sección */}
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                mb: 2,
-                pb: 1,
+                mb: 1,
+                pb: 0.5,
                 borderBottom: '2px solid',
                 borderColor: meta.color,
               }}
@@ -277,7 +277,7 @@ export function ConfiguracionPage() {
               <Box sx={{ color: meta.color, display: 'flex', alignItems: 'center' }}>
                 {meta.icon}
               </Box>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ color: 'text.primary' }}>
+              <Typography variant="body2" fontWeight={700} sx={{ color: 'text.primary' }}>
                 {meta.label}
               </Typography>
             </Box>
@@ -289,8 +289,9 @@ export function ConfiguracionPage() {
                   xs: '1fr',
                   sm: 'repeat(2, 1fr)',
                   md: 'repeat(3, 1fr)',
+                  lg: 'repeat(4, 1fr)',
                 },
-                gap: 2.5,
+                gap: 1.5,
               }}
             >
               {modules.map((module) => (

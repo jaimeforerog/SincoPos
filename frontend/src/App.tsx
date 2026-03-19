@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -39,6 +39,7 @@ const ImpuestosPage = lazy(() => import('./features/impuestos/pages/ImpuestosPag
 const TercerosPage = lazy(() => import('./features/terceros/pages/TercerosPage'));
 const UsuariosPage = lazy(() => import('./features/usuarios/pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
 const AuditoriaPage = lazy(() => import('./features/auditoria/pages/AuditoriaPage'));
+const EmpresasPage = lazy(() => import('./features/empresas/pages/EmpresasPage').then(m => ({ default: m.EmpresasPage })));
 const ConfiguracionEmisorPage = lazy(() => import('./features/facturacion/pages/ConfiguracionEmisorPage').then(m => ({ default: m.ConfiguracionEmisorPage })));
 const DocumentosElectronicosPage = lazy(() => import('./features/facturacion/pages/DocumentosElectronicosPage').then(m => ({ default: m.DocumentosElectronicosPage })));
 
@@ -60,7 +61,25 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Prefetch de los chunks más usados una vez que la app está lista. */
+function useCriticalPrefetch() {
+  useEffect(() => {
+    const prefetch = () => {
+      void import('./features/pos/pages/POSPage');
+      void import('./features/dashboard/pages/DashboardPage');
+      void import('./features/ventas/pages/VentasPage');
+    };
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(prefetch, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(prefetch, 2000);
+    return () => clearTimeout(id);
+  }, []);
+}
+
 function App() {
+  useCriticalPrefetch();
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
@@ -169,6 +188,14 @@ function App() {
                     element={
                       <ProtectedRoute requiredRoles={['admin']}>
                         <ConfiguracionEmisorPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="empresas"
+                    element={
+                      <ProtectedRoute requiredRoles={['admin']}>
+                        <EmpresasPage />
                       </ProtectedRoute>
                     }
                   />

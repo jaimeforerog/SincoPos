@@ -1,4 +1,4 @@
-import { Box, Typography, Breadcrumbs, Link, IconButton, alpha } from '@mui/material';
+import { Box, Typography, Breadcrumbs, Link, IconButton } from '@mui/material';
 import { ArrowBack, Home } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,17 +29,13 @@ export function ReportePageHeader({
 }: ReportePageHeaderProps) {
   const navigate = useNavigate();
 
-  // Genera un gradiente oscuro basado en el color del módulo
-  const gradient = `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.85)} 60%, ${alpha(color, 0.7)} 100%)`;
-
   return (
     <Box
       sx={{
-        background: gradient,
+        background: `linear-gradient(135deg, ${color} 0%, #0d47a1 50%, #01579b 100%)`,
         borderRadius: 3,
-        px: { xs: 2.5, md: 3.5 },
-        pt: 2,
-        pb: 2.5,
+        px: { xs: 3, md: 4 },
+        py: { xs: 2.5, md: 3 },
         mb: 3,
         mt: 1,
         position: 'relative',
@@ -47,22 +43,22 @@ export function ReportePageHeader({
         '&::before': {
           content: '""',
           position: 'absolute',
-          top: -50,
-          right: -50,
-          width: 160,
-          height: 160,
+          top: -60,
+          right: -60,
+          width: 200,
+          height: 200,
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.06)',
+          background: 'rgba(255,255,255,0.05)',
         },
         '&::after': {
           content: '""',
           position: 'absolute',
-          bottom: -30,
-          right: 60,
-          width: 100,
-          height: 100,
+          bottom: -40,
+          right: 80,
+          width: 120,
+          height: 120,
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.04)',
+          background: 'rgba(255,255,255,0.05)',
         },
       }}
     >

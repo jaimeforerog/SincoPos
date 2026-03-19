@@ -233,7 +233,7 @@ export function VentasPage() {
           p: 2, mb: 2.5,
         }}
       >
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
           <FilterListIcon sx={{ color: 'text.secondary' }} fontSize="small" />
           <TextField
             label="Desde"
@@ -256,7 +256,7 @@ export function VentasPage() {
           <TextField
             select label="Sucursal" value={filtroSucursal}
             onChange={(e) => { setFiltroSucursal(e.target.value as number | ''); setPage(1); }}
-            sx={{ minWidth: 180 }} size="small"
+            sx={{ minWidth: 160 }} size="small"
           >
             <MenuItem value="">Todas</MenuItem>
             {sucursales.map((s) => (
@@ -266,36 +266,28 @@ export function VentasPage() {
           <TextField
             select label="Estado" value={filtroEstado}
             onChange={(e) => { setFiltroEstado(e.target.value); setPage(1); }}
-            sx={{ minWidth: 160 }} size="small"
+            sx={{ minWidth: 140 }} size="small"
           >
             {ESTADOS_FILTRO.map((e) => (
               <MenuItem key={e.value} value={e.value}>{e.label}</MenuItem>
             ))}
           </TextField>
-          <Box sx={{ ml: 'auto' }}>
-            <Typography variant="caption" color="text.secondary">
-              {isLoading ? 'Cargando...' : `${totalCount} venta(s) encontradas`}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <SearchIcon sx={{ color: 'text.secondary' }} fontSize="small" />
           <Autocomplete
-            fullWidth
             options={ventas}
             getOptionLabel={(o) => o.numeroVenta}
             value={busquedaVenta}
             onChange={(_, v) => setBusquedaVenta(v)}
             loading={isLoading}
             size="small"
+            sx={{ minWidth: 220 }}
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Buscar venta por número"
+                label="N° venta"
                 placeholder="V-000001"
                 InputProps={{
                   ...params.InputProps,
+                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 0.5 }} />,
                   endAdornment: (
                     <>
                       {isLoading ? <CircularProgress color="inherit" size={16} /> : null}
@@ -327,6 +319,11 @@ export function VentasPage() {
             }}
             noOptionsText={isLoading ? 'Cargando...' : 'No se encontraron ventas'}
           />
+          <Box sx={{ ml: 'auto' }}>
+            <Typography variant="caption" color="text.secondary">
+              {isLoading ? 'Cargando...' : `${totalCount} venta(s) encontradas`}
+            </Typography>
+          </Box>
         </Box>
       </Box>
 

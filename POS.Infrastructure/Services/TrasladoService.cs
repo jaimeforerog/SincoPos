@@ -68,6 +68,7 @@ public class TrasladoService : ITrasladoService
         var traslado = new Traslado
         {
             NumeroTraslado = numeroTraslado,
+            EmpresaId = sucursalOrigen.EmpresaId,
             SucursalOrigenId = dto.SucursalOrigenId,
             SucursalDestinoId = dto.SucursalDestinoId,
             Estado = EstadoTraslado.Pendiente,

@@ -7,19 +7,15 @@ import {
   Typography,
   InputAdornment,
   List,
-  Chip,
 } from '@mui/material';
-import SearchIcon  from '@mui/icons-material/Search';
-import FlashOnIcon from '@mui/icons-material/FlashOn';
+import SearchIcon from '@mui/icons-material/Search';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/hooks/useAuth';
-import { useUiConfig } from '@/hooks/useUiConfig';
 import { productosApi } from '@/api/productos';
 import { inventarioApi } from '@/api/inventario';
 import { preciosApi } from '@/api/precios';
 import { ProductCard } from './ProductCard';
 import { CameraInput } from './CameraInput';
-import { useAnticipatedProducts } from '../hooks/useAnticipatedProducts';
 import { sincoColors } from '@/theme/tokens';
 import type { ProductoDTO } from '@/types/api';
 
@@ -38,11 +34,6 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
   const debouncedSearch             = useDebounce(searchTerm, 300);
   const searchInputRef              = useRef<HTMLInputElement>(null);
   const { activeSucursalId }        = useAuth();
-  const { quickProductsLimit }      = useUiConfig();
-
-  // Capa 5 — productos frecuentes
-  const anticipated = useAnticipatedProducts(activeSucursalId, quickProductsLimit || 12);
-
   // Catálogo paginado con búsqueda debounced
   const { data: productosData, isLoading } = useQuery({
     queryKey: ['productos', debouncedSearch],
@@ -84,17 +75,19 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const showAnticipated = searchTerm.length === 0 && anticipated.length > 0;
-
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Campo de búsqueda unificado */}
-      <Box sx={{ mb: 2 }}>
+      {/* Título + campo de búsqueda en la misma fila */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+          Productos
+        </Typography>
         <TextField
           inputRef={searchInputRef}
           fullWidth
-          placeholder="Buscar producto por nombre, código o cámara… (Ctrl+K)"
+          size="small"
+          placeholder="Nombre, código o cámara… (Ctrl+K)"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           autoFocus
@@ -126,36 +119,6 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
           }}
         />
       </Box>
-
-      {/* Capa 5 — chips de productos frecuentes */}
-      {showAnticipated && (
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75 }}>
-            <FlashOnIcon sx={{ fontSize: 14, color: sincoColors.warning.main }} />
-            <Typography variant="caption" color="text.secondary" fontWeight={600}>
-              Frecuentes
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-            {anticipated.map((p) => (
-              <Chip
-                key={p.id}
-                label={p.nombre}
-                size="small"
-                onClick={() => onSelectProduct(p)}
-                sx={{
-                  cursor:     'pointer',
-                  bgcolor:    sincoColors.brand[50],
-                  color:      sincoColors.brand[800],
-                  fontWeight: 500,
-                  border:     `1px solid ${sincoColors.brand[100]}`,
-                  '&:hover':  { bgcolor: sincoColors.brand[100] },
-                }}
-              />
-            ))}
-          </Box>
-        </Box>
-      )}
 
       {/* Lista de resultados */}
       <Box

@@ -159,6 +159,9 @@ namespace POS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Estado")
                         .HasColumnType("integer")
                         .HasColumnName("estado");
@@ -907,6 +910,9 @@ namespace POS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ErpReferencia")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -1083,6 +1089,9 @@ namespace POS.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("cufe");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Estado")
                         .ValueGeneratedOnAdd()
@@ -1688,6 +1697,9 @@ namespace POS.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("DiasPlazo")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("EmpresaId")
                         .HasColumnType("integer");
 
                     b.Property<string>("ErpReferencia")
@@ -2463,6 +2475,9 @@ namespace POS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Estado")
                         .HasColumnType("integer")
                         .HasColumnName("estado");
@@ -2683,6 +2698,9 @@ namespace POS.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("descuento");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ErpReferencia")
                         .HasMaxLength(100)

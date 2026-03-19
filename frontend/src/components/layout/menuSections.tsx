@@ -8,6 +8,7 @@ import {
   Assessment,
   Settings,
   ReceiptLong,
+  Business,
 } from '@mui/icons-material';
 import { MenuSection } from './MenuSection';
 
@@ -78,19 +79,6 @@ export const menuSections: MenuSection[] = [
     ],
   },
 
-  // FACTURACIÓN ELECTRÓNICA
-  {
-    title: 'Facturación Electrónica',
-    roles: ['supervisor', 'admin'],
-    items: [
-      {
-        text: 'Documentos DIAN',
-        icon: <ReceiptLong />,
-        path: '/facturacion',
-        roles: ['supervisor', 'admin'],
-      },
-    ],
-  },
 
   // CONFIGURACIÓN
   {
@@ -102,6 +90,12 @@ export const menuSections: MenuSection[] = [
         icon: <Settings />,
         path: '/configuracion',
         roles: ['supervisor', 'admin'],
+      },
+      {
+        text: 'Empresas',
+        icon: <Business />,
+        path: '/empresas',
+        roles: ['admin'],
       },
     ],
   },

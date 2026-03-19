@@ -14,10 +14,12 @@ namespace POS.Infrastructure.Services;
 public class TerceroLocalService : ITerceroService
 {
     private readonly AppDbContext _context;
+    private readonly ICurrentEmpresaProvider _empresaProvider;
 
-    public TerceroLocalService(AppDbContext context)
+    public TerceroLocalService(AppDbContext context, ICurrentEmpresaProvider empresaProvider)
     {
         _context = context;
+        _empresaProvider = empresaProvider;
     }
 
     public async Task<TerceroDto?> ObtenerPorIdAsync(int id)
@@ -101,6 +103,7 @@ public class TerceroLocalService : ITerceroService
             EsGranContribuyente = dto.EsGranContribuyente,
             EsAutorretenedor = dto.EsAutorretenedor,
             EsResponsableIVA = dto.EsResponsableIVA,
+            EmpresaId = _empresaProvider.EmpresaId,
             OrigenDatos = OrigenDatos.Local,
             Activo = true,
             FechaCreacion = DateTime.UtcNow,
@@ -404,6 +407,7 @@ public class TerceroLocalService : ITerceroService
                 EsGranContribuyente = GetBool(row, "EsGranContribuyente"),
                 EsAutorretenedor = GetBool(row, "EsAutorretenedor"),
                 EsResponsableIVA = GetBool(row, "EsResponsableIVA"),
+                EmpresaId = _empresaProvider.EmpresaId,
                 OrigenDatos = OrigenDatos.Local,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow,

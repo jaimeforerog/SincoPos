@@ -144,6 +144,7 @@ public class CompraService : ICompraService
         var orden = new OrdenCompra
         {
             NumeroOrden = numeroOrden,
+            EmpresaId = sucursal.EmpresaId,
             SucursalId = dto.SucursalId,
             ProveedorId = dto.ProveedorId,
             Estado = EstadoOrdenCompra.Pendiente,

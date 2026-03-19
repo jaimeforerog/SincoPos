@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
+using POS.Application.Services;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 
@@ -17,12 +18,14 @@ public class CategoriasController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ILogger<CategoriasController> _logger;
+    private readonly ICurrentEmpresaProvider _empresaProvider;
     private const int NivelMaximo = 3; // Máximo 3 niveles de profundidad
 
-    public CategoriasController(AppDbContext context, ILogger<CategoriasController> logger)
+    public CategoriasController(AppDbContext context, ILogger<CategoriasController> logger, ICurrentEmpresaProvider empresaProvider)
     {
         _context = context;
         _logger = logger;
+        _empresaProvider = empresaProvider;
     }
 
     /// <summary>
@@ -81,6 +84,7 @@ public class CategoriasController : ControllerBase
             CategoriaPadreId = dto.CategoriaPadreId,
             Nivel = nivel,
             RutaCompleta = rutaCompleta,
+            EmpresaId = _empresaProvider.EmpresaId,
             Activo = true
         };
 

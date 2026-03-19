@@ -18,6 +18,7 @@ import { CartPanel } from '../components/CartPanel';
 import { VentaConfirmDialog } from '../components/VentaConfirmDialog';
 import { SeleccionarCajaDialog } from '../components/SeleccionarCajaDialog';
 import { OfflineStatusBanner } from '../components/OfflineStatusBanner';
+import { OfflineConflictDialog } from '../components/OfflineConflictDialog';
 import { useOfflineSync } from '@/offline/useOfflineSync';
 import { useTurnPreload } from '../hooks/useTurnPreload';
 import { enqueueVenta } from '@/offline/offlineQueue.service';
@@ -108,6 +109,9 @@ export function POSPage() {
     }
     setShowSeleccionarCaja(true);
   };
+
+  // Estado del diálogo de conflictos offline
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
 
   // Estado de pago
   const [metodoPago, setMetodoPago] = useState<number>(0); // 0=Efectivo
@@ -413,10 +417,10 @@ export function POSPage() {
     (metodoPago !== 0 || montoPagado >= total);
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: selectedCajaId ? 'grey.100' : 'background.default', minHeight: '100vh', py: selectedCajaId ? 3 : 0 }}>
-      <Container maxWidth="xl">
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)', overflow: 'hidden', bgcolor: selectedCajaId ? 'grey.100' : 'background.default' }}>
+      <Container maxWidth="xl" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Banner de estado offline */}
-        <OfflineStatusBanner />
+        <OfflineStatusBanner onViewFailed={() => setShowConflictDialog(true)} />
 
         {/* Banner de Información de Sesión */}
         <HeroBanner
@@ -489,46 +493,44 @@ export function POSPage() {
 
         <Box
           sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1.4fr 1fr' },
+            display: 'flex',
             gap: 3,
-            height: 'calc(100vh - 280px)',
-            minHeight: 500,
+            flex: 1,
+            minHeight: 0,
           }}
         >
           {/* Panel Izquierdo - Búsqueda de Productos */}
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Productos
-            </Typography>
+          <Paper sx={{ flex: '1.1 1 0', p: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <IntentSearch onSelectProduct={handleSelectProduct} />
           </Paper>
 
           {/* Panel Derecho - Carrito y Pago */}
-          <CartPanel
-            selectedCajaId={selectedCajaId}
-            selectedClienteId={selectedClienteId}
-            onCajaChange={setSelectedCajaId}
-            onClienteChange={setSelectedClienteId}
-            items={items}
-            onUpdateQuantity={handleUpdateQuantity}
-            onUpdatePrice={updatePrice}
-            onUpdateDiscount={updateDiscount}
-            onRemoveItem={removeItem}
-            subtotal={subtotal}
-            totalDescuentos={totalDescuentos}
-            totalImpuestos={totalImpuestos}
-            total={total}
-            metodoPago={metodoPago}
-            montoPagado={montoPagado}
-            onMetodoPagoChange={setMetodoPago}
-            onMontoPagadoChange={setMontoPagado}
-            onClear={handleClearCart}
-            onCobrar={handleCobrar}
-            canCobrar={canCobrar || (!isOnline && items.length > 0 && selectedCajaId !== null)}
-            isLoading={crearVentaMutation.isPending}
-            isOffline={!isOnline}
-          />
+          <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <CartPanel
+              selectedCajaId={selectedCajaId}
+              selectedClienteId={selectedClienteId}
+              onCajaChange={setSelectedCajaId}
+              onClienteChange={setSelectedClienteId}
+              items={items}
+              onUpdateQuantity={handleUpdateQuantity}
+              onUpdatePrice={updatePrice}
+              onUpdateDiscount={updateDiscount}
+              onRemoveItem={removeItem}
+              subtotal={subtotal}
+              totalDescuentos={totalDescuentos}
+              totalImpuestos={totalImpuestos}
+              total={total}
+              metodoPago={metodoPago}
+              montoPagado={montoPagado}
+              onMetodoPagoChange={setMetodoPago}
+              onMontoPagadoChange={setMontoPagado}
+              onClear={handleClearCart}
+              onCobrar={handleCobrar}
+              canCobrar={canCobrar || (!isOnline && items.length > 0 && selectedCajaId !== null)}
+              isLoading={crearVentaMutation.isPending}
+              isOffline={!isOnline}
+            />
+          </Box>
         </Box>
       </Container>
 
@@ -536,6 +538,12 @@ export function POSPage() {
       {!selectedCajaId && (
         <Box sx={{ position: 'fixed', inset: 0, bgcolor: 'background.default', zIndex: 1200 }} />
       )}
+
+      {/* Dialog de conflictos offline */}
+      <OfflineConflictDialog
+        open={showConflictDialog}
+        onClose={() => setShowConflictDialog(false)}
+      />
 
       {/* Dialog de Selección de Caja */}
       <SeleccionarCajaDialog

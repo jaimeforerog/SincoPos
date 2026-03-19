@@ -285,6 +285,7 @@ public class VentaService : IVentaService
         var venta = new Venta
         {
             NumeroVenta = numeroVenta,
+            EmpresaId = sucursal.EmpresaId,
             SucursalId = dto.SucursalId,
             CajaId = dto.CajaId,
             ClienteId = dto.ClienteId,
@@ -741,6 +742,7 @@ public class VentaService : IVentaService
         var devolucion = new DevolucionVenta
         {
             VentaId = ventaId,
+            EmpresaId = sucursal.EmpresaId,
             NumeroDevolucion = numeroDevolucion,
             Motivo = dto.Motivo,
             TotalDevuelto = totalDevuelto,

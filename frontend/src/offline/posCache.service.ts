@@ -120,6 +120,10 @@ export async function getFailedCount(db: PosDb): Promise<number> {
   return db.countFromIndex('ventasQueue', 'by-estado', 'failed');
 }
 
+export async function getFailedVentas(db: PosDb): Promise<OfflineVenta[]> {
+  return db.getAllFromIndex('ventasQueue', 'by-estado', 'failed');
+}
+
 export async function clearFailedVentas(db: PosDb): Promise<void> {
   const all = await db.getAllFromIndex('ventasQueue', 'by-estado', 'failed');
   await Promise.all(all.map((v) => db.delete('ventasQueue', v.localId)));

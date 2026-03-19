@@ -77,6 +77,7 @@ public class CajasController : ControllerBase
         var caja = new Caja
         {
             Nombre = dto.Nombre,
+            EmpresaId = sucursal.EmpresaId,
             SucursalId = dto.SucursalId,
             Estado = EstadoCaja.Cerrada,
             Activo = true,

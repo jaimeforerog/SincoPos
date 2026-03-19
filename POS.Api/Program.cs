@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 // HttpContextAccessor para auditoría
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<POS.Application.Services.ICurrentEmpresaProvider, POS.Infrastructure.Services.CurrentEmpresaProvider>();
+builder.Services.AddScoped<POS.Application.Services.IEmpresaService, POS.Infrastructure.Services.EmpresaService>();
 
 // Entity Framework Core (PostgreSQL - schema public)
 builder.Services.AddAppDbContext(builder.Configuration);

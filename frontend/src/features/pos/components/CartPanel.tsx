@@ -66,25 +66,23 @@ export function CartPanel({
   isOffline = false,
 }: CartPanelProps) {
   return (
-    <Paper sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '100%', overflow: 'hidden' }}>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700, flexShrink: 0 }}>
-        Carrito de Compra
-      </Typography>
+    <Paper sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      {/* Área scrollable: encabezado + tabla de items */}
+      <Box sx={{ flex: 1, overflow: 'auto', overflowX: 'hidden', minHeight: 0, px: 2, pt: 2, pb: 1 }}>
+        <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700 }}>
+          Carrito de Compra
+        </Typography>
 
-      <Box sx={{ flexShrink: 0 }}>
         <CartHeader
           selectedCajaId={selectedCajaId}
           selectedClienteId={selectedClienteId}
           onCajaChange={onCajaChange}
           onClienteChange={onClienteChange}
         />
-        {/* Capa 4 — historial del cliente seleccionado */}
         {selectedClienteId && (
           <ClienteHistorialCard clienteId={selectedClienteId} />
         )}
-      </Box>
 
-      <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2, minHeight: 0, maxHeight: 'calc(100vh - 520px)' }}>
         <CartItems
           items={items}
           onUpdateQuantity={onUpdateQuantity}
@@ -94,7 +92,8 @@ export function CartPanel({
         />
       </Box>
 
-      <Box sx={{ flexShrink: 0 }}>
+      {/* Footer fijo: totales + método de pago + botones */}
+      <Box sx={{ flexShrink: 0, px: 2, pt: 1.5, pb: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         <CartTotals
           subtotal={subtotal}
           totalDescuentos={totalDescuentos}
@@ -102,23 +101,21 @@ export function CartPanel({
           total={total}
         />
 
-        <Box sx={{ mt: 2 }}>
-          <CartPayment
-            metodoPago={metodoPago}
-            montoPagado={montoPagado}
-            total={total}
-            onMetodoPagoChange={onMetodoPagoChange}
-            onMontoPagadoChange={onMontoPagadoChange}
-          />
+        <CartPayment
+          metodoPago={metodoPago}
+          montoPagado={montoPagado}
+          total={total}
+          onMetodoPagoChange={onMetodoPagoChange}
+          onMontoPagadoChange={onMontoPagadoChange}
+        />
 
-          <CartActions
-            onClear={onClear}
-            onCobrar={onCobrar}
-            canCobrar={canCobrar}
-            isLoading={isLoading}
-            isOffline={isOffline}
-          />
-        </Box>
+        <CartActions
+          onClear={onClear}
+          onCobrar={onCobrar}
+          canCobrar={canCobrar}
+          isLoading={isLoading}
+          isOffline={isOffline}
+        />
       </Box>
     </Paper>
   );

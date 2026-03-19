@@ -65,6 +65,26 @@ export async function discardFailedVentas(): Promise<void> {
   useOfflineStore.getState().resetSyncStatus();
 }
 
+export async function getFailedVentasForDisplay(): Promise<import('./posIdb').OfflineVenta[]> {
+  const db = await openPosDb();
+  const { getFailedVentas } = await import('./posCache.service');
+  return getFailedVentas(db);
+}
+
+export async function retryVenta(localId: string): Promise<void> {
+  const db = await openPosDb();
+  const { markVentaPendingRetry } = await import('./posCache.service');
+  await markVentaPendingRetry(db, localId);
+  await refreshCounts();
+}
+
+export async function deleteFailedVenta(localId: string): Promise<void> {
+  const db = await openPosDb();
+  const { deleteVenta } = await import('./posCache.service');
+  await deleteVenta(db, localId);
+  await refreshCounts();
+}
+
 export async function syncPending(): Promise<SyncResult> {
   if (syncInProgress) return { synced: 0, failed: 0, tokenExpired: false, errors: [] };
   syncInProgress = true;

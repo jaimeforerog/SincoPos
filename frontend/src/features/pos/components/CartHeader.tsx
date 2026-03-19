@@ -67,8 +67,8 @@ export function CartHeader({
   const selectedCliente = clientes.find((c) => c.id === selectedClienteId);
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <FormControl fullWidth sx={{ mb: 2 }}>
+    <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+      <FormControl size="small" sx={{ flex: '0 0 140px' }}>
         <InputLabel>Caja</InputLabel>
         <Select
           value={selectedCajaId ?? ''}
@@ -77,7 +77,7 @@ export function CartHeader({
         >
           {cajas.map((caja) => (
             <MenuItem key={caja.id} value={caja.id}>
-              {caja.nombre} - {caja.nombreSucursal}
+              {caja.nombre}
             </MenuItem>
           ))}
         </Select>
@@ -85,6 +85,8 @@ export function CartHeader({
 
       <Autocomplete
         options={clientesOrdenados}
+        size="small"
+        sx={{ flex: 1, minWidth: 0 }}
         getOptionLabel={(option) =>
           typeof option === 'string' ? option : option.nombre
         }
@@ -104,7 +106,7 @@ export function CartHeader({
           </li>
         )}
         renderInput={(params) => (
-          <TextField {...params} label="Cliente (opcional)" placeholder="Buscar cliente..." />
+          <TextField {...params} label="Cliente" placeholder="Buscar..." />
         )}
       />
     </Box>

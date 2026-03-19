@@ -15,6 +15,7 @@ public enum EstadoTraslado
 public class Traslado : EntidadAuditable
 {
     public string NumeroTraslado { get; set; } = string.Empty;      // "TRAS-000001"
+    public int? EmpresaId { get; set; }
     public int SucursalOrigenId { get; set; }
     public int SucursalDestinoId { get; set; }
     public EstadoTraslado Estado { get; set; } = EstadoTraslado.Pendiente;

@@ -1164,3 +1164,28 @@ export interface ClienteHistorialDTO {
   visitasPorDiaSemana: Record<string, number>;
   visitasPorHora:     Record<string, number>;
 }
+
+// ─── Multi-empresa ────────────────────────────────────────────────────────────
+
+export interface EmpresaDTO {
+  id:                 number;
+  nombre:             string;
+  nit?:               string;
+  razonSocial?:       string;
+  activo:             boolean;
+  fechaCreacion:      string;
+  cantidadSucursales: number;
+}
+
+export interface CrearEmpresaDTO {
+  nombre:       string;
+  nit?:         string;
+  razonSocial?: string;
+}
+
+export interface ActualizarEmpresaDTO {
+  nombre:       string;
+  nit?:         string;
+  razonSocial?: string;
+  activo:       boolean;
+}

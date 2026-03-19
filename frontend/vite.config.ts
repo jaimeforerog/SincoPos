@@ -141,6 +141,10 @@ export default defineConfig({
           'vendor-xlsx': ['xlsx'],
           // Charts — solo se usa en dashboard/reportes
           'vendor-charts': ['recharts'],
+          // MUI X — DataGrid (Sucursales + Kardex) y Charts (ReporteVentas)
+          // Solo cargan cuando el usuario visita esas rutas (páginas son lazy)
+          'vendor-mui-x-data-grid': ['@mui/x-data-grid'],
+          'vendor-mui-x-charts': ['@mui/x-charts'],
         },
       },
     },

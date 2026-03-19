@@ -14,8 +14,13 @@ namespace POS.Infrastructure.Services;
 public class ProductoLocalService : IProductoService
 {
     private readonly AppDbContext _context;
+    private readonly ICurrentEmpresaProvider _empresaProvider;
 
-    public ProductoLocalService(AppDbContext context) => _context = context;
+    public ProductoLocalService(AppDbContext context, ICurrentEmpresaProvider empresaProvider)
+    {
+        _context = context;
+        _empresaProvider = empresaProvider;
+    }
 
     // ── Projection helper ─────────────────────────────────────────────────────
 
@@ -126,6 +131,7 @@ public class ProductoLocalService : IProductoService
             ConceptoRetencionId = dto.ConceptoRetencionId,
             ManejaLotes = dto.ManejaLotes,
             DiasVidaUtil = dto.DiasVidaUtil,
+            EmpresaId = _empresaProvider.EmpresaId,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         };

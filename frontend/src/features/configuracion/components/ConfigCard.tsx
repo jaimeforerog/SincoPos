@@ -45,58 +45,44 @@ export function ConfigCard({ module, index = 0 }: ConfigCardProps) {
       }}
       onClick={() => navigate(module.path)}
     >
-      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-        {/* Icono + flecha */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+        {/* Icono + título + flecha en una fila */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box
             sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
+              width: 36,
+              height: 36,
+              borderRadius: 1.5,
+              flexShrink: 0,
               bgcolor: alpha(color, 0.1),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: color,
               transition: 'background-color 0.25s',
-              '.MuiCard-root:hover &': {
-                bgcolor: alpha(color, 0.18),
-              },
+              '.MuiCard-root:hover &': { bgcolor: alpha(color, 0.18) },
             }}
           >
             {module.icon}
           </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body2" fontWeight={700} sx={{ lineHeight: 1.3 }}>
+              {module.title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4, display: 'block' }}>
+              {module.description}
+            </Typography>
+          </Box>
           <ChevronRight
+            fontSize="small"
             sx={{
+              flexShrink: 0,
               color: 'text.disabled',
               transition: 'transform 0.25s, color 0.25s',
-              '.MuiCard-root:hover &': {
-                transform: 'translateX(3px)',
-                color: color,
-              },
+              '.MuiCard-root:hover &': { transform: 'translateX(3px)', color: color },
             }}
           />
         </Box>
-
-        {/* Barra de color */}
-        <Box
-          sx={{
-            width: 32,
-            height: 3,
-            borderRadius: 2,
-            bgcolor: color,
-            mb: 1.5,
-            transition: 'width 0.25s',
-            '.MuiCard-root:hover &': { width: 48 },
-          }}
-        />
-
-        <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ lineHeight: 1.3 }}>
-          {module.title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
-          {module.description}
-        </Typography>
       </CardContent>
     </Card>
   );

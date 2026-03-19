@@ -1,23 +1,30 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, act } from '@testing-library/react';
 import { renderWithProviders } from '@/test/test-utils';
 import { POSPage } from '../pages/POSPage';
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
+import { useOfflineStore } from '@/stores/offline.store';
 import type { UserInfo } from '@/types/api';
 
-// Mock offline para tests (simular siempre online, sin pendientes)
+// ── Estado offline controlable por tests ──────────────────────────────────
+const offlineState = {
+  isOnline: true, pendingCount: 0, failedCount: 0,
+  isSyncing: false, syncStatus: 'idle' as const, lastSyncAt: null as string | null, lastSyncError: null as string | null,
+  syncNow: vi.fn(),
+};
+
 vi.mock('@/offline/useOfflineSync', () => ({
-  useOfflineSync: () => ({
-    isOnline: true, pendingCount: 0, failedCount: 0,
-    isSyncing: false, syncStatus: 'idle', lastSyncAt: null, lastSyncError: null,
-    syncNow: vi.fn(),
-  }),
+  useOfflineSync: () => offlineState,
 }));
 vi.mock('@/offline/offlineQueue.service', () => ({
-  enqueueVenta: vi.fn().mockResolvedValue('offline-test-123'),
-  syncPending: vi.fn().mockResolvedValue({ synced: 0, failed: 0, tokenExpired: false, errors: [] }),
-  initOfflineCounts: vi.fn().mockResolvedValue(undefined),
+  enqueueVenta:              vi.fn().mockResolvedValue('offline-test-123'),
+  syncPending:               vi.fn().mockResolvedValue({ synced: 0, failed: 0, tokenExpired: false, errors: [] }),
+  initOfflineCounts:         vi.fn().mockResolvedValue(undefined),
+  discardFailedVentas:       vi.fn().mockResolvedValue(undefined),
+  getFailedVentasForDisplay: vi.fn().mockResolvedValue([]),
+  retryVenta:                vi.fn().mockResolvedValue(undefined),
+  deleteFailedVenta:         vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock @microsoft/signalr para evitar conexiones reales en tests
@@ -48,7 +55,26 @@ const makeCajeroUser = (): UserInfo => ({
   sucursalesDisponibles: [{ id: 1, nombre: 'Principal' }],
 });
 
+function setOnlineState(partial: Partial<typeof offlineState>) {
+  Object.assign(offlineState, partial);
+  // OfflineStatusBanner lee de useOfflineStore (Zustand), no de useOfflineSync
+  useOfflineStore.setState({
+    isOnline:       offlineState.isOnline,
+    pendingCount:   offlineState.pendingCount,
+    failedCount:    offlineState.failedCount,
+    isSyncing:      offlineState.isSyncing,
+    syncStatus:     offlineState.syncStatus,
+    lastSyncAt:     offlineState.lastSyncAt,
+    lastSyncError:  offlineState.lastSyncError,
+  });
+}
+
 beforeEach(() => {
+  setOnlineState({
+    isOnline: true, pendingCount: 0, failedCount: 0,
+    isSyncing: false, syncStatus: 'idle', lastSyncAt: null, lastSyncError: null,
+  });
+
   useAuthStore.setState({
     user: null,
     isAuthenticated: false,
@@ -113,7 +139,7 @@ describe('POSPage — renderizado', () => {
     renderWithProviders(<POSPage />);
 
     expect(
-      screen.getByPlaceholderText(/buscar producto/i)
+      screen.getByPlaceholderText(/Nombre, código o cámara/i)
     ).toBeInTheDocument();
   });
 
@@ -147,5 +173,110 @@ describe('POSPage — carrito', () => {
       const totalesElements = screen.getAllByText(/\$\s*0/i);
       expect(totalesElements.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('POSPage — offline', () => {
+  it('muestra el banner de modo offline cuando isOnline=false', () => {
+    setOnlineState({ isOnline: false, pendingCount: 0 });
+
+    useAuthStore.setState({
+      user: makeCajeroUser(),
+      isAuthenticated: true,
+      isLoading: false,
+      activeSucursalId: undefined,
+    });
+
+    renderWithProviders(<POSPage />);
+
+    expect(screen.getByText(/Modo offline/i)).toBeInTheDocument();
+  });
+
+  it('muestra conteo de ventas pendientes en el banner offline', () => {
+    setOnlineState({ isOnline: false, pendingCount: 3 });
+
+    useAuthStore.setState({
+      user: makeCajeroUser(),
+      isAuthenticated: true,
+      isLoading: false,
+      activeSucursalId: undefined,
+    });
+
+    renderWithProviders(<POSPage />);
+
+    expect(screen.getByText(/3 pendientes/i)).toBeInTheDocument();
+  });
+
+  it('muestra el banner de sincronización cuando isSyncing=true', () => {
+    setOnlineState({ isOnline: true, pendingCount: 2, isSyncing: true });
+
+    useAuthStore.setState({
+      user: makeCajeroUser(),
+      isAuthenticated: true,
+      isLoading: false,
+      activeSucursalId: undefined,
+    });
+
+    renderWithProviders(<POSPage />);
+
+    expect(screen.getByText(/Sincronizando/i)).toBeInTheDocument();
+  });
+
+  it('muestra el banner de error cuando hay ventas fallidas', () => {
+    setOnlineState({
+      isOnline:      true,
+      failedCount:   2,
+      syncStatus:    'error' as any,
+      lastSyncError: 'Stock insuficiente',
+    });
+
+    useAuthStore.setState({
+      user: makeCajeroUser(),
+      isAuthenticated: true,
+      isLoading: false,
+      activeSucursalId: undefined,
+    });
+
+    renderWithProviders(<POSPage />);
+
+    // lastSyncError se muestra como texto directo en el banner
+    expect(screen.getByText('Stock insuficiente')).toBeInTheDocument();
+  });
+
+  it('no muestra el banner cuando está online sin pendientes ni errores', () => {
+    setOnlineState({
+      isOnline: true, pendingCount: 0, failedCount: 0, syncStatus: 'idle' as any,
+    });
+
+    useAuthStore.setState({
+      user: makeCajeroUser(),
+      isAuthenticated: true,
+      isLoading: false,
+      activeSucursalId: undefined,
+    });
+
+    renderWithProviders(<POSPage />);
+
+    expect(screen.queryByText(/Modo offline/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pendiente/i)).not.toBeInTheDocument();
+  });
+
+  it('muestra botón "Ver detalles" cuando hay ventas fallidas', () => {
+    setOnlineState({
+      isOnline:    true,
+      failedCount: 1,
+      syncStatus:  'error' as any,
+    });
+
+    useAuthStore.setState({
+      user: makeCajeroUser(),
+      isAuthenticated: true,
+      isLoading: false,
+      activeSucursalId: undefined,
+    });
+
+    renderWithProviders(<POSPage />);
+
+    expect(screen.getByText(/ver detalles/i)).toBeInTheDocument();
   });
 });

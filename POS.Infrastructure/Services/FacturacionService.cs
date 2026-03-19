@@ -154,6 +154,7 @@ public class FacturacionService : IFacturacionService
         var documento = new DocumentoElectronico
         {
             VentaId = ventaId,
+            EmpresaId = venta.Sucursal.EmpresaId,
             SucursalId = venta.SucursalId,
             TipoDocumento = "FV",
             Prefijo = emisor.Prefijo,
@@ -325,6 +326,7 @@ public class FacturacionService : IFacturacionService
         var documento = new DocumentoElectronico
         {
             VentaId = venta.Id,
+            EmpresaId = venta.Sucursal.EmpresaId,
             SucursalId = venta.SucursalId,
             TipoDocumento = "NC",
             Prefijo = prefijoNc,

@@ -103,6 +103,50 @@ public class AppDbContext : DbContext
             _empresaProvider.EmpresaId == null ||
             t.EmpresaId == null ||
             t.EmpresaId == _empresaProvider.EmpresaId);
+
+        // Entidades transaccionales: filtro combinado Activo (soft-delete) + empresa.
+        // Estos HasQueryFilter reemplazan el filtro genérico del loop de ISoftDelete para estas entidades.
+        modelBuilder.Entity<Venta>().HasQueryFilter(v =>
+            v.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             v.EmpresaId == null ||
+             v.EmpresaId == _empresaProvider.EmpresaId));
+
+        modelBuilder.Entity<DevolucionVenta>().HasQueryFilter(d =>
+            d.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             d.EmpresaId == null ||
+             d.EmpresaId == _empresaProvider.EmpresaId));
+
+        modelBuilder.Entity<Caja>().HasQueryFilter(c =>
+            c.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             c.EmpresaId == null ||
+             c.EmpresaId == _empresaProvider.EmpresaId));
+
+        modelBuilder.Entity<OrdenCompra>().HasQueryFilter(o =>
+            o.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             o.EmpresaId == null ||
+             o.EmpresaId == _empresaProvider.EmpresaId));
+
+        modelBuilder.Entity<Traslado>().HasQueryFilter(t =>
+            t.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             t.EmpresaId == null ||
+             t.EmpresaId == _empresaProvider.EmpresaId));
+
+        modelBuilder.Entity<DocumentoElectronico>().HasQueryFilter(d =>
+            d.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             d.EmpresaId == null ||
+             d.EmpresaId == _empresaProvider.EmpresaId));
     }
 
     /// <summary>

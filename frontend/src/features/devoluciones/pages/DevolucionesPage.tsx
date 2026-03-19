@@ -317,66 +317,46 @@ export function DevolucionesPage() {
             Buscar Venta para Devolución
           </Typography>
 
-          <Stack spacing={2}>
-            {/* Fila 1: Filtros de Fecha */}
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Stack spacing={1.5}>
+            {/* Fila única: todos los filtros */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
               <TextField
                 label="Fecha Desde"
                 type="date"
                 value={fechaDesde}
-                onChange={(e) => {
-                  setFechaDesde(e.target.value);
-                  setVentaSeleccionada(null); // Limpiar selección al cambiar fechas
-                }}
+                onChange={(e) => { setFechaDesde(e.target.value); setVentaSeleccionada(null); }}
                 size="small"
-                sx={{ minWidth: 170 }}
+                sx={{ minWidth: 155 }}
                 InputLabelProps={{ shrink: true }}
               />
-
               <TextField
                 label="Fecha Hasta"
                 type="date"
                 value={fechaHasta}
-                onChange={(e) => {
-                  setFechaHasta(e.target.value);
-                  setVentaSeleccionada(null); // Limpiar selección al cambiar fechas
-                }}
+                onChange={(e) => { setFechaHasta(e.target.value); setVentaSeleccionada(null); }}
                 size="small"
-                sx={{ minWidth: 170 }}
+                sx={{ minWidth: 155 }}
                 InputLabelProps={{ shrink: true }}
               />
-
-              <Box sx={{ flexGrow: 1 }} />
-
-              <Typography variant="body2" color="text.secondary">
-                {loadingVentas ? 'Cargando...' : `${ventas.length} venta(s) completada(s) encontradas`}
-              </Typography>
-            </Box>
-
-            {/* Fila 2: Buscador */}
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <SearchIcon color="action" />
               <Autocomplete
-                fullWidth
                 options={ventas}
                 getOptionLabel={(option) => option.numeroVenta}
                 value={ventaSeleccionada}
-                onChange={(_, newValue) => {
-                  handleSeleccionarVenta(newValue);
-                }}
+                onChange={(_, newValue) => { handleSeleccionarVenta(newValue); }}
                 loading={loadingVentas}
+                size="small"
+                sx={{ minWidth: 220 }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Buscar venta por número"
+                    label="N° venta"
                     placeholder="V-000001"
-                    size="small"
-                    helperText="Las opciones se actualizan según las fechas seleccionadas. Solo ventas completadas y dentro de 30 días."
                     InputProps={{
                       ...params.InputProps,
+                      startAdornment: <SearchIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 0.5 }} />,
                       endAdornment: (
                         <>
-                          {loadingVentas ? <CircularProgress color="inherit" size={20} /> : null}
+                          {loadingVentas ? <CircularProgress color="inherit" size={16} /> : null}
                           {params.InputProps.endAdornment}
                         </>
                       ),
@@ -389,7 +369,6 @@ export function DevolucionesPage() {
                     (new Date().getTime() - new Date(option.fechaVenta).getTime()) / (1000 * 60 * 60 * 24)
                   );
                   const fueraDeLimite = diasTranscurridos > 30;
-
                   return (
                     <Box component="li" key={key} {...restProps} sx={{ opacity: fueraDeLimite ? 0.5 : 1 }}>
                       <Box sx={{ flexGrow: 1 }}>
@@ -398,25 +377,24 @@ export function DevolucionesPage() {
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {formatDate(option.fechaVenta)} - {formatCurrency(option.total)}
-                          {fueraDeLimite && ` (${diasTranscurridos} días - Fuera de límite)`}
+                          {fueraDeLimite && ` (${diasTranscurridos} días - fuera de límite)`}
                         </Typography>
                       </Box>
-                      <Chip
-                        label={option.estado}
-                        color={getEstadoColor(option.estado)}
-                        size="small"
-                      />
+                      <Chip label={option.estado} color={getEstadoColor(option.estado)} size="small" />
                     </Box>
                   );
                 }}
-                noOptionsText={loadingVentas ? "Cargando ventas..." : "No se encontraron ventas completadas en el rango de fechas seleccionado"}
+                noOptionsText={loadingVentas ? 'Cargando ventas...' : 'No se encontraron ventas completadas'}
               />
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                {loadingVentas ? 'Cargando...' : `${ventas.length} venta(s) encontradas`}
+              </Typography>
             </Box>
 
-            {/* Fila 3: Indicador de selección */}
+            {/* Indicador de selección */}
             {ventaSeleccionada && (
-              <Alert severity="info" icon={<SearchIcon />}>
-                Venta seleccionada: <strong>{ventaSeleccionada.numeroVenta}</strong> - {formatDate(ventaSeleccionada.fechaVenta)} - {formatCurrency(ventaSeleccionada.total)}
+              <Alert severity="info" icon={<SearchIcon />} sx={{ py: 0.5 }}>
+                Venta seleccionada: <strong>{ventaSeleccionada.numeroVenta}</strong> — {formatDate(ventaSeleccionada.fechaVenta)} — {formatCurrency(ventaSeleccionada.total)}
               </Alert>
             )}
           </Stack>

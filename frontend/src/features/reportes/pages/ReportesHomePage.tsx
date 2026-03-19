@@ -141,7 +141,7 @@ export function ReportesHomePage() {
           borderRadius: 3,
           px: { xs: 3, md: 4 },
           py: { xs: 2.5, md: 3 },
-          mb: 4,
+          mb: 3,
           mt: 1,
           position: 'relative',
           overflow: 'hidden',
@@ -193,7 +193,7 @@ export function ReportesHomePage() {
                 }}
               />
             </Box>
-            <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+            <Typography variant="h5" sx={{ color: '#fff', lineHeight: 1.2 }}>
               Centro de Reportes
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mt: 0.5 }}>

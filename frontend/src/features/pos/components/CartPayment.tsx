@@ -1,89 +1,67 @@
-import {
-  Box,
-  FormControl,
-  FormLabel,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  TextField,
-  Alert,
-  Typography,
-} from '@mui/material';
+import { Box, ToggleButton, ToggleButtonGroup, TextField, Typography } from '@mui/material';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 
 interface CartPaymentProps {
-  metodoPago: number; // 0=Efectivo, 1=Tarjeta, 2=Transferencia
+  metodoPago: number;
   montoPagado: number;
   total: number;
   onMetodoPagoChange: (metodo: number) => void;
   onMontoPagadoChange: (monto: number) => void;
 }
 
-export function CartPayment({
-  metodoPago,
-  montoPagado,
-  total,
-  onMetodoPagoChange,
-  onMontoPagadoChange,
-}: CartPaymentProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+const fmt = (v: number) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v);
 
+export function CartPayment({ metodoPago, montoPagado, total, onMetodoPagoChange, onMontoPagadoChange }: CartPaymentProps) {
   const cambio = metodoPago === 0 ? Math.max(0, montoPagado - total) : 0;
+  const falta  = metodoPago === 0 && montoPagado > 0 && montoPagado < total ? total - montoPagado : 0;
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
-        <FormLabel component="legend" sx={{ mb: 1 }}>
-          Método de Pago
-        </FormLabel>
-        <RadioGroup
-          row
-          value={metodoPago}
-          onChange={(e) => onMetodoPagoChange(parseInt(e.target.value))}
-        >
-          <FormControlLabel value={0} control={<Radio />} label="Efectivo" />
-          <FormControlLabel value={1} control={<Radio />} label="Tarjeta" />
-          <FormControlLabel value={2} control={<Radio />} label="Transferencia" />
-        </RadioGroup>
-      </FormControl>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {/* Método de pago */}
+      <ToggleButtonGroup
+        value={metodoPago}
+        exclusive
+        onChange={(_, v) => { if (v !== null) onMetodoPagoChange(v); }}
+        size="small"
+        fullWidth
+      >
+        <ToggleButton value={0} sx={{ flex: 1, gap: 0.5, fontSize: '0.75rem' }}>
+          <PaymentsIcon sx={{ fontSize: 16 }} /> Efectivo
+        </ToggleButton>
+        <ToggleButton value={1} sx={{ flex: 1, gap: 0.5, fontSize: '0.75rem' }}>
+          <CreditCardIcon sx={{ fontSize: 16 }} /> Tarjeta
+        </ToggleButton>
+        <ToggleButton value={2} sx={{ flex: 1, gap: 0.5, fontSize: '0.75rem' }}>
+          <AccountBalanceIcon sx={{ fontSize: 16 }} /> Transf.
+        </ToggleButton>
+      </ToggleButtonGroup>
 
+      {/* Monto + cambio/falta (solo efectivo) */}
       {metodoPago === 0 && (
-        <>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <TextField
-            label="Monto Pagado"
+            label="Monto recibido"
             type="number"
-            fullWidth
+            size="small"
             value={montoPagado || ''}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              onMontoPagadoChange(val >= 0 ? val : 0);
-            }}
+            onChange={(e) => { const v = parseFloat(e.target.value); onMontoPagadoChange(v >= 0 ? v : 0); }}
             inputProps={{ min: 0, step: 1000 }}
-            sx={{ mb: 2 }}
+            sx={{ flex: 1 }}
           />
-
           {cambio > 0 && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                Cambio: <strong>{formatCurrency(cambio)}</strong>
-              </Typography>
-            </Alert>
+            <Typography variant="body2" color="success.main" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+              Cambio: {fmt(cambio)}
+            </Typography>
           )}
-
-          {montoPagado > 0 && montoPagado < total && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                Falta: <strong>{formatCurrency(total - montoPagado)}</strong>
-              </Typography>
-            </Alert>
+          {falta > 0 && (
+            <Typography variant="body2" color="warning.main" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+              Falta: {fmt(falta)}
+            </Typography>
           )}
-        </>
+        </Box>
       )}
     </Box>
   );
