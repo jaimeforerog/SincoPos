@@ -35,6 +35,11 @@ vi.mock('../CameraInput', () => ({
   ),
 }));
 
+// VoiceInput usa SpeechRecognition que no existe en jsdom
+vi.mock('../VoiceInput', () => ({
+  VoiceInput: () => null,
+}));
+
 // ProductCard es un componente interno — lo mockeamos para simplificar assertions
 vi.mock('../ProductCard', () => ({
   ProductCard: ({ producto }: { producto: ProductoDTO }) => (
@@ -82,7 +87,7 @@ describe('IntentSearch', () => {
 
   it('renderiza el campo de búsqueda con el placeholder correcto', () => {
     renderWithProviders(<IntentSearch onSelectProduct={vi.fn()} />);
-    expect(screen.getByPlaceholderText(/Nombre, código o cámara/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Nombre, código/i)).toBeInTheDocument();
   });
 
   it('renderiza el título "Productos"', () => {
@@ -113,7 +118,7 @@ describe('IntentSearch', () => {
 
     renderWithProviders(<IntentSearch onSelectProduct={vi.fn()} />);
 
-    const input = screen.getByPlaceholderText(/Nombre, código o cámara/i);
+    const input = screen.getByPlaceholderText(/Nombre, código/i);
     fireEvent.change(input, { target: { value: 'zzz-inexistente' } });
 
     await waitFor(() => {
@@ -124,7 +129,7 @@ describe('IntentSearch', () => {
   it('llama a getAll con la query escrita por el usuario (debounced)', async () => {
     renderWithProviders(<IntentSearch onSelectProduct={vi.fn()} />);
 
-    const input = screen.getByPlaceholderText(/Nombre, código o cámara/i);
+    const input = screen.getByPlaceholderText(/Nombre, código/i);
     fireEvent.change(input, { target: { value: 'arroz' } });
 
     // El debounce es de 300ms — esperamos la llamada con la query
@@ -148,7 +153,7 @@ describe('IntentSearch', () => {
     const cameraBtn = await screen.findByTestId('camera-input');
     fireEvent.click(cameraBtn);
 
-    const input = screen.getByPlaceholderText(/Nombre, código o cámara/i) as HTMLInputElement;
+    const input = screen.getByPlaceholderText(/Nombre, código/i) as HTMLInputElement;
     await waitFor(() => {
       expect(input.value).toBe('123456789');
     });
@@ -157,7 +162,7 @@ describe('IntentSearch', () => {
   it('Ctrl+K pone el foco en el campo de búsqueda', () => {
     renderWithProviders(<IntentSearch onSelectProduct={vi.fn()} />);
 
-    const input = screen.getByPlaceholderText(/Nombre, código o cámara/i);
+    const input = screen.getByPlaceholderText(/Nombre, código/i);
     input.blur();
 
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
@@ -199,6 +204,6 @@ describe('IntentSearch', () => {
 
     await screen.findByText('Arroz Premium');
     fireEvent.click(screen.getByText('Arroz Premium'));
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Arroz Premium' }));
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Arroz Premium' }), undefined);
   });
 });

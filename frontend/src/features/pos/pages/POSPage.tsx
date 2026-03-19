@@ -176,17 +176,21 @@ export function POSPage() {
   }
 
   // Handler para agregar producto con validación de stock y precio de sucursal
-  const handleSelectProduct = async (producto: ProductoDTO) => {
+  // Capa 6: quantity viene de VoiceInput cuando el cajero dice "dos coca cola"
+  const handleSelectProduct = async (producto: ProductoDTO, voiceQuantity?: number) => {
     if (!activeSucursalId) {
       sistema(`Sin sucursal: ${user?.nombre ?? user?.email}`, 'Asigna una sucursal en Configuración de Usuarios');
       return;
     }
 
+    const qty = voiceQuantity ?? 1;
+
     // Modo offline: agregar directamente sin consultar API (backend valida en sync)
     if (!isOnline) {
       const cantidadEnCarrito = items.find((i) => i.producto.id === producto.id)?.cantidad ?? 0;
       addItem(producto);
-      operacional(`${producto.nombre} agregado — sin verificación de stock (offline)`, `cantidad: ${cantidadEnCarrito + 1}`);
+      if (qty > 1) updateQuantity(producto.id, cantidadEnCarrito + qty);
+      operacional(`${producto.nombre} agregado — sin verificación de stock (offline)`, `cantidad: ${cantidadEnCarrito + qty}`);
       return;
     }
 
@@ -209,9 +213,10 @@ export function POSPage() {
       const itemEnCarrito = items.find((item) => item.producto.id === producto.id);
       const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.cantidad : 0;
       const stockDisponible = stock[0].cantidad;
+      const cantidadFinal = cantidadEnCarrito + qty;
 
-      if (cantidadEnCarrito >= stockDisponible) {
-        operacional('Stock insuficiente', `Disponible: ${stockDisponible} — en carrito: ${cantidadEnCarrito}`);
+      if (cantidadFinal > stockDisponible) {
+        operacional('Stock insuficiente', `Disponible: ${stockDisponible} — en carrito: ${cantidadEnCarrito} — solicitado: ${qty}`);
         return;
       }
 
@@ -227,9 +232,9 @@ export function POSPage() {
       }
 
       addItem(producto, precioSucursal);
+      // Capa 6: si voz indicó cantidad > 1, ajustar al total correcto
+      if (qty > 1) updateQuantity(producto.id, cantidadEnCarrito + qty);
 
-      const precioFinal = precioSucursal !== undefined ? precioSucursal : producto.precioVenta;
-      const origenPrecio = precioSucursal !== undefined ? '(Precio Sucursal)' : '(Precio Base)';
       // Capa 7: informacional — el ítem aparece en el carrito de forma inmediata
     } catch (error) {
       console.error('Error al verificar stock:', error);

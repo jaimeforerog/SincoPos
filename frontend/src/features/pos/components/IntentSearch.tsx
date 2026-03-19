@@ -7,6 +7,7 @@ import {
   Typography,
   InputAdornment,
   List,
+  Chip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -16,24 +17,29 @@ import { inventarioApi } from '@/api/inventario';
 import { preciosApi } from '@/api/precios';
 import { ProductCard } from './ProductCard';
 import { CameraInput } from './CameraInput';
+import { VoiceInput } from './VoiceInput';
+import { parseVoiceInput } from '../utils/parseVoiceInput';
 import { sincoColors } from '@/theme/tokens';
 import type { ProductoDTO } from '@/types/api';
 
 /**
- * Capa 1 — Entrada multimodal.
+ * Capa 1 + Capa 6 — Entrada multimodal.
  *
- * Unifica texto, código de barras y cámara bajo un único campo de intención.
- * Agrega chips de productos frecuentes (Capa 5) cuando el campo está vacío.
+ * Unifica texto, código de barras, cámara y voz bajo un único campo de intención.
+ * Cuando el input es por voz, parsea la cantidad ("dos coca cola" → qty=2) y
+ * muestra un chip de cantidad activa para que el cajero confirme antes de agregar.
  */
 interface IntentSearchProps {
-  onSelectProduct: (producto: ProductoDTO) => void;
+  onSelectProduct: (producto: ProductoDTO, quantity?: number) => void;
 }
 
 export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch             = useDebounce(searchTerm, 300);
-  const searchInputRef              = useRef<HTMLInputElement>(null);
-  const { activeSucursalId }        = useAuth();
+  const [searchTerm, setSearchTerm]   = useState('');
+  const [voiceQty, setVoiceQty]       = useState<number | null>(null);
+  const debouncedSearch               = useDebounce(searchTerm, 300);
+  const searchInputRef                = useRef<HTMLInputElement>(null);
+  const { activeSucursalId }          = useAuth();
+
   // Catálogo paginado con búsqueda debounced
   const { data: productosData, isLoading } = useQuery({
     queryKey: ['productos', debouncedSearch],
@@ -62,7 +68,7 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
       : [],
   );
 
-  // Foco automático + Ctrl+K
+  // Foco automático + Ctrl+K + Ctrl+M (micrófono)
   useEffect(() => {
     searchInputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
@@ -75,11 +81,31 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Limpiar voiceQty cuando el usuario edita manualmente
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    if (voiceQty !== null) setVoiceQty(null);
+  };
+
+  // Resultado de voz: parsear cantidad + término de búsqueda
+  const handleVoiceResult = (transcript: string) => {
+    const { quantity, searchTerm: term } = parseVoiceInput(transcript);
+    setSearchTerm(term);
+    setVoiceQty(quantity > 1 ? quantity : null);
+    searchInputRef.current?.focus();
+  };
+
+  const handleSelectProduct = (producto: ProductoDTO) => {
+    onSelectProduct(producto, voiceQty ?? undefined);
+    setVoiceQty(null);
+    setSearchTerm('');
+  };
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Título + campo de búsqueda en la misma fila */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+      {/* Título + campo de búsqueda */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: voiceQty ? 1 : 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
           Productos
         </Typography>
@@ -87,9 +113,9 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
           inputRef={searchInputRef}
           fullWidth
           size="small"
-          placeholder="Nombre, código o cámara… (Ctrl+K)"
+          placeholder="Nombre, código, cámara o voz… (Ctrl+K)"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           autoFocus
           sx={{
             '& .MuiOutlinedInput-root': {
@@ -109,16 +135,36 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
               </InputAdornment>
             ),
             endAdornment: (
-              <InputAdornment position="end">
-                {isLoading
-                  ? <CircularProgress size={20} />
-                  : <CameraInput onDetected={(code) => setSearchTerm(code)} />
-                }
+              <InputAdornment position="end" sx={{ gap: 0.5 }}>
+                {isLoading ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <>
+                    <VoiceInput onResult={handleVoiceResult} />
+                    <CameraInput onDetected={(code) => setSearchTerm(code)} />
+                  </>
+                )}
               </InputAdornment>
             ),
           }}
         />
       </Box>
+
+      {/* Chip de cantidad detectada por voz */}
+      {voiceQty !== null && (
+        <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip
+            label={`Cantidad por voz: ${voiceQty}`}
+            color="primary"
+            size="small"
+            onDelete={() => setVoiceQty(null)}
+            aria-label={`Cantidad detectada por voz: ${voiceQty}`}
+          />
+          <Typography variant="caption" color="text.secondary">
+            Selecciona el producto para agregar {voiceQty} unidades
+          </Typography>
+        </Box>
+      )}
 
       {/* Lista de resultados */}
       <Box
@@ -149,7 +195,7 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
                 producto={producto}
                 stock={stockInfo?.cantidad ?? 0}
                 precio={precioMap.get(producto.id)}
-                onClick={onSelectProduct}
+                onClick={handleSelectProduct}
               />
             );
           })}

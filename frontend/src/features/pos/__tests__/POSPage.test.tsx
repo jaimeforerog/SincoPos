@@ -139,7 +139,7 @@ describe('POSPage — renderizado', () => {
     renderWithProviders(<POSPage />);
 
     expect(
-      screen.getByPlaceholderText(/Nombre, código o cámara/i)
+      screen.getByPlaceholderText(/Nombre, código/i)
     ).toBeInTheDocument();
   });
 
