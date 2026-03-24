@@ -17,9 +17,9 @@ public class VentaConfiguration : IEntityTypeConfiguration<Venta>
             .HasMaxLength(20)
             .HasColumnName("numero_venta");
 
-        builder.HasIndex(v => v.NumeroVenta)
+        builder.HasIndex(v => new { v.SucursalId, v.NumeroVenta })
             .IsUnique()
-            .HasDatabaseName("ix_ventas_numero");
+            .HasDatabaseName("ix_ventas_sucursal_numero");
 
         builder.Property(v => v.SucursalId).HasColumnName("sucursal_id");
         builder.Property(v => v.CajaId).HasColumnName("caja_id");
@@ -130,9 +130,9 @@ public class DevolucionVentaConfiguration : IEntityTypeConfiguration<DevolucionV
             .HasMaxLength(20)
             .HasColumnName("numero_devolucion");
 
-        builder.HasIndex(d => d.NumeroDevolucion)
+        builder.HasIndex(d => new { d.EmpresaId, d.NumeroDevolucion })
             .IsUnique()
-            .HasDatabaseName("ix_devoluciones_numero");
+            .HasDatabaseName("ix_devoluciones_empresa_numero");
 
         builder.Property(d => d.Motivo)
             .IsRequired()

@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useSnackbar } from 'notistack';
+import { useAuthStore } from '@/stores/auth.store';
 import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
 import { conceptosRetencionApi } from '@/api/impuestos';
@@ -76,6 +77,7 @@ export function ProductoFormDialog({
 }: ProductoFormDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+  const { activeEmpresaId } = useAuthStore();
   const [showCategoriaInput, setShowCategoriaInput] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [backendError, setBackendError] = useState<string | null>(null);
@@ -87,8 +89,9 @@ export function ProductoFormDialog({
 
   // Cargar categorias
   const { data: categorias = [] } = useQuery({
-    queryKey: ['categorias'],
+    queryKey: ['categorias', activeEmpresaId],
     queryFn: () => categoriasApi.getAll(false),
+    staleTime: 0,
     enabled: open,
   });
 

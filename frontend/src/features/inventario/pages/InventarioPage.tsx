@@ -63,7 +63,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export function InventarioPage() {
-  const { isSupervisor, activeSucursalId } = useAuth();
+  const { isSupervisor, activeSucursalId, user, activeEmpresaId } = useAuth();
   const esSupervisor = isSupervisor();
   const [tabValue, setTabValue] = useState(0);
   const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
@@ -74,11 +74,17 @@ export function InventarioPage() {
   const [ajusteDialogOpen, setAjusteDialogOpen] = useState(false);
   const [devolucionDialogOpen, setDevolucionDialogOpen] = useState(false);
 
-  // Cargar sucursales
-  const { data: sucursales = [] } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+    queryFn: () => sucursalesApi.getAll(),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const sucursales = todasSucursales.filter(
+    (s) =>
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   // Cargar stock
   const { data: stock = [], isLoading: loadingStock, refetch: refetchStock } = useQuery({

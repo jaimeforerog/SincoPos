@@ -31,6 +31,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/stores/auth.store';
 import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
 import { ProductoFormDialog } from '../components/ProductoFormDialog';
@@ -40,6 +41,7 @@ import type { ProductoDTO } from '@/types/api';
 export function ProductosPage() {
   const { enqueueSnackbar } = useSnackbar();
   const { isSupervisor, isAdmin } = useAuth();
+  const { activeEmpresaId } = useAuthStore();
   const queryClient = useQueryClient();
 
   const [selectedProducto, setSelectedProducto] = useState<ProductoDTO | null>(null);
@@ -52,7 +54,7 @@ export function ProductosPage() {
 
   // Cargar productos
   const { data: response, isLoading } = useQuery({
-    queryKey: ['productos', busqueda, categoriaFiltro, mostrarInactivos, page, pageSize],
+    queryKey: ['productos', activeEmpresaId, busqueda, categoriaFiltro, mostrarInactivos, page, pageSize],
     queryFn: () =>
       productosApi.getAll({
         query: busqueda || undefined,
@@ -69,8 +71,9 @@ export function ProductosPage() {
 
   // Cargar categorías para filtro
   const { data: categorias = [] } = useQuery({
-    queryKey: ['categorias'],
+    queryKey: ['categorias', activeEmpresaId],
     queryFn: () => categoriasApi.getAll(false),
+    staleTime: 0,
   });
 
   // Mutación para desactivar producto

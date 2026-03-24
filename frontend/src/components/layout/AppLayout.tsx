@@ -42,10 +42,26 @@ export function AppLayout() {
   const { user } = useAuth();
   const { activeSucursalId, setActiveSucursal, activeEmpresaId, empresasDisponibles, setActiveEmpresa, logout } = useAuthStore();
 
+  // Empresa activa — fallback desde la sucursal activa si activeEmpresaId no está seteado
+  const activeSucursalInfo = user?.sucursalesDisponibles.find(s => s.id === activeSucursalId);
+  const empresaActiva =
+    empresasDisponibles.find(e => e.id === activeEmpresaId) ??
+    (activeSucursalInfo?.empresaId
+      ? { id: activeSucursalInfo.empresaId, nombre: activeSucursalInfo.empresaNombre ?? `Empresa ${activeSucursalInfo.empresaId}` }
+      : empresasDisponibles[0] ?? null);
+
   // Sucursales visibles = las de la empresa activa (o todas si no hay empresa configurada)
   const sucursalesVisibles = user?.sucursalesDisponibles.filter(
     s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
   ) ?? [];
+
+  // Nombre de sucursal activa con fallback robusto
+  const sucursalActivaNombre =
+    sucursalesVisibles.find(s => s.id === activeSucursalId)?.nombre ??
+    activeSucursalInfo?.nombre ??
+    user?.sucursalNombre ??
+    'Sin sucursal';
+
   const uiConfig = useUiConfig();
 
   const handleDrawerToggle = () => {
@@ -125,15 +141,37 @@ export function AppLayout() {
           </IconButton>
 
           <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-            {/* Empresa: solo lectura — para cambiar hay que cerrar sesión */}
-            {empresasDisponibles.length > 0 && (
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 400, flexShrink: 0 }}>
-                {empresasDisponibles.find(e => e.id === activeEmpresaId)?.nombre ?? empresasDisponibles[0].nombre}
-              </Typography>
+            {/* Selector de empresa (múltiples) o nombre fijo (una sola) */}
+            {empresaActiva && (
+              <>
+                {empresasDisponibles.length > 1 ? (
+                  <Select
+                    value={activeEmpresaId ?? ''}
+                    onChange={(e) => setActiveEmpresa(Number(e.target.value))}
+                    variant="standard"
+                    disableUnderline
+                    sx={{
+                      color: 'rgba(255,255,255,0.9)',
+                      fontWeight: 500,
+                      fontSize: '0.875rem',
+                      flexShrink: 0,
+                      '& .MuiSvgIcon-root': { color: 'rgba(255,255,255,0.7)' },
+                      '& .MuiSelect-select': { py: 0 },
+                    }}
+                  >
+                    {empresasDisponibles.map((e) => (
+                      <MenuItem key={e.id} value={e.id}>{e.nombre}</MenuItem>
+                    ))}
+                  </Select>
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500, flexShrink: 0 }}>
+                    {empresaActiva.nombre}
+                  </Typography>
+                )}
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>›</Typography>
+              </>
             )}
-            {empresasDisponibles.length >= 1 && (
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>›</Typography>
-            )}
+
             {/* Selector de sucursal */}
             {sucursalesVisibles.length > 1 ? (
               <Select
@@ -155,7 +193,7 @@ export function AppLayout() {
               </Select>
             ) : (
               <Typography variant="h6" component="div">
-                {sucursalesVisibles[0]?.nombre || user?.sucursalNombre || 'Sin sucursal'}
+                {sucursalActivaNombre}
               </Typography>
             )}
           </Box>

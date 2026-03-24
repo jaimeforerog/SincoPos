@@ -59,6 +59,10 @@ builder.Services.AddScoped<POS.Application.Services.ITrasladoService, POS.Infras
 builder.Services.AddScoped<POS.Application.Services.IInventarioService, POS.Infrastructure.Services.InventarioService>();
 builder.Services.AddScoped<POS.Application.Services.ILoteService, POS.Infrastructure.Services.LoteService>();
 builder.Services.AddScoped<POS.Application.Services.IReportesService, POS.Infrastructure.Services.ReportesService>();
+builder.Services.AddScoped<POS.Application.Services.IEthicalGuardService, POS.Infrastructure.Services.EthicalGuardService>();
+builder.Services.AddScoped<POS.Application.Services.IColectivaService, POS.Infrastructure.Services.ColectivaService>();
+builder.Services.AddSingleton<POS.Application.Services.IPipelineMetricsService, POS.Infrastructure.Services.PipelineMetricsService>();
+builder.Services.AddScoped<POS.Application.Services.ISaleOrchestrator, POS.Infrastructure.Services.SaleOrchestrator>();
 
 // GeoService (Países y Ciudades)
 builder.Services.AddHttpClient<POS.Infrastructure.Services.GeoService>();
@@ -190,6 +194,7 @@ builder.Services.AddOutputCache(options =>
     options.AddPolicy("Catalogo5m", b => b
         .Expire(TimeSpan.FromMinutes(5))
         .SetVaryByQuery(Array.Empty<string>())
+        .SetVaryByHeader("X-Empresa-Id")   // clave de cache distinta por empresa
         .Tag("catalogo"));
     options.AddPolicy("Catalogo1h", b => b
         .Expire(TimeSpan.FromHours(1))
@@ -455,10 +460,31 @@ using (var scope = app.Services.CreateScope())
         var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
         if (pending.Count > 0)
         {
-            migrationLogger.LogWarning("Aplicando {Count} migraciones pendientes: {Migrations}",
-                pending.Count, string.Join(", ", pending));
-            await db.Database.MigrateAsync();
-            migrationLogger.LogWarning("Migraciones aplicadas exitosamente");
+            // Verificar si las tablas ya existen (historial de migraciones perdido)
+            var tablasExisten = await db.Database
+                .SqlQueryRaw<int>(@"SELECT COUNT(*)::int AS ""Value"" FROM information_schema.tables WHERE table_schema='public' AND table_name='categorias'")
+                .FirstOrDefaultAsync() > 0;
+
+            if (tablasExisten)
+            {
+                // Las tablas ya existen pero el historial está incompleto: registrar sin ejecutar DDL
+                migrationLogger.LogWarning(
+                    "Historial de migraciones incompleto ({Count} pendientes). Tablas ya existen: registrando sin ejecutar DDL.",
+                    pending.Count);
+                var values = string.Join(",", pending.Select(m => $"('{m}','9.0.3')"));
+                await db.Database.ExecuteSqlRawAsync($@"
+                    INSERT INTO public.__ef_migrations_history (""MigrationId"", ""ProductVersion"")
+                    VALUES {values}
+                    ON CONFLICT (""MigrationId"") DO NOTHING");
+                migrationLogger.LogWarning("Historial sincronizado: {Count} registros añadidos.", pending.Count);
+            }
+            else
+            {
+                migrationLogger.LogWarning("Aplicando {Count} migraciones pendientes: {Migrations}",
+                    pending.Count, string.Join(", ", pending));
+                await db.Database.MigrateAsync();
+                migrationLogger.LogWarning("Migraciones aplicadas exitosamente");
+            }
         }
 
         // Reparar columnas faltantes (historial de migraciones incorrecto en producción)
@@ -480,12 +506,114 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE public.usuario_sucursales ADD COLUMN fecha_asignacion timestamp with time zone NOT NULL DEFAULT NOW();
                     RAISE NOTICE 'Columna fecha_asignacion agregada a usuario_sucursales';
                 END IF;
+
+                -- columnas de auditoría en Empresas (AddEmpresaAuditoria)
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='Empresas' AND column_name='CreadoPor')
+                THEN
+                    ALTER TABLE public.""Empresas"" ADD COLUMN ""CreadoPor"" text NOT NULL DEFAULT '';
+                    RAISE NOTICE 'Columna CreadoPor agregada a Empresas';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='Empresas' AND column_name='ModificadoPor')
+                THEN
+                    ALTER TABLE public.""Empresas"" ADD COLUMN ""ModificadoPor"" text;
+                    RAISE NOTICE 'Columna ModificadoPor agregada a Empresas';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='Empresas' AND column_name='FechaModificacion')
+                THEN
+                    ALTER TABLE public.""Empresas"" ADD COLUMN ""FechaModificacion"" timestamp with time zone;
+                    RAISE NOTICE 'Columna FechaModificacion agregada a Empresas';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='Empresas' AND column_name='FechaDesactivacion')
+                THEN
+                    ALTER TABLE public.""Empresas"" ADD COLUMN ""FechaDesactivacion"" timestamp with time zone;
+                    RAISE NOTICE 'Columna FechaDesactivacion agregada a Empresas';
+                END IF;
+
+                -- EmpresaId en entidades transaccionales (AddEmpresaIdTransactional)
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='ventas' AND column_name='EmpresaId')
+                THEN ALTER TABLE public.ventas ADD COLUMN ""EmpresaId"" integer; END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='traslados' AND column_name='EmpresaId')
+                THEN ALTER TABLE public.traslados ADD COLUMN ""EmpresaId"" integer; END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='ordenes_compra' AND column_name='EmpresaId')
+                THEN ALTER TABLE public.ordenes_compra ADD COLUMN ""EmpresaId"" integer; END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='documentos_electronicos' AND column_name='EmpresaId')
+                THEN ALTER TABLE public.documentos_electronicos ADD COLUMN ""EmpresaId"" integer; END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='devoluciones_venta' AND column_name='EmpresaId')
+                THEN ALTER TABLE public.devoluciones_venta ADD COLUMN ""EmpresaId"" integer; END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='cajas' AND column_name='EmpresaId')
+                THEN ALTER TABLE public.cajas ADD COLUMN ""EmpresaId"" integer; END IF;
+
+                -- Tablas AddEthicalGuard
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='ReglasEticas')
+                THEN
+                    CREATE TABLE public.""ReglasEticas"" (
+                        ""Id"" serial PRIMARY KEY,
+                        ""EmpresaId"" integer,
+                        ""Nombre"" text NOT NULL,
+                        ""Contexto"" integer NOT NULL,
+                        ""Condicion"" integer NOT NULL,
+                        ""ValorLimite"" numeric NOT NULL,
+                        ""Accion"" integer NOT NULL,
+                        ""Mensaje"" text,
+                        ""Activo"" boolean NOT NULL,
+                        ""FechaCreacion"" timestamp with time zone NOT NULL
+                    );
+                    CREATE TABLE public.""ActivacionesReglaEtica"" (
+                        ""Id"" serial PRIMARY KEY,
+                        ""ReglaEticaId"" integer NOT NULL REFERENCES public.""ReglasEticas""(""Id"") ON DELETE CASCADE,
+                        ""VentaId"" integer,
+                        ""SucursalId"" integer,
+                        ""UsuarioId"" integer,
+                        ""Detalle"" text,
+                        ""AccionTomada"" integer NOT NULL,
+                        ""FechaActivacion"" timestamp with time zone NOT NULL
+                    );
+                    CREATE INDEX ""IX_ActivacionesReglaEtica_ReglaEticaId"" ON public.""ActivacionesReglaEtica""(""ReglaEticaId"");
+                    RAISE NOTICE 'Tablas ReglasEticas y ActivacionesReglaEtica creadas';
+                END IF;
             END $$;
         ");
     }
     catch (Exception ex)
     {
         migrationLogger.LogError(ex, "Error al sincronizar schema de BD");
+    }
+}
+
+// ── Seed: Empresa por defecto y asignación a sucursales ─────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+    var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        // Crear empresa por defecto si no existe ninguna
+        var tieneEmpresa = await db.Empresas.IgnoreQueryFilters().AnyAsync();
+        if (!tieneEmpresa)
+        {
+            var empresa = new POS.Infrastructure.Data.Entities.Empresa
+            {
+                Nombre = "Empresa Principal",
+                Nit    = "900000001-0",
+                RazonSocial = "Empresa Principal S.A.S",
+            };
+            db.Empresas.Add(empresa);
+            await db.SaveChangesAsync();
+            seedLogger.LogWarning("Empresa por defecto creada con Id={Id}", empresa.Id);
+
+            // Asignar todas las sucursales sin empresa a esta empresa
+            await db.Database.ExecuteSqlRawAsync(
+                $"""UPDATE public.sucursales SET "EmpresaId" = {empresa.Id} WHERE "EmpresaId" IS NULL""");
+            seedLogger.LogWarning("Sucursales sin empresa asignadas a EmpresaId={Id}", empresa.Id);
+        }
+    }
+    catch (Exception ex)
+    {
+        seedLogger.LogError(ex, "Error en seed de empresa por defecto");
     }
 }
 
@@ -568,6 +696,35 @@ app.UseCors();
 app.UseWebSockets();
 if (!app.Environment.IsDevelopment())
     app.UseRateLimiter();
+
+// ── Dev-only: diagnóstico de body en POST ────────────────────────────────
+if (app.Environment.IsDevelopment())
+{
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Method == "POST" && context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Request.EnableBuffering();
+            var diagLogger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            using var reader = new System.IO.StreamReader(
+                context.Request.Body,
+                System.Text.Encoding.UTF8,
+                detectEncodingFromByteOrderMarks: false,
+                leaveOpen: true);
+            var rawBody = await reader.ReadToEndAsync();
+            context.Request.Body.Position = 0;
+            diagLogger.LogWarning(
+                "DIAG POST {Path} | CT: {CT} | CL: {CL} | BodyLen: {Len} | Body: {Body}",
+                context.Request.Path,
+                context.Request.ContentType ?? "(none)",
+                context.Request.ContentLength?.ToString() ?? "(null)",
+                rawBody.Length,
+                rawBody.Length > 500 ? rawBody[..500] : rawBody);
+        }
+        await next();
+    });
+}
+
 // DESARROLLO: autenticación/autorización permisiva
 // PRODUCCION: Azure AD B2C
 app.UseAuthentication();
@@ -602,6 +759,130 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+
+// ── Dev-only: diagnóstico ─────────────────────────────────────────────────
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/dev/diagnostico", async (POS.Infrastructure.Data.AppDbContext db) =>
+    {
+        var conn = db.Database.GetDbConnection();
+        await conn.OpenAsync();
+
+        var empresasList = new List<object>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"SELECT e.""Id"", e.""Nombre"", e.""Activo"",
+                (SELECT COUNT(*) FROM public.sucursales s WHERE s.""EmpresaId"" = e.""Id"") AS sucursales,
+                (SELECT COUNT(*) FROM public.productos p WHERE p.""EmpresaId"" = e.""Id"") AS productos
+                FROM public.""Empresas"" e ORDER BY e.""Id""";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                empresasList.Add(new { id = reader.GetInt32(0), nombre = reader.GetString(1), activo = reader.GetBoolean(2), sucursales = reader.GetInt64(3), productos = reader.GetInt64(4) });
+        }
+
+        await conn.CloseAsync();
+        return Results.Ok(new { empresas = empresasList });
+    }).AllowAnonymous();
+}
+
+// ── Dev-only: endpoint temporal para seed de datos (ya ejecutado, deshabilitado) ──
+if (false && app.Environment.IsDevelopment())
+{
+    app.MapPost("/dev/seed-supermercado", async (POS.Infrastructure.Data.AppDbContext db) =>
+    {
+        // Paso 1: insertar categorías
+        await db.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO public.categorias
+              (nombre, descripcion, activo, ""CreadoPor"", ""FechaCreacion"",
+               categoria_padre_id, nivel, ruta_completa, margen_ganancia, ""EmpresaId"")
+            VALUES
+              ('Lácteos',           'Leches, quesos, yogures y mantequillas',   true, 'seed', NOW(), NULL, 0, 'Lácteos',           0.30, 1),
+              ('Carnes',            'Carnes rojas, aves y embutidos',           true, 'seed', NOW(), NULL, 0, 'Carnes',            0.25, 1),
+              ('Frutas y Verduras', 'Frutas frescas y verduras de temporada',   true, 'seed', NOW(), NULL, 0, 'Frutas y Verduras', 0.35, 1),
+              ('Panadería',         'Pan, galletas y pastelería',               true, 'seed', NOW(), NULL, 0, 'Panadería',         0.40, 1),
+              ('Bebidas',           'Gaseosas, jugos, aguas y cervezas',        true, 'seed', NOW(), NULL, 0, 'Bebidas',           0.30, 1),
+              ('Aseo del Hogar',    'Detergentes, desinfectantes y limpieza',   true, 'seed', NOW(), NULL, 0, 'Aseo del Hogar',    0.30, 1),
+              ('Granos y Secos',    'Arroz, lentejas, fríjoles y pastas',       true, 'seed', NOW(), NULL, 0, 'Granos y Secos',    0.25, 1),
+              ('Snacks',            'Papitas, chitos, chocolates y dulces',     true, 'seed', NOW(), NULL, 0, 'Snacks',            0.45, 1)
+            ON CONFLICT DO NOTHING");
+
+        // Paso 2: insertar 50 productos usando IDs de categorías recién creadas
+        await db.Database.ExecuteSqlRawAsync(@"
+            DO $$
+            DECLARE
+              c_lacteos INT; c_carnes INT; c_frutas INT; c_panaderia INT;
+              c_bebidas INT; c_aseo   INT; c_granos INT; c_snacks    INT;
+            BEGIN
+              SELECT ""Id"" INTO c_lacteos   FROM public.categorias WHERE nombre='Lácteos'            AND ""EmpresaId""=1 LIMIT 1;
+              SELECT ""Id"" INTO c_carnes    FROM public.categorias WHERE nombre='Carnes'             AND ""EmpresaId""=1 LIMIT 1;
+              SELECT ""Id"" INTO c_frutas    FROM public.categorias WHERE nombre='Frutas y Verduras'  AND ""EmpresaId""=1 LIMIT 1;
+              SELECT ""Id"" INTO c_panaderia FROM public.categorias WHERE nombre='Panadería'          AND ""EmpresaId""=1 LIMIT 1;
+              SELECT ""Id"" INTO c_bebidas   FROM public.categorias WHERE nombre='Bebidas'            AND ""EmpresaId""=1 LIMIT 1;
+              SELECT ""Id"" INTO c_aseo      FROM public.categorias WHERE nombre='Aseo del Hogar'     AND ""EmpresaId""=1 LIMIT 1;
+              SELECT ""Id"" INTO c_granos    FROM public.categorias WHERE nombre='Granos y Secos'     AND ""EmpresaId""=1 LIMIT 1;
+              SELECT ""Id"" INTO c_snacks    FROM public.categorias WHERE nombre='Snacks'             AND ""EmpresaId""=1 LIMIT 1;
+
+              INSERT INTO public.productos
+                (id, codigo_barras, nombre, descripcion, categoria_id, precio_venta, precio_costo,
+                 activo, fecha_creacion, ""CreadoPor"", unidad_medida, ""EsAlimentoUltraprocesado"",
+                 maneja_lotes, ""EmpresaId"")
+              VALUES
+                (gen_random_uuid(),'7701234000001','Leche Entera 1L',          'Leche entera pasteurizada 1L',        c_lacteos,   3200,  2100,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000002','Leche Descremada 1L',      'Leche descremada 1 litro',            c_lacteos,   3400,  2200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000003','Queso Campesino 250g',     'Queso campesino fresco 250g',         c_lacteos,   5800,  3900,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000004','Yogur Natural 200g',       'Yogur natural sin azúcar 200g',       c_lacteos,   2900,  1800,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000005','Mantequilla con Sal 100g', 'Mantequilla con sal 100g',            c_lacteos,   4200,  2800,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000006','Crema de Leche 250ml',     'Crema de leche para cocinar 250ml',   c_lacteos,   4500,  2900,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000007','Queso Doble Crema 500g',   'Queso doble crema 500g',              c_lacteos,  11500,  7800,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000011','Pechuga de Pollo 1kg',     'Pechuga de pollo sin hueso 1kg',      c_carnes,   14900,  9800,true,NOW(),'seed','KGM',false,false,1),
+                (gen_random_uuid(),'7701234000012','Carne Molida 500g',        'Carne molida de res 500g',            c_carnes,   12500,  8200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000013','Chuleta de Cerdo 600g',    'Chuleta de cerdo 600g',               c_carnes,   13800,  9100,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000014','Salchicha Frankfurt 500g', 'Salchichas Frankfurt 500g',           c_carnes,    8900,  5800,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000015','Jamón de Pierna 200g',     'Jamón de pierna rebanado 200g',       c_carnes,    7200,  4700,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000016','Tocino Ahumado 200g',      'Tocino ahumado en lonjas 200g',       c_carnes,    8500,  5500,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000017','Muslo de Pollo 1kg',       'Muslo de pollo con hueso 1kg',        c_carnes,   10500,  6900,true,NOW(),'seed','KGM',false,false,1),
+                (gen_random_uuid(),'7701234000021','Tomate Chonto 1kg',        'Tomate chonto fresco 1kg',            c_frutas,    3500,  2100,true,NOW(),'seed','KGM',false,false,1),
+                (gen_random_uuid(),'7701234000022','Cebolla Cabezona 500g',    'Cebolla cabezona blanca 500g',        c_frutas,    2200,  1300,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000023','Zanahoria 1kg',            'Zanahoria fresca 1kg',                c_frutas,    2800,  1700,true,NOW(),'seed','KGM',false,false,1),
+                (gen_random_uuid(),'7701234000024','Banano x6',                'Racimo de banano maduros x6',         c_frutas,    3200,  1900,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000025','Papa Pastusa 2kg',         'Papa pastusa lavada 2kg',             c_frutas,    5500,  3400,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000026','Aguacate Hass x2',         'Aguacate Hass maduros x2 unidades',   c_frutas,    4800,  3000,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000031','Pan Tajado Blanco 500g',   'Pan tajado blanco 500g',              c_panaderia, 4200,  2700,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000032','Pan Integral 450g',        'Pan integral de trigo 450g',          c_panaderia, 5100,  3300,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000033','Galletas Saltinas x10',    'Galletas de soda Saltinas x10',       c_panaderia, 2800,  1700,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000034','Croissant x4',             'Croissants de mantequilla x4',        c_panaderia, 6500,  4200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000035','Mogolla Integral x6',      'Mogollas integrales x6',              c_panaderia, 4900,  3100,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000041','Agua Cristal 600ml',       'Agua mineral natural 600ml',          c_bebidas,   1800,   900,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000042','Coca-Cola 1.5L',           'Gaseosa Coca-Cola 1.5 litros',        c_bebidas,   5500,  3200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000043','Jugo Hit Naranja 1L',      'Jugo de naranja Hit 1 litro',         c_bebidas,   4800,  2900,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000044','Café Colcafé 250g',        'Café molido Colcafé 250g',            c_bebidas,  16900, 10800,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000045','Postobón Manzana 400ml',   'Gaseosa Postobón manzana 400ml',      c_bebidas,   2200,  1200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000046','Cerveza Águila 330ml',     'Cerveza Águila lata 330ml',           c_bebidas,   3500,  2200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000047','Té Hatsu Mora 475ml',      'Bebida de té con mora 475ml',         c_bebidas,   4200,  2600,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000051','Detergente Ariel 1kg',     'Detergente en polvo Ariel 1kg',       c_aseo,     18500, 12100,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000052','Jabón Rey x3',             'Jabón de lavar Rey x3 barras',        c_aseo,      5900,  3700,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000053','Suavitel Lavanda 1L',      'Suavizante de ropa Suavitel 1L',      c_aseo,      9800,  6200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000054','Ajax Limpiador 500ml',     'Limpiador multiusos Ajax 500ml',      c_aseo,      7200,  4500,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000055','Esponja Scotch-Brite x2',  'Esponjas de cocina Scotch-Brite x2',  c_aseo,      5500,  3400,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000056','Papel Higiénico Familia x4','Papel higiénico Familia x4',         c_aseo,      9900,  6400,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000061','Arroz Diana 2kg',          'Arroz blanco Diana 2kg',              c_granos,    8900,  5700,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000062','Fríjol Bola Roja 500g',    'Fríjol bola roja seco 500g',          c_granos,    4200,  2700,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000063','Lenteja Verde 500g',       'Lenteja verde seca 500g',             c_granos,    3800,  2400,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000064','Pasta Espagueti 400g',     'Pasta espagueti de trigo 400g',       c_granos,    3500,  2200,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000065','Maíz Pira 200g',           'Maíz pira para crispetas 200g',       c_granos,    2900,  1800,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000066','Azúcar Blanca 2kg',        'Azúcar blanca refinada 2kg',          c_granos,    7200,  4700,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000071','Papitas Margarita 70g',    'Papitas fritas Margarita sal 70g',    c_snacks,    2900,  1700,true,NOW(),'seed','94',true, false,1),
+                (gen_random_uuid(),'7701234000072','Chitos 45g',               'Chitos de maíz 45g',                  c_snacks,    2200,  1300,true,NOW(),'seed','94',true, false,1),
+                (gen_random_uuid(),'7701234000073','Chocolatina Jet 16g',      'Chocolatina Jet leche 16g',           c_snacks,    1800,  1000,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000074','Maní Salado Tosh 100g',    'Maní salado Tosh 100g',               c_snacks,    3500,  2100,true,NOW(),'seed','94',false,false,1),
+                (gen_random_uuid(),'7701234000075','Gomitas Trolli 100g',      'Gomitas surtidas Trolli 100g',         c_snacks,    4200,  2600,true,NOW(),'seed','94',true, false,1),
+                (gen_random_uuid(),'7701234000076','Bienestarina 500g',        'Bienestarina enriquecida 500g',       c_snacks,    5800,  3800,true,NOW(),'seed','94',false,false,1);
+            END $$");
+
+        var total = await db.Database.SqlQueryRaw<int>(@"SELECT COUNT(*)::int AS ""Value"" FROM public.productos WHERE ""CreadoPor""='seed'").FirstOrDefaultAsync();
+        return Results.Ok(new { mensaje = "Seed ejecutado", productos = total });
+    }).AllowAnonymous();
+}
 
 app.Run();
 

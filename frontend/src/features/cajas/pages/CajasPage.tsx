@@ -28,24 +28,44 @@ import { CerrarCajaDialog } from '../components/CerrarCajaDialog';
 import type { CajaDTO } from '@/types/api';
 
 export function CajasPage() {
-  const { activeSucursalId } = useAuth();
+  const { activeSucursalId, user, activeEmpresaId } = useAuth();
   const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
   const [abrirDialogOpen, setAbrirDialogOpen] = useState(false);
   const [cerrarDialogOpen, setCerrarDialogOpen] = useState(false);
   const [selectedCaja, setSelectedCaja] = useState<CajaDTO | null>(null);
 
-  // Cargar sucursales
-  const { data: sucursales = [], isLoading: loadingSucursales } = useQuery({
-    queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+  // Incluir activeEmpresaId en el key para que refetch cuando cambia la empresa
+  const { data: todasSucursales = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
+    queryFn: () => sucursalesApi.getAll(),
+    staleTime: 0, // sin caché en cambio de empresa
   });
 
-  // Auto-seleccionar la sucursal activa del usuario
-  useEffect(() => {
-    if (activeSucursalId && !selectedSucursalId) {
-      setSelectedSucursalId(activeSucursalId);
+  const sucursales = todasSucursales.filter((s) => {
+    // Filtro de empresa
+    if (activeEmpresaId != null && s.empresaId != null && s.empresaId !== activeEmpresaId) return false;
+    // Si el usuario tiene sucursales asignadas para la empresa activa, restringir solo a esas
+    if (user?.sucursalesDisponibles?.length) {
+      const asignadasEnEmpresa = user.sucursalesDisponibles.filter(
+        (sd) => sd.empresaId === activeEmpresaId || sd.empresaId == null
+      );
+      if (asignadasEnEmpresa.length > 0) return asignadasEnEmpresa.some((sd) => sd.id === s.id);
     }
-  }, [activeSucursalId, selectedSucursalId]);
+    return true;
+  });
+
+  // Resetear selección cuando cambia la empresa activa
+  useEffect(() => {
+    setSelectedSucursalId(null);
+  }, [activeEmpresaId]);
+
+  // Auto-seleccionar: primero la sucursal activa del usuario si está en la lista filtrada,
+  // si no la primera disponible
+  useEffect(() => {
+    if (sucursales.length === 0 || selectedSucursalId !== null) return;
+    const enLista = sucursales.find(s => s.id === activeSucursalId);
+    setSelectedSucursalId(enLista ? enLista.id : sucursales[0].id);
+  }, [sucursales, activeSucursalId, selectedSucursalId]);
 
   const { data: cajas = [], isLoading } = useQuery({
     queryKey: ['cajas', selectedSucursalId],
@@ -123,14 +143,8 @@ export function CajasPage() {
             value={selectedSucursalId || ''}
             onChange={(e) => setSelectedSucursalId(e.target.value as number)}
             label="Sucursal *"
-            disabled={loadingSucursales}
           >
-            {loadingSucursales && (
-              <MenuItem value="" disabled>
-                Cargando...
-              </MenuItem>
-            )}
-            {!loadingSucursales && sucursales.length === 0 && (
+            {sucursales.length === 0 && (
               <MenuItem value="" disabled>
                 No hay sucursales disponibles
               </MenuItem>

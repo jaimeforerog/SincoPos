@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
+  Container,
   Card,
   CardContent,
   Typography,
@@ -33,8 +34,10 @@ import { format, subDays } from 'date-fns';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import { exportarReporteVentas } from '@/utils/exportReportes';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteVentasPage() {
+  const { user, activeEmpresaId } = useAuth();
   const today = new Date();
   const last30Days = subDays(today, 30);
 
@@ -43,10 +46,14 @@ export function ReporteVentasPage() {
   const [sucursalId, setSucursalId] = useState<number | ''>('');
   const [metodoPago, setMetodoPago] = useState<number | ''>('');
 
-  const { data: sucursales = [] } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+    queryFn: () => sucursalesApi.getAll(),
   });
+  const sucursales = todasSucursales.filter((s) =>
+    (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+    (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   const {
     data: reporte,
@@ -72,7 +79,7 @@ export function ReporteVentasPage() {
   }
 
   return (
-    <Box>
+    <Container maxWidth="xl">
       <ReportePageHeader
         title="Reporte de Ventas"
         subtitle="Análisis de ventas por sucursal, método de pago y rango de fechas"
@@ -319,6 +326,6 @@ export function ReporteVentasPage() {
           </Card>
         </Stack>
       )}
-    </Box>
+    </Container>
   );
 }

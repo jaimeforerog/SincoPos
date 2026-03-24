@@ -22,6 +22,7 @@ import {
 import { Timeline } from '@mui/icons-material';
 import { lotesApi } from '@/api/lotes';
 import { productosApi } from '@/api/productos';
+import { useAuth } from '@/hooks/useAuth';
 import type { SucursalDTO } from '@/types/api';
 import { formatCurrency } from '@/utils/format';
 import { TrazabilidadLoteModal } from './TrazabilidadLoteModal';
@@ -43,10 +44,11 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
   const [soloVigentes, setSoloVigentes] = useState(true);
   const [productoQuery, setProductoQuery] = useState('');
   const [trazabilidadLoteId, setTrazabilidadLoteId] = useState<number | null>(null);
+  const { activeEmpresaId } = useAuth();
 
   // Buscar productos para el selector
   const { data: productosData } = useQuery({
-    queryKey: ['productos', 'buscar', productoQuery],
+    queryKey: ['productos', 'buscar', productoQuery, activeEmpresaId],
     queryFn: () => productosApi.getAll({ query: productoQuery || undefined }),
     enabled: true,
   });

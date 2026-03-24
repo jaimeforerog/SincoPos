@@ -32,6 +32,8 @@ public class Impuesto : EntidadAuditable
 
     public string? Descripcion { get; set; }
 
+    public int? EmpresaId { get; set; }
+
     // Navegacion
     public ICollection<Producto> Productos { get; set; } = new List<Producto>();
 }
@@ -87,6 +89,8 @@ public class RetencionRegla : EntidadAuditable
     /// </summary>
     public int? ConceptoRetencionId { get; set; }
     public ConceptoRetencion? ConceptoRetencion { get; set; }
+
+    public int? EmpresaId { get; set; }
 }
 
 public enum TipoRetencion
@@ -110,6 +114,8 @@ public class ConceptoRetencion : EntidadAuditable
 
     /// <summary>Porcentaje sugerido de referencia para la UI (ej. 2.5, 11).</summary>
     public decimal? PorcentajeSugerido { get; set; }
+
+    public int? EmpresaId { get; set; }
 
     // Navegación
     public ICollection<RetencionRegla> ReglasRetencion { get; set; } = new List<RetencionRegla>();

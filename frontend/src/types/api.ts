@@ -358,6 +358,7 @@ export interface SucursalDTO {
   metodoCosteo: string;
   activa: boolean;
   fechaCreacion: string;
+  empresaId?: number;
 }
 
 export interface CrearSucursalDTO {
@@ -500,6 +501,8 @@ export interface UserInfo {
   sucursalesDisponibles: SucursalResumenDTO[];
   empresaId?: number;
   empresaNombre?: string;
+  /** Lista explícita de empresas disponibles (viene del backend, incluye empresas sin sucursales) */
+  empresasDisponibles?: { id: number; nombre: string }[];
 }
 
 // ============================================

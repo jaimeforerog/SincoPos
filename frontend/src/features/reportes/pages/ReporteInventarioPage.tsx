@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
+  Container,
   Card,
   CardContent,
   Typography,
@@ -27,23 +28,29 @@ import {
 } from '@mui/material';
 import { ReportePageHeader } from '../components/ReportePageHeader';
 import { reportesApi } from '@/api/reportes';
-import { sucursalesApi } from '@/api/sucursales';
 import { categoriasApi } from '@/api/categorias';
+import { sucursalesApi } from '@/api/sucursales';
 import { formatCurrency, formatNumber } from '@/utils/format';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import { exportarReporteInventario } from '@/utils/exportReportes';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteInventarioPage() {
+  const { user, activeEmpresaId } = useAuth();
   const [sucursalId, setSucursalId] = useState<number | ''>('');
   const [categoriaId, setCategoriaId] = useState<number | ''>('');
   const [soloConStock, setSoloConStock] = useState(true);
   const [busqueda, setBusqueda] = useState('');
 
-  const { data: sucursales = [] } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+    queryFn: () => sucursalesApi.getAll(),
   });
+  const sucursales = todasSucursales.filter((s) =>
+    (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+    (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   const { data: categorias = [] } = useQuery({
     queryKey: ['categorias'],
@@ -80,7 +87,7 @@ export function ReporteInventarioPage() {
   }
 
   return (
-    <Box>
+    <Container maxWidth="xl">
       <ReportePageHeader
         title="Inventario Valorizado"
         subtitle="Resumen del valor total del stock actual en almacén por categoría"
@@ -295,6 +302,6 @@ export function ReporteInventarioPage() {
           </Card>
         </Stack>
       )}
-    </Box>
+    </Container>
   );
 }

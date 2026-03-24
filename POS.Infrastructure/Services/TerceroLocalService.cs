@@ -105,8 +105,6 @@ public class TerceroLocalService : ITerceroService
             EsResponsableIVA = dto.EsResponsableIVA,
             EmpresaId = _empresaProvider.EmpresaId,
             OrigenDatos = OrigenDatos.Local,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow,
         };
 
         // Auto-calcular DV para NIT
@@ -409,8 +407,6 @@ public class TerceroLocalService : ITerceroService
                 EsResponsableIVA = GetBool(row, "EsResponsableIVA"),
                 EmpresaId = _empresaProvider.EmpresaId,
                 OrigenDatos = OrigenDatos.Local,
-                Activo = true,
-                FechaCreacion = DateTime.UtcNow,
             };
 
             if (tipoId == TipoIdentificacion.NIT)

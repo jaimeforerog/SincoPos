@@ -12,6 +12,7 @@ import {
   StorefrontOutlined,
   MenuBookOutlined,
   TuneOutlined,
+  Shield,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfigCard } from '../components/ConfigCard';
@@ -107,6 +108,16 @@ const configModules: ConfigModule[] = [
     roles: ['admin'],
     category: 'sistema',
     color: '#6a1b9a',
+  },
+  {
+    id: 'eticas',
+    title: 'Supervisión Ética',
+    description: 'Reglas de negocio configurables: descuentos, montos y precios mínimos',
+    icon: <Shield fontSize="large" />,
+    path: '/eticas',
+    roles: ['admin'],
+    category: 'sistema',
+    color: '#c62828',
   },
 ];
 

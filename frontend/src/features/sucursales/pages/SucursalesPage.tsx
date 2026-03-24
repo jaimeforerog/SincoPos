@@ -22,6 +22,7 @@ import type { SucursalDTO } from '@/types/api';
 import { useSnackbar } from 'notistack';
 import { SucursalFormDialog } from '../components/SucursalFormDialog';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
+import { useAuthStore } from '@/stores/auth.store';
 
 export function SucursalesPage() {
   const [openDialog, setOpenDialog] = useState(false);
@@ -29,11 +30,17 @@ export function SucursalesPage() {
   const [incluirInactivas, setIncluirInactivas] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+  const { activeEmpresaId } = useAuthStore();
 
-  const { data: sucursales, isLoading } = useQuery({
+  const { data: todasSucursales, isLoading } = useQuery({
     queryKey: ['sucursales', incluirInactivas],
     queryFn: () => sucursalesApi.getAll(incluirInactivas),
   });
+
+  // Filtrar por empresa activa de sesión (defensa en profundidad además del filtro backend)
+  const sucursales = (todasSucursales ?? []).filter(
+    s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => sucursalesApi.delete(id),

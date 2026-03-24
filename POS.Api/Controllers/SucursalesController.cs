@@ -17,11 +17,13 @@ public class SucursalesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ILogger<SucursalesController> _logger;
+    private readonly POS.Application.Services.ICurrentEmpresaProvider _empresaProvider;
 
-    public SucursalesController(AppDbContext context, ILogger<SucursalesController> logger)
+    public SucursalesController(AppDbContext context, ILogger<SucursalesController> logger, POS.Application.Services.ICurrentEmpresaProvider empresaProvider)
     {
         _context = context;
         _logger = logger;
+        _empresaProvider = empresaProvider;
     }
 
     /// <summary>
@@ -66,8 +68,7 @@ public class SucursalesController : ControllerBase
             Email = dto.Email,
             CentroCosto = dto.CentroCosto,
             MetodoCosteo = metodo,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
+            EmpresaId = _empresaProvider.EmpresaId,
         };
 
         _context.Sucursales.Add(sucursal);
@@ -96,7 +97,7 @@ public class SucursalesController : ControllerBase
             .Where(s => s.Id == id)
             .Select(s => new SucursalDto(
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
-                s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
+                s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion, s.EmpresaId))
             .FirstOrDefaultAsync();
 
         if (sucursal == null)
@@ -109,20 +110,22 @@ public class SucursalesController : ControllerBase
     /// Listar sucursales
     /// </summary>
     [HttpGet]
-    [OutputCache(PolicyName = "Catalogo5m", VaryByQueryKeys = ["incluirInactivas"])]
     public async Task<ActionResult<List<SucursalDto>>> ObtenerSucursales(
         [FromQuery] bool incluirInactivas = false)
     {
-        var query = _context.Sucursales.AsQueryable();
-
-        if (incluirInactivas)
-            query = query.IgnoreQueryFilters();
+        // IgnoreQueryFilters omite TODOS los filtros (incluido el de empresa).
+        // Para incluir inactivas, aplicamos el filtro de empresa explícitamente.
+        var query = incluirInactivas
+            ? _context.Sucursales
+                .Where(s => _empresaProvider.EmpresaId == null || s.EmpresaId == _empresaProvider.EmpresaId)
+                .AsQueryable()
+            : _context.Sucursales.AsQueryable();
 
         var sucursales = await query
             .OrderBy(s => s.Nombre)
             .Select(s => new SucursalDto(
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
-                s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion))
+                s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion, s.EmpresaId))
             .ToListAsync();
 
         return Ok(sucursales);

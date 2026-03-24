@@ -24,6 +24,7 @@ import {
   type ChipProps,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import PrintIcon from '@mui/icons-material/Print';
 import SearchIcon from '@mui/icons-material/Search';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -32,6 +33,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { useAuth } from '@/hooks/useAuth';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { printTicket } from '@/utils/printTicket';
 import { ventasApi } from '@/api/ventas';
 import { sucursalesApi } from '@/api/sucursales';
 import { VentaDetalleDialog } from '../components/VentaDetalleDialog';
@@ -107,7 +109,7 @@ function HeroStat({ icon, label, value, loading }: HeroStatProps) {
 }
 
 export function VentasPage() {
-  const { activeSucursalId } = useAuth();
+  const { activeSucursalId, user, activeEmpresaId } = useAuth();
   const [selectedVenta, setSelectedVenta] = useState<VentaDTO | null>(null);
   const [detalleOpen, setDetalleOpen] = useState(false);
   const [filtroSucursal, setFiltroSucursal] = useState<number | ''>(activeSucursalId || '');
@@ -118,10 +120,17 @@ export function VentasPage() {
   const [page, setPage] = useState(1);
   const pageSize = 50;
 
-  const { data: sucursales = [] } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+    queryFn: () => sucursalesApi.getAll(),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const sucursales = todasSucursales.filter(
+    (s) =>
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   const { data: ventasPage, isLoading } = useQuery({
     queryKey: ['ventas', filtroSucursal, filtroEstado, fechaDesde, fechaHasta, page],
@@ -129,8 +138,8 @@ export function VentasPage() {
       ventasApi.getAll({
         sucursalId: filtroSucursal || undefined,
         estado: filtroEstado || undefined,
-        desde: fechaDesde ? `${fechaDesde}T00:00:00Z` : undefined,
-        hasta: fechaHasta ? `${fechaHasta}T23:59:59Z` : undefined,
+        desde: fechaDesde ? new Date(fechaDesde + 'T00:00:00').toISOString() : undefined,
+        hasta: fechaHasta ? new Date(fechaHasta + 'T23:59:59').toISOString() : undefined,
         page,
         pageSize,
       }),
@@ -438,6 +447,11 @@ export function VentasPage() {
                       <Tooltip title="Ver detalle">
                         <IconButton size="small" color="primary" onClick={() => handleVerDetalle(venta)}>
                           <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Imprimir ticket">
+                        <IconButton size="small" onClick={() => printTicket(venta, user?.nombre ?? user?.email)}>
+                          <PrintIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </TableCell>

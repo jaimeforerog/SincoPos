@@ -16,6 +16,7 @@ import { Add as AddIcon } from '@mui/icons-material';
 import { categoriasApi } from '@/api/categorias';
 import type { CategoriaDTO, CategoriaArbolDTO } from '@/types/api';
 import { useSnackbar } from 'notistack';
+import { useAuthStore } from '@/stores/auth.store';
 import { CategoriaTreeView } from '../components/CategoriaTreeView';
 import { CategoriaFormDialog } from '../components/CategoriaFormDialog';
 import { MoverCategoriaDialog } from '../components/MoverCategoriaDialog';
@@ -29,11 +30,13 @@ export function CategoriasPage() {
   const [incluirInactivas, setIncluirInactivas] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+  const { activeEmpresaId } = useAuthStore();
 
   // Cargar árbol de categorías
   const { data: categorias = [], isLoading } = useQuery({
-    queryKey: ['categorias', 'arbol', incluirInactivas],
+    queryKey: ['categorias', 'arbol', activeEmpresaId, incluirInactivas],
     queryFn: () => categoriasApi.getArbol(incluirInactivas),
+    staleTime: 0,
   });
 
   const deleteMutation = useMutation({

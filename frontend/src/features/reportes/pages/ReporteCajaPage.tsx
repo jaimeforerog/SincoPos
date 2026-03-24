@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
+  Container,
   Card,
   CardContent,
   Typography,
@@ -30,15 +31,21 @@ import { formatCurrency, formatDate } from '@/utils/format';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import { exportarReporteCaja } from '@/utils/exportReportes';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteCajaPage() {
+  const { user, activeEmpresaId } = useAuth();
   const [sucursalId, setSucursalId] = useState<number | ''>('');
   const [cajaId, setCajaId] = useState<number | ''>('');
 
-  const { data: sucursales = [] } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+    queryFn: () => sucursalesApi.getAll(),
   });
+  const sucursales = todasSucursales.filter((s) =>
+    (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+    (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   const { data: cajas = [] } = useQuery({
     queryKey: ['cajas', sucursalId],
@@ -65,7 +72,7 @@ export function ReporteCajaPage() {
   }
 
   return (
-    <Box>
+    <Container maxWidth="xl">
       <ReportePageHeader
         title="Reporte de Caja"
         subtitle="Cuadre de caja, ingresos, egresos y movimientos de dinero"
@@ -324,6 +331,6 @@ export function ReporteCajaPage() {
           </Card>
         </Stack>
       )}
-    </Box>
+    </Container>
   );
 }

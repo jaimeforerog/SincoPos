@@ -15,8 +15,13 @@ namespace POS.Api.Controllers;
 public class ImpuestosController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ICurrentEmpresaProvider _empresaProvider;
 
-    public ImpuestosController(AppDbContext context) => _context = context;
+    public ImpuestosController(AppDbContext context, ICurrentEmpresaProvider empresaProvider)
+    {
+        _context = context;
+        _empresaProvider = empresaProvider;
+    }
 
     // ─── Impuestos ────────────────────────────────────────────────────────────
 
@@ -104,8 +109,7 @@ public class ImpuestosController : ControllerBase
             AplicaSobreBase = dto.AplicaSobreBase,
             CodigoPais = dto.CodigoPais ?? "CO",
             Descripcion = dto.Descripcion,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
+            EmpresaId = _empresaProvider.EmpresaId,
         };
 
         _context.Impuestos.Add(impuesto);
@@ -224,8 +228,7 @@ public class ImpuestosController : ControllerBase
             PerfilComprador = dto.PerfilComprador,
             CodigoCuentaContable = dto.CodigoCuentaContable,
             ConceptoRetencionId = dto.ConceptoRetencionId,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
+            EmpresaId = _empresaProvider.EmpresaId,
         };
 
         _context.RetencionesReglas.Add(regla);
@@ -308,8 +311,7 @@ public class ImpuestosController : ControllerBase
             Nombre = dto.Nombre,
             CodigoDian = dto.CodigoDian,
             PorcentajeSugerido = dto.PorcentajeSugerido,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
+            EmpresaId = _empresaProvider.EmpresaId,
         };
 
         _context.ConceptosRetencion.Add(concepto);

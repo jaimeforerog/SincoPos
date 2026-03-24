@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using POS.Application.DTOs;
 using POS.Application.Services;
@@ -68,15 +69,26 @@ public class UsuarioService : IUsuarioService
     {
         var usuario = await _context.Usuarios
             .Include(u => u.SucursalDefault)
-            .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal).ThenInclude(s => s.Empresa)
             .FirstOrDefaultAsync(u => u.KeycloakId == externalId);
 
         if (usuario == null)
             return null;
 
-        var sucursalesAsignadas = usuario.Sucursales
-            .Select(us => new SucursalResumenDto(us.Sucursal.Id, us.Sucursal.Nombre, us.Sucursal.EmpresaId, us.Sucursal.Empresa?.Nombre))
-            .ToList();
+        // Cargar sucursales ignorando el filtro global de EmpresaId para obtener TODAS
+        // las sucursales asignadas al usuario (multi-empresa).
+        // Sin IgnoreQueryFilters(), EF filtra las sucursales de otras empresas y el
+        // usuario solo vería las sucursales de la empresa activa en ese momento.
+        var sucursalIds = await _context.UsuarioSucursales
+            .Where(us => us.UsuarioId == usuario.Id)
+            .Select(us => us.SucursalId)
+            .ToListAsync();
+
+        var sucursalesAsignadas = await _context.Sucursales
+            .IgnoreQueryFilters()
+            .Include(s => s.Empresa)
+            .Where(s => sucursalIds.Contains(s.Id) && s.Activo)
+            .Select(s => new SucursalResumenDto(s.Id, s.Nombre, s.EmpresaId, s.Empresa != null ? s.Empresa.Nombre : null))
+            .ToListAsync();
 
         return new PerfilUsuarioDto(
             usuario.Id,
@@ -192,10 +204,11 @@ public class UsuarioService : IUsuarioService
     async Task<List<SucursalResumenDto>> IUsuarioService.ObtenerTodasSucursalesActivasAsync()
     {
         return await _context.Sucursales
+            .IgnoreQueryFilters()
             .Include(s => s.Empresa)
             .Where(s => s.Activo)
             .OrderBy(s => s.Nombre)
-            .Select(s => new SucursalResumenDto(s.Id, s.Nombre, s.EmpresaId, s.Empresa!.Nombre))
+            .Select(s => new SucursalResumenDto(s.Id, s.Nombre, s.EmpresaId, s.Empresa != null ? s.Empresa.Nombre : null))
             .ToListAsync();
     }
 
@@ -288,9 +301,6 @@ public class UsuarioService : IUsuarioService
             Telefono = dto.Telefono,
             Rol = dto.Rol.ToLower(),
             SucursalDefaultId = dto.SucursalDefaultId,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow,
-            CreadoPor = creador?.Email ?? "system",
             Sucursales = new List<UsuarioSucursal>()
         };
 
@@ -524,16 +534,27 @@ public class UsuarioService : IUsuarioService
                 NombreCompleto = nombreCompleto ?? email,
                 Rol = rol ?? Roles.Vendedor,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow,
                 Sucursales = new List<UsuarioSucursal>()
             };
 
             _context.Usuarios.Add(usuario);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "Usuario creado: {KeycloakId}, Email: {Email}, Rol: {Rol}",
-                keycloakId, email, usuario.Rol);
+            try
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation(
+                    "Usuario creado: {KeycloakId}, Email: {Email}, Rol: {Rol}",
+                    keycloakId, email, usuario.Rol);
+            }
+            catch (DbUpdateException)
+            {
+                // Condición de carrera: otro request ya creó el usuario — recargar
+                _context.ChangeTracker.Clear();
+                usuario = await _context.Usuarios
+                    .Include(u => u.Sucursales)
+                    .FirstAsync(u => u.KeycloakId == keycloakId);
+                _logger.LogInformation(
+                    "Usuario {KeycloakId} ya existía (carrera), recargado desde DB.", keycloakId);
+            }
         }
         else
         {

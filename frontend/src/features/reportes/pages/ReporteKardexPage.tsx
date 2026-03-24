@@ -31,8 +31,10 @@ import { sucursalesApi } from '@/api/sucursales';
 import { ReportePageHeader } from '../components/ReportePageHeader';
 import { formatCurrency } from '@/utils/format';
 import type { ProductoDTO } from '@/types/api';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteKardexPage() {
+  const { user, activeEmpresaId } = useAuth();
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -48,13 +50,17 @@ export function ReporteKardexPage() {
     fechaHasta: string;
   } | null>(null);
 
-  const { data: sucursales = [] } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+    queryFn: () => sucursalesApi.getAll(),
   });
+  const sucursales = todasSucursales.filter((s) =>
+    (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+    (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   const { data: productosData } = useQuery({
-    queryKey: ['productos'],
+    queryKey: ['productos', activeEmpresaId],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
   const productos = productosData?.items || [];

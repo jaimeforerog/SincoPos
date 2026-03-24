@@ -28,6 +28,7 @@ public class VentaService : IVentaService
     private readonly ErpSincoOptions _erpOptions;
     private readonly IVentaErpService _ventaErpService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IEthicalGuardService _ethicalGuard;
 
     public VentaService(
         AppDbContext context,
@@ -43,7 +44,8 @@ public class VentaService : IVentaService
         INotificationService notificationService,
         IOptions<ErpSincoOptions> erpOptions,
         IVentaErpService ventaErpService,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IEthicalGuardService ethicalGuard)
     {
         _context = context;
         _session = session;
@@ -59,6 +61,7 @@ public class VentaService : IVentaService
         _erpOptions = erpOptions.Value;
         _ventaErpService = ventaErpService;
         _httpContextAccessor = httpContextAccessor;
+        _ethicalGuard = ethicalGuard;
     }
 
     public async Task<(VentaDto? venta, string? error)> CrearVentaAsync(CrearVentaDto dto)
@@ -87,8 +90,9 @@ public class VentaService : IVentaService
             nitCliente = cliente.Identificacion;
         }
 
-        // Generar numero de venta
+        // Generar numero de venta (IgnoreQueryFilters evita colisión de consecutivo entre empresas)
         var ultimaVenta = await _context.Ventas
+            .IgnoreQueryFilters()
             .Where(v => v.SucursalId == dto.SucursalId)
             .OrderByDescending(v => v.Id)
             .Select(v => v.NumeroVenta)
@@ -238,6 +242,18 @@ public class VentaService : IVentaService
 
         if (dto.MontoPagado.HasValue && dto.MontoPagado.Value < total)
             return (null, $"Monto pagado ({dto.MontoPagado.Value}) es menor al total ({total}).");
+
+        // ── Capa 12: Supervisión Ética ────────────────────────────────────
+        var lineasEtica = detalles.Select(d =>
+        {
+            var prod = productosMap[d.ProductoId];
+            return new LineaVentaEticaDto(d.ProductoId, d.PrecioUnitario, prod.PrecioVenta, d.Descuento, d.Cantidad);
+        }).ToList();
+
+        var guardDto = new EvaluarVentaEticaDto(
+            dto.SucursalId, null, subtotal, descuentoTotal, detalles.Count, lineasEtica);
+        var (permitido, errorGuard) = await _ethicalGuard.EvaluarVentaAsync(guardDto);
+        if (!permitido) return (null, errorGuard);
 
         // ── Acumular asientos contables ERP ───────────────────────────────
         var centroCosto = sucursal.CentroCosto ?? string.Empty;
@@ -654,8 +670,10 @@ public class VentaService : IVentaService
             detallesDevolucion.Add(detalleDevolucion);
         }
 
-        // Generar número de devolución
+        // Generar número de devolución (IgnoreQueryFilters evita colisión entre empresas)
         var ultimaDevolucion = await _context.DevolucionesVenta
+            .IgnoreQueryFilters()
+            .Where(d => d.EmpresaId == venta.EmpresaId)
             .OrderByDescending(d => d.Id)
             .Select(d => d.NumeroDevolucion)
             .FirstOrDefaultAsync();

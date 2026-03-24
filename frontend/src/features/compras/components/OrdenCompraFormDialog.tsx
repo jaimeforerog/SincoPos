@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller, useFieldArray, type FieldError } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -29,13 +29,43 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
-import { sucursalesApi } from '@/api/sucursales';
 import { tercerosApi } from '@/api/terceros';
 import { productosApi } from '@/api/productos';
 import { impuestosApi } from '@/api/impuestos';
+import { inventarioApi } from '@/api/inventario';
+import { sucursalesApi } from '@/api/sucursales';
 import type { CrearOrdenCompraDTO } from '@/types/api';
+import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/stores/auth.store';
 
 type LineaOrdenError = { productoId?: FieldError; cantidad?: FieldError; precioUnitario?: FieldError };
+
+// Columnas del dropdown: código | nombre | stock | valor (precioCosto)
+const COLS = '100px 1fr 60px 80px';
+
+const ProductoPaperHeader = ({ children, ...props }: React.HTMLAttributes<HTMLElement>) => (
+  <Paper {...(props as object)}>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: COLS,
+        px: 1.5, py: '3px',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'grey.100',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1,
+      }}
+    >
+      <Typography variant="caption" fontWeight={700} color="text.secondary">Código</Typography>
+      <Typography variant="caption" fontWeight={700} color="text.secondary">Nombre</Typography>
+      <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textAlign: 'right' }}>Stock</Typography>
+      <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textAlign: 'right' }}>Valor</Typography>
+    </Box>
+    {children}
+  </Paper>
+);
 
 const lineaSchema = z.object({
   productoId: z.string().min(1, 'Seleccione un producto'),
@@ -70,35 +100,50 @@ export function OrdenCompraFormDialog({
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
   const [backendError, setBackendError] = useState<string | null>(null);
+  const { user, activeEmpresaId } = useAuth();
 
-  // Cargar catálogos
-  const { data: sucursales = [] } = useQuery({
-    queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(false),
+  const { data: todasSucursales = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
+    queryFn: () => sucursalesApi.getAll(),
     enabled: open,
+    staleTime: 0,
   });
 
-  const { data: tercerosData } = useQuery({
-    queryKey: ['terceros'],
-    queryFn: () => tercerosApi.getAll(),
-    enabled: open,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const terceros = tercerosData?.items || [];
-
-  // Proveedores: tipo 'Proveedor' o 'Ambos'
-  const proveedores = terceros.filter(
-    (t) => t.tipoTercero === 'Proveedor' || t.tipoTercero === 'Ambos'
+  const sucursales = todasSucursales.filter(
+    (s) =>
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
   );
 
+  const { data: tercerosData } = useQuery({
+    queryKey: ['terceros-proveedores', activeEmpresaId],
+    queryFn: () => tercerosApi.getAll({ tipoTercero: 'Proveedor', pageSize: 100 }),
+    enabled: open,
+    staleTime: 0,
+  });
+
+  const proveedores = tercerosData?.items || [];
+
   const { data: productosData } = useQuery({
-    queryKey: ['productos'],
+    queryKey: ['productos', activeEmpresaId],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
     enabled: open,
+    staleTime: 0,
   });
 
   const productos = productosData?.items || [];
+
+  const activeSucursalId = useAuthStore((s) => s.activeSucursalId);
+  const { data: stockData = [] } = useQuery({
+    queryKey: ['inventario-stock', activeSucursalId],
+    queryFn: () => inventarioApi.getStock({ sucursalId: activeSucursalId }),
+    enabled: open && activeSucursalId != null,
+    staleTime: 60_000,
+  });
+  const stockMap = React.useMemo(
+    () => new Map(stockData.map((s) => [s.productoId, s.cantidad])),
+    [stockData]
+  );
 
   const { data: impuestos = [] } = useQuery({
     queryKey: ['impuestos'],
@@ -168,49 +213,38 @@ export function OrdenCompraFormDialog({
       handleClose();
     },
     onError: (error: any) => {
+      // El interceptor de apiClient transforma AxiosError → ApiError { message, errors, statusCode }
+      const statusCode: number = error?.statusCode ?? 0;
+      const msg: string = error?.message ?? '';
+      const errores: Record<string, string[]> | undefined = error?.errors;
+
       let mensaje = 'Error al crear la orden de compra';
 
-      if (error.response) {
-        // El servidor respondió con un código de error
-        const { status, data } = error.response;
-
-        if (status === 400) {
-          // Error de validación
-          if (data.errors) {
-            // Errores de FluentValidation campo por campo
-            const errores = Object.entries(data.errors)
-              .map(([campo, mensajes]: [string, any]) => `${campo}: ${Array.isArray(mensajes) ? mensajes.join(', ') : mensajes}`)
-              .join('\n');
-            mensaje = `Errores de validación:\n${errores}`;
-          } else if (data.error) {
-            mensaje = data.error;
-          } else if (data.message) {
-            mensaje = data.message;
-          } else {
-            mensaje = 'Los datos proporcionados no son válidos. Revisa el formulario.';
-          }
-        } else if (status === 401) {
-          mensaje = 'No estás autenticado. Por favor inicia sesión nuevamente.';
-        } else if (status === 403) {
-          mensaje = 'No tienes permisos suficientes. Se requiere rol Supervisor para crear órdenes de compra.';
-        } else if (status === 404) {
-          mensaje = data.error || 'Recurso no encontrado. Verifica que la sucursal y el proveedor existan.';
-        } else if (status === 500) {
-          mensaje = `Error del servidor: ${data.error || data.message || 'Error interno. Contacta al administrador.'}`;
+      if (statusCode === 400) {
+        if (errores && Object.keys(errores).length > 0) {
+          const detalle = Object.entries(errores)
+            .map(([campo, msgs]) => `${campo}: ${msgs.join(', ')}`)
+            .join('\n');
+          mensaje = `Errores de validación:\n${detalle}`;
         } else {
-          mensaje = data.error || data.message || `Error HTTP ${status}`;
+          mensaje = msg || 'Los datos proporcionados no son válidos. Revisa el formulario.';
         }
-      } else if (error.request) {
-        // La petición se hizo pero no hubo respuesta
-        mensaje = 'No se pudo conectar con el servidor. Verifica tu conexión a internet y que el backend esté corriendo.';
+      } else if (statusCode === 401) {
+        mensaje = 'No estás autenticado. Por favor inicia sesión nuevamente.';
+      } else if (statusCode === 403) {
+        mensaje = 'No tienes permisos suficientes. Se requiere rol Supervisor para crear órdenes de compra.';
+      } else if (statusCode === 404) {
+        mensaje = msg || 'Recurso no encontrado. Verifica que la sucursal y el proveedor existan.';
+      } else if (statusCode >= 500) {
+        mensaje = msg || 'Error interno del servidor. Contacta al administrador.';
+      } else if (statusCode === 0) {
+        mensaje = msg || 'No se pudo conectar con el servidor.';
       } else {
-        // Error al configurar la petición
-        mensaje = `Error inesperado: ${error.message || JSON.stringify(error)}`;
-        console.error('Error completo:', error);
+        mensaje = msg || `Error HTTP ${statusCode}`;
       }
 
       setBackendError(mensaje);
-      enqueueSnackbar(mensaje.split('\n')[0], { variant: 'error' }); // Solo la primera línea en snackbar
+      enqueueSnackbar(mensaje.split('\n')[0], { variant: 'error' });
     },
   });
 
@@ -246,7 +280,8 @@ export function OrdenCompraFormDialog({
 
   useEffect(() => {
     if (open) {
-      reset(valoresLimpios);
+      const sucursalInicial = activeSucursalId ?? 0;
+      reset({ ...valoresLimpios, sucursalId: sucursalInicial });
       setBackendError(null);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -325,9 +360,7 @@ export function OrdenCompraFormDialog({
                   label="Forma de Pago *"
                   onChange={(e) => {
                     onChange(e);
-                    // Si cambia a contado, reiniciar días
                     if (e.target.value === 'Contado') {
-                      control._defaultValues.diasPlazo = 0; // Para no romper reset
                       reset({ ...watch(), formaPago: 'Contado' as const, diasPlazo: 0 });
                     }
                   }}
@@ -341,33 +374,26 @@ export function OrdenCompraFormDialog({
               )}
             />
 
-            {/* Días Plazo */}
-            <Controller
-              name="diasPlazo"
-              control={control}
-              render={({ field: { value, onChange, ...field } }) => {
-                return (
+            {/* Días Plazo — solo visible en Crédito */}
+            {watch('formaPago') === 'Credito' && (
+              <Controller
+                name="diasPlazo"
+                control={control}
+                render={({ field: { value, onChange, ...field } }) => (
                   <TextField
                     {...field}
                     type="number"
                     label="Días Plazo"
                     value={value}
-                    onChange={(e) => {
-                      const newDias = Number(e.target.value);
-                      onChange(newDias);
-                      // Si ponen días > 0, cambiar automáticamente a Crédito
-                      if (newDias > 0 && watch('formaPago') === 'Contado') {
-                        reset({ ...watch(), diasPlazo: newDias, formaPago: 'Credito' as const });
-                      }
-                    }}
+                    onChange={(e) => onChange(Number(e.target.value))}
                     error={!!errors.diasPlazo}
                     helperText={errors.diasPlazo?.message}
                     fullWidth
-                    inputProps={{ min: 0 }}
+                    inputProps={{ min: 1 }}
                   />
-                );
-              }}
-            />
+                )}
+              />
+            )}
 
             {/* Fecha de entrega esperada */}
             <Controller
@@ -406,6 +432,7 @@ export function OrdenCompraFormDialog({
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">Productos</Typography>
             <Button
+              type="button"
               variant="outlined"
               startIcon={<AddIcon />}
               onClick={agregarLinea}
@@ -422,14 +449,14 @@ export function OrdenCompraFormDialog({
           )}
 
           <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-            <Table size="small">
+            <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 1 } }}>
               <TableHead>
-                <TableRow>
-                  <TableCell width="30%">Producto</TableCell>
-                  <TableCell width="12%">Cantidad</TableCell>
-                  <TableCell width="18%">Precio Unit.</TableCell>
-                  <TableCell width="22%">Impuesto</TableCell>
-                  <TableCell width="13%" align="right">Subtotal</TableCell>
+                <TableRow sx={{ bgcolor: 'grey.50' }}>
+                  <TableCell width="32%">Producto</TableCell>
+                  <TableCell width="10%">Cant.</TableCell>
+                  <TableCell width="16%">Precio Unit.</TableCell>
+                  <TableCell width="20%">Impuesto</TableCell>
+                  <TableCell width="17%" align="right">Subtotal</TableCell>
                   <TableCell width="5%"></TableCell>
                 </TableRow>
               </TableHead>
@@ -437,8 +464,8 @@ export function OrdenCompraFormDialog({
                 {fields.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center">
-                      <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                        No hay productos agregados. Haga clic en "Agregar Producto"
+                      <Typography variant="body2" color="text.secondary" sx={{ py: 1.5 }}>
+                        No hay productos. Clic en "Agregar Producto"
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -448,7 +475,7 @@ export function OrdenCompraFormDialog({
                     const subtotalLinea = linea ? linea.cantidad * linea.precioUnitario : 0;
 
                     return (
-                      <TableRow key={field.id}>
+                      <TableRow key={field.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
                         <TableCell>
                           <Controller
                             name={`lineas.${index}.productoId`}
@@ -458,7 +485,6 @@ export function OrdenCompraFormDialog({
                                 value={productos.find((p) => p.id === value) || null}
                                 onChange={(_, newValue) => {
                                   if (newValue) {
-                                    // Verificar si el producto ya existe en otra línea
                                     const currentLineas = watch('lineas');
                                     const lineaDuplicada = currentLineas.findIndex(
                                       (l, i) => i !== index && l.productoId === newValue.id
@@ -468,7 +494,7 @@ export function OrdenCompraFormDialog({
                                         `"${newValue.nombre}" ya está en la línea ${lineaDuplicada + 1}. Modifica la cantidad en esa línea.`,
                                         { variant: 'warning' }
                                       );
-                                      return; // No permite agregar duplicado
+                                      return;
                                     }
                                     onChange(newValue.id);
                                     currentLineas[index].precioUnitario = newValue.precioCosto;
@@ -479,15 +505,46 @@ export function OrdenCompraFormDialog({
                                   }
                                 }}
                                 options={productos}
-                                getOptionLabel={(option) =>
-                                  `${option.nombre} (${option.codigoBarras})`
-                                }
+                                getOptionLabel={(option) => `${option.nombre} (${option.codigoBarras})`}
+                                PaperComponent={ProductoPaperHeader}
+                                slotProps={{ listbox: { style: { maxHeight: 480 } } }}
+                                renderOption={(props, option) => {
+                                  const stock = stockMap.get(option.id);
+                                  return (
+                                    <Box
+                                      component="li"
+                                      {...props}
+                                      sx={{
+                                        display: 'grid !important',
+                                        gridTemplateColumns: COLS,
+                                        px: '12px !important',
+                                        py: '2px !important',
+                                        minHeight: '0 !important',
+                                        gap: 0.5,
+                                        alignItems: 'center',
+                                      }}
+                                    >
+                                      <Typography variant="caption" noWrap sx={{ fontFamily: 'monospace', color: 'text.secondary', fontSize: '0.72rem' }}>
+                                        {option.codigoBarras}
+                                      </Typography>
+                                      <Typography variant="caption" noWrap sx={{ fontSize: '0.75rem' }}>
+                                        {option.nombre}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ textAlign: 'right', fontSize: '0.72rem', color: stock === 0 ? 'error.main' : stock != null ? 'success.main' : 'text.disabled' }}>
+                                        {stock != null ? stock : '—'}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ textAlign: 'right', fontSize: '0.72rem', fontWeight: 500 }}>
+                                        ${option.precioCosto.toLocaleString('es-CO')}
+                                      </Typography>
+                                    </Box>
+                                  );
+                                }}
                                 renderInput={(params) => (
                                   <TextField
                                     {...params}
                                     error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.productoId}
-                                    helperText={(errors.lineas?.[index] as LineaOrdenError | undefined)?.productoId?.message}
                                     size="small"
+                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem', py: '4px' } }}
                                   />
                                 )}
                                 size="small"
@@ -508,7 +565,7 @@ export function OrdenCompraFormDialog({
                                 error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.cantidad}
                                 size="small"
                                 fullWidth
-                                inputProps={{ min: 0, step: 1 }}
+                                inputProps={{ min: 0, step: 1, style: { fontSize: '0.8rem', padding: '4px 6px' } }}
                               />
                             )}
                           />
@@ -526,7 +583,7 @@ export function OrdenCompraFormDialog({
                                 error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.precioUnitario}
                                 size="small"
                                 fullWidth
-                                inputProps={{ min: 0, step: 1 }}
+                                inputProps={{ min: 0, step: 1, style: { fontSize: '0.8rem', padding: '4px 6px' } }}
                               />
                             )}
                           />
@@ -545,10 +602,11 @@ export function OrdenCompraFormDialog({
                                 }
                                 size="small"
                                 fullWidth
+                                sx={{ '& .MuiSelect-select': { fontSize: '0.8rem', py: '4px' } }}
                               >
-                                <MenuItem value="">Auto (del producto)</MenuItem>
+                                <MenuItem value="" sx={{ fontSize: '0.8rem' }}>Auto</MenuItem>
                                 {impuestos.map((impuesto) => (
-                                  <MenuItem key={impuesto.id} value={impuesto.id}>
+                                  <MenuItem key={impuesto.id} value={impuesto.id} sx={{ fontSize: '0.8rem' }}>
                                     {impuesto.nombre}
                                   </MenuItem>
                                 ))}
@@ -557,17 +615,18 @@ export function OrdenCompraFormDialog({
                           />
                         </TableCell>
                         <TableCell align="right">
-                          <Typography variant="body2">
+                          <Typography variant="caption" fontWeight={500}>
                             ${subtotalLinea.toLocaleString('es-CO')}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell padding="none">
                           <IconButton
                             size="small"
                             color="error"
                             onClick={() => remove(index)}
+                            sx={{ p: 0.5 }}
                           >
-                            <DeleteIcon fontSize="small" />
+                            <DeleteIcon sx={{ fontSize: 16 }} />
                           </IconButton>
                         </TableCell>
                       </TableRow>
@@ -605,7 +664,7 @@ export function OrdenCompraFormDialog({
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleClose} disabled={mutation.isPending}>
+          <Button type="button" onClick={handleClose} disabled={mutation.isPending}>
             Cancelar
           </Button>
           <Button

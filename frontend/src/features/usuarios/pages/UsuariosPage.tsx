@@ -238,7 +238,7 @@ function CambiarEstadoDialog({ usuario, onClose, onConfirm, loading }: CambiarEs
 export function UsuariosPage() {
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
-  const { user: currentUser, setUser } = useAuthStore();
+  const { user: currentUser, setUser, activeEmpresaId } = useAuthStore();
   const { isAdmin } = useAuth();
 
   // Filtros
@@ -263,10 +263,15 @@ export function UsuariosPage() {
     }),
   });
 
-  const { data: sucursales = [] } = useQuery({
-    queryKey: ['sucursales'],
+  const { data: todasSucursalesPage = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
     queryFn: () => sucursalesApi.listar(),
+    staleTime: 0,
   });
+
+  const sucursales = todasSucursalesPage.filter(
+    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+  );
 
   // Mutations
   const mutSucursal = useMutation({

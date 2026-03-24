@@ -11,6 +11,8 @@ import {
   Business,
   Inventory,
   Article,
+  Hub,
+  AccountTree,
 } from '@mui/icons-material';
 import { MenuSection } from './MenuSection';
 
@@ -88,6 +90,18 @@ export const menuSections: MenuSection[] = [
         text: 'Reportes',
         icon: <Assessment />,
         path: '/reportes',
+        roles: ['supervisor', 'admin'],
+      },
+      {
+        text: 'Inteligencia Colectiva',
+        icon: <Hub />,
+        path: '/inteligencia',
+        roles: ['supervisor', 'admin'],
+      },
+      {
+        text: 'Monitor Pipeline',
+        icon: <AccountTree />,
+        path: '/pipeline',
         roles: ['supervisor', 'admin'],
       },
     ],

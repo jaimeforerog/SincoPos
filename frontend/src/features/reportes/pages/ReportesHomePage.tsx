@@ -1,4 +1,4 @@
-import { Container, Box, Typography, Skeleton, Chip } from '@mui/material';
+import { Box, Container, Typography, Skeleton, Chip } from '@mui/material';
 import {
   Timeline,
   Inventory,
@@ -123,7 +123,7 @@ export function ReportesHomePage() {
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', activeSucursalId],
     queryFn: () => reportesApi.dashboard({ sucursalId: activeSucursalId }),
-    staleTime: 60000,
+    refetchInterval: 60000,
   });
 
   const availableModules = reportModules.filter(

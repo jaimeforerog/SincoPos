@@ -35,7 +35,8 @@ public class AlertaVencimientoBackgroundService : BackgroundService
             var delay = CalcularDelayHastaProximaEjecucion();
             _logger.LogInformation("Próxima verificación de vencimientos en {Delay:hh\\:mm\\:ss}.", delay);
 
-            await Task.Delay(delay, stoppingToken);
+            try { await Task.Delay(delay, stoppingToken); }
+            catch (OperationCanceledException) { break; }
 
             if (stoppingToken.IsCancellationRequested)
                 break;

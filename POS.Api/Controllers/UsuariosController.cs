@@ -81,6 +81,12 @@ public class UsuariosController : ControllerBase
         await _usuarioService.ObtenerOCrearUsuarioAsync(externalId, email, nombreCompleto, rolPrincipal);
 
         var perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
+        // Reintento: puede ocurrir en condición de carrera donde la creación aún no es visible
+        if (perfil == null)
+        {
+            await Task.Delay(100);
+            perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
+        }
         if (perfil == null)
             return StatusCode(500, "Error al obtener perfil de usuario");
 
@@ -110,6 +116,29 @@ public class UsuariosController : ControllerBase
                 .FirstOrDefaultAsync()
             : null;
 
+        // Empresas disponibles: para admin/supervisor incluir TODAS las empresas activas
+        // (incluso las que no tienen sucursales aún, para que puedan crearlas).
+        // Para otros roles, derivar únicamente de sus sucursales asignadas.
+        List<EmpresaResumenDto> empresasDisponibles;
+        if (perfil.Rol.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+            perfil.Rol.Equals("supervisor", StringComparison.OrdinalIgnoreCase))
+        {
+            empresasDisponibles = await _db.Empresas
+                .IgnoreQueryFilters()
+                .Where(e => e.Activo)
+                .OrderBy(e => e.Nombre)
+                .Select(e => new EmpresaResumenDto(e.Id, e.Nombre))
+                .ToListAsync();
+        }
+        else
+        {
+            empresasDisponibles = sucursalesAsignadas
+                .Where(s => s.EmpresaId != null)
+                .GroupBy(s => s.EmpresaId!)
+                .Select(g => new EmpresaResumenDto(g.Key!.Value, g.First().EmpresaNombre ?? $"Empresa {g.Key}"))
+                .ToList();
+        }
+
         // Rebuild with permisos and potentially expanded sucursales
         var dto = new PerfilUsuarioDto(
             perfil.Id,
@@ -123,7 +152,8 @@ public class UsuariosController : ControllerBase
             permisos,
             sucursalesAsignadas,
             empresaInfo?.EmpresaId,
-            empresaInfo?.Nombre
+            empresaInfo?.Nombre,
+            empresasDisponibles
         );
 
         return Ok(dto);

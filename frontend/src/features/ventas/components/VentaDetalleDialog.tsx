@@ -19,7 +19,10 @@ import SyncIcon from '@mui/icons-material/Sync';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import PrintIcon from '@mui/icons-material/Print';
 import type { VentaDTO } from '@/types/api';
+import { useAuth } from '@/hooks/useAuth';
+import { printTicket } from '@/utils/printTicket';
 
 interface VentaDetalleDialogProps {
   open: boolean;
@@ -28,6 +31,7 @@ interface VentaDetalleDialogProps {
 }
 
 export function VentaDetalleDialog({ open, venta, onClose }: VentaDetalleDialogProps) {
+  const { user } = useAuth();
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -259,6 +263,13 @@ export function VentaDetalleDialog({ open, venta, onClose }: VentaDetalleDialogP
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button
+          variant="outlined"
+          startIcon={<PrintIcon />}
+          onClick={() => printTicket(venta, user?.nombre ?? user?.email)}
+        >
+          Imprimir
+        </Button>
         <Button onClick={onClose} variant="contained">
           Cerrar
         </Button>

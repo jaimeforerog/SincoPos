@@ -55,6 +55,8 @@ public class AppDbContext : DbContext
     public DbSet<ErpOutboxMessage> ErpOutboxMessages => Set<ErpOutboxMessage>();
     public DbSet<DocumentoContable> DocumentosContables => Set<DocumentoContable>();
     public DbSet<DetalleDocumentoContable> DetallesDocumentoContable => Set<DetalleDocumentoContable>();
+    public DbSet<ReglaEtica> ReglasEticas => Set<ReglaEtica>();
+    public DbSet<ActivacionReglaEtica> ActivacionesReglaEtica => Set<ActivacionReglaEtica>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,70 +91,100 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Producto>().HasQueryFilter(p =>
             _empresaProvider == null ||
             _empresaProvider.EmpresaId == null ||
-            p.EmpresaId == null ||
             p.EmpresaId == _empresaProvider.EmpresaId);
 
         modelBuilder.Entity<Categoria>().HasQueryFilter(c =>
             _empresaProvider == null ||
             _empresaProvider.EmpresaId == null ||
-            c.EmpresaId == null ||
             c.EmpresaId == _empresaProvider.EmpresaId);
 
         modelBuilder.Entity<Tercero>().HasQueryFilter(t =>
             _empresaProvider == null ||
             _empresaProvider.EmpresaId == null ||
-            t.EmpresaId == null ||
             t.EmpresaId == _empresaProvider.EmpresaId);
 
-        // Entidades transaccionales: filtro combinado Activo (soft-delete) + empresa.
-        // Estos HasQueryFilter reemplazan el filtro genérico del loop de ISoftDelete para estas entidades.
+        // Entidades transaccionales: filtro estricto por empresa.
+        // EmpresaId == null en el registro NO se comparte entre empresas —
+        // solo es visible cuando no hay contexto de empresa (tests, background services).
         modelBuilder.Entity<Venta>().HasQueryFilter(v =>
             v.Activo &&
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
-             v.EmpresaId == null ||
              v.EmpresaId == _empresaProvider.EmpresaId));
 
         modelBuilder.Entity<DevolucionVenta>().HasQueryFilter(d =>
             d.Activo &&
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
-             d.EmpresaId == null ||
              d.EmpresaId == _empresaProvider.EmpresaId));
 
         modelBuilder.Entity<Caja>().HasQueryFilter(c =>
             c.Activo &&
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
-             c.EmpresaId == null ||
              c.EmpresaId == _empresaProvider.EmpresaId));
 
         modelBuilder.Entity<OrdenCompra>().HasQueryFilter(o =>
             o.Activo &&
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
-             o.EmpresaId == null ||
              o.EmpresaId == _empresaProvider.EmpresaId));
 
         modelBuilder.Entity<Traslado>().HasQueryFilter(t =>
             t.Activo &&
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
-             t.EmpresaId == null ||
              t.EmpresaId == _empresaProvider.EmpresaId));
 
         modelBuilder.Entity<DocumentoElectronico>().HasQueryFilter(d =>
             d.Activo &&
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
-             d.EmpresaId == null ||
              d.EmpresaId == _empresaProvider.EmpresaId));
+
+        // Sucursal: filtro estricto por empresa (igual que entidades transaccionales)
+        modelBuilder.Entity<Sucursal>().HasQueryFilter(s =>
+            s.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             s.EmpresaId == _empresaProvider.EmpresaId));
+
+        // Tax Engine: impuestos, retenciones y conceptos de retención por empresa
+        modelBuilder.Entity<Impuesto>().HasQueryFilter(i =>
+            i.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             i.EmpresaId == _empresaProvider.EmpresaId));
+
+        modelBuilder.Entity<RetencionRegla>().HasQueryFilter(r =>
+            r.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             r.EmpresaId == _empresaProvider.EmpresaId));
+
+        modelBuilder.Entity<ConceptoRetencion>().HasQueryFilter(c =>
+            c.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             c.EmpresaId == _empresaProvider.EmpresaId));
     }
 
     /// <summary>
     /// Sobrescribe SaveChangesAsync para capturar automáticamente información de auditoría
     /// en todas las entidades que heredan de EntidadAuditable.
     /// </summary>
+    public override int SaveChanges()
+    {
+        CapturarInformacionAuditoria();
+        return base.SaveChanges();
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        CapturarInformacionAuditoria();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         // Capturar información de auditoría antes de guardar

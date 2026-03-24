@@ -25,26 +25,37 @@ import { posSessionCache } from '@/offline/posSessionCache';
 interface SeleccionarCajaDialogProps {
   open: boolean;
   onSelect: (cajaId: number, sucursalId: number) => void;
+  onClose?: () => void;
 }
 
-export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogProps) {
+export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCajaDialogProps) {
   const { activeSucursalId, activeEmpresaId, user } = useAuth();
   const isOnline = useOfflineStore((s) => s.isOnline);
   const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
 
-  // Cargar sucursales (online)
-  const { data: sucursalesOnline = [], isLoading: loadingSucursales } = useQuery({
-    queryKey: ['sucursales'],
+  // Cargar sucursales desde la API (filtradas por empresa activa vía middleware)
+  const { data: sucursalesOnline = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
     queryFn: async () => {
-      const data = await sucursalesApi.getAll(true);
-      posSessionCache.saveSucursales(data); // cachear para offline
+      const data = await sucursalesApi.getAll();
+      posSessionCache.saveSucursales(data);
       return data;
     },
     enabled: open && isOnline,
+    staleTime: 0,
   });
 
-  // Cargar cajas de la sucursal seleccionada (online)
+  // Resetear selecciones cada vez que el diálogo se abre
+  useEffect(() => {
+    if (open) {
+      setSelectedSucursalId(null);
+      setSelectedCajaId(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Cargar cajas de la sucursal seleccionada
   const { data: cajasOnline = [], isLoading: loadingCajas } = useQuery({
     queryKey: ['cajas', selectedSucursalId],
     queryFn: () =>
@@ -55,23 +66,24 @@ export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogP
     enabled: open && selectedSucursalId !== null && isOnline,
   });
 
-  // IDs de sucursales del usuario para la empresa activa
-  const sucursalIdsEmpresa = new Set(
-    (user?.sucursalesDisponibles ?? [])
-      .filter(s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null)
-      .map(s => s.id)
-  );
+  // Lista de sucursales: si el usuario tiene sucursales asignadas, intersectar;
+  // si no tiene (admin sin asignación explícita), mostrar todas las de la empresa (ya filtradas por backend)
+  const filtrarPorAsignadas = (lista: typeof sucursalesOnline) =>
+    user?.sucursalesDisponibles?.length
+      ? lista.filter((s) => user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+      : lista;
 
-  // Datos finales: online → API filtrada por empresa, offline → cache filtrada
-  const sucursalesRaw = isOnline ? sucursalesOnline : posSessionCache.loadSucursales();
-  const sucursales = sucursalesRaw.filter(s => sucursalIdsEmpresa.size === 0 || sucursalIdsEmpresa.has(s.id));
+  const sucursales = isOnline
+    ? filtrarPorAsignadas(sucursalesOnline)
+    : filtrarPorAsignadas(posSessionCache.loadSucursales());
+
   const cajas = isOnline
     ? cajasOnline
     : posSessionCache
         .loadCajas()
         .filter((c) => c.sucursalId === selectedSucursalId && c.estado === 'Abierta');
 
-  // Auto-seleccionar la sucursal activa del usuario — solo cuando las opciones ya están disponibles
+  // Auto-seleccionar la sucursal activa cuando las opciones están disponibles
   useEffect(() => {
     if (activeSucursalId && !selectedSucursalId && open && sucursales.length > 0) {
       if (sucursales.some((s) => s.id === activeSucursalId)) {
@@ -82,7 +94,7 @@ export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogP
 
   const handleSucursalChange = (sucursalId: number) => {
     setSelectedSucursalId(sucursalId);
-    setSelectedCajaId(null); // Limpiar caja al cambiar sucursal
+    setSelectedCajaId(null);
   };
 
   const handleConfirm = () => {
@@ -92,7 +104,6 @@ export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogP
   };
 
   const selectedSucursal = sucursales.find((s) => s.id === selectedSucursalId);
-  const isLoading = isOnline && (loadingSucursales || loadingCajas);
   const noCachedData = !isOnline && sucursales.length === 0;
 
   return (
@@ -100,9 +111,10 @@ export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogP
       open={open}
       maxWidth="sm"
       fullWidth
-      disableEscapeKeyDown
+      disableEscapeKeyDown={!onClose}
       onClose={(_, reason) => {
-        if (reason === 'backdropClick' || reason === 'escapeKeyDown') return;
+        if (reason === 'backdropClick') return;
+        onClose?.();
       }}
     >
       <DialogTitle>
@@ -120,50 +132,47 @@ export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogP
         <Box sx={{ mt: 2 }}>
           {/* Banner offline */}
           {!isOnline && (
-            <Alert
-              severity="warning"
-              icon={<WifiOffIcon />}
-              sx={{ mb: 2 }}
-            >
+            <Alert severity="warning" icon={<WifiOffIcon />} sx={{ mb: 2 }}>
               Sin conexión — mostrando cajas de la última sesión conocida
             </Alert>
           )}
 
-          {/* Sin datos en cache offline */}
           {noCachedData ? (
             <Alert severity="error">
               Sin conexión y sin datos cacheados. Conéctate a internet para iniciar el POS por primera vez.
             </Alert>
-          ) : isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : sucursales.length === 0 ? (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              No hay sucursales disponibles. Contacta al administrador.
-            </Alert>
           ) : (
             <>
               {/* Selector de Sucursal */}
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel>Sucursal *</InputLabel>
-                <Select
-                  value={selectedSucursalId || ''}
-                  onChange={(e) => handleSucursalChange(e.target.value as number)}
-                  label="Sucursal *"
-                >
-                  {sucursales.map((sucursal) => (
-                    <MenuItem key={sucursal.id} value={sucursal.id}>
-                      {sucursal.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {sucursales.length === 0 ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  No hay sucursales disponibles. Contacta al administrador.
+                </Alert>
+              ) : (
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel>Sucursal *</InputLabel>
+                  <Select
+                    value={selectedSucursalId || ''}
+                    onChange={(e) => handleSucursalChange(e.target.value as number)}
+                    label="Sucursal *"
+                  >
+                    {sucursales.map((sucursal) => (
+                      <MenuItem key={sucursal.id} value={sucursal.id}>
+                        {sucursal.nombre}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
 
               {/* Selector de Caja */}
               {selectedSucursalId && (
                 <>
-                  {cajas.length === 0 ? (
+                  {loadingCajas ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                      <CircularProgress size={28} />
+                    </Box>
+                  ) : cajas.length === 0 ? (
                     <Alert severity="warning">
                       No hay cajas abiertas en <strong>{selectedSucursal?.nombre}</strong>.
                       <br />
@@ -203,7 +212,12 @@ export function SeleccionarCajaDialog({ open, onSelect }: SeleccionarCajaDialogP
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        {onClose && (
+          <Button variant="outlined" onClick={onClose} size="large">
+            Cancelar
+          </Button>
+        )}
         <Button
           variant="contained"
           onClick={handleConfirm}

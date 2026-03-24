@@ -6,7 +6,6 @@ import {
   CircularProgress,
   Typography,
   InputAdornment,
-  List,
   Chip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -38,11 +37,11 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
   const [voiceQty, setVoiceQty]       = useState<number | null>(null);
   const debouncedSearch               = useDebounce(searchTerm, 300);
   const searchInputRef                = useRef<HTMLInputElement>(null);
-  const { activeSucursalId }          = useAuth();
+  const { activeSucursalId, activeEmpresaId } = useAuth();
 
   // Catálogo paginado con búsqueda debounced
   const { data: productosData, isLoading } = useQuery({
-    queryKey: ['productos', debouncedSearch],
+    queryKey: ['productos', debouncedSearch, activeEmpresaId],
     queryFn:  () => productosApi.getAll({ query: debouncedSearch || undefined, incluirInactivos: false }),
     enabled:  true,
   });
@@ -184,22 +183,45 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
           </Typography>
         )}
 
-        <List sx={{ p: 0 }}>
-          {productos.map((producto) => {
-            const stockInfo = Array.isArray(inventarios)
-              ? inventarios.find((inv) => inv.productoId === producto.id)
-              : null;
-            return (
-              <ProductCard
-                key={producto.id}
-                producto={producto}
-                stock={stockInfo?.cantidad ?? 0}
-                precio={precioMap.get(producto.id)}
-                onClick={handleSelectProduct}
-              />
-            );
-          })}
-        </List>
+        {/* Cabecera de tabla */}
+        {productos.length > 0 && (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '110px 1fr 52px 90px',
+              alignItems: 'center',
+              gap: 1,
+              px: 1,
+              py: '3px',
+              borderBottom: '2px solid',
+              borderColor: 'divider',
+              bgcolor: 'grey.100',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+            }}
+          >
+            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ fontSize: '0.7rem' }}>Código</Typography>
+            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ fontSize: '0.7rem' }}>Nombre</Typography>
+            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ fontSize: '0.7rem', textAlign: 'right' }}>Stock</Typography>
+            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ fontSize: '0.7rem', textAlign: 'right' }}>Valor</Typography>
+          </Box>
+        )}
+
+        {productos.map((producto) => {
+          const stockInfo = Array.isArray(inventarios)
+            ? inventarios.find((inv) => inv.productoId === producto.id)
+            : null;
+          return (
+            <ProductCard
+              key={producto.id}
+              producto={producto}
+              stock={stockInfo?.cantidad ?? 0}
+              precio={precioMap.get(producto.id)}
+              onClick={handleSelectProduct}
+            />
+          );
+        })}
       </Box>
     </Box>
   );

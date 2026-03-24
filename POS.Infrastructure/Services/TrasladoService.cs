@@ -58,8 +58,9 @@ public class TrasladoService : ITrasladoService
                 return (null, $"Stock insuficiente para {producto.Nombre}. Disponible: {stock?.Cantidad ?? 0}, Solicitado: {linea.Cantidad}");
         }
 
-        // Generar número de traslado
+        // Generar número de traslado (IgnoreQueryFilters evita colisión entre empresas)
         var ultimoTraslado = await _context.Traslados
+            .IgnoreQueryFilters()
             .OrderByDescending(t => t.Id)
             .FirstOrDefaultAsync();
         var numeroTraslado = $"TRAS-{(ultimoTraslado?.Id ?? 0) + 1:000000}";

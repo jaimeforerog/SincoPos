@@ -23,6 +23,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { trasladosApi } from '@/api/traslados';
 import { sucursalesApi } from '@/api/sucursales';
+import { useAuth } from '@/hooks/useAuth';
 import { productosApi } from '@/api/productos';
 import { inventarioApi } from '@/api/inventario';
 import type { ProductoDTO, SucursalDTO, CrearTrasladoDTO, LineaTrasladoDTO } from '@/types/api';
@@ -40,6 +41,7 @@ interface LineaLocal extends LineaTrasladoDTO {
 
 export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
   const { enqueueSnackbar } = useSnackbar();
+  const { user, activeEmpresaId } = useAuth();
   const [sucursalOrigen, setSucursalOrigen] = useState<SucursalDTO | null>(null);
   const [sucursalDestino, setSucursalDestino] = useState<SucursalDTO | null>(null);
   const [observaciones, setObservaciones] = useState('');
@@ -47,14 +49,20 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
   const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoDTO | null>(null);
   const [cantidad, setCantidad] = useState(1);
 
-  const { data: sucursales } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.listar(),
+    queryFn: () => sucursalesApi.getAll(),
     enabled: open,
+    staleTime: 5 * 60 * 1000,
   });
+  const sucursales = todasSucursales.filter(
+    (s) =>
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   const { data: productosData } = useQuery({
-    queryKey: ['productos'],
+    queryKey: ['productos', activeEmpresaId],
     queryFn: () => productosApi.listar(),
     enabled: open,
   });

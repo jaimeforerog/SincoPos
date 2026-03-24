@@ -28,7 +28,7 @@ interface Props {
 }
 
 export function DevolucionProveedorDialog({ open, onClose, onSuccess }: Props) {
-  const { activeSucursalId } = useAuth();
+  const { activeSucursalId, activeEmpresaId } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
   const [productoId, setProductoId] = useState<string>('');
@@ -40,7 +40,7 @@ export function DevolucionProveedorDialog({ open, onClose, onSuccess }: Props) {
 
   // Cargar productos
   const { data: productosData } = useQuery({
-    queryKey: ['productos'],
+    queryKey: ['productos', activeEmpresaId],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
   const productos = productosData?.items || [];

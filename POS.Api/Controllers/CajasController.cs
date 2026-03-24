@@ -80,8 +80,6 @@ public class CajasController : ControllerBase
             EmpresaId = sucursal.EmpresaId,
             SucursalId = dto.SucursalId,
             Estado = EstadoCaja.Cerrada,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
         };
 
         _context.Cajas.Add(caja);
@@ -208,7 +206,9 @@ public class CajasController : ControllerBase
             return ValidationProblem();
         }
 
-        var caja = await _context.Cajas.FindAsync(id);
+        var caja = await _context.Cajas
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id);
         if (caja == null)
             return Problem(detail: $"Caja {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
@@ -291,7 +291,9 @@ public class CajasController : ControllerBase
             return ValidationProblem();
         }
 
-        var caja = await _context.Cajas.FindAsync(id);
+        var caja = await _context.Cajas
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id);
         if (caja == null)
             return Problem(detail: $"Caja {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 
@@ -357,7 +359,9 @@ public class CajasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult> DesactivarCaja(int id)
     {
-        var caja = await _context.Cajas.FindAsync(id);
+        var caja = await _context.Cajas
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id);
         if (caja == null)
             return Problem(detail: $"Caja {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
 

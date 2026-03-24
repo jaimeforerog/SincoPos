@@ -54,6 +54,10 @@ apiClient.interceptors.response.use(
         // FluentValidation returns array of error strings
         message = data.join('. ');
         errors = data;
+      } else if (data?.detail) {
+        // ASP.NET ProblemDetails RFC 7807: detail is the human-readable explanation
+        message = data.detail;
+        errors = data.errors;
       } else if (data?.error) {
         message = data.error;
       } else if (data?.message) {

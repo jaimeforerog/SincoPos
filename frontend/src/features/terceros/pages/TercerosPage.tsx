@@ -51,6 +51,7 @@ import {
 import { tercerosApi } from '@/api/terceros';
 import type { TerceroDTO, TerceroActividadDTO, ResultadoImportacionTercerosDTO } from '@/types/api';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
+import { useAuthStore } from '@/stores/auth.store';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
@@ -767,6 +768,7 @@ function ImportarTercerosDialog({ open, onClose, onImportado }: ImportarDialogPr
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function TercerosPage() {
+  const { activeEmpresaId } = useAuthStore();
   const [terceros, setTerceros] = useState<TerceroDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -778,6 +780,9 @@ export default function TercerosPage() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Reset página al cambiar empresa
+  useEffect(() => { setPage(0); }, [activeEmpresaId]);
 
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
@@ -804,7 +809,7 @@ export default function TercerosPage() {
     } finally {
       setLoading(false);
     }
-  }, [busqueda, tipoFiltro, incluirInactivos, page, pageSize]);
+  }, [busqueda, tipoFiltro, incluirInactivos, page, pageSize, activeEmpresaId]);
 
   useEffect(() => { cargar(); }, [cargar]);
 

@@ -30,8 +30,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useSnackbar } from 'notistack';
 import { useAuth } from '@/hooks/useAuth';
 import { productosApi } from '@/api/productos';
-import { sucursalesApi } from '@/api/sucursales';
 import { preciosApi } from '@/api/precios';
+import { sucursalesApi } from '@/api/sucursales';
 import { EditarPrecioDialog } from '../components/EditarPrecioDialog';
 import { ImportarPreciosDialog } from '../components/ImportarPreciosDialog';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
@@ -44,7 +44,7 @@ interface ProductoConPrecio extends ProductoDTO {
 
 export function PreciosPage() {
   const { enqueueSnackbar } = useSnackbar();
-  const { isSupervisor } = useAuth();
+  const { isSupervisor, user, activeEmpresaId } = useAuth();
   const queryClient = useQueryClient();
 
   const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
@@ -59,15 +59,21 @@ export function PreciosPage() {
     setBusqueda('');
   }, [selectedSucursalId]);
 
-  // Cargar sucursales
-  const { data: sucursales = [] } = useQuery({
+  const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+    queryFn: () => sucursalesApi.getAll(),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const sucursales = todasSucursales.filter(
+    (s) =>
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   // Cargar productos activos (solo si hay sucursal seleccionada)
   const { data: productosData, isLoading: loadingProductos } = useQuery({
-    queryKey: ['productos', busqueda],
+    queryKey: ['productos', busqueda, activeEmpresaId],
     queryFn: () =>
       productosApi.getAll({
         query: busqueda || undefined,

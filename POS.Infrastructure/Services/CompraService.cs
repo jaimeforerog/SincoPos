@@ -83,8 +83,8 @@ public class CompraService : ICompraService
                 .ToDictionaryAsync(i => i.Id)
             : new Dictionary<int, Impuesto>();
 
-        // Generar número de orden con MAX(Id) en vez de cargar la entidad completa
-        var maxId = await _context.OrdenesCompra.MaxAsync(o => (int?)o.Id) ?? 0;
+        // Generar número de orden con MAX(Id) global (IgnoreQueryFilters evita colisión entre empresas)
+        var maxId = await _context.OrdenesCompra.IgnoreQueryFilters().MaxAsync(o => (int?)o.Id) ?? 0;
         var numeroOrden = $"OC-{maxId + 1:000000}";
 
         // Calcular totales usando TaxEngine

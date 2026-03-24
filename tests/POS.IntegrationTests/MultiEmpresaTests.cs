@@ -34,11 +34,21 @@ public class MultiEmpresaTests
         var service = scope.ServiceProvider.GetRequiredService<IProductoService>();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // Con filtro estricto la categoria debe pertenecer a la misma empresa
+        var categoriaEmpresa5 = new Categoria
+        {
+            Nombre = "Categoria Empresa 5 Test",
+            Activo = true,
+            EmpresaId = 5
+        };
+        context.Categorias.Add(categoriaEmpresa5);
+        await context.SaveChangesAsync();
+
         var dto = new CrearProductoDto(
             CodigoBarras: "EMP-ME-PROD-001",
             Nombre: "Producto MultiEmpresa Test",
             Descripcion: null,
-            CategoriaId: _factory.CategoriaTestId,
+            CategoriaId: categoriaEmpresa5.Id,
             PrecioVenta: 1000m,
             PrecioCosto: 600m,
             ImpuestoId: null,
@@ -115,9 +125,9 @@ public class MultiEmpresaTests
     }
 
     [Fact]
-    public async Task Producto_FiltroGlobal_PermiteProductoSinEmpresa_ComoGlobalCatalog()
+    public async Task Producto_FiltroEstricto_ExcluyeProductoSinEmpresa_EnContextoEmpresa()
     {
-        // Arrange: producto global (EmpresaId = null)
+        // Arrange: producto con EmpresaId = null (sin empresa asignada)
         using var insertScope = _factory.Services.CreateScope();
         var insertCtx = insertScope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -125,18 +135,18 @@ public class MultiEmpresaTests
         {
             Id = Guid.NewGuid(),
             CodigoBarras = "EMP-GLOBAL-001",
-            Nombre = "Producto Catalogo Global",
+            Nombre = "Producto Sin Empresa",
             CategoriaId = _factory.CategoriaTestId,
             PrecioVenta = 100m,
             PrecioCosto = 60m,
             UnidadMedida = "94",
-            EmpresaId = null,  // catálogo global
+            EmpresaId = null,  // sin empresa
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         });
         await insertCtx.SaveChangesAsync();
 
-        // Act: scope con empresa = 99 → debe ver el producto global
+        // Act: scope con empresa = 99 (filtro estricto activo)
         using var queryScope = _factory.Services.CreateScope();
         var provider = queryScope.ServiceProvider.GetRequiredService<ICurrentEmpresaProvider>();
         provider.EmpresaId = 99;
@@ -146,9 +156,11 @@ public class MultiEmpresaTests
             .Where(p => p.CodigoBarras == "EMP-GLOBAL-001")
             .ToListAsync();
 
-        // Assert: producto sin empresa siempre visible (catálogo global)
-        productosVisibles.Should().ContainSingle();
-        productosVisibles[0].EmpresaId.Should().BeNull();
+        // Assert: filtro estricto — productos sin empresa NO son visibles en contexto de empresa
+        // (comportamiento post-corrección multi-empresa 2026-03-23)
+        productosVisibles.Should().BeEmpty(
+            "con filtro estricto, un producto con EmpresaId=null no es visible " +
+            "en el contexto de empresa 99 — debe asignarse explícitamente a esa empresa");
     }
 
     [Fact]

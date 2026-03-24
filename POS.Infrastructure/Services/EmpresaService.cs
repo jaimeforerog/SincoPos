@@ -52,8 +52,6 @@ public class EmpresaService : IEmpresaService
             Nombre      = dto.Nombre.Trim(),
             Nit         = dto.Nit?.Trim(),
             RazonSocial = dto.RazonSocial?.Trim(),
-            Activo      = true,
-            FechaCreacion = DateTime.UtcNow,
         };
 
         _context.Empresas.Add(empresa);

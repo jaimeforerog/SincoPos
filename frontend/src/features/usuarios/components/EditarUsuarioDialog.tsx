@@ -30,6 +30,7 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import { useSnackbar } from 'notistack';
 import { usuariosApi, type UsuarioDto } from '@/api/usuarios';
 import { sucursalesApi } from '@/api/sucursales';
+import { useAuthStore } from '@/stores/auth.store';
 
 const ROLES = ['admin', 'supervisor', 'cajero', 'vendedor'] as const;
 
@@ -54,12 +55,18 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
   const queryClient = useQueryClient();
   const [backendError, setBackendError] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const { activeEmpresaId } = useAuthStore();
 
-  const { data: sucursales = [] } = useQuery({
-    queryKey: ['sucursales'],
+  const { data: todasSucursales = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
     queryFn: () => sucursalesApi.listar(),
+    staleTime: 0,
     enabled: open,
   });
+
+  const sucursales = todasSucursales.filter(
+    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+  );
 
   const {
     control,

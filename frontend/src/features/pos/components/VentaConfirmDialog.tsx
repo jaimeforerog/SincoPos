@@ -17,6 +17,8 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PrintIcon from '@mui/icons-material/Print';
 import type { VentaDTO } from '@/types/api';
+import { useAuth } from '@/hooks/useAuth';
+import { printTicket } from '@/utils/printTicket';
 
 interface VentaConfirmDialogProps {
   open: boolean;
@@ -39,100 +41,15 @@ const fmtDate = (iso: string) =>
   }).format(new Date(iso));
 
 export function VentaConfirmDialog({ open, venta, onClose }: VentaConfirmDialogProps) {
+  const { user } = useAuth();
   if (!venta) return null;
 
   const handlePrint = () => {
-    window.print();
+    printTicket(venta, user?.nombre ?? user?.email);
   };
 
   return (
     <>
-      {/* Estilos de impresión */}
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          #ticket-impresion { display: block !important; }
-        }
-      `}</style>
-
-      {/* Área de impresión — invisible en pantalla, visible al imprimir */}
-      <Box
-        id="ticket-impresion"
-        sx={{ display: 'none' }}
-        style={{
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          width: '280px',
-          margin: '0 auto',
-          padding: '8px',
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: 8 }}>
-          <strong style={{ fontSize: 16 }}>SINCOPOS</strong>
-          <br />
-          <span>{venta.nombreSucursal}</span>
-          <br />
-          <span>Caja: {venta.nombreCaja}</span>
-          <br />
-          <span>{fmtDate(venta.fechaVenta)}</span>
-          <br />
-          <strong>#{venta.numeroVenta}</strong>
-        </div>
-        <hr />
-        {venta.nombreCliente && (
-          <div style={{ marginBottom: 4 }}>Cliente: {venta.nombreCliente}</div>
-        )}
-        <hr />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left' }}>Producto</th>
-              <th style={{ textAlign: 'right' }}>Cant</th>
-              <th style={{ textAlign: 'right' }}>Precio</th>
-              <th style={{ textAlign: 'right' }}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {venta.detalles.map((d) => (
-              <tr key={d.id}>
-                <td style={{ paddingRight: 4 }}>{d.nombreProducto}</td>
-                <td style={{ textAlign: 'right' }}>{d.cantidad}</td>
-                <td style={{ textAlign: 'right' }}>{fmt(d.precioUnitario)}</td>
-                <td style={{ textAlign: 'right' }}>{fmt(d.subtotal)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <hr />
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Subtotal</span><span>{fmt(venta.subtotal)}</span>
-        </div>
-        {venta.descuento > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Descuento</span><span>-{fmt(venta.descuento)}</span>
-          </div>
-        )}
-        {venta.impuestos > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Impuestos</span><span>{fmt(venta.impuestos)}</span>
-          </div>
-        )}
-        <hr />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 14 }}>
-          <span>TOTAL</span><span>{fmt(venta.total)}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <span>Pago ({venta.metodoPago})</span>
-          <span>{venta.montoPagado ? fmt(venta.montoPagado) : ''}</span>
-        </div>
-        {venta.cambio != null && venta.cambio > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Cambio</span><span>{fmt(venta.cambio)}</span>
-          </div>
-        )}
-        <hr />
-        <div style={{ textAlign: 'center', marginTop: 8 }}>¡Gracias por su compra!</div>
-      </Box>
 
       {/* Dialog normal en pantalla */}
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>

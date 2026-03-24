@@ -27,7 +27,7 @@ interface Props {
 }
 
 export function AjusteInventarioDialog({ open, onClose, onSuccess }: Props) {
-  const { activeSucursalId } = useAuth();
+  const { activeSucursalId, user, activeEmpresaId } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
   const [productoId, setProductoId] = useState<string>('');
@@ -37,16 +37,22 @@ export function AjusteInventarioDialog({ open, onClose, onSuccess }: Props) {
 
   // Cargar productos
   const { data: productosData } = useQuery({
-    queryKey: ['productos'],
+    queryKey: ['productos', activeEmpresaId],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
   const productos = productosData?.items || [];
 
-  // Cargar sucursales
-  const { data: sucursales = [] } = useQuery({
-    queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+  const { data: todasSucursales = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
+    queryFn: () => sucursalesApi.getAll(),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const sucursales = todasSucursales.filter(
+    (s) =>
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   // Cargar stock actual del producto seleccionado
   const { data: stockActual } = useQuery({

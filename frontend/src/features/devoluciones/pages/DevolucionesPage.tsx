@@ -79,8 +79,8 @@ export function DevolucionesPage() {
       ventasApi.getAll({
         sucursalId: activeSucursalId || undefined,
         estado: 'Completada',
-        desde: fechaDesde ? `${fechaDesde}T00:00:00Z` : undefined,
-        hasta: fechaHasta ? `${fechaHasta}T23:59:59Z` : undefined,
+        desde: fechaDesde ? new Date(fechaDesde + 'T00:00:00').toISOString() : undefined,
+        hasta: fechaHasta ? new Date(fechaHasta + 'T23:59:59').toISOString() : undefined,
         pageSize: 100,
       }),
   });
@@ -282,7 +282,7 @@ export function DevolucionesPage() {
           background: `linear-gradient(135deg, ${HERO_COLOR} 0%, #0d47a1 50%, #01579b 100%)`,
           borderRadius: 3,
           px: { xs: 3, md: 4 },
-          py: { xs: 2.5, md: 3 },
+          py: { xs: 1.5, md: 2 },
           mb: 3,
           mt: 1,
           position: 'relative',
@@ -298,7 +298,7 @@ export function DevolucionesPage() {
         }}
       >
         <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <UndoIcon2 sx={{ color: 'rgba(255,255,255,0.8)', fontSize: 36 }} />
+          <UndoIcon2 sx={{ color: 'rgba(255,255,255,0.8)', fontSize: 28 }} />
           <Box>
             <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
               Devoluciones de Ventas

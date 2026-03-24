@@ -1,5 +1,4 @@
-import { ListItemButton, ListItemText, Typography, Box, Chip } from '@mui/material';
-import InventoryIcon from '@mui/icons-material/Inventory';
+import { Box, Typography } from '@mui/material';
 import type { ProductoDTO } from '@/types/api';
 
 interface ProductCardProps {
@@ -9,70 +8,66 @@ interface ProductCardProps {
   onClick: (producto: ProductoDTO) => void;
 }
 
-export function ProductCard({ producto, stock, precio, onClick }: ProductCardProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+const fmt = (v: number) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v);
 
-  const stockBajo = stock !== undefined && stock <= 10;
+export function ProductCard({ producto, stock, precio, onClick }: ProductCardProps) {
   const sinStock = stock !== undefined && stock <= 0;
+  const stockBajo = stock !== undefined && stock > 0 && stock <= 10;
 
   return (
-    <ListItemButton
-      onClick={() => onClick(producto)}
-      disabled={sinStock}
+    <Box
+      onClick={sinStock ? undefined : () => onClick(producto)}
       sx={{
-        border: '1px solid',
+        display: 'grid',
+        gridTemplateColumns: '110px 1fr 52px 90px',
+        alignItems: 'center',
+        gap: 1,
+        px: 1,
+        py: '3px',
+        borderBottom: '1px solid',
         borderColor: 'divider',
-        borderRadius: 1,
-        mb: 0.5,
-        '&:hover': {
-          bgcolor: 'action.hover',
-          borderColor: 'primary.main',
-        },
+        cursor: sinStock ? 'not-allowed' : 'pointer',
+        opacity: sinStock ? 0.45 : 1,
+        '&:hover': sinStock ? {} : { bgcolor: 'action.hover' },
       }}
     >
-      <ListItemText
-        primary={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, flexGrow: 1 }}>
-              {producto.nombre}
-            </Typography>
-            {stock !== undefined && (
-              <Chip
-                icon={<InventoryIcon />}
-                label={`Stock: ${stock}`}
-                size="small"
-                color={sinStock ? 'error' : stockBajo ? 'warning' : 'success'}
-                variant={sinStock ? 'filled' : 'outlined'}
-              />
-            )}
-          </Box>
-        }
-        secondary={
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
-            <Typography variant="caption" color="text.secondary">
-              Código: {producto.codigoBarras}
-            </Typography>
-            {precio !== undefined && precio > 0 ? (
-              <Typography variant="body2" color="primary.main" sx={{ fontWeight: 700 }}>
-                {formatCurrency(precio)}
-              </Typography>
-            ) : (
-              <Typography variant="caption" color="text.secondary">
-                Sin precio
-              </Typography>
-            )}
-          </Box>
-        }
-        primaryTypographyProps={{ component: 'div' }}
-        secondaryTypographyProps={{ component: 'div' }}
-      />
-    </ListItemButton>
+      {/* Código */}
+      <Typography
+        variant="caption"
+        noWrap
+        sx={{ fontFamily: 'monospace', color: 'text.secondary', fontSize: '0.7rem' }}
+      >
+        {producto.codigoBarras}
+      </Typography>
+
+      {/* Nombre */}
+      <Typography variant="caption" noWrap sx={{ fontWeight: 600, fontSize: '0.78rem' }}>
+        {producto.nombre}
+      </Typography>
+
+      {/* Stock */}
+      <Typography
+        variant="caption"
+        noWrap
+        sx={{
+          textAlign: 'right',
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          color: sinStock ? 'error.main' : stockBajo ? 'warning.main' : 'success.main',
+        }}
+      >
+        {stock !== undefined ? stock : '—'}
+      </Typography>
+
+      {/* Precio */}
+      <Typography
+        variant="caption"
+        noWrap
+        sx={{ textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'primary.main' }}
+      >
+        {precio !== undefined && precio > 0 ? fmt(precio) : '—'}
+      </Typography>
+    </Box>
   );
 }

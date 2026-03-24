@@ -15,8 +15,8 @@ import {
 import { useSnackbar } from 'notistack';
 import { inventarioApi } from '@/api/inventario';
 import { productosApi } from '@/api/productos';
-import { sucursalesApi } from '@/api/sucursales';
 import { tercerosApi } from '@/api/terceros';
+import { sucursalesApi } from '@/api/sucursales';
 import { useAuth } from '@/hooks/useAuth';
 interface Props {
   open: boolean;
@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
-  const { activeSucursalId } = useAuth();
+  const { activeSucursalId, user, activeEmpresaId } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
   const [productoId, setProductoId] = useState<string>('');
@@ -39,16 +39,22 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
 
   // Cargar productos
   const { data: productosData } = useQuery({
-    queryKey: ['productos'],
+    queryKey: ['productos', activeEmpresaId],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
   const productos = productosData?.items || [];
 
-  // Cargar sucursales
-  const { data: sucursales = [] } = useQuery({
-    queryKey: ['sucursales'],
-    queryFn: () => sucursalesApi.getAll(true),
+  const { data: todasSucursales = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
+    queryFn: () => sucursalesApi.getAll(),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const sucursales = todasSucursales.filter(
+    (s) =>
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
+  );
 
   // Cargar proveedores
   const { data: tercerosData } = useQuery({

@@ -23,6 +23,42 @@ namespace POS.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.ActivacionReglaEtica", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccionTomada")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Detalle")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("FechaActivacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ReglaEticaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SucursalId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("VentaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReglaEticaId");
+
+                    b.ToTable("ActivacionesReglaEtica", "public");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.ActivityLog", b =>
                 {
                     b.Property<long>("Id")
@@ -342,6 +378,9 @@ namespace POS.Infrastructure.Migrations
                     b.Property<string>("CreadoPor")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
@@ -975,9 +1014,9 @@ namespace POS.Infrastructure.Migrations
                     b.HasIndex("FechaDevolucion")
                         .HasDatabaseName("ix_devoluciones_fecha");
 
-                    b.HasIndex("NumeroDevolucion")
+                    b.HasIndex("EmpresaId", "NumeroDevolucion")
                         .IsUnique()
-                        .HasDatabaseName("ix_devoluciones_numero");
+                        .HasDatabaseName("ix_devoluciones_empresa_numero");
 
                     b.HasIndex("VentaId", "FechaDevolucion")
                         .HasDatabaseName("ix_devoluciones_venta_fecha");
@@ -1200,8 +1239,21 @@ namespace POS.Infrastructure.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaDesactivacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModificadoPor")
+                        .HasColumnType("text");
 
                     b.Property<string>("Nit")
                         .HasColumnType("text");
@@ -1312,6 +1364,9 @@ namespace POS.Infrastructure.Migrations
                     b.Property<string>("Descripcion")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
@@ -1991,6 +2046,47 @@ namespace POS.Infrastructure.Migrations
                     b.ToTable("productos", "public");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.ReglaEtica", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Accion")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Condicion")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Contexto")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mensaje")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("ValorLimite")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReglasEticas", "public");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.RetencionRegla", b =>
                 {
                     b.Property<int>("Id")
@@ -2024,6 +2120,9 @@ namespace POS.Infrastructure.Migrations
                     b.Property<string>("CreadoPor")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
@@ -2802,14 +2901,25 @@ namespace POS.Infrastructure.Migrations
                     b.HasIndex("FechaVenta")
                         .HasDatabaseName("ix_ventas_fecha");
 
-                    b.HasIndex("NumeroVenta")
-                        .IsUnique()
-                        .HasDatabaseName("ix_ventas_numero");
-
                     b.HasIndex("SucursalId", "FechaVenta")
                         .HasDatabaseName("ix_ventas_sucursal_fecha");
 
+                    b.HasIndex("SucursalId", "NumeroVenta")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ventas_sucursal_numero");
+
                     b.ToTable("ventas", "public");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.ActivacionReglaEtica", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.ReglaEtica", "Regla")
+                        .WithMany("Activaciones")
+                        .HasForeignKey("ReglaEticaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Regla");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.ActivityLog", b =>
@@ -3274,6 +3384,11 @@ namespace POS.Infrastructure.Migrations
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.OrdenCompra", b =>
                 {
                     b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.ReglaEtica", b =>
+                {
+                    b.Navigation("Activaciones");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.Tercero", b =>

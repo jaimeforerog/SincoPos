@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Box, Container, Paper, Typography, Alert, Chip, IconButton, Tooltip } from '@mui/material';
 import { useContextualNotification } from '@/hooks/useContextualNotification';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import BusinessIcon from '@mui/icons-material/Business';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 import PersonIcon from '@mui/icons-material/Person';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,12 +28,14 @@ import { posSessionCache } from '@/offline/posSessionCache';
 import type { ProductoDTO, CrearVentaDTO, VentaDTO } from '@/types/api';
 
 export function POSPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { operacional, sistema } = useContextualNotification();
-  const { user, isCajero, activeSucursalId, isLoading } = useAuth();
+  const { user, isCajero, activeSucursalId, activeEmpresaId, isLoading } = useAuth();
   const { isOnline, pendingCount } = useOfflineSync();
 
   // Cargar cajas abiertas
-  const { data: _cajasAbiertas = [] } = useCajasAbiertas();
+  const { data: _cajasAbiertas = [], isLoading: isLoadingCajas, isFetched: isFetchedCajas } = useCajasAbiertas();
 
   // Estado de caja y cliente
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
@@ -50,6 +54,8 @@ export function POSPage() {
   useEffect(() => {
     // Esperar a que el perfil del usuario y las cajas estén cargados
     if (isLoading) return;
+    if (isLoadingCajas) return; // Esperar que la query de cajas finalice antes de decidir
+    if (!isFetchedCajas && isOnline) return; // Online: esperar primera carga
     if (selectedCajaId) return;
 
     // Si solo hay una caja abierta (online o cacheada), seleccionarla automáticamente
@@ -74,16 +80,24 @@ export function POSPage() {
     // Mostrar diálogo (con datos cacheados si está offline)
     setShowSeleccionarCaja(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, _cajasAbiertas, selectedCajaId, isOnline]);
+  }, [isLoading, isLoadingCajas, isFetchedCajas, _cajasAbiertas, selectedCajaId, isOnline]);
 
   // Handler para seleccionar caja (también recibe la sucursal del diálogo)
-  const { setActiveSucursal } = useAuthStore();
+  const { setActiveSucursal, setActiveEmpresa, empresasDisponibles } = useAuthStore();
   const handleSelectCaja = (cajaId: number, sucursalId: number) => {
     setSelectedCajaId(cajaId);
-    // Asegurar que activeSucursalId quede sincronizado con la sucursal de la caja
+
+    // Sincronizar empresa primero (puede auto-seleccionar una sucursal), luego forzar la sucursal correcta
+    const sucursalInfo = user?.sucursalesDisponibles.find((s) => s.id === sucursalId);
+    if (sucursalInfo?.empresaId != null && sucursalInfo.empresaId !== activeEmpresaId) {
+      setActiveEmpresa(sucursalInfo.empresaId);
+    }
+
+    // Forzar la sucursal de la caja seleccionada (sobreescribe cualquier auto-selección)
     if (!activeSucursalId || activeSucursalId !== sucursalId) {
       setActiveSucursal(sucursalId);
     }
+
     setShowSeleccionarCaja(false);
 
     // Guardar sesión en cache para restaurar offline en próximas aperturas
@@ -146,7 +160,8 @@ export function POSPage() {
       clearCart();
       setSelectedClienteId(null);
       setMontoPagado(0);
-      // Capa 7: informacional — VentaConfirmDialog ya comunica el éxito
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['ventas'] });
     },
     onError: (error: any) => {
       console.error('❌ Error al crear venta:', error);
@@ -409,6 +424,16 @@ export function POSPage() {
     }
   };
 
+  // Datos de sesión para el header (fallback mientras carga cajaActual)
+  const sucursalInfo = user?.sucursalesDisponibles.find(
+    (s) => s.id === (cajaActual?.sucursalId ?? activeSucursalId)
+  );
+  const sucursalNombre = cajaActual?.nombreSucursal ?? sucursalInfo?.nombre ?? 'Sin sucursal';
+  const empresaNombre =
+    sucursalInfo?.empresaNombre ??
+    empresasDisponibles.find((e) => e.id === activeEmpresaId)?.nombre ??
+    null;
+
   // Calcular totales
   const subtotal = getSubtotal();
   const totalDescuentos = getTotalDescuentos();
@@ -433,14 +458,28 @@ export function POSPage() {
           subtitle="Sesión activa"
           info={
             <>
+              {empresaNombre && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <BusinessIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
+                  <Box>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                      Empresa
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
+                      {empresaNombre}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <BusinessIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
+                <StorefrontIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
                 <Box>
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
                     Sucursal
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
-                    {cajaActual?.nombreSucursal || 'Sin sucursal'}
+                    {sucursalNombre}
                   </Typography>
                 </Box>
               </Box>
@@ -452,7 +491,7 @@ export function POSPage() {
                     Caja
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
-                    {cajaActual ? cajaActual.nombre : 'Sin caja seleccionada'}
+                    {cajaActual?.nombre ?? '—'}
                   </Typography>
                 </Box>
               </Box>
@@ -554,6 +593,7 @@ export function POSPage() {
       <SeleccionarCajaDialog
         open={showSeleccionarCaja}
         onSelect={handleSelectCaja}
+        onClose={() => navigate('/dashboard')}
       />
 
       {/* Dialog de Confirmación */}

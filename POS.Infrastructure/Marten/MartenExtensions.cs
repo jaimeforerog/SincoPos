@@ -86,6 +86,11 @@ public static class MartenExtensions
             opts.Projections.Add(
                 new ClienteHistorialProjection(),
                 ProjectionLifecycle.Inline);
+
+            // Capa 13 — Inteligencia colectiva (local): combos de productos por sucursal
+            opts.Projections.Add(
+                new ProductoComboProjection(),
+                ProjectionLifecycle.Inline);
         });
 
         return services;

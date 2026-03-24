@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { InteractionStatus } from '@azure/msal-browser';
 import type { AccountInfo } from '@azure/msal-browser';
@@ -147,12 +147,22 @@ function EntraAuthInitializer({ children }: { children: ReactNode }) {
 function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
   const oidcAuth = useOidcAuth();
   const { setUser, setIdpLogout } = useAuthStore();
+  // Guard: solo llamar /me una vez por sesión autenticada
+  const backendFetchedRef = useRef(false);
 
   useEffect(() => {
     setIdpLogout(() => {
       oidcAuth.signoutRedirect({ post_logout_redirect_uri: window.location.origin });
     });
   }, [oidcAuth, setIdpLogout]);
+
+  // Actualizar el token en sessionStorage cada vez que Keycloak lo renueva silenciosamente,
+  // sin re-llamar a /me (que causaba la caída de sesión).
+  useEffect(() => {
+    if (oidcAuth.user?.access_token) {
+      sessionStorage.setItem('access_token', oidcAuth.user.access_token);
+    }
+  }, [oidcAuth.user?.access_token]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -161,11 +171,16 @@ function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
       if (oidcAuth.isAuthenticated && oidcAuth.user) {
         sessionStorage.setItem('access_token', oidcAuth.user.access_token);
 
+        // Solo llamar /me si aún no hemos cargado el perfil en esta sesión
+        if (backendFetchedRef.current) return;
+        backendFetchedRef.current = true;
+
         try {
           const userInfo = await usuariosApi.me();
           setUser(userInfo);
         } catch (error) {
           console.error('Failed to fetch user info from backend:', error);
+          backendFetchedRef.current = false; // permitir reintento
           const profile = oidcAuth.user.profile;
           let roles: string[] = [];
           try {
@@ -180,24 +195,31 @@ function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
             roles = profileRealmAccess?.roles?.filter(r =>
               ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
           }
-          setUser({
-            id: profile.sub ?? 'unknown',
-            username: profile.preferred_username ?? profile.email ?? 'unknown',
-            email: profile.email ?? '',
-            nombre: profile.name ?? profile.preferred_username ?? '',
-            roles,
-            sucursalId: undefined,
-            sucursalNombre: undefined,
-            sucursalesDisponibles: [],
-          });
+          // Fallback mínimo: solo usar si no hay usuario ya en el store
+          const currentUser = useAuthStore.getState().user;
+          if (!currentUser) {
+            setUser({
+              id: profile.sub ?? 'unknown',
+              username: profile.preferred_username ?? profile.email ?? 'unknown',
+              email: profile.email ?? '',
+              nombre: profile.name ?? profile.preferred_username ?? '',
+              roles,
+              sucursalId: undefined,
+              sucursalNombre: undefined,
+              sucursalesDisponibles: [],
+            });
+          }
         }
-      } else {
+      } else if (!oidcAuth.isLoading) {
+        backendFetchedRef.current = false;
         setUser(null);
       }
     };
 
     initAuth();
-  }, [oidcAuth.isAuthenticated, oidcAuth.isLoading, oidcAuth.user, setUser]);
+  // Solo re-ejecutar cuando cambia el estado de autenticación, no en cada token refresh
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oidcAuth.isAuthenticated, oidcAuth.isLoading, setUser]);
 
   if (oidcAuth.isLoading) {
     return <LoadingScreen />;

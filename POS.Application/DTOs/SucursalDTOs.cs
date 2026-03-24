@@ -36,5 +36,6 @@ public record SucursalDto(
     string? CentroCosto,
     string MetodoCosteo,
     bool Activa,
-    DateTime FechaCreacion
+    DateTime FechaCreacion,
+    int? EmpresaId = null
 );

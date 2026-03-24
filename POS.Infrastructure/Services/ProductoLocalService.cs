@@ -132,8 +132,6 @@ public class ProductoLocalService : IProductoService
             ManejaLotes = dto.ManejaLotes,
             DiasVidaUtil = dto.DiasVidaUtil,
             EmpresaId = _empresaProvider.EmpresaId,
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
         };
 
         _context.Productos.Add(producto);

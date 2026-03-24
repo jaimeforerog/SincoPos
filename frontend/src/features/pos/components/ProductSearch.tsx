@@ -26,10 +26,10 @@ export function ProductSearch({ onSelectProduct }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { activeSucursalId } = useAuth();
+  const { activeSucursalId, activeEmpresaId } = useAuth();
 
   const { data: productosData, isLoading } = useQuery({
-    queryKey: ['productos', debouncedSearch],
+    queryKey: ['productos', debouncedSearch, activeEmpresaId],
     queryFn: () =>
       productosApi.getAll({
         query: debouncedSearch || undefined,

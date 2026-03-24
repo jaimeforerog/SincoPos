@@ -6,6 +6,11 @@ namespace POS.Application.DTOs;
 public record SucursalResumenDto(int Id, string Nombre, int? EmpresaId = null, string? EmpresaNombre = null);
 
 /// <summary>
+/// Resumen de empresa para el selector de empresa en login
+/// </summary>
+public record EmpresaResumenDto(int Id, string Nombre);
+
+/// <summary>
 /// DTO para información completa del usuario
 /// </summary>
 public record UsuarioDto(
@@ -41,7 +46,8 @@ public record PerfilUsuarioDto(
     IEnumerable<string> Permisos,
     List<SucursalResumenDto> SucursalesAsignadas,
     int? EmpresaId = null,
-    string? EmpresaNombre = null
+    string? EmpresaNombre = null,
+    List<EmpresaResumenDto>? EmpresasDisponibles = null
 );
 
 /// <summary>

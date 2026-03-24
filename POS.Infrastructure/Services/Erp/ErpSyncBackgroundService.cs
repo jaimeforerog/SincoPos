@@ -43,8 +43,9 @@ public class ErpSyncBackgroundService : BackgroundService
                 _logger.LogError(ex, "Error crítico verificando la bandeja Outbox del ERP");
             }
 
-            // Esperar el polling interval
-            await Task.Delay(_pollingInterval, stoppingToken);
+            // Esperar el polling interval (cancelar sin lanzar excepción al detener el host)
+            try { await Task.Delay(_pollingInterval, stoppingToken); }
+            catch (OperationCanceledException) { break; }
         }
     }
 

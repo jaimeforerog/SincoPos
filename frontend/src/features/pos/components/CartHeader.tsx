@@ -14,6 +14,7 @@ import {
 import { useCajasAbiertas } from '../hooks/useCajasAbiertas';
 import { tercerosApi } from '@/api/terceros';
 import { useTurnContextStore } from '@/stores/turnContext.store';
+import { useAuth } from '@/hooks/useAuth';
 import type { TerceroDTO } from '@/types/api';
 
 interface CartHeaderProps {
@@ -31,9 +32,10 @@ export function CartHeader({
 }: CartHeaderProps) {
   const { data: cajas = [], isLoading: loadingCajas } = useCajasAbiertas();
   const clientesRecientes = useTurnContextStore((s) => s.clientesRecientes);
+  const { activeEmpresaId } = useAuth();
 
   const { data: clientesData } = useQuery({
-    queryKey: ['terceros', 'clientes'],
+    queryKey: ['terceros', 'clientes', activeEmpresaId],
     queryFn: () => tercerosApi.getAll({ esCliente: true, activo: true }),
   });
 
@@ -56,7 +58,7 @@ export function CartHeader({
     );
   }
 
-  if (cajas.length === 0) {
+  if (cajas.length === 0 && !selectedCajaId) {
     return (
       <Alert severity="error" sx={{ mb: 2 }}>
         No tienes cajas abiertas. Debes abrir una caja antes de realizar ventas.
