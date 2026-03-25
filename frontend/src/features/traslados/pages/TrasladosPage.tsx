@@ -28,8 +28,8 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { trasladosApi } from '@/api/traslados';
-import { CrearTrasladoDialog } from '../components/CrearTrasladoDialog';
-import { DetallesTrasladoDialog } from '../components/DetallesTrasladoDialog';
+import { CrearTrasladoView } from '../components/CrearTrasladoView';
+import { DetallesTrasladoView } from '../components/DetallesTrasladoView';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 
 const HERO_COLOR = '#1565c0';
@@ -68,16 +68,16 @@ interface HeroStatProps {
 
 function HeroStat({ icon, label, value, loading }: HeroStatProps) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-      <Box sx={{ color: 'rgba(255,255,255,0.8)', display: 'flex' }}>{icon}</Box>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ color: 'rgba(255,255,255,0.7)', display: 'flex', fontSize: 18 }}>{icon}</Box>
       <Box>
-        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block', lineHeight: 1 }}>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.65)', display: 'block', lineHeight: 1 }}>
           {label}
         </Typography>
         {loading ? (
           <Skeleton variant="text" width={40} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
         ) : (
-          <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+          <Typography variant="body2" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
             {value}
           </Typography>
         )}
@@ -86,10 +86,11 @@ function HeroStat({ icon, label, value, loading }: HeroStatProps) {
   );
 }
 
+type View = 'list' | 'crear' | 'detalle';
+
 export function TrasladosPage() {
+  const [view, setView] = useState<View>('list');
   const [estadoFiltro, setEstadoFiltro] = useState('');
-  const [crearDialogOpen, setCrearDialogOpen] = useState(false);
-  const [detallesDialogOpen, setDetallesDialogOpen] = useState(false);
   const [trasladoSeleccionado, setTrasladoSeleccionado] = useState<number | null>(null);
 
   const { data: trasladosPage, isLoading, error, refetch } = useQuery({
@@ -99,7 +100,7 @@ export function TrasladosPage() {
   const traslados = trasladosPage?.items ?? [];
 
   const stats = useMemo(() => ({
-    total:     traslados.length,
+    total:      traslados.length,
     pendientes: traslados.filter((t) => t.estado === 'Pendiente').length,
     enTransito: traslados.filter((t) => t.estado === 'EnTransito').length,
     recibidos:  traslados.filter((t) => t.estado === 'Recibido').length,
@@ -111,14 +112,30 @@ export function TrasladosPage() {
 
   const handleVerDetalles = (id: number) => {
     setTrasladoSeleccionado(id);
-    setDetallesDialogOpen(true);
+    setView('detalle');
   };
 
-  const handleCloseDetalles = () => {
-    setDetallesDialogOpen(false);
+  const handleBack = () => {
+    setView('list');
     setTrasladoSeleccionado(null);
     refetch();
   };
+
+  if (view === 'crear') {
+    return (
+      <Container maxWidth="xl" sx={{ mt: 1 }}>
+        <CrearTrasladoView onBack={handleBack} onSuccess={handleBack} />
+      </Container>
+    );
+  }
+
+  if (view === 'detalle' && trasladoSeleccionado) {
+    return (
+      <Container maxWidth="xl" sx={{ mt: 1 }}>
+        <DetallesTrasladoView trasladoId={trasladoSeleccionado} onBack={handleBack} />
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="xl">
@@ -128,7 +145,7 @@ export function TrasladosPage() {
           background: `linear-gradient(135deg, ${HERO_COLOR} 0%, #0d47a1 50%, #01579b 100%)`,
           borderRadius: 3,
           px: { xs: 3, md: 4 },
-          py: { xs: 2.5, md: 3 },
+          py: { xs: 1, md: 1.25 },
           mb: 3,
           mt: 1,
           position: 'relative',
@@ -166,7 +183,7 @@ export function TrasladosPage() {
           <Box
             sx={{
               display: 'flex', flexWrap: 'wrap',
-              gap: { xs: 2.5, md: 4 }, alignItems: 'center',
+              gap: { xs: 2, md: 3 }, alignItems: 'center',
               '& > *:not(:last-child)': {
                 position: 'relative',
                 '&::after': {
@@ -187,7 +204,7 @@ export function TrasladosPage() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => setCrearDialogOpen(true)}
+              onClick={() => setView('crear')}
               sx={{
                 bgcolor: 'rgba(255,255,255,0.15)',
                 color: '#fff',
@@ -289,6 +306,7 @@ export function TrasladosPage() {
                       key={traslado.id}
                       hover
                       sx={{
+                        cursor: 'pointer',
                         '&:hover': { bgcolor: alpha(HERO_COLOR, 0.03) },
                         '&:last-child td': { borderBottom: 0 },
                       }}
@@ -333,20 +351,6 @@ export function TrasladosPage() {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
-
-      <CrearTrasladoDialog
-        open={crearDialogOpen}
-        onClose={() => setCrearDialogOpen(false)}
-        onSuccess={() => { setCrearDialogOpen(false); refetch(); }}
-      />
-
-      {trasladoSeleccionado && (
-        <DetallesTrasladoDialog
-          open={detallesDialogOpen}
-          trasladoId={trasladoSeleccionado}
-          onClose={handleCloseDetalles}
-        />
       )}
     </Container>
   );

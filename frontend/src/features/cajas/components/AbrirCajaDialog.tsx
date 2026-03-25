@@ -41,11 +41,16 @@ export function AbrirCajaDialog({ open, onClose, defaultSucursalId }: AbrirCajaD
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales', activeEmpresaId],
     queryFn: () => sucursalesApi.getAll(),
+    enabled: open,
     staleTime: 0,
   });
 
+  const isAdmin = user?.roles?.includes('admin');
+
   const sucursales = todasSucursales.filter((s) => {
     if (activeEmpresaId != null && s.empresaId != null && s.empresaId !== activeEmpresaId) return false;
+    // Admin ve todas las sucursales de la empresa (incluyendo las recién creadas)
+    if (isAdmin) return true;
     if (user?.sucursalesDisponibles?.length) {
       const asignadasEnEmpresa = user.sucursalesDisponibles.filter(
         (sd) => sd.empresaId === activeEmpresaId || sd.empresaId == null

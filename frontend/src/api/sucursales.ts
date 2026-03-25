@@ -2,6 +2,14 @@ import apiClient from './client';
 import type { SucursalDTO, CrearSucursalDTO, ActualizarSucursalDTO } from '@/types/api';
 
 export const sucursalesApi = {
+  /** Obtener sucursales activas de una empresa específica (usado en el selector inicial) */
+  getByEmpresa: async (empresaId: number) => {
+    const response = await apiClient.get<SucursalDTO[]>('/sucursales', {
+      headers: { 'X-Empresa-Id': String(empresaId) },
+    });
+    return response.data;
+  },
+
   getAll: async (incluirInactivas?: boolean) => {
     const response = await apiClient.get<SucursalDTO[]>('/sucursales', {
       params: { incluirInactivas },

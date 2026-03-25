@@ -50,13 +50,13 @@ export function MenuSection({ section }: MenuSectionProps) {
         sx={{
           bgcolor: 'transparent',
           fontWeight: 700,
-          fontSize: '0.7rem',
+          fontSize: '0.65rem',
           textTransform: 'uppercase',
           color: 'text.disabled',
-          lineHeight: '28px',
-          mt: 1,
-          px: 2,
-          letterSpacing: '0.8px',
+          lineHeight: '22px',
+          mt: 0.5,
+          px: 1.5,
+          letterSpacing: '0.6px',
         }}
       >
         {section.title}

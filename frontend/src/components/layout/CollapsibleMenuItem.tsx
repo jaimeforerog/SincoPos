@@ -28,21 +28,22 @@ export function CollapsibleMenuItem({ text, icon, items, landingPath }: Collapsi
 
   return (
     <>
-      <Box sx={{ px: 1, mb: 0.5 }}>
+      <Box sx={{ px: 0.75, mb: 0.25 }}>
         <ListItemButton
           onClick={() => setOpen(!open)}
           sx={{
-            borderRadius: 2,
-            py: 1,
+            borderRadius: 1.5,
+            py: 0.6,
+            px: 1,
             '&:hover': { bgcolor: 'action.hover' },
           }}
         >
-          <ListItemIcon sx={{ minWidth: 38, color: 'primary.main' }}>
-            <Box sx={{ display: 'flex', fontSize: 20 }}>{icon}</Box>
+          <ListItemIcon sx={{ minWidth: 30, color: 'primary.main' }}>
+            <Box sx={{ display: 'flex', fontSize: 18 }}>{icon}</Box>
           </ListItemIcon>
           <ListItemText
             primary={text}
-            primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: isChildActive ? 600 : 400 }}
+            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: isChildActive ? 600 : 400 }}
           />
           {open
             ? <ExpandLess sx={{ color: 'text.secondary', fontSize: 18 }} />

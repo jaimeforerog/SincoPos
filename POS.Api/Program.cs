@@ -32,12 +32,18 @@ builder.Services.AddScoped<POS.Application.Services.IClienteHistorialService, PO
 builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
 builder.Services.AddScoped<POS.Application.Services.IPrecioService, POS.Infrastructure.Services.PrecioService>();
 
-// Identity Provider abstraction: EntraIdService (prod) / LocalIdentityProviderService (dev)
+// Identity Provider abstraction: EntraIdService (prod) / KeycloakIdentityProviderService (dev) / LocalIdentityProviderService (fallback)
 if (builder.Configuration.GetSection("MicrosoftGraph:TenantId").Exists())
 {
     builder.Services.Configure<POS.Infrastructure.Configuration.MicrosoftGraphOptions>(
         builder.Configuration.GetSection(POS.Infrastructure.Configuration.MicrosoftGraphOptions.SectionName));
     builder.Services.AddScoped<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.EntraIdService>();
+}
+else if (builder.Configuration.GetSection("KeycloakAdmin:Realm").Exists())
+{
+    builder.Services.Configure<POS.Infrastructure.Configuration.KeycloakAdminOptions>(
+        builder.Configuration.GetSection(POS.Infrastructure.Configuration.KeycloakAdminOptions.SectionName));
+    builder.Services.AddHttpClient<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.KeycloakIdentityProviderService>();
 }
 else
 {

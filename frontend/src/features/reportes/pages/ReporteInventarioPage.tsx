@@ -37,8 +37,8 @@ import { exportarReporteInventario } from '@/utils/exportReportes';
 import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteInventarioPage() {
-  const { user, activeEmpresaId } = useAuth();
-  const [sucursalId, setSucursalId] = useState<number | ''>('');
+  const { user, activeEmpresaId, activeSucursalId } = useAuth();
+  const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
   const [categoriaId, setCategoriaId] = useState<number | ''>('');
   const [soloConStock, setSoloConStock] = useState(true);
   const [busqueda, setBusqueda] = useState('');

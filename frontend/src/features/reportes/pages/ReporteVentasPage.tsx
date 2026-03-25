@@ -37,13 +37,13 @@ import { exportarReporteVentas } from '@/utils/exportReportes';
 import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteVentasPage() {
-  const { user, activeEmpresaId } = useAuth();
+  const { user, activeEmpresaId, activeSucursalId } = useAuth();
   const today = new Date();
   const last30Days = subDays(today, 30);
 
   const [fechaDesde, setFechaDesde] = useState(format(last30Days, 'yyyy-MM-dd'));
   const [fechaHasta, setFechaHasta] = useState(format(today, 'yyyy-MM-dd'));
-  const [sucursalId, setSucursalId] = useState<number | ''>('');
+  const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
   const [metodoPago, setMetodoPago] = useState<number | ''>('');
 
   const { data: todasSucursales = [] } = useQuery({

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { sucursalesApi } from '@/api/sucursales';
 import {
   AppBar,
   Box,
@@ -31,7 +33,7 @@ import { MenuSection } from './MenuSection';
 import { menuSections } from './menuSections';
 import { NotificationBell } from '@/components/common/NotificationBell';
 
-const DRAWER_WIDTH = 260;
+const DRAWER_WIDTH = 200;
 
 export function AppLayout() {
   const theme = useTheme();
@@ -39,28 +41,49 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isPOS = location.pathname === '/pos';
   const { user } = useAuth();
+
+  // Cerrar sidebar automáticamente al entrar al POS
+  useEffect(() => {
+    if (isPOS) setDrawerOpen(false);
+  }, [isPOS]);
   const { activeSucursalId, setActiveSucursal, activeEmpresaId, empresasDisponibles, setActiveEmpresa, logout } = useAuthStore();
 
-  // Empresa activa — fallback desde la sucursal activa si activeEmpresaId no está seteado
-  const activeSucursalInfo = user?.sucursalesDisponibles.find(s => s.id === activeSucursalId);
-  const empresaActiva =
-    empresasDisponibles.find(e => e.id === activeEmpresaId) ??
-    (activeSucursalInfo?.empresaId
-      ? { id: activeSucursalInfo.empresaId, nombre: activeSucursalInfo.empresaNombre ?? `Empresa ${activeSucursalInfo.empresaId}` }
-      : empresasDisponibles[0] ?? null);
+  // Fuente de verdad: sucursales de la empresa activa desde la API.
+  // Esto garantiza que la sucursal seleccionada en el diálogo siempre sea encontrable,
+  // independientemente de si está o no en user.sucursalesDisponibles.
+  const { data: sucursalesFromApi = [] } = useQuery({
+    queryKey: ['sucursales', activeEmpresaId],
+    queryFn: () => sucursalesApi.getAll(),
+    enabled: activeEmpresaId != null,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Sucursales visibles = las de la empresa activa (o todas si no hay empresa configurada)
-  const sucursalesVisibles = user?.sucursalesDisponibles.filter(
-    s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
-  ) ?? [];
+  // Auto-asignar la primera sucursal cuando hay empresa pero no hay sucursal seleccionada
+  useEffect(() => {
+    if (activeSucursalId === undefined && sucursalesFromApi.length > 0) {
+      setActiveSucursal(sucursalesFromApi[0].id);
+    }
+  }, [activeSucursalId, sucursalesFromApi, setActiveSucursal]);
 
-  // Nombre de sucursal activa con fallback robusto
+  // Empresa activa
+  const empresaActiva = empresasDisponibles.find(e => e.id === activeEmpresaId) ?? empresasDisponibles[0] ?? null;
+
+  // Sucursales visibles: API como primaria, user.sucursalesDisponibles como fallback offline
+  const sucursalesVisibles = sucursalesFromApi.length > 0
+    ? sucursalesFromApi
+    : (user?.sucursalesDisponibles.filter(
+        s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+      ) ?? []);
+
+  // Nombre de sucursal activa — busca en API primero, luego en datos del usuario
   const sucursalActivaNombre =
-    sucursalesVisibles.find(s => s.id === activeSucursalId)?.nombre ??
-    activeSucursalInfo?.nombre ??
+    sucursalesFromApi.find(s => s.id === activeSucursalId)?.nombre ??
+    user?.sucursalesDisponibles.find(s => s.id === activeSucursalId)?.nombre ??
     user?.sucursalNombre ??
-    'Sin sucursal';
+    (sucursalesFromApi.length === 0 && activeEmpresaId != null ? 'Cargando...' : 'Sin sucursal');
 
   const uiConfig = useUiConfig();
 
@@ -251,7 +274,7 @@ export function AppLayout() {
       </AppBar>
 
       <Drawer
-        variant={isMobile ? 'temporary' : 'persistent'}
+        variant={isMobile || isPOS ? 'temporary' : 'persistent'}
         open={drawerOpen}
         onClose={handleDrawerToggle}
         sx={{
@@ -270,8 +293,8 @@ export function AppLayout() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { md: `calc(100% - ${drawerOpen ? DRAWER_WIDTH : 0}px)` },
+          p: isPOS ? 0 : 3,
+          width: { md: isPOS ? '100%' : `calc(100% - ${drawerOpen ? DRAWER_WIDTH : 0}px)` },
           transition: theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,

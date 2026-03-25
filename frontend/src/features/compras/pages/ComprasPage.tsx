@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -39,7 +40,6 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import { comprasApi } from '@/api/compras';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import type { OrdenCompraDTO } from '@/types/api';
-import { OrdenCompraFormDialog } from '../components/OrdenCompraFormDialog';
 import { OrdenCompraDetalleDialog } from '../components/OrdenCompraDetalleDialog';
 import { AprobarOrdenDialog } from '../components/AprobarOrdenDialog';
 import { RechazarOrdenDialog } from '../components/RechazarOrdenDialog';
@@ -79,16 +79,16 @@ interface HeroStatProps {
 
 function HeroStat({ icon, label, value, loading }: HeroStatProps) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-      <Box sx={{ color: 'rgba(255,255,255,0.8)', display: 'flex' }}>{icon}</Box>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ color: 'rgba(255,255,255,0.7)', display: 'flex', fontSize: 18 }}>{icon}</Box>
       <Box>
-        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block', lineHeight: 1 }}>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.65)', display: 'block', lineHeight: 1 }}>
           {label}
         </Typography>
         {loading ? (
           <Skeleton variant="text" width={60} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
         ) : (
-          <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
+          <Typography variant="body2" fontWeight={700} sx={{ color: '#fff', lineHeight: 1.2 }}>
             {value}
           </Typography>
         )}
@@ -98,8 +98,8 @@ function HeroStat({ icon, label, value, loading }: HeroStatProps) {
 }
 
 export function ComprasPage() {
+  const navigate = useNavigate();
   const [estadoFiltro, setEstadoFiltro] = useState('');
-  const [showFormDialog, setShowFormDialog] = useState(false);
   const [showDetalleDialog, setShowDetalleDialog] = useState(false);
   const [showAprobarDialog, setShowAprobarDialog] = useState(false);
   const [showRechazarDialog, setShowRechazarDialog] = useState(false);
@@ -158,7 +158,7 @@ export function ComprasPage() {
           background: `linear-gradient(135deg, ${HERO_COLOR} 0%, #0d47a1 50%, #01579b 100%)`,
           borderRadius: 3,
           px: { xs: 3, md: 4 },
-          py: { xs: 2.5, md: 3 },
+          py: { xs: 1, md: 1.25 },
           mb: 3,
           mt: 1,
           position: 'relative',
@@ -199,7 +199,7 @@ export function ComprasPage() {
             sx={{
               display: 'flex',
               flexWrap: 'wrap',
-              gap: { xs: 2.5, md: 4 },
+              gap: { xs: 2, md: 3 },
               alignItems: 'center',
               '& > *:not(:last-child)': {
                 position: 'relative',
@@ -221,7 +221,7 @@ export function ComprasPage() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => setShowFormDialog(true)}
+              onClick={() => navigate('/compras/nueva')}
               sx={{
                 bgcolor: 'rgba(255,255,255,0.15)',
                 color: '#fff',
@@ -435,7 +435,7 @@ export function ComprasPage() {
                           </>
                         )}
 
-                        {(orden.estado === 'Aprobada' || orden.estado === 'RecibidaParcial') && (
+                        {(orden.estado === 'Pendiente' || orden.estado === 'Aprobada' || orden.estado === 'RecibidaParcial') && (
                           <Tooltip title="Recibir mercancía">
                             <IconButton size="small" color="primary" onClick={() => handleRecibir(orden)}>
                               <LocalShippingIcon fontSize="small" />
@@ -459,13 +459,6 @@ export function ComprasPage() {
           </Table>
         </TableContainer>
       )}
-
-      {/* Diálogos */}
-      <OrdenCompraFormDialog
-        open={showFormDialog}
-        onClose={() => setShowFormDialog(false)}
-        onSuccess={handleSuccess}
-      />
 
       {selectedOrden && (
         <>

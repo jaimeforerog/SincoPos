@@ -35,6 +35,7 @@ const PreciosPage = lazy(() => import('./features/precios/pages/PreciosPage').th
 const CategoriasPage = lazy(() => import('./features/categorias/pages/CategoriasPage').then(m => ({ default: m.CategoriasPage })));
 const ConfiguracionPage = lazy(() => import('./features/configuracion/pages/ConfiguracionPage').then(m => ({ default: m.ConfiguracionPage })));
 const ComprasPage = lazy(() => import('./features/compras/pages/ComprasPage').then(m => ({ default: m.ComprasPage })));
+const NuevaOrdenCompraPage = lazy(() => import('./features/compras/pages/NuevaOrdenCompraPage').then(m => ({ default: m.NuevaOrdenCompraPage })));
 const ImpuestosPage = lazy(() => import('./features/impuestos/pages/ImpuestosPage'));
 const TercerosPage = lazy(() => import('./features/terceros/pages/TercerosPage'));
 const UsuariosPage = lazy(() => import('./features/usuarios/pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
@@ -116,6 +117,7 @@ function App() {
                   <Route path="productos" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ProductosPage /></ProtectedRoute>} />
                   <Route path="precios" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><PreciosPage /></ProtectedRoute>} />
                   <Route path="compras" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ComprasPage /></ProtectedRoute>} />
+                  <Route path="compras/nueva" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><NuevaOrdenCompraPage /></ProtectedRoute>} />
                   <Route path="traslados" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><TrasladosPage /></ProtectedRoute>} />
                   <Route path="ventas" element={<VentasPage />} />
                   <Route path="devoluciones" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><DevolucionesPage /></ProtectedRoute>} />

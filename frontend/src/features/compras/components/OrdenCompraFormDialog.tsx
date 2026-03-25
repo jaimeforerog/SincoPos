@@ -146,9 +146,10 @@ export function OrdenCompraFormDialog({
   );
 
   const { data: impuestos = [] } = useQuery({
-    queryKey: ['impuestos'],
+    queryKey: ['impuestos', activeEmpresaId],
     queryFn: () => impuestosApi.getAll(),
     enabled: open,
+    staleTime: 0,
   });
 
   const {
@@ -175,7 +176,6 @@ export function OrdenCompraFormDialog({
     name: 'lineas',
   });
 
-  // Observar líneas para calcular totales
   const lineas = watch('lineas');
 
   const calcularTotales = () => {
@@ -184,7 +184,6 @@ export function OrdenCompraFormDialog({
 
     lineas.forEach((linea) => {
       const subtotalLinea = linea.cantidad * linea.precioUnitario;
-      // Preview client-side: buscar porcentaje del impuesto seleccionado
       const impuestoSeleccionado = linea.impuestoId
         ? impuestos.find((imp) => imp.id === linea.impuestoId)
         : null;
@@ -213,7 +212,6 @@ export function OrdenCompraFormDialog({
       handleClose();
     },
     onError: (error: any) => {
-      // El interceptor de apiClient transforma AxiosError → ApiError { message, errors, statusCode }
       const statusCode: number = error?.statusCode ?? 0;
       const msg: string = error?.message ?? '';
       const errores: Record<string, string[]> | undefined = error?.errors;
@@ -249,7 +247,6 @@ export function OrdenCompraFormDialog({
   });
 
   const onSubmit = (data: OrdenCompraFormData) => {
-    console.log('📤 Datos a enviar al backend:', JSON.stringify(data, null, 2));
     mutation.mutate(data);
   };
 
@@ -399,11 +396,13 @@ export function OrdenCompraFormDialog({
             <Controller
               name="fechaEntregaEsperada"
               control={control}
-              render={({ field }) => (
+              render={({ field: { value, onChange, ref } }) => (
                 <TextField
-                  {...field}
+                  inputRef={ref}
                   type="date"
                   label="Fecha de Entrega Esperada"
+                  value={value ?? ''}
+                  onChange={(e) => onChange(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   fullWidth
                 />
@@ -448,15 +447,15 @@ export function OrdenCompraFormDialog({
             </Alert>
           )}
 
-          <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-            <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 1 } }}>
+          <TableContainer component={Paper} variant="outlined" sx={{ mb: 3, maxHeight: 360, overflowY: 'auto' }}>
+            <Table size="small" sx={{ tableLayout: 'fixed', '& .MuiTableCell-root': { py: 0.25, px: 0.75 } }}>
               <TableHead>
-                <TableRow sx={{ bgcolor: 'grey.50' }}>
-                  <TableCell width="32%">Producto</TableCell>
-                  <TableCell width="10%">Cant.</TableCell>
-                  <TableCell width="16%">Precio Unit.</TableCell>
-                  <TableCell width="20%">Impuesto</TableCell>
-                  <TableCell width="17%" align="right">Subtotal</TableCell>
+                <TableRow sx={{ bgcolor: 'grey.50', '& th': { position: 'sticky', top: 0, bgcolor: 'grey.50', zIndex: 1 } }}>
+                  <TableCell width="52%">Producto</TableCell>
+                  <TableCell width="8%">Cant.</TableCell>
+                  <TableCell width="14%">Precio Unit.</TableCell>
+                  <TableCell width="10%">IVA</TableCell>
+                  <TableCell width="11%" align="right">Subtotal</TableCell>
                   <TableCell width="5%"></TableCell>
                 </TableRow>
               </TableHead>
@@ -544,7 +543,7 @@ export function OrdenCompraFormDialog({
                                     {...params}
                                     error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.productoId}
                                     size="small"
-                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem', py: '4px' } }}
+                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem', py: '2px' } }}
                                   />
                                 )}
                                 size="small"
@@ -565,7 +564,7 @@ export function OrdenCompraFormDialog({
                                 error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.cantidad}
                                 size="small"
                                 fullWidth
-                                inputProps={{ min: 0, step: 1, style: { fontSize: '0.8rem', padding: '4px 6px' } }}
+                                inputProps={{ min: 0, step: 1, style: { fontSize: '0.8rem', padding: '2px 4px', textAlign: 'right' } }}
                               />
                             )}
                           />
@@ -583,7 +582,7 @@ export function OrdenCompraFormDialog({
                                 error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.precioUnitario}
                                 size="small"
                                 fullWidth
-                                inputProps={{ min: 0, step: 1, style: { fontSize: '0.8rem', padding: '4px 6px' } }}
+                                inputProps={{ min: 0, step: 1, style: { fontSize: '0.8rem', padding: '2px 4px', textAlign: 'right' } }}
                               />
                             )}
                           />
@@ -602,9 +601,9 @@ export function OrdenCompraFormDialog({
                                 }
                                 size="small"
                                 fullWidth
-                                sx={{ '& .MuiSelect-select': { fontSize: '0.8rem', py: '4px' } }}
+                                sx={{ '& .MuiSelect-select': { fontSize: '0.8rem', py: '2px' } }}
                               >
-                                <MenuItem value="" sx={{ fontSize: '0.8rem' }}>Auto</MenuItem>
+                                <MenuItem value="" sx={{ fontSize: '0.8rem' }}>Exento (0%)</MenuItem>
                                 {impuestos.map((impuesto) => (
                                   <MenuItem key={impuesto.id} value={impuesto.id} sx={{ fontSize: '0.8rem' }}>
                                     {impuesto.nombre}
@@ -639,23 +638,19 @@ export function OrdenCompraFormDialog({
 
           {/* Totales */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Box sx={{ width: 300 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Subtotal:</Typography>
-                <Typography variant="body2">
-                  ${totales.subtotal.toLocaleString('es-CO')}
-                </Typography>
+            <Box sx={{ width: 200 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">Subtotal:</Typography>
+                <Typography variant="caption">${totales.subtotal.toLocaleString('es-CO')}</Typography>
               </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Impuestos:</Typography>
-                <Typography variant="body2">
-                  ${totales.impuestos.toLocaleString('es-CO')}
-                </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">IVA:</Typography>
+                <Typography variant="caption">${totales.impuestos.toLocaleString('es-CO')}</Typography>
               </Box>
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 0.5 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="h6">Total:</Typography>
-                <Typography variant="h6" color="primary">
+                <Typography variant="body2" fontWeight={700}>Total:</Typography>
+                <Typography variant="body2" fontWeight={700} color="primary">
                   ${totales.total.toLocaleString('es-CO')}
                 </Typography>
               </Box>

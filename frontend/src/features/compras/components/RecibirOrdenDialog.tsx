@@ -37,6 +37,7 @@ const lineaRecepcionSchema = z.object({
 });
 
 const recibirSchema = z.object({
+  fechaRecepcion: z.string().min(1, 'La fecha de recepción es requerida'),
   lineas: z.array(lineaRecepcionSchema),
 });
 
@@ -66,14 +67,25 @@ export function RecibirOrdenDialog({
     formState: { errors },
   } = useForm<RecibirFormData>({
     resolver: zodResolver(recibirSchema),
-    defaultValues: { lineas: [] },
+    defaultValues: { fechaRecepcion: new Date().toISOString().split('T')[0], lineas: [] },
   });
 
   const { fields } = useFieldArray({ control, name: 'lineas' });
 
+  // Default: fecha de entrega esperada si está en el pasado/hoy, si no hoy
+  const today = new Date().toISOString().split('T')[0];
+  const defaultFechaRecepcion = (() => {
+    if (orden.fechaEntregaEsperada) {
+      const fe = orden.fechaEntregaEsperada.split('T')[0];
+      return fe <= today ? fe : today;
+    }
+    return today;
+  })();
+
   useEffect(() => {
     if (open) {
       reset({
+        fechaRecepcion: defaultFechaRecepcion,
         lineas: orden.detalles.map((d) => {
           // Pre-calcular fecha de vencimiento si el producto tiene diasVidaUtil configurado
           let fechaVencimientoDefault = '';
@@ -105,28 +117,33 @@ export function RecibirOrdenDialog({
       onClose();
     },
     onError: (error: any) => {
+      const statusCode: number = error?.statusCode ?? 0;
+      const msg: string = error?.message ?? '';
+      const errores: Record<string, string[]> | undefined = error?.errors;
+
       let mensaje = 'Error al recibir la mercancía';
-      if (error.response) {
-        const { status, data } = error.response;
-        if (status === 400) {
-          if (data.errors) {
-            const errores = Object.entries(data.errors)
-              .map(([campo, mensajes]: [string, any]) => `${campo}: ${Array.isArray(mensajes) ? mensajes.join(', ') : mensajes}`)
-              .join('; ');
-            mensaje = `Errores de validación: ${errores}`;
-          } else {
-            mensaje = data.error || 'Datos de recepción inválidos. Verifica las cantidades.';
-          }
-        } else if (status === 403) {
-          mensaje = 'No tienes permisos para recibir mercancía. Se requiere rol Supervisor.';
-        } else if (status === 404) {
-          mensaje = 'Orden de compra no encontrada.';
+
+      if (statusCode === 400) {
+        if (errores && Object.keys(errores).length > 0) {
+          const detalle = Object.entries(errores)
+            .map(([campo, msgs]) => `${campo}: ${msgs.join(', ')}`)
+            .join('\n');
+          mensaje = `Errores de validación:\n${detalle}`;
         } else {
-          mensaje = data.error || data.message || mensaje;
+          mensaje = msg || 'Datos de recepción inválidos. Verifica las cantidades.';
         }
-      } else if (error.request) {
-        mensaje = 'No se pudo conectar con el servidor.';
+      } else if (statusCode === 403) {
+        mensaje = 'No tienes permisos para recibir mercancía. Se requiere rol Supervisor.';
+      } else if (statusCode === 404) {
+        mensaje = msg || 'Orden de compra no encontrada.';
+      } else if (statusCode >= 500) {
+        mensaje = msg || 'Error interno del servidor. Contacta al administrador.';
+      } else if (statusCode === 0) {
+        mensaje = msg || 'No se pudo conectar con el servidor.';
+      } else if (msg) {
+        mensaje = msg;
       }
+
       enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });
@@ -147,10 +164,10 @@ export function RecibirOrdenDialog({
       return;
     }
 
-    mutation.mutate({ lineas: lineasRecibidas });
+    mutation.mutate({ lineas: lineasRecibidas, fechaRecepcion: data.fechaRecepcion });
   };
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => { reset({ fechaRecepcion: today, lineas: [] }); onClose(); };
 
   const tieneLotes = orden.detalles.some((d) => d.manejaLotes);
 
@@ -167,6 +184,24 @@ export function RecibirOrdenDialog({
               <> Los productos marcados con <Chip label="Lote" size="small" color="warning" sx={{ mx: 0.5 }} /> requieren número de lote y fecha de vencimiento.</>
             )}
           </Alert>
+
+          <Controller
+            name="fechaRecepcion"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                type="date"
+                label="Fecha de Recepción *"
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ max: today }}
+                error={!!errors.fechaRecepcion}
+                helperText={errors.fechaRecepcion?.message}
+                sx={{ mb: 2, width: 260 }}
+                size="small"
+              />
+            )}
+          />
 
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">

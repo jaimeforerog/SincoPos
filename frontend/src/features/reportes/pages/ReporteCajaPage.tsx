@@ -34,8 +34,8 @@ import { exportarReporteCaja } from '@/utils/exportReportes';
 import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteCajaPage() {
-  const { user, activeEmpresaId } = useAuth();
-  const [sucursalId, setSucursalId] = useState<number | ''>('');
+  const { user, activeEmpresaId, activeSucursalId } = useAuth();
+  const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
   const [cajaId, setCajaId] = useState<number | ''>('');
 
   const { data: todasSucursales = [] } = useQuery({

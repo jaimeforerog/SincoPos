@@ -34,12 +34,12 @@ import type { ProductoDTO } from '@/types/api';
 import { useAuth } from '@/hooks/useAuth';
 
 export function ReporteKardexPage() {
-  const { user, activeEmpresaId } = useAuth();
+  const { user, activeEmpresaId, activeSucursalId } = useAuth();
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
   const [producto, setProducto] = useState<ProductoDTO | null>(null);
-  const [sucursalId, setSucursalId] = useState<number | ''>('');
+  const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
   const [fechaDesde, setFechaDesde] = useState(format(firstDayOfMonth, 'yyyy-MM-dd'));
   const [fechaHasta, setFechaHasta] = useState(format(today, 'yyyy-MM-dd'));
 
@@ -170,7 +170,7 @@ export function ReporteKardexPage() {
   ], []);
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 2, mb: 4 }}>
+    <Container maxWidth="xl">
       <ReportePageHeader
         title="Kardex de Inventario"
         subtitle="Historial detallado de entradas, salidas y saldos por producto"
