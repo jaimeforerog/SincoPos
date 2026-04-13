@@ -1,8 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   Box,
   Button,
@@ -11,7 +7,6 @@ import {
   Chip,
   Divider,
   CircularProgress,
-  TextField,
   Alert,
   Table,
   TableBody,
@@ -24,9 +19,10 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import { useSnackbar } from 'notistack';
+import { useQuery } from '@tanstack/react-query';
 import { comprasApi } from '@/api/compras';
-import type { OrdenCompraDTO } from '@/types/api';
+import { AccionAprobar, AccionRechazar, AccionCancelar } from './OrdenCompraAcciones';
+import { AccionRecibir } from './OrdenCompraRecibir';
 
 const HERO_COLOR = '#1565c0';
 
@@ -48,28 +44,11 @@ const formatFecha = (fecha?: string) => {
   return new Date(fecha).toLocaleDateString('es-CO');
 };
 
-// ── Schemas para recibir mercancía ──────────────────────────────────────────
-const lineaRecepcionSchema = z.object({
-  productoId: z.string(),
-  cantidadRecibida: z.number().min(0, 'Cantidad debe ser mayor o igual a 0'),
-  observaciones: z.string().optional(),
-  numeroLote: z.string().optional(),
-  fechaVencimiento: z.string().optional(),
-});
-
-const recibirSchema = z.object({
-  fechaRecepcion: z.string().min(1, 'La fecha de recepción es requerida'),
-  lineas: z.array(lineaRecepcionSchema),
-});
-
-type RecibirFormData = z.infer<typeof recibirSchema>;
-
 interface Props {
   ordenId: number;
   onBack: () => void;
 }
 
-// ── Componente InfoRow ───────────────────────────────────────────────────────
 function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {
   if (!value) return null;
   return (
@@ -84,558 +63,6 @@ function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {
   );
 }
 
-// ── Sección de acción: Aprobar ───────────────────────────────────────────────
-function AccionAprobar({
-  orden,
-  onCancel,
-  onDone,
-}: {
-  orden: OrdenCompraDTO;
-  onCancel: () => void;
-  onDone: () => void;
-}) {
-  const { enqueueSnackbar } = useSnackbar();
-  const queryClient = useQueryClient();
-  const [observaciones, setObservaciones] = useState('');
-
-  const mutation = useMutation({
-    mutationFn: () => comprasApi.aprobar(orden.id, { observaciones: observaciones || undefined }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compra', orden.id] });
-      queryClient.invalidateQueries({ queryKey: ['compras'] });
-      enqueueSnackbar('Orden aprobada exitosamente', { variant: 'success' });
-      onDone();
-    },
-    onError: (error: any) => {
-      const statusCode: number = error?.statusCode ?? 0;
-      const msg: string = error?.message ?? '';
-      let mensaje = 'Error al aprobar la orden';
-      if (statusCode === 400) mensaje = msg || 'No se puede aprobar esta orden. Verifica su estado actual.';
-      else if (statusCode === 403) mensaje = 'No tienes permisos para aprobar órdenes. Se requiere rol Supervisor.';
-      else if (statusCode === 404) mensaje = 'Orden de compra no encontrada.';
-      else if (statusCode >= 500) mensaje = msg || 'Error interno del servidor.';
-      else if (msg) mensaje = msg;
-      enqueueSnackbar(mensaje, { variant: 'error' });
-    },
-  });
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 2.5, borderColor: 'success.main', borderWidth: 1.5, borderRadius: 2 }}
-    >
-      <Typography variant="subtitle1" fontWeight={700} color="success.dark" sx={{ mb: 1.5 }}>
-        Aprobar Orden
-      </Typography>
-      <Alert severity="info" sx={{ mb: 2 }}>
-        ¿Está seguro que desea aprobar la orden <strong>{orden.numeroOrden}</strong>?
-      </Alert>
-      <TextField
-        label="Observaciones (opcional)"
-        multiline
-        rows={2}
-        fullWidth
-        size="small"
-        value={observaciones}
-        onChange={(e) => setObservaciones(e.target.value)}
-        sx={{ mb: 2 }}
-      />
-      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-        <Button onClick={onCancel} disabled={mutation.isPending}>
-          Cancelar
-        </Button>
-        <Button
-          variant="contained"
-          color="success"
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate()}
-        >
-          {mutation.isPending ? 'Aprobando...' : 'Aprobar'}
-        </Button>
-      </Box>
-    </Paper>
-  );
-}
-
-// ── Sección de acción: Rechazar ──────────────────────────────────────────────
-function AccionRechazar({
-  orden,
-  onCancel,
-  onDone,
-}: {
-  orden: OrdenCompraDTO;
-  onCancel: () => void;
-  onDone: () => void;
-}) {
-  const { enqueueSnackbar } = useSnackbar();
-  const queryClient = useQueryClient();
-  const [motivo, setMotivo] = useState('');
-  const [motivoError, setMotivoError] = useState('');
-
-  const mutation = useMutation({
-    mutationFn: () => comprasApi.rechazar(orden.id, { motivoRechazo: motivo }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compra', orden.id] });
-      queryClient.invalidateQueries({ queryKey: ['compras'] });
-      enqueueSnackbar('Orden rechazada', { variant: 'info' });
-      onDone();
-    },
-    onError: (error: any) => {
-      const statusCode: number = error?.statusCode ?? 0;
-      const msg: string = error?.message ?? '';
-      let mensaje = 'Error al rechazar la orden';
-      if (statusCode === 400) mensaje = msg || 'No se puede rechazar esta orden.';
-      else if (statusCode === 403) mensaje = 'No tienes permisos para rechazar órdenes.';
-      else if (statusCode === 404) mensaje = 'Orden de compra no encontrada.';
-      else if (statusCode >= 500) mensaje = msg || 'Error interno del servidor.';
-      else if (msg) mensaje = msg;
-      enqueueSnackbar(mensaje, { variant: 'error' });
-    },
-  });
-
-  const handleSubmit = () => {
-    if (motivo.trim().length < 5) {
-      setMotivoError('El motivo debe tener al menos 5 caracteres');
-      return;
-    }
-    setMotivoError('');
-    mutation.mutate();
-  };
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 2.5, borderColor: 'error.main', borderWidth: 1.5, borderRadius: 2 }}
-    >
-      <Typography variant="subtitle1" fontWeight={700} color="error.dark" sx={{ mb: 1.5 }}>
-        Rechazar Orden
-      </Typography>
-      <Alert severity="warning" sx={{ mb: 2 }}>
-        Esta acción rechazará la orden <strong>{orden.numeroOrden}</strong>. No se podrá deshacer.
-      </Alert>
-      <TextField
-        label="Motivo de rechazo *"
-        multiline
-        rows={2}
-        fullWidth
-        size="small"
-        value={motivo}
-        onChange={(e) => { setMotivo(e.target.value); if (motivoError) setMotivoError(''); }}
-        error={!!motivoError}
-        helperText={motivoError}
-        sx={{ mb: 2 }}
-      />
-      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-        <Button onClick={onCancel} disabled={mutation.isPending}>
-          Cancelar
-        </Button>
-        <Button
-          variant="contained"
-          color="error"
-          disabled={mutation.isPending}
-          onClick={handleSubmit}
-        >
-          {mutation.isPending ? 'Rechazando...' : 'Rechazar'}
-        </Button>
-      </Box>
-    </Paper>
-  );
-}
-
-// ── Sección de acción: Cancelar ──────────────────────────────────────────────
-function AccionCancelar({
-  orden,
-  onCancel,
-  onDone,
-}: {
-  orden: OrdenCompraDTO;
-  onCancel: () => void;
-  onDone: () => void;
-}) {
-  const { enqueueSnackbar } = useSnackbar();
-  const queryClient = useQueryClient();
-  const [motivo, setMotivo] = useState('');
-  const [motivoError, setMotivoError] = useState('');
-
-  const mutation = useMutation({
-    mutationFn: () => comprasApi.cancelar(orden.id, { motivo }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compra', orden.id] });
-      queryClient.invalidateQueries({ queryKey: ['compras'] });
-      enqueueSnackbar('Orden cancelada', { variant: 'info' });
-      onDone();
-    },
-    onError: (error: any) => {
-      const statusCode: number = error?.statusCode ?? 0;
-      const msg: string = error?.message ?? '';
-      let mensaje = 'Error al cancelar la orden';
-      if (statusCode === 400) mensaje = msg || 'No se puede cancelar esta orden.';
-      else if (statusCode === 403) mensaje = 'No tienes permisos para cancelar órdenes.';
-      else if (statusCode === 404) mensaje = 'Orden de compra no encontrada.';
-      else if (statusCode >= 500) mensaje = msg || 'Error interno del servidor.';
-      else if (msg) mensaje = msg;
-      enqueueSnackbar(mensaje, { variant: 'error' });
-    },
-  });
-
-  const handleSubmit = () => {
-    if (motivo.trim().length < 5) {
-      setMotivoError('El motivo debe tener al menos 5 caracteres');
-      return;
-    }
-    setMotivoError('');
-    mutation.mutate();
-  };
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 2.5, borderColor: 'warning.main', borderWidth: 1.5, borderRadius: 2 }}
-    >
-      <Typography variant="subtitle1" fontWeight={700} color="warning.dark" sx={{ mb: 1.5 }}>
-        Cancelar Orden
-      </Typography>
-      <Alert severity="warning" sx={{ mb: 2 }}>
-        Esta acción cancelará la orden <strong>{orden.numeroOrden}</strong>. No se podrá deshacer.
-      </Alert>
-      <TextField
-        label="Motivo de cancelación *"
-        multiline
-        rows={2}
-        fullWidth
-        size="small"
-        value={motivo}
-        onChange={(e) => { setMotivo(e.target.value); if (motivoError) setMotivoError(''); }}
-        error={!!motivoError}
-        helperText={motivoError}
-        sx={{ mb: 2 }}
-      />
-      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-        <Button onClick={onCancel} disabled={mutation.isPending}>
-          Cancelar
-        </Button>
-        <Button
-          variant="contained"
-          color="warning"
-          disabled={mutation.isPending}
-          onClick={handleSubmit}
-        >
-          {mutation.isPending ? 'Cancelando...' : 'Cancelar Orden'}
-        </Button>
-      </Box>
-    </Paper>
-  );
-}
-
-// ── Sección de acción: Recibir Mercancía ─────────────────────────────────────
-function AccionRecibir({
-  orden,
-  onCancel,
-  onDone,
-}: {
-  orden: OrdenCompraDTO;
-  onCancel: () => void;
-  onDone: () => void;
-}) {
-  const { enqueueSnackbar } = useSnackbar();
-  const queryClient = useQueryClient();
-  const today = new Date().toISOString().split('T')[0];
-  const tieneLotes = orden.detalles.some((d) => d.manejaLotes);
-
-  const {
-    control,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm<RecibirFormData>({
-    resolver: zodResolver(recibirSchema),
-    defaultValues: { fechaRecepcion: today, lineas: [] },
-  });
-
-  const { fields } = useFieldArray({ control, name: 'lineas' });
-
-  useEffect(() => {
-    const defaultFecha = (() => {
-      if (orden.fechaEntregaEsperada) {
-        const fe = orden.fechaEntregaEsperada.split('T')[0];
-        return fe <= today ? fe : today;
-      }
-      return today;
-    })();
-
-    reset({
-      fechaRecepcion: defaultFecha,
-      lineas: orden.detalles.map((d) => {
-        let fechaVencimientoDefault = '';
-        if (d.manejaLotes && d.diasVidaUtil) {
-          const fecha = new Date();
-          fecha.setDate(fecha.getDate() + d.diasVidaUtil);
-          fechaVencimientoDefault = fecha.toISOString().split('T')[0];
-        }
-        return {
-          productoId: d.productoId,
-          cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
-          observaciones: '',
-          numeroLote: '',
-          fechaVencimiento: fechaVencimientoDefault,
-        };
-      }),
-    });
-  }, [orden, reset]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const lineas = watch('lineas');
-  const totalUnidades = lineas.reduce((sum, l) => sum + (l.cantidadRecibida || 0), 0);
-
-  const mutation = useMutation({
-    mutationFn: (data: RecibirFormData) => {
-      const lineasRecibidas = data.lineas
-        .filter((l) => l.cantidadRecibida > 0)
-        .map((l) => ({
-          productoId: l.productoId,
-          cantidadRecibida: l.cantidadRecibida,
-          observaciones: l.observaciones || undefined,
-          numeroLote: l.numeroLote || undefined,
-          fechaVencimiento: l.fechaVencimiento || undefined,
-        }));
-      return comprasApi.recibir(orden.id, { lineas: lineasRecibidas, fechaRecepcion: data.fechaRecepcion });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compra', orden.id] });
-      queryClient.invalidateQueries({ queryKey: ['compras'] });
-      enqueueSnackbar('Mercancía recibida exitosamente', { variant: 'success' });
-      onDone();
-    },
-    onError: (error: any) => {
-      const statusCode: number = error?.statusCode ?? 0;
-      const msg: string = error?.message ?? '';
-      const errores: Record<string, string[]> | undefined = error?.errors;
-      let mensaje = 'Error al recibir la mercancía';
-      if (statusCode === 400) {
-        if (errores && Object.keys(errores).length > 0) {
-          const detalle = Object.entries(errores)
-            .map(([campo, msgs]) => `${campo}: ${msgs.join(', ')}`)
-            .join('\n');
-          mensaje = `Errores de validación:\n${detalle}`;
-        } else {
-          mensaje = msg || 'Datos de recepción inválidos. Verifica las cantidades.';
-        }
-      } else if (statusCode === 403) {
-        mensaje = 'No tienes permisos para recibir mercancía. Se requiere rol Supervisor.';
-      } else if (statusCode === 404) {
-        mensaje = msg || 'Orden de compra no encontrada.';
-      } else if (statusCode >= 500) {
-        mensaje = msg || 'Error interno del servidor.';
-      } else if (statusCode === 0) {
-        mensaje = msg || 'No se pudo conectar con el servidor.';
-      } else if (msg) {
-        mensaje = msg;
-      }
-      enqueueSnackbar(mensaje, { variant: 'error' });
-    },
-  });
-
-  const onSubmit = (data: RecibirFormData) => {
-    const lineasRecibidas = data.lineas.filter((l) => l.cantidadRecibida > 0);
-    if (lineasRecibidas.length === 0) {
-      enqueueSnackbar('Debe recibir al menos un producto', { variant: 'warning' });
-      return;
-    }
-    mutation.mutate(data);
-  };
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 2.5, borderColor: 'primary.main', borderWidth: 1.5, borderRadius: 2 }}
-    >
-      <Typography variant="subtitle1" fontWeight={700} color="primary.dark" sx={{ mb: 1.5 }}>
-        Recibir Mercancía — {orden.numeroOrden}
-      </Typography>
-
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Ingrese las cantidades recibidas para esta orden de <strong>{orden.formaPago}</strong>
-          {orden.formaPago === 'Credito' ? ` (${orden.diasPlazo} días)` : ''}.
-          {tieneLotes && (
-            <> Los productos marcados con <Chip label="Lote" size="small" color="warning" sx={{ mx: 0.5 }} /> requieren número de lote y fecha de vencimiento.</>
-          )}
-        </Alert>
-
-        <Controller
-          name="fechaRecepcion"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              type="date"
-              label="Fecha de Recepción *"
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ max: today }}
-              error={!!errors.fechaRecepcion}
-              helperText={errors.fechaRecepcion?.message}
-              sx={{ mb: 2, width: 260 }}
-              size="small"
-            />
-          )}
-        />
-
-        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow
-                sx={{
-                  '& th': {
-                    bgcolor: 'grey.50',
-                    fontWeight: 700,
-                    fontSize: '0.72rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'text.secondary',
-                  },
-                }}
-              >
-                <TableCell>Producto</TableCell>
-                <TableCell align="center">Solicitada</TableCell>
-                <TableCell align="center">Ya Recibida</TableCell>
-                <TableCell align="center">Pendiente</TableCell>
-                <TableCell align="center" width={110}>Recibir Ahora</TableCell>
-                {tieneLotes && <TableCell width={140}>Nº Lote</TableCell>}
-                {tieneLotes && <TableCell width={150}>Vencimiento</TableCell>}
-                <TableCell>Obs.</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {fields.map((field, index) => {
-                const detalle = orden.detalles[index];
-                const pendiente = detalle.cantidadSolicitada - detalle.cantidadRecibida;
-
-                return (
-                  <TableRow key={field.id}>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="body2">{detalle.nombreProducto}</Typography>
-                        {detalle.manejaLotes && (
-                          <Chip label="Lote" size="small" color="warning" variant="outlined" />
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center">{detalle.cantidadSolicitada}</TableCell>
-                    <TableCell align="center">
-                      <Typography
-                        variant="body2"
-                        color={detalle.cantidadRecibida > 0 ? 'success.main' : 'text.secondary'}
-                      >
-                        {detalle.cantidadRecibida}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography
-                        variant="body2"
-                        fontWeight="medium"
-                        color={pendiente > 0 ? 'warning.main' : 'success.main'}
-                      >
-                        {pendiente}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Controller
-                        name={`lineas.${index}.cantidadRecibida`}
-                        control={control}
-                        render={({ field: { value, onChange, ...f } }) => (
-                          <TextField
-                            {...f}
-                            type="number"
-                            value={value}
-                            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-                            size="small"
-                            sx={{ width: 90 }}
-                            inputProps={{ min: 0, max: pendiente, step: 1 }}
-                          />
-                        )}
-                      />
-                    </TableCell>
-                    {tieneLotes && (
-                      <TableCell>
-                        <Controller
-                          name={`lineas.${index}.numeroLote`}
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              {...field}
-                              size="small"
-                              fullWidth
-                              placeholder={detalle.manejaLotes ? 'Requerido' : '—'}
-                              disabled={!detalle.manejaLotes}
-                            />
-                          )}
-                        />
-                      </TableCell>
-                    )}
-                    {tieneLotes && (
-                      <TableCell>
-                        <Controller
-                          name={`lineas.${index}.fechaVencimiento`}
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              {...field}
-                              type="date"
-                              size="small"
-                              fullWidth
-                              disabled={!detalle.manejaLotes}
-                              InputLabelProps={{ shrink: true }}
-                              inputProps={{ min: today }}
-                            />
-                          )}
-                        />
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <Controller
-                        name={`lineas.${index}.observaciones`}
-                        control={control}
-                        render={({ field }) => (
-                          <TextField {...field} size="small" fullWidth placeholder="Opcional" />
-                        )}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
-          <Alert severity="success">
-            <strong>Resumen:</strong> Se recibirán <strong>{totalUnidades}</strong> unidades en total
-          </Alert>
-          <Alert severity="info" variant="outlined">
-            <strong>Integración ERP Sinco:</strong> Al confirmar esta recepción, el sistema encolará automáticamente el respectivo comprobante y actualizará el estado en la tabla de órdenes de compra al procesarlo.
-          </Alert>
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-          <Button onClick={onCancel} disabled={mutation.isPending}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            startIcon={<LocalShippingIcon />}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? 'Recibiendo...' : 'Recibir Mercancía'}
-          </Button>
-        </Box>
-      </form>
-    </Paper>
-  );
-}
-
-// ── Componente principal ─────────────────────────────────────────────────────
 export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
   const [accion, setAccion] = useState<Accion>(null);
 
@@ -646,8 +73,6 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
 
   const handleAccionDone = () => {
     setAccion(null);
-    // La query se invalida dentro de cada AccionXxx → se re-carga automáticamente
-    // Si la acción cierra el flujo (rechazar/cancelar/recibir completa), volvemos atrás
     onBack();
   };
 
@@ -706,7 +131,6 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
             gap: 1,
           }}
         >
-          {/* Izquierda: back + número + chip */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <IconButton
               aria-label="regresar"
@@ -733,8 +157,6 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
               sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.18)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}
             />
           </Box>
-
-          {/* Derecha: proveedor + fecha */}
           <Box sx={{ textAlign: { xs: 'left', md: 'right' } }}>
             <Typography variant="body1" fontWeight={600} sx={{ color: '#fff' }}>
               {orden.nombreProveedor}
@@ -810,7 +232,6 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
               </>
             )}
 
-            {/* ERP status — solo en RecibidaParcial o RecibidaCompleta */}
             {(orden.estado === 'RecibidaParcial' || orden.estado === 'RecibidaCompleta') && (
               <>
                 <Divider sx={{ my: 1.5 }} />
@@ -870,7 +291,6 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
 
           {/* Panel derecho — Productos */}
           <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            {/* Encabezado tabla */}
             <Box
               sx={{
                 display: 'flex',

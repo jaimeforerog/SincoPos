@@ -84,6 +84,7 @@ public class CategoriasController : ControllerBase
             CategoriaPadreId = dto.CategoriaPadreId,
             Nivel = nivel,
             RutaCompleta = rutaCompleta,
+            MargenGanancia = dto.MargenGanancia,
             EmpresaId = _empresaProvider.EmpresaId,
             Activo = true
         };
@@ -283,6 +284,7 @@ public class CategoriasController : ControllerBase
 
         categoria.Nombre = dto.Nombre;
         categoria.Descripcion = dto.Descripcion;
+        categoria.MargenGanancia = dto.MargenGanancia;
 
         // Si cambió el nombre, actualizar ruta completa
         if (categoria.CategoriaPadreId.HasValue)
@@ -382,7 +384,8 @@ public class CategoriasController : ControllerBase
             Nivel: categoria.Nivel,
             RutaCompleta: categoria.RutaCompleta,
             CantidadSubCategorias: categoria.SubCategorias?.Count ?? 0,
-            CantidadProductos: categoria.Productos?.Count ?? 0
+            CantidadProductos: categoria.Productos?.Count ?? 0,
+            MargenGanancia: categoria.MargenGanancia
         );
     }
 

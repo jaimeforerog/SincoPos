@@ -28,7 +28,7 @@ vi.mock('@/api/inventario', () => ({
 
 vi.mock('@/api/sucursales', () => ({
   sucursalesApi: {
-    getAll: vi.fn().mockResolvedValue([]),
+    getAll: vi.fn().mockResolvedValue([{ id: 1, nombre: 'Central', activa: true }]),
   },
 }));
 

@@ -67,6 +67,7 @@ export interface CategoriaDTO {
   rutaCompleta: string;
   cantidadSubCategorias: number;
   cantidadProductos: number;
+  margenGanancia: number;
   cuentaInventario?: string;
   cuentaCosto?: string;
   cuentaIngreso?: string;
@@ -90,6 +91,7 @@ export interface CrearCategoriaDTO {
   nombre: string;
   descripcion?: string;
   categoriaPadreId?: number;
+  margenGanancia?: number;
   cuentaInventario?: string;
   cuentaCosto?: string;
   cuentaIngreso?: string;
@@ -101,6 +103,7 @@ export interface ActualizarCategoriaDTO {
   nombre: string;
   descripcion?: string;
   categoriaPadreId?: number;
+  margenGanancia?: number;
   cuentaInventario?: string;
   cuentaCosto?: string;
   cuentaIngreso?: string;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { renderWithProviders } from '@/test/test-utils';
 import { IntentSearch } from '../IntentSearch';
 import type { ProductoDTO, PaginatedResponse } from '@/types/api';
@@ -159,13 +159,15 @@ describe('IntentSearch', () => {
     });
   });
 
-  it('Ctrl+K pone el foco en el campo de búsqueda', () => {
+  it('Ctrl+K pone el foco en el campo de búsqueda', async () => {
     renderWithProviders(<IntentSearch onSelectProduct={vi.fn()} />);
 
     const input = screen.getByPlaceholderText(/Nombre, código/i);
     input.blur();
 
-    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    });
 
     // El foco debe volver al input
     expect(document.activeElement).toBe(input);

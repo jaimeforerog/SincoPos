@@ -24,6 +24,7 @@ const categoriaSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').max(100),
   descripcion: z.string().optional(),
   categoriaPadreId: z.number().optional().nullable(),
+  margenGanancia: z.number().min(0, 'No puede ser negativo').max(10, 'No puede superar 1000%'),
   cuentaInventario: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
   cuentaCosto: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
   cuentaIngreso: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
@@ -61,6 +62,7 @@ export function CategoriaFormDialog({
       nombre: '',
       descripcion: '',
       categoriaPadreId: padreId || null,
+      margenGanancia: 0.30,
       cuentaInventario: '',
       cuentaCosto: '',
       cuentaIngreso: '',
@@ -89,6 +91,7 @@ export function CategoriaFormDialog({
         nombre: categoria.nombre,
         descripcion: categoria.descripcion || '',
         categoriaPadreId: categoria.categoriaPadreId || null,
+        margenGanancia: categoria.margenGanancia ?? 0.30,
         cuentaInventario: categoria.cuentaInventario || '',
         cuentaCosto: categoria.cuentaCosto || '',
         cuentaIngreso: categoria.cuentaIngreso || '',
@@ -100,6 +103,7 @@ export function CategoriaFormDialog({
         nombre: '',
         descripcion: '',
         categoriaPadreId: padreId,
+        margenGanancia: 0.30,
         cuentaInventario: '',
         cuentaCosto: '',
         cuentaIngreso: '',
@@ -111,6 +115,7 @@ export function CategoriaFormDialog({
         nombre: '',
         descripcion: '',
         categoriaPadreId: null,
+        margenGanancia: 0.30,
         cuentaInventario: '',
         cuentaCosto: '',
         cuentaIngreso: '',
@@ -154,6 +159,7 @@ export function CategoriaFormDialog({
       nombre: data.nombre,
       descripcion: data.descripcion || undefined,
       categoriaPadreId: data.categoriaPadreId || undefined,
+      margenGanancia: data.margenGanancia,
       cuentaInventario: data.cuentaInventario || undefined,
       cuentaCosto: data.cuentaCosto || undefined,
       cuentaIngreso: data.cuentaIngreso || undefined,
@@ -205,6 +211,24 @@ export function CategoriaFormDialog({
                   rows={3}
                   error={!!errors.descripcion}
                   helperText={errors.descripcion?.message}
+                />
+              )}
+            />
+
+            <Controller
+              name="margenGanancia"
+              control={control}
+              render={({ field: { value, onChange, ...field } }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="Margen de ganancia (%)"
+                  value={Math.round(value * 100)}
+                  onChange={(e) => onChange(Number(e.target.value) / 100)}
+                  error={!!errors.margenGanancia}
+                  helperText={errors.margenGanancia?.message || 'Fallback cuando el producto no tiene precio configurado. Ej: 30 = 30%'}
+                  inputProps={{ min: 0, max: 1000, step: 1 }}
+                  fullWidth
                 />
               )}
             />

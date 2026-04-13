@@ -7,13 +7,15 @@ import type { MetricasDelDiaDTO, VentaPorHoraDTO, AlertaStockDTO } from '@/types
 // ── Mock recharts ──────────────────────────────────────────────────────────
 
 vi.mock('recharts', () => ({
-  AreaChart:          ({ children }: { children: React.ReactNode }) => <div data-testid="area-chart">{children}</div>,
-  Area:               () => null,
-  XAxis:              () => null,
-  YAxis:              () => null,
-  Tooltip:            () => null,
-  ResponsiveContainer:({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ReferenceLine:      () => null,
+  // Don't pass children through AreaChart to avoid jsdom SVG-casing warnings
+  // from inline <defs>/<linearGradient>/<stop> elements in the component.
+  AreaChart:           () => <div data-testid="area-chart" />,
+  Area:                () => null,
+  XAxis:               () => null,
+  YAxis:               () => null,
+  Tooltip:             () => null,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ReferenceLine:       () => null,
 }));
 
 // ── Fixtures ───────────────────────────────────────────────────────────────

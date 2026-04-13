@@ -3,13 +3,15 @@ namespace POS.Application.DTOs;
 public record CrearCategoriaDto(
     string Nombre,
     string? Descripcion,
-    int? CategoriaPadreId = null
+    int? CategoriaPadreId = null,
+    decimal MargenGanancia = 0.30m
 );
 
 public record ActualizarCategoriaDto(
     string Nombre,
     string? Descripcion,
-    int? CategoriaPadreId = null
+    int? CategoriaPadreId = null,
+    decimal MargenGanancia = 0.30m
 );
 
 public record CategoriaDto(
@@ -22,7 +24,8 @@ public record CategoriaDto(
     int Nivel,
     string RutaCompleta,
     int CantidadSubCategorias,
-    int CantidadProductos
+    int CantidadProductos,
+    decimal MargenGanancia = 0.30m
 );
 
 public record CategoriaArbolDto(

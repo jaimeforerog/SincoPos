@@ -47,6 +47,7 @@ builder.Services.AddScoped<POS.Infrastructure.Services.ITaxEngine, POS.Infrastru
 builder.Services.AddScoped<POS.Application.Services.IVentaService, POS.Infrastructure.Services.VentaService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.VentaAnulacionService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.VentaDevolucionService>();
+builder.Services.AddScoped<POS.Infrastructure.Services.CompraRecepcionService>();
 builder.Services.AddScoped<POS.Application.Services.ICompraService, POS.Infrastructure.Services.CompraService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.IVentaCosteoService, POS.Infrastructure.Services.VentaCosteoService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.ICompraErpService, POS.Infrastructure.Services.CompraErpService>();
