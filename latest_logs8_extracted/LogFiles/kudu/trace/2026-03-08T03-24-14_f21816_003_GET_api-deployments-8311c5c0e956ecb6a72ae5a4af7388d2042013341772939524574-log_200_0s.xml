@@ -1,7 +1,0 @@
-<step title="Incoming Request" date="2026-03-08T03:24:14.086" instance="f21816" url="/api/deployments/8311c5c0e956ecb6a72ae5a4af7388d2042013341772939524574/log" method="GET" type="request" pid="770,1,5" Accept="*/*" Host="sincopos-api.scm.azurewebsites.net" User-Agent="AZURECLI/2.84.0 (MSI)" Accept-Encoding="gzip, deflate" Authorization="Bea..." x-ms-client-request-id="3c21dfa4-1a9e-11f1-9c9d-a8e29108ccd1" X-ARR-LOG-ID="3c21dfa4-1a9e-11f1-9c9d-a8e29108ccd1" CLIENT-IP="186.28.83.48:50493" X-SITE-DEPLOYMENT-ID="sincopos-api" WAS-DEFAULT-HOSTNAME="sincopos-api.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/8311c5c0e956ecb6a72ae5a4af7388d2042013341772939524574/log" X-Client-IP="186.28.83.48" X-Client-Port="50493" >
-  <step title="Cleanup Xml Logs" date="2026-03-08T03:24:14.118" /><!-- duration: 31ms -->
-  <step title="DeploymentService.GetLogEntry" date="2026-03-08T03:24:14.279" >
-    <step title="DeploymentManager.GetLogEntries(id:8311c5c0e956ecb6a72ae5a4af7388d2042013341772939524574)" date="2026-03-08T03:24:14.289" /><!-- duration: 9ms -->
-  </step><!-- duration: 22ms -->
-  <step title="Outgoing response" date="2026-03-08T03:24:14.318" type="response" statusCode="200" statusText="OK" /><!-- duration: 4ms -->
-</step><!-- duration: 238ms -->

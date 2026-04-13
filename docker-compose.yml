@@ -1,8 +1,9 @@
 # Todos los servicios corren localmente (sin Docker):
 #   PostgreSQL: Windows Service (localhost:5432)
-#   Keycloak:   C:/keycloak/bin/kc.bat start-dev  (localhost:8180)
 #   API:        dotnet run --project POS.Api/POS.Api.csproj --urls http://localhost:5086
 #   Frontend:   cd frontend && npm run dev  (localhost:5173)
+#
+# Autenticación: WorkOS (cloud) — no requiere servicio local
 #
 # Este archivo se conserva solo como referencia.
 

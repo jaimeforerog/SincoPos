@@ -7,7 +7,7 @@ Sistema de Punto de Venta moderno para Colombia con facturación electrónica DI
 - **Clean Architecture**: Api → Application → Domain → Infrastructure
 - **Event Sourcing** con Marten para inventario (entradas, salidas, ajustes)
 - **PostgreSQL 16** para persistencia relacional y eventos
-- **Entra ID** (producción) / **Keycloak** (desarrollo) para autenticación OAuth2/OIDC
+- **WorkOS** para autenticación OAuth2/OIDC (User Management API)
 - **SignalR** para notificaciones en tiempo real (WebSocket)
 - **.NET 9** + **React 19 + TypeScript + MUI v7**
 
@@ -48,28 +48,13 @@ Sistema de Punto de Venta moderno para Colombia con facturación electrónica DI
 - [Node.js 20+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-### 1. Infraestructura
-
-```bash
-docker-compose up -d
-# Esperar ~60s hasta que Keycloak esté listo
-```
-
-### 2. Configurar Keycloak
-
-```bash
-bash scripts/keycloak-init.sh
-```
-
-O sigue la guía manual en [scripts/keycloak-setup.md](scripts/keycloak-setup.md).
-
-### 3. Migrar base de datos
+### 1. Migrar base de datos
 
 ```bash
 dotnet ef database update --project POS.Infrastructure --startup-project POS.Api
 ```
 
-### 4. Ejecutar backend
+### 3. Ejecutar backend
 
 ```bash
 dotnet run --project POS.Api/POS.Api.csproj --urls "http://localhost:5086"
@@ -77,7 +62,7 @@ dotnet run --project POS.Api/POS.Api.csproj --urls "http://localhost:5086"
 
 API en `http://localhost:5086` | Swagger en `http://localhost:5086/swagger`
 
-### 5. Ejecutar frontend
+### 4. Ejecutar frontend
 
 ```bash
 cd frontend
@@ -129,8 +114,7 @@ SincoPos/
 │       └── components/
 ├── tests/
 │   └── POS.IntegrationTests/   # Testcontainers + xUnit
-├── scripts/
-│   └── keycloak-init.sh
+├── scripts/                    # Scripts de utilidad y prueba
 └── .github/workflows/ci.yml    # CI/CD: build + test + Docker push a ghcr.io
 ```
 
@@ -176,7 +160,7 @@ Eventos que se envían automáticamente vía WebSocket al grupo `sucursal-{id}`:
 
 **Frontend**: React 19, TypeScript, Vite 7, MUI v7, TanStack Query v5, Zustand v5, notistack, @microsoft/signalr
 
-**Auth**: Entra ID (producción) / Keycloak (desarrollo) — dual provider via `isEntraId` flag
+**Auth**: WorkOS User Management API — JWT via `IIdentityProviderService` (WorkOsIdentityProviderService)
 
 **Testing backend**: xUnit, FluentAssertions, WebApplicationFactory + Testcontainers (PostgreSQL)
 
