@@ -15,14 +15,13 @@ vi.mock('@/api/traslados', () => ({
   },
 }));
 
-vi.mock('../components/CrearTrasladoDialog', () => ({
-  CrearTrasladoDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="crear-traslado-dialog" /> : null,
+vi.mock('../components/CrearTrasladoView', () => ({
+  CrearTrasladoView: () => <div data-testid="crear-traslado-view" />,
 }));
 
-vi.mock('../components/DetallesTrasladoDialog', () => ({
-  DetallesTrasladoDialog: ({ open, trasladoId }: { open: boolean; trasladoId: number }) =>
-    open ? <div data-testid="detalles-traslado-dialog">{trasladoId}</div> : null,
+vi.mock('../components/DetallesTrasladoView', () => ({
+  DetallesTrasladoView: ({ trasladoId }: { trasladoId: number }) =>
+    <div data-testid="detalles-traslado-view">{trasladoId}</div>,
 }));
 
 const makeTraslado = (overrides: Partial<TrasladoDTO> = {}): TrasladoDTO => ({
@@ -120,13 +119,13 @@ describe('TrasladosPage', () => {
     expect(await screen.findByText('Recibido')).toBeInTheDocument();
   });
 
-  it('abre CrearTrasladoDialog al hacer clic en "Nuevo Traslado"', async () => {
+  it('abre CrearTrasladoView al hacer clic en "Nuevo Traslado"', async () => {
     renderWithProviders(<TrasladosPage />);
     await userEvent.click(screen.getByRole('button', { name: /nuevo traslado/i }));
-    expect(await screen.findByTestId('crear-traslado-dialog')).toBeInTheDocument();
+    expect(await screen.findByTestId('crear-traslado-view')).toBeInTheDocument();
   });
 
-  it('abre DetallesTrasladoDialog al hacer clic en el ícono de ver', async () => {
+  it('abre DetallesTrasladoView al hacer clic en el ícono de ver', async () => {
     const { trasladosApi } = await import('@/api/traslados');
     vi.mocked(trasladosApi.listar).mockResolvedValue(
       makePage([makeTraslado({ id: 42 })])
@@ -136,8 +135,8 @@ describe('TrasladosPage', () => {
     await screen.findByText('TRN-000001');
 
     await userEvent.click(screen.getByRole('button', { name: /ver detalles/i }));
-    expect(await screen.findByTestId('detalles-traslado-dialog')).toBeInTheDocument();
-    expect(screen.getByTestId('detalles-traslado-dialog')).toHaveTextContent('42');
+    expect(await screen.findByTestId('detalles-traslado-view')).toBeInTheDocument();
+    expect(screen.getByTestId('detalles-traslado-view')).toHaveTextContent('42');
   });
 
   it('muestra Alert de error cuando la API falla', async () => {

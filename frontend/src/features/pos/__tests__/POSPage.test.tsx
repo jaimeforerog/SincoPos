@@ -153,7 +153,7 @@ describe('POSPage — renderizado', () => {
 
     renderWithProviders(<POSPage />);
 
-    expect(screen.getByText(/sin caja seleccionada/i)).toBeInTheDocument();
+    expect(screen.getByText(/Selecciona una caja para comenzar/i)).toBeInTheDocument();
   });
 });
 

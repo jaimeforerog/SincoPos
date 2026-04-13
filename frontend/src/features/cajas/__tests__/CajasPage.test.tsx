@@ -131,12 +131,13 @@ describe('CajasPage', () => {
   it('muestra botón "Cerrar Caja" en cajas abiertas', async () => {
     const { cajasApi } = await import('@/api/cajas');
     vi.mocked(cajasApi.getAll).mockResolvedValue([
-      makeCaja({ estado: 'Abierta' }),
+      makeCaja({ nombre: 'Caja Abierta Test', estado: 'Abierta' }),
     ]);
 
     renderWithProviders(<CajasPage />);
 
-    expect(await screen.findByRole('button', { name: /cerrar caja/i })).toBeInTheDocument();
+    await screen.findByText('Caja Abierta Test');
+    expect(screen.getByRole('button', { name: /cerrar caja/i })).toBeInTheDocument();
   });
 
   it('no muestra botón "Cerrar Caja" en cajas cerradas', async () => {

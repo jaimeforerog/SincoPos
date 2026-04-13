@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/test-utils';
+import { Routes, Route } from 'react-router-dom';
 import { ComprasPage } from '../pages/ComprasPage';
 import type { OrdenCompraDTO, PaginatedResult } from '@/types/api';
 
@@ -86,9 +87,14 @@ describe('ComprasPage', () => {
   });
 
   it('abre el formulario al hacer clic en "Nueva Orden"', async () => {
-    renderWithProviders(<ComprasPage />);
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<ComprasPage />} />
+        <Route path="/compras/nueva" element={<div data-testid="nueva-orden-page" />} />
+      </Routes>
+    );
     await userEvent.click(screen.getByRole('button', { name: /nueva orden/i }));
-    expect(await screen.findByTestId('form-dialog')).toBeInTheDocument();
+    expect(await screen.findByTestId('nueva-orden-page')).toBeInTheDocument();
   });
 
   it('muestra "No hay órdenes" cuando la lista está vacía', async () => {
