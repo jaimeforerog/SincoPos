@@ -60,6 +60,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                     TestAuthHandler.SchemeName,
                     options => { options.DefaultEmail = "admin@sincopos.com"; });
 
+            // Reemplazar el proveedor de identidad de WorkOS por un Mock para que los tests
+            // de integración no intenten salir a internet con API Keys reales
+            services.RemoveAll<POS.Application.Services.IIdentityProviderService>();
+            services.AddSingleton<POS.Application.Services.IIdentityProviderService, MockIdentityProviderService>();
+
             services.AddAuthorization(options =>
             {
                 options.DefaultPolicy = new AuthorizationPolicyBuilder()
