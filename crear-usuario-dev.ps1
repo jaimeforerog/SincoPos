@@ -21,7 +21,7 @@ DELETE FROM public.usuarios WHERE email = 'dev@sincopos.com';
 
 -- Crear usuario de desarrollo
 INSERT INTO public.usuarios (
-    keycloak_id,
+    external_id,
     email,
     nombre_completo,
     telefono,
@@ -45,7 +45,7 @@ INSERT INTO public.usuarios (
 -- Verificar
 SELECT
     id,
-    keycloak_id,
+    external_id,
     email,
     nombre_completo,
     rol,
@@ -106,7 +106,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "Datos del usuario:" -ForegroundColor Cyan
     Write-Host "  - Email: dev@sincopos.com" -ForegroundColor White
-    Write-Host "  - Keycloak ID: dev-user-1" -ForegroundColor White
+    Write-Host "  - External ID: dev-user-1" -ForegroundColor White
     Write-Host "  - Sucursal: 152 (Suc PromedioPonderado)" -ForegroundColor White
     Write-Host "  - Rol: admin" -ForegroundColor White
     Write-Host ""

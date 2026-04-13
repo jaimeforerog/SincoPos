@@ -49,7 +49,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
         builder.UseEnvironment("Development");
 
-        // Reemplazar JWT por TestAuthHandler (sin Keycloak en CI/tests)
+        // Reemplazar JWT por TestAuthHandler (sin proveedor de identidad real en CI/tests)
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IAuthenticationSchemeProvider>();
@@ -172,7 +172,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         // Seed: Usuario admin de prueba
         var usuarioAdmin = new POS.Infrastructure.Data.Entities.Usuario
         {
-            KeycloakId = "00000000-0000-0000-0000-000000000001", // sincronizado con TestAuthHandler
+            ExternalId = "00000000-0000-0000-0000-000000000001", // sincronizado con TestAuthHandler
             Email = "admin@sincopos.com",
             NombreCompleto = "Admin Test",
             Rol = "admin",

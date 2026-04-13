@@ -127,13 +127,13 @@ public class BootstrapController : ControllerBase
         // 5. Usuario admin (crear o promover a admin)
         var usuario = await _db.Set<Usuario>()
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.KeycloakId == externalId);
+            .FirstOrDefaultAsync(u => u.ExternalId == externalId);
 
         if (usuario == null)
         {
             usuario = new Usuario
             {
-                KeycloakId        = externalId!,
+                ExternalId        = externalId!,
                 Email             = email,
                 NombreCompleto    = nombre,
                 Rol               = Roles.Admin,

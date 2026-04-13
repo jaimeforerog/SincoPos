@@ -3,31 +3,21 @@ using System.Security.Claims;
 namespace POS.Api.Extensions;
 
 /// <summary>
-/// Extensiones para obtener información del usuario autenticado.
-/// Compatible con Entra ID (Azure AD) y Keycloak.
+/// Extensiones para obtener información del usuario autenticado desde WorkOS / Entra ID.
 /// </summary>
 public static class ClaimsPrincipalExtensions
 {
     /// <summary>
     /// Obtiene el ID externo del proveedor de identidad.
-    /// Entra ID usa "oid", Keycloak usa "sub" / NameIdentifier.
+    /// Entra ID / WorkOS usan "oid"; fallback a NameIdentifier y "sub".
     /// </summary>
     public static string? GetExternalId(this ClaimsPrincipal principal)
     {
-        // Entra ID: "oid" (Object ID) — estable entre tokens
+        // Entra ID / WorkOS: "oid" (Object ID) — estable entre tokens
         return principal.FindFirst("oid")?.Value
             ?? principal.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
             ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? principal.FindFirst("sub")?.Value;
-    }
-
-    /// <summary>
-    /// Alias para compatibilidad con código existente.
-    /// </summary>
-    [Obsolete("Usar GetExternalId() en su lugar")]
-    public static string? GetKeycloakId(this ClaimsPrincipal principal)
-    {
-        return principal.GetExternalId();
     }
 
     /// <summary>
@@ -60,14 +50,12 @@ public static class ClaimsPrincipalExtensions
     }
 
     /// <summary>
-    /// Obtiene los roles del usuario desde Entra ID o Keycloak.
-    /// Entra ID envía roles en claim "roles", Keycloak en "realm_access.roles".
+    /// Obtiene los roles del usuario desde WorkOS / Entra ID.
     /// </summary>
     public static IEnumerable<string> GetRoles(this ClaimsPrincipal principal)
     {
         var roleClaims = principal.FindAll(ClaimTypes.Role)
             .Concat(principal.FindAll("roles"))
-            .Concat(principal.FindAll("realm_access.roles"))
             .Concat(principal.FindAll("role"))
             .Select(c => c.Value)
             .Distinct();

@@ -20,7 +20,7 @@ interface PerfilUsuarioBackend {
 
 export interface UsuarioDto {
   id: number;
-  keycloakId: string;
+  externalId: string;
   email: string;
   nombreCompleto: string;
   telefono?: string;

@@ -265,7 +265,7 @@ public class ActivityLogTests
         {
             var usuario = new Usuario
             {
-                KeycloakId = "test-activity-log-user",
+                ExternalId = "test-activity-log-user",
                 Email = "activitylog-test@sincopos.com",
                 NombreCompleto = "Usuario ActivityLog Test",
                 Rol = "cajero",

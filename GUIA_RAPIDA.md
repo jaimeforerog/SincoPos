@@ -5,7 +5,7 @@
 Sistema de Punto de Venta (POS) para Colombia con:
 - **Backend**: ASP.NET Core 9, EF Core 9, Marten 8.22 (Event Sourcing), PostgreSQL 16
 - **Frontend**: React 19 + TypeScript + MUI v7
-- **Auth**: Entra ID (producción) / Keycloak (desarrollo)
+- **Auth**: WorkOS (producción y desarrollo)
 - **Tiempo real**: SignalR WebSocket
 - **DIAN**: Facturación electrónica UBL 2.1 + CUFE
 
@@ -16,19 +16,12 @@ Sistema de Punto de Venta (POS) para Colombia con:
 ### Prerrequisitos
 - .NET 9 SDK, Node.js 20+, Docker Desktop
 
-### 1. Infraestructura (PostgreSQL + Keycloak)
+### 1. Infraestructura (PostgreSQL)
 ```bash
 docker-compose up -d
-# Esperar ~60s hasta que Keycloak esté listo
 ```
 
-### 2. Configurar Keycloak (primera vez)
-```bash
-bash scripts/keycloak-init.sh
-```
-O ver [scripts/keycloak-setup.md](scripts/keycloak-setup.md) para configuración manual.
-
-### 3. Aplicar migraciones
+### 2. Aplicar migraciones
 ```bash
 cd POS.Api
 dotnet ef database update --project ../POS.Infrastructure --startup-project .
@@ -50,16 +43,15 @@ Frontend: `http://localhost:5173`
 
 ---
 
-## Usuarios de prueba (Keycloak)
+## Usuarios de prueba
 
-| Email | Password | Rol |
-|-------|----------|-----|
-| admin@sincopos.com | Admin123! | admin |
-| supervisor@sincopos.com | Supervisor123! | supervisor |
-| cajero@sincopos.com | Cajero123! | cajero |
+Los usuarios se autentican vía WorkOS. Crea los usuarios en el dashboard de WorkOS y luego créalos en la BD local con:
 
-> Los usuarios deben existir en Keycloak (realm `sincopos`) y en la tabla `usuarios` de PostgreSQL.
-> El endpoint `GET /api/usuarios/perfil` sincroniza automáticamente el rol de Keycloak → DB al hacer login.
+```bash
+.\crear-usuario-dev.ps1
+```
+
+> El endpoint `GET /api/v1/usuarios/perfil` sincroniza automáticamente el rol del IdP → DB al hacer login.
 
 ---
 
@@ -102,11 +94,9 @@ SincoPos/
 │       └── components/         # Shared: NotificationBell, PageHeader, ...
 ├── tests/
 │   └── POS.IntegrationTests/   # xUnit + WebApplicationFactory + PostgreSQL local
-├── scripts/
-│   ├── keycloak-init.sh        # Script automático de configuración Keycloak
-│   └── keycloak-setup.md       # Guía manual Keycloak
+├── scripts/                    # Scripts de utilidad
 ├── .github/workflows/ci.yml    # CI: build + test + Docker push a ghcr.io
-└── docker-compose.yml          # PostgreSQL 16 + Keycloak 24
+└── docker-compose.yml          # PostgreSQL 16
 ```
 
 ---

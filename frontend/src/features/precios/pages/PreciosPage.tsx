@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -11,6 +11,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Button,
   IconButton,
   TextField,
@@ -54,11 +55,18 @@ export function PreciosPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [reloadCounter, setReloadCounter] = useState(0);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
 
-  // Limpiar búsqueda cuando cambia la sucursal
+  // Resetear página cuando cambia la sucursal o la búsqueda
   useEffect(() => {
     setBusqueda('');
+    setPage(0);
   }, [selectedSucursalId]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [busqueda]);
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
@@ -74,16 +82,17 @@ export function PreciosPage() {
 
   // Cargar productos activos (solo si hay sucursal seleccionada)
   const { data: productosData, isLoading: loadingProductos } = useQuery({
-    queryKey: ['productos', busqueda, activeEmpresaId],
+    queryKey: ['productos', busqueda, activeEmpresaId, page, rowsPerPage],
     queryFn: () =>
       productosApi.getAll({
         query: busqueda || undefined,
         incluirInactivos: false,
-        pageSize: 5000,
+        page: page + 1, // API uses 1-based pages
+        pageSize: rowsPerPage,
       }),
     enabled: selectedSucursalId !== null,
-    staleTime: 30000, // Evitar recargas innecesarias
-    refetchOnWindowFocus: false, // No recargar al cambiar de ventana
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
   const productos = productosData?.items || [];
 
@@ -159,9 +168,17 @@ export function PreciosPage() {
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['precios'] });
-    // Forzar recarga limpiando el lastLoadKeyRef e incrementando el contador
     lastLoadKeyRef.current = '';
     setReloadCounter(c => c + 1);
+  };
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
   const handleImportPrecios = async (
@@ -412,6 +429,17 @@ export function PreciosPage() {
               })}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={productosData?.totalCount ?? 0}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+          />
         </TableContainer>
       )}
 

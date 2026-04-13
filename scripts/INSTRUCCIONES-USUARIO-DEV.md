@@ -45,7 +45,7 @@ SUCURSALES | 1  | Sucursal Principal  | Bogotá | t
 
 **USUARIOS:**
 ```
-tipo     | id | keycloak_id | email             | nombre_completo    | rol   | sucursal_default_id | activo
+tipo     | id | external_id | email             | nombre_completo    | rol   | sucursal_default_id | activo
 ---------+----+-------------+-------------------+--------------------+-------+---------------------+--------
 USUARIOS | X  | dev-user-1  | dev@sincopos.com  | Usuario Desarrollo | admin | 1                   | t
 ```

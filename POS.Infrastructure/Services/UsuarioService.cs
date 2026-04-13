@@ -33,7 +33,7 @@ public class UsuarioService : IUsuarioService
 
     private static UsuarioDto ToDto(Usuario u) => new(
         u.Id,
-        u.KeycloakId,
+        u.ExternalId,
         u.Email,
         u.NombreCompleto,
         u.Telefono,
@@ -69,7 +69,7 @@ public class UsuarioService : IUsuarioService
     {
         var usuario = await _context.Usuarios
             .Include(u => u.SucursalDefault)
-            .FirstOrDefaultAsync(u => u.KeycloakId == externalId);
+            .FirstOrDefaultAsync(u => u.ExternalId == externalId);
 
         if (usuario == null)
             return null;
@@ -291,11 +291,11 @@ public class UsuarioService : IUsuarioService
         // 4. Crear entidad local
         var creador = await _context.Usuarios
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.KeycloakId == creadorExternalId);
+            .FirstOrDefaultAsync(u => u.ExternalId == creadorExternalId);
 
         var usuario = new Usuario
         {
-            KeycloakId = externalId,
+            ExternalId = externalId,
             Email = dto.Email,
             NombreCompleto = dto.NombreCompleto,
             Telefono = dto.Telefono,
@@ -416,7 +416,7 @@ public class UsuarioService : IUsuarioService
         // Si cambio el rol, sincronizar con IdP
         if (dto.Rol != null && dto.Rol.ToLower() != rolAnterior)
         {
-            var (_, rolError) = await _identityProvider.AsignarRolAsync(usuario.KeycloakId, dto.Rol.ToLower());
+            var (_, rolError) = await _identityProvider.AsignarRolAsync(usuario.ExternalId, dto.Rol.ToLower());
             if (rolError != null)
             {
                 _logger.LogWarning(
@@ -457,7 +457,7 @@ public class UsuarioService : IUsuarioService
         usuario.FechaModificacion = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        var (_, rolError) = await _identityProvider.AsignarRolAsync(usuario.KeycloakId, nuevoRol.ToLower());
+        var (_, rolError) = await _identityProvider.AsignarRolAsync(usuario.ExternalId, nuevoRol.ToLower());
         if (rolError != null)
         {
             _logger.LogWarning(
@@ -479,7 +479,7 @@ public class UsuarioService : IUsuarioService
         if (usuario == null)
             return (null, "NOT_FOUND");
 
-        var (tempPassword, error) = await _identityProvider.ResetPasswordAsync(usuario.KeycloakId);
+        var (tempPassword, error) = await _identityProvider.ResetPasswordAsync(usuario.ExternalId);
         if (error != null)
             return (null, $"Error al resetear contrasena: {error}");
 
@@ -497,14 +497,14 @@ public class UsuarioService : IUsuarioService
     /// Used by CajasController which needs the entity directly.
     /// </summary>
     public async Task<Usuario> ObtenerOCrearUsuarioEntityAsync(
-        string keycloakId,
+        string externalId,
         string email,
         string? nombreCompleto = null,
         string? rol = null)
     {
         var usuario = await _context.Usuarios
             .Include(u => u.Sucursales)
-            .FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
+            .FirstOrDefaultAsync(u => u.ExternalId == externalId);
 
         // Si no se encuentra por externalId, buscar por email (usuario creado via admin con otro externalId)
         if (usuario == null)
@@ -518,8 +518,8 @@ public class UsuarioService : IUsuarioService
                 // Vincular el externalId real del login con el usuario existente
                 _logger.LogInformation(
                     "Vinculando externalId {NewId} al usuario existente {Email} (anterior: {OldId})",
-                    keycloakId, email, usuario.KeycloakId);
-                usuario.KeycloakId = keycloakId;
+                    externalId, email, usuario.ExternalId);
+                usuario.ExternalId = externalId;
                 usuario.UltimoAcceso = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
@@ -529,7 +529,7 @@ public class UsuarioService : IUsuarioService
         {
             usuario = new Usuario
             {
-                KeycloakId = keycloakId,
+                ExternalId = externalId,
                 Email = email,
                 NombreCompleto = nombreCompleto ?? email,
                 Rol = rol ?? Roles.Vendedor,
@@ -542,8 +542,8 @@ public class UsuarioService : IUsuarioService
             {
                 await _context.SaveChangesAsync();
                 _logger.LogInformation(
-                    "Usuario creado: {KeycloakId}, Email: {Email}, Rol: {Rol}",
-                    keycloakId, email, usuario.Rol);
+                    "Usuario creado: ExternalId={ExternalId}, Email={Email}, Rol={Rol}",
+                    externalId, email, usuario.Rol);
             }
             catch (DbUpdateException)
             {
@@ -551,9 +551,9 @@ public class UsuarioService : IUsuarioService
                 _context.ChangeTracker.Clear();
                 usuario = await _context.Usuarios
                     .Include(u => u.Sucursales)
-                    .FirstAsync(u => u.KeycloakId == keycloakId);
+                    .FirstAsync(u => u.ExternalId == externalId);
                 _logger.LogInformation(
-                    "Usuario {KeycloakId} ya existía (carrera), recargado desde DB.", keycloakId);
+                    "Usuario ExternalId={ExternalId} ya existía (carrera), recargado desde DB.", externalId);
             }
         }
         else
@@ -588,12 +588,12 @@ public class UsuarioService : IUsuarioService
     /// <summary>
     /// Obtiene un usuario entity por su ExternalId. Used by CajasController.
     /// </summary>
-    public async Task<Usuario?> ObtenerPorKeycloakIdAsync(string keycloakId)
+    public async Task<Usuario?> ObtenerPorExternalIdAsync(string externalId)
     {
         return await _context.Usuarios
             .Include(u => u.SucursalDefault)
             .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal)
-            .FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
+            .FirstOrDefaultAsync(u => u.ExternalId == externalId);
     }
 
     /// <summary>

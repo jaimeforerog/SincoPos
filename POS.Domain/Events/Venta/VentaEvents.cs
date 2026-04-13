@@ -10,7 +10,7 @@ public record VentaItemLine(Guid ProductoId, string NombreProducto, decimal Cant
 /// Alimenta la Capa 14 (BusinessRiskProjection) para radar de negocio.
 /// </summary>
 public record VentaCompletadaEvent(
-    string              ExternalUserId, // oid (Entra) o sub (Keycloak) — identifica al cajero
+    string              ExternalUserId, // oid (Entra / WorkOS) — identifica al cajero
     int                 SucursalId,
     int                 CajaId,
     int                 HoraDelDia,     // 0-23 — para anticipación por franja horaria

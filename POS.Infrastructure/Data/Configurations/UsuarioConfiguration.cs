@@ -16,14 +16,14 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             .HasColumnName("id")
             .ValueGeneratedOnAdd();
 
-        builder.Property(u => u.KeycloakId)
-            .HasColumnName("keycloak_id")
+        builder.Property(u => u.ExternalId)
+            .HasColumnName("external_id")
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.HasIndex(u => u.KeycloakId)
+        builder.HasIndex(u => u.ExternalId)
             .IsUnique()
-            .HasDatabaseName("ix_usuarios_keycloak_id");
+            .HasDatabaseName("ix_usuarios_external_id");
 
         builder.Property(u => u.Email)
             .HasColumnName("email")

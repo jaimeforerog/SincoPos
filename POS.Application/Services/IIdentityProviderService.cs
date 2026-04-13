@@ -1,7 +1,7 @@
 namespace POS.Application.Services;
 
 /// <summary>
-/// Abstraccion del proveedor de identidad (Entra ID, Keycloak, local dev).
+/// Abstraccion del proveedor de identidad externo (WorkOS / Entra ID).
 /// Permite crear/gestionar usuarios en el IdP externo.
 /// </summary>
 public interface IIdentityProviderService

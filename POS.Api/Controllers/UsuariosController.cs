@@ -259,7 +259,7 @@ public class UsuariosController : ControllerBase
 
         // Self-protection: no puede cambiar su propio rol
         var currentExternalId = User.GetExternalId();
-        if (dto.Rol != null && usuarioAnterior.KeycloakId == currentExternalId)
+        if (dto.Rol != null && usuarioAnterior.ExternalId == currentExternalId)
             return Problem(detail: "No puedes cambiar tu propio rol", statusCode: StatusCodes.Status400BadRequest);
 
         var creadorRol = ObtenerRolActual();
@@ -332,7 +332,7 @@ public class UsuariosController : ControllerBase
             return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         var currentExternalId = User.GetExternalId();
-        if (usuario.KeycloakId == currentExternalId)
+        if (usuario.ExternalId == currentExternalId)
             return Problem(detail: "No puedes cambiar tu propio rol", statusCode: StatusCodes.Status400BadRequest);
 
         var creadorRol = ObtenerRolActual();
@@ -504,7 +504,7 @@ public class UsuariosController : ControllerBase
             return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
         var currentExternalId = User.GetExternalId();
-        if (usuario.KeycloakId == currentExternalId && !dto.Activo)
+        if (usuario.ExternalId == currentExternalId && !dto.Activo)
         {
             return Problem(detail: "No puedes desactivarte a ti mismo", statusCode: StatusCodes.Status400BadRequest);
         }

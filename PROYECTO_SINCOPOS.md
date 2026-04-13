@@ -82,8 +82,7 @@
 | Event Store | Marten | 8.22 |
 | Base de Datos | PostgreSQL | 16+ |
 | Validación | FluentValidation | Latest |
-| Autenticación (Prod) | Entra ID (MSAL) | - |
-| Autenticación (Dev) | Keycloak OIDC | - |
+| Autenticación | WorkOS | - |
 | Frontend | React + TypeScript | 19.x |
 | UI Framework | Material-UI (MUI) | 7.x |
 | Estado | Zustand | 5.x |
@@ -505,7 +504,7 @@ options.Filters.Add<POS.Api.Filters.AllowAnonymousFilter>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = authConfig["Authority"];  // Azure AD B2C / Keycloak
+        options.Authority = authConfig["Authority"];  // WorkOS
         options.Audience = authConfig["Audience"];
         options.RequireHttpsMetadata = true;
 
@@ -518,13 +517,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             RoleClaimType = ClaimTypes.Role
         };
 
-        // Mapeo de roles de Keycloak
+        // Mapeo de roles desde WorkOS (claim "roles")
         options.Events = new JwtBearerEvents
         {
             OnTokenValidated = context =>
             {
-                // Parsear realm_access.roles de Keycloak
-                // Agregar claims de rol a ClaimsIdentity
+                // Roles cargados desde BD por ExternalId en Program.cs
             }
         };
     });
@@ -824,7 +822,7 @@ dotnet run
    - ✅ Sistema permisivo en desarrollo (DevAuthenticationHandler)
    - ✅ Configuración para Azure AD B2C en producción
    - ✅ Políticas basadas en roles
-   - ✅ Mapeo de roles de Keycloak
+   - ✅ Mapeo de roles desde WorkOS / ExternalId
 
 9. **Reportes**
    - ✅ Reporte de ventas por período
@@ -1035,7 +1033,7 @@ Migración `AgregarIndicesRendimiento` agrega 11 índices:
 
 ### Fase 7: Migración de Infraestructura ✅
 - [x] Migrar de Docker PostgreSQL a PostgreSQL local
-- [x] Remover Keycloak (usar Azure AD B2C en prod)
+- [x] Migrar autenticación a WorkOS (prod y dev)
 - [x] Configurar autenticación permisiva en desarrollo
 - [x] Preparar configuración para Azure
 
@@ -1134,8 +1132,8 @@ Migración `AgregarIndicesRendimiento` agrega 11 índices:
    - [ ] Envolver páginas en `React.lazy()` + `<Suspense>` por ruta
    - El chunk `vendor-mui` ya bajó a 404KB (2026-03-12), pero el bundle inicial aún carga todo
 
-2. **ValidateAudience en Keycloak dev**
-   - `ValidateAudience = false` en `appsettings.Development.json` — revisar cuando se configure audience en Keycloak
+2. **ValidateAudience en desarrollo**
+   - `ValidateAudience = false` en `appsettings.Development.json` — revisar cuando se configure audience en WorkOS
 
 6. **Devoluciones de Venta** ✅ COMPLETADO (2026-03-01)
    - [x] Endpoint para devolver líneas parciales ✅

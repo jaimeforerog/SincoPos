@@ -15,7 +15,7 @@ public record EmpresaResumenDto(int Id, string Nombre);
 /// </summary>
 public record UsuarioDto(
     int Id,
-    string KeycloakId,
+    string ExternalId,
     string Email,
     string NombreCompleto,
     string? Telefono,

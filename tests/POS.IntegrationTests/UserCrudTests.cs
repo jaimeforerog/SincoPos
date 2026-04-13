@@ -165,7 +165,7 @@ public class UserCrudTests
     {
         var client = _factory.CreateAuthenticatedClient(AdminEmail);
 
-        // El admin seeded tiene UsuarioTestId y KeycloakId = "test-keycloak-admin-001"
+        // El admin seeded tiene UsuarioTestId y ExternalId = "00000000-0000-0000-0000-000000000001"
         var userId = _factory.UsuarioTestId;
         var rolDto = new { rol = "supervisor" };
 

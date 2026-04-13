@@ -50,7 +50,7 @@ public class EmpresaContextMiddleware
                             FROM public.usuario_sucursales us
                             JOIN public.usuarios u ON us.usuario_id = u.id
                             JOIN public.sucursales s ON us.sucursal_id = s.""Id""
-                            WHERE u.keycloak_id = @externalId AND s.""EmpresaId"" = @empresaId";
+                            WHERE u.external_id = @externalId AND s.""EmpresaId"" = @empresaId";
                         var p1 = validateCmd.CreateParameter();
                         p1.ParameterName = "@externalId";
                         p1.Value = externalId;
@@ -74,7 +74,7 @@ public class EmpresaContextMiddleware
                                 SELECT COUNT(*)
                                 FROM public.usuarios u
                                 CROSS JOIN public.""Empresas"" e
-                                WHERE u.keycloak_id = @externalId AND u.rol = 'admin' AND e.""Id"" = @empresaId AND e.""Activo"" = true";
+                                WHERE u.external_id = @externalId AND u.rol = 'admin' AND e.""Id"" = @empresaId AND e.""Activo"" = true";
                             var pa1 = adminCmd.CreateParameter();
                             pa1.ParameterName = "@externalId";
                             pa1.Value = externalId;
@@ -107,7 +107,7 @@ public class EmpresaContextMiddleware
                             FROM public.usuario_sucursales us
                             JOIN public.usuarios u ON us.usuario_id = u.id
                             JOIN public.sucursales s ON us.sucursal_id = s.""Id""
-                            WHERE u.keycloak_id = @externalId AND s.""EmpresaId"" IS NOT NULL
+                            WHERE u.external_id = @externalId AND s.""EmpresaId"" IS NOT NULL
                             LIMIT 1";
                         var param = cmd.CreateParameter();
                         param.ParameterName = "@externalId";

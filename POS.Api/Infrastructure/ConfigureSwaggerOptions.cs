@@ -30,7 +30,7 @@ public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
                         - `Cajero` → ventas, consultas
                         - `Vendedor` → solo lectura de productos y precios
 
-                        Autenticación vía **Keycloak** (JWT Bearer). Realm: `sincopos`.
+                        Autenticación vía **WorkOS** (JWT Bearer).
                         """
                     : """
                         API del sistema de Punto de Venta SincoPos.
@@ -41,7 +41,7 @@ public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
                         - `Cajero` → ventas, consultas
                         - `Vendedor` → solo lectura de productos y precios
 
-                        Autenticación vía **Keycloak** (JWT Bearer). Realm: `sincopos`.
+                        Autenticación vía **WorkOS** (JWT Bearer).
                         """
             });
         }
@@ -58,7 +58,7 @@ public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
             Scheme = "bearer",
             BearerFormat = "JWT",
             In = ParameterLocation.Header,
-            Description = "Token JWT de Keycloak. Obtener en http://localhost:8080/realms/sincopos"
+            Description = "Token JWT de WorkOS. Obtener desde el flujo de autenticación del frontend."
         });
 
         options.AddSecurityRequirement(new OpenApiSecurityRequirement

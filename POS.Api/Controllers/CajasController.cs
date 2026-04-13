@@ -159,7 +159,7 @@ public class CajasController : ControllerBase
 
         // Buscar el usuario en la base de datos
         var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u => u.KeycloakId == externalId || u.Email == email);
+            .FirstOrDefaultAsync(u => u.ExternalId == externalId || u.Email == email);
 
         if (usuario == null || !usuario.SucursalDefaultId.HasValue)
             return Ok(new List<CajaDto>()); // Usuario sin sucursal asignada = sin cajas
@@ -224,7 +224,6 @@ public class CajasController : ControllerBase
         caja.FechaApertura = DateTime.UtcNow;
         caja.FechaCierre = null;
 
-        // Obtener usuario autenticado de Keycloak
         var externalId = User.GetExternalId();
         var email = User.GetEmail();
         var nombreCompleto = User.GetNombreCompleto();

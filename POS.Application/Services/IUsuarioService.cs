@@ -17,7 +17,7 @@ public interface IUsuarioService
     Task<UsuarioDto> ObtenerOCrearUsuarioAsync(string externalId, string email, string? nombreCompleto = null, string? rol = null);
 
     /// <summary>
-    /// Obtiene un usuario por su ExternalId (Keycloak/Entra), incluyendo perfil completo.
+    /// Obtiene un usuario por su ExternalId (WorkOS / Entra ID), incluyendo perfil completo.
     /// </summary>
     Task<PerfilUsuarioDto?> ObtenerPerfilPorExternalIdAsync(string externalId);
 

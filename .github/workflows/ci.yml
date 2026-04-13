@@ -2,9 +2,9 @@ name: CI / CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 env:
   DOTNET_VERSION: '9.0.x'
@@ -58,7 +58,6 @@ jobs:
           --collect:"XPlat Code Coverage"
           --results-directory ./coverage
         env:
-          # Testcontainers levanta su propio PostgreSQL en Docker
           TESTCONTAINERS_RYUK_DISABLED: false
 
       - name: Upload coverage report
@@ -130,13 +129,13 @@ jobs:
           path: frontend/dist/
           retention-days: 7
 
-  # ── Docker: build + push a ghcr.io (solo en push a main) ────────────────────
+  # ── Docker: build + push a ghcr.io (solo en push a main o develop) ──────────
   docker:
     name: Docker (build + push)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [backend, frontend]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push'
 
     permissions:
       contents: read
@@ -164,7 +163,8 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=staging,enable=${{ github.ref == 'refs/heads/develop' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -177,9 +177,91 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Deploy Backend: Azure App Service ────────────────────────────────────────
+  # ── Deploy Staging Backend (Azure App Service) — rama develop ────────────────
+  deploy-staging-backend:
+    name: Deploy Backend → Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore SincoPos.sln
+
+      - name: Install EF Core CLI
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Apply Database Migrations (staging)
+        run: dotnet ef database update --project POS.Infrastructure/POS.Infrastructure.csproj --startup-project POS.Api/POS.Api.csproj
+        env:
+          ConnectionStrings__Postgres: ${{ secrets.DB_CONNECTION_STRING_STAGING }}
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy container to Azure Web App (staging)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_APP_NAME_STAGING }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
+
+      - name: Update App Service Settings (staging)
+        run: |
+          az webapp config appsettings set \
+            --name ${{ vars.AZURE_APP_NAME_STAGING }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP_STAGING }} \
+            --settings ConnectionStrings__Postgres="${{ secrets.DB_CONNECTION_STRING_STAGING }}"
+
+      - name: Health check (staging)
+        run: |
+          sleep 20
+          curl --fail --retry 5 --retry-delay 10 \
+            "https://${{ vars.AZURE_APP_NAME_STAGING }}.azurewebsites.net/health/ready" \
+            || (echo "Health check failed" && exit 1)
+
+  # ── Deploy Staging Frontend (Azure Static Web Apps) — rama develop ───────────
+  deploy-staging-frontend:
+    name: Deploy Frontend → Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Deploy to Azure Static Web Apps (staging)
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend/dist
+          skip_app_build: true
+
+  # ── Deploy Backend: Azure App Service — rama main ────────────────────────────
   deploy-backend:
-    name: Deploy Backend (Azure App Service)
+    name: Deploy Backend → Production
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [docker]
@@ -214,15 +296,26 @@ jobs:
       - name: Deploy container to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: sincopos-api-c6e6900a
+          app-name: ${{ vars.AZURE_APP_NAME }}
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Update App Service Settings
-        run: az webapp config appsettings set --name sincopos-api-c6e6900a --resource-group rg-sincopos-prod --settings ConnectionStrings__Postgres="${{ secrets.DB_CONNECTION_STRING }}"
+        run: |
+          az webapp config appsettings set \
+            --name ${{ vars.AZURE_APP_NAME }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --settings ConnectionStrings__Postgres="${{ secrets.DB_CONNECTION_STRING }}"
 
-  # ── Deploy Frontend: Azure Static Web Apps ──────────────────────────────────
+      - name: Health check (production)
+        run: |
+          sleep 20
+          curl --fail --retry 5 --retry-delay 10 \
+            "https://${{ vars.AZURE_APP_NAME }}.azurewebsites.net/health/ready" \
+            || (echo "Health check failed" && exit 1)
+
+  # ── Deploy Frontend: Azure Static Web Apps — rama main ──────────────────────
   deploy-frontend:
-    name: Deploy Frontend (Azure Static Web Apps)
+    name: Deploy Frontend → Production
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [frontend]

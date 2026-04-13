@@ -45,6 +45,8 @@ builder.Services.AddScoped<POS.Infrastructure.Services.UsuarioService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.MigracionLogService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.ITaxEngine, POS.Infrastructure.Services.TaxEngine>();
 builder.Services.AddScoped<POS.Application.Services.IVentaService, POS.Infrastructure.Services.VentaService>();
+builder.Services.AddScoped<POS.Infrastructure.Services.VentaAnulacionService>();
+builder.Services.AddScoped<POS.Infrastructure.Services.VentaDevolucionService>();
 builder.Services.AddScoped<POS.Application.Services.ICompraService, POS.Infrastructure.Services.CompraService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.IVentaCosteoService, POS.Infrastructure.Services.VentaCosteoService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.ICompraErpService, POS.Infrastructure.Services.CompraErpService>();
@@ -305,7 +307,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                                 .GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
                             var usuario = await dbContext.Set<POS.Infrastructure.Data.Entities.Usuario>()
                                 .AsNoTracking()
-                                .FirstOrDefaultAsync(u => u.KeycloakId == externalId);
+                                .FirstOrDefaultAsync(u => u.ExternalId == externalId);
 
                             if (usuario != null && !string.IsNullOrEmpty(usuario.Rol))
                             {
@@ -416,11 +418,20 @@ using (var scope = app.Services.CreateScope())
                 migrationLogger.LogWarning(
                     "Historial de migraciones incompleto ({Count} pendientes). Tablas ya existen: registrando sin ejecutar DDL.",
                     pending.Count);
-                var values = string.Join(",", pending.Select(m => $"('{m}','9.0.3')"));
-                await db.Database.ExecuteSqlRawAsync($@"
-                    INSERT INTO public.__ef_migrations_history (""MigrationId"", ""ProductVersion"")
-                    VALUES {values}
-                    ON CONFLICT (""MigrationId"") DO NOTHING");
+                // Sanitize: migration IDs are generated internally by EF Core (alphanumeric + underscore).
+                // We validate the format before embedding to prevent any future misuse.
+                var safePending = pending
+                    .Where(m => System.Text.RegularExpressions.Regex.IsMatch(m, @"^[\w]+$"))
+                    .ToList();
+                if (safePending.Count != pending.Count)
+                    throw new InvalidOperationException("Migration ID contiene caracteres inválidos.");
+                foreach (var m in safePending)
+                    await db.Database.ExecuteSqlAsync(
+                        $"""
+                        INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+                        VALUES ({m}, '9.0.3')
+                        ON CONFLICT ("MigrationId") DO NOTHING
+                        """);
                 migrationLogger.LogWarning("Historial sincronizado: {Count} registros añadidos.", pending.Count);
             }
             else
@@ -551,7 +562,7 @@ using (var scope = app.Services.CreateScope())
             seedLogger.LogWarning("Empresa por defecto creada con Id={Id}", empresa.Id);
 
             // Asignar todas las sucursales sin empresa a esta empresa
-            await db.Database.ExecuteSqlRawAsync(
+            await db.Database.ExecuteSqlAsync(
                 $"""UPDATE public.sucursales SET "EmpresaId" = {empresa.Id} WHERE "EmpresaId" IS NULL""");
             seedLogger.LogWarning("Sucursales sin empresa asignadas a EmpresaId={Id}", empresa.Id);
         }

@@ -42,7 +42,7 @@ vi.mock('@/api/sucursales', () => ({
 
 const makeUsuario = (overrides: Partial<UsuarioDto> = {}): UsuarioDto => ({
   id: 1,
-  keycloakId: 'kc-001',
+  externalId: 'ext-001',
   email: 'juan.perez@empresa.com',
   nombreCompleto: 'Juan Pérez',
   rol: 'cajero',

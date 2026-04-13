@@ -1,14 +1,14 @@
 namespace POS.Infrastructure.Data.Entities;
 
 /// <summary>
-/// Usuario del sistema POS sincronizado con Keycloak
+/// Usuario del sistema POS sincronizado con el proveedor de identidad externo (WorkOS)
 /// </summary>
 public class Usuario : EntidadAuditable
 {
     /// <summary>
-    /// Subject ID de Keycloak (UUID del usuario en Keycloak)
+    /// ID externo del proveedor de identidad (WorkOS / Entra ID)
     /// </summary>
-    public string KeycloakId { get; set; } = string.Empty;
+    public string ExternalId { get; set; } = string.Empty;
 
     public string Email { get; set; } = string.Empty;
     public string NombreCompleto { get; set; } = string.Empty;

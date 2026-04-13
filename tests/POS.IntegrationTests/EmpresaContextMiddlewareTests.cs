@@ -24,7 +24,7 @@ public class EmpresaContextMiddlewareTests
     private readonly JsonSerializerOptions _json = new() { PropertyNameCaseInsensitive = true };
 
     // ExternalId fijo del supervisor (ver TestAuthHandler)
-    private const string SupervisorKeycloakId = "00000000-0000-0000-0000-000000000002";
+    private const string SupervisorExternalId  = "00000000-0000-0000-0000-000000000002";
     private const string SupervisorEmail      = "supervisor@sincopos.com";
 
     public EmpresaContextMiddlewareTests(CustomWebApplicationFactory factory) => _factory = factory;
@@ -63,13 +63,13 @@ public class EmpresaContextMiddlewareTests
     {
         var usuario = await ctx.Usuarios
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.KeycloakId == SupervisorKeycloakId);
+            .FirstOrDefaultAsync(u => u.ExternalId == SupervisorExternalId);
 
         if (usuario != null) return usuario;
 
         usuario = new Usuario
         {
-            KeycloakId      = SupervisorKeycloakId,
+            ExternalId      = SupervisorExternalId,
             Email           = SupervisorEmail,
             NombreCompleto  = "Supervisor Test Middleware",
             Rol             = "supervisor",
