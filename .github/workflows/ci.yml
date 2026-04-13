@@ -214,11 +214,11 @@ jobs:
       - name: Deploy container to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: sincopos-api
+          app-name: sincopos-api-c6e6900a
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Update App Service Settings
-        run: az webapp config appsettings set --name sincopos-api --resource-group rg-sincopos-prod --settings ConnectionStrings__Postgres="${{ secrets.DB_CONNECTION_STRING }}"
+        run: az webapp config appsettings set --name sincopos-api-c6e6900a --resource-group rg-sincopos-prod --settings ConnectionStrings__Postgres="${{ secrets.DB_CONNECTION_STRING }}"
 
   # ── Deploy Frontend: Azure Static Web Apps ──────────────────────────────────
   deploy-frontend:
