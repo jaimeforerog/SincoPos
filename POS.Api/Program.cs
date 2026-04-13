@@ -32,23 +32,11 @@ builder.Services.AddScoped<POS.Application.Services.IClienteHistorialService, PO
 builder.Services.AddScoped<POS.Infrastructure.Services.CosteoService>();
 builder.Services.AddScoped<POS.Application.Services.IPrecioService, POS.Infrastructure.Services.PrecioService>();
 
-// Identity Provider abstraction: EntraIdService (prod) / KeycloakIdentityProviderService (dev) / LocalIdentityProviderService (fallback)
-if (builder.Configuration.GetSection("MicrosoftGraph:TenantId").Exists())
-{
-    builder.Services.Configure<POS.Infrastructure.Configuration.MicrosoftGraphOptions>(
-        builder.Configuration.GetSection(POS.Infrastructure.Configuration.MicrosoftGraphOptions.SectionName));
-    builder.Services.AddScoped<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.EntraIdService>();
-}
-else if (builder.Configuration.GetSection("KeycloakAdmin:Realm").Exists())
-{
-    builder.Services.Configure<POS.Infrastructure.Configuration.KeycloakAdminOptions>(
-        builder.Configuration.GetSection(POS.Infrastructure.Configuration.KeycloakAdminOptions.SectionName));
-    builder.Services.AddHttpClient<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.KeycloakIdentityProviderService>();
-}
-else
-{
-    builder.Services.AddScoped<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.LocalIdentityProviderService>();
-}
+// Identity Provider: WorkOS User Management API
+builder.Services.Configure<POS.Infrastructure.Configuration.WorkOsOptions>(
+    builder.Configuration.GetSection(POS.Infrastructure.Configuration.WorkOsOptions.SectionName));
+builder.Services.AddHttpClient<POS.Application.Services.IIdentityProviderService, POS.Infrastructure.Services.WorkOsIdentityProviderService>();
+builder.Services.AddHttpClient("workos");
 
 // Usuario service: interface + concrete (concrete kept for backward compat with CajasController)
 builder.Services.AddScoped<POS.Application.Services.IUsuarioService, POS.Infrastructure.Services.UsuarioService>();
@@ -237,21 +225,32 @@ builder.Services.ConfigureOptions<POS.Api.Infrastructure.ConfigureSwaggerOptions
 // FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<POS.Application.Validators.CrearProductoValidator>();
 
-// Authentication & Authorization — Entra ID (producción) / Keycloak (desarrollo)
+// Authentication & Authorization — WorkOS AuthKit
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
-    var authConfig = builder.Configuration.GetSection("Authentication");
-    options.Authority = authConfig["Authority"];
-    options.Audience = authConfig["Audience"];
-    options.RequireHttpsMetadata = authConfig.GetValue<bool>("RequireHttpsMetadata");
+    var workosClientId = builder.Configuration["WorkOs:ClientId"];
+
+    // WorkOS soporta OIDC discovery en https://api.workos.com/.well-known/openid-configuration
+    options.Authority = "https://api.workos.com";
+    options.Audience = workosClientId;
+    options.RequireHttpsMetadata = true;
+
+    var jwksJson = new System.Net.Http.HttpClient().GetStringAsync($"https://api.workos.com/sso/jwks/{workosClientId}").Result;
+    var signingKeys = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson).GetSigningKeys();
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = authConfig.GetValue<bool>("ValidateIssuer"),
-        ValidateAudience = authConfig.GetValue<bool>("ValidateAudience"),
-        ValidateLifetime = authConfig.GetValue<bool>("ValidateLifetime"),
+        ValidateIssuer = true,
+        ValidIssuers = new[] { 
+            "https://api.workos.com", 
+            "https://api.workos.com/",
+            $"https://api.workos.com/user_management/{workosClientId}"
+        },
+        ValidateAudience = false,
+        ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+        IssuerSigningKeys = signingKeys,
         ClockSkew = TimeSpan.FromMinutes(5),
         RoleClaimType = ClaimTypes.Role,
     };
@@ -260,6 +259,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         OnMessageReceived = context =>
         {
+            // Soporte para SignalR: token en query string
             var token = context.Request.Query["access_token"];
             if (!string.IsNullOrEmpty(token) &&
                 context.Request.Path.StartsWithSegments("/hubs/notificaciones"))
@@ -270,7 +270,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
             logger.LogError(context.Exception, "Authentication failed: {Error}", context.Exception.Message);
-            // Return error detail in response header for debugging (sanitize newlines)
             var safeMessage = context.Exception.Message.Replace("\r", "").Replace("\n", " ");
             context.Response.Headers.Append("X-Auth-Error", safeMessage);
             return Task.CompletedTask;
@@ -281,74 +280,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             if (context.Principal?.Identity is ClaimsIdentity identity)
             {
-                var allClaims = context.Principal.Claims.ToList();
                 var rolesAdded = 0;
+                var allClaims = context.Principal.Claims.ToList();
 
-                // ── Entra ID: roles como claim "roles" (array plano) ──
-                var entraRoleClaims = allClaims
-                    .Where(c => c.Type == "roles")
-                    .ToList();
-
-                foreach (var roleClaim in entraRoleClaims)
+                // WorkOS: el rol viene en el claim "role" (string único)
+                var workosRole = allClaims.FirstOrDefault(c => c.Type == "role")?.Value;
+                if (!string.IsNullOrEmpty(workosRole))
                 {
-                    if (!string.IsNullOrEmpty(roleClaim.Value))
-                    {
-                        identity.AddClaim(new Claim(ClaimTypes.Role, roleClaim.Value));
-                        rolesAdded++;
-                    }
+                    identity.AddClaim(new Claim(ClaimTypes.Role, workosRole));
+                    rolesAdded++;
                 }
 
-                // ── Keycloak fallback: realm_access JSON string ──
+                // Fallback: buscar rol en BD usando el sub (WorkOS user ID)
                 if (rolesAdded == 0)
                 {
-                    var realmAccessClaim = allClaims.FirstOrDefault(c =>
-                        c.Type == "realm_access" ||
-                        c.Type.EndsWith("/realm_access"));
-
-                    if (realmAccessClaim != null && !string.IsNullOrEmpty(realmAccessClaim.Value))
-                    {
-                        try
-                        {
-                            var realmAccess = System.Text.Json.JsonDocument.Parse(realmAccessClaim.Value);
-                            if (realmAccess.RootElement.TryGetProperty("roles", out var rolesElement))
-                            {
-                                foreach (var role in rolesElement.EnumerateArray())
-                                {
-                                    var roleName = role.GetString();
-                                    if (!string.IsNullOrEmpty(roleName))
-                                    {
-                                        identity.AddClaim(new Claim(ClaimTypes.Role, roleName));
-                                        rolesAdded++;
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.LogWarning(ex, "Failed to parse realm_access JSON claim");
-                        }
-                    }
-
-                    // Keycloak: realm_access.roles como claims directos (.NET 9+)
-                    var directRoleClaims = allClaims
-                        .Where(c => c.Type == "realm_access.roles")
-                        .ToList();
-
-                    foreach (var roleClaim in directRoleClaims)
-                    {
-                        if (!string.IsNullOrEmpty(roleClaim.Value))
-                        {
-                            identity.AddClaim(new Claim(ClaimTypes.Role, roleClaim.Value));
-                            rolesAdded++;
-                        }
-                    }
-                }
-
-                // ── Fallback: buscar rol en BD si el token no tiene roles ──
-                if (rolesAdded == 0)
-                {
-                    var externalId = context.Principal.FindFirstValue("http://schemas.microsoft.com/identity/claims/objectidentifier")
-                        ?? context.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+                    var externalId = context.Principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? context.Principal.FindFirstValue("sub");
 
                     if (!string.IsNullOrEmpty(externalId))
                     {
@@ -364,29 +311,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                             {
                                 identity.AddClaim(new Claim(ClaimTypes.Role, usuario.Rol));
                                 rolesAdded++;
-                                logger.LogInformation("Role '{Role}' loaded from DB for user {Email}",
+                                logger.LogInformation("[WorkOS] Rol '{Role}' cargado desde BD para {Email}",
                                     usuario.Rol, usuario.Email);
                             }
                         }
                         catch (Exception ex)
                         {
-                            logger.LogWarning(ex, "Failed to load role from DB for externalId {Id}", externalId);
+                            logger.LogWarning(ex, "[WorkOS] Error al cargar rol desde BD para {Id}", externalId);
                         }
                     }
                 }
 
                 if (rolesAdded == 0)
-                {
-                    logger.LogWarning(
-                        "No roles found in token or DB. Available claim types: {Claims}",
+                    logger.LogWarning("[WorkOS] Sin roles en token ni BD. Claims: {Claims}",
                         string.Join(", ", allClaims.Select(c => c.Type).Distinct()));
-                }
-                else
-                {
-                    logger.LogInformation("Mapped {Count} roles for authenticated user", rolesAdded);
-                }
             }
-
         }
     };
 });

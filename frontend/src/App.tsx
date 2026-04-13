@@ -82,6 +82,152 @@ function useCriticalPrefetch() {
   }, []);
 }
 
+/**
+ * All routes that require the WorkOS SDK (AuthKitProvider).
+ * /callback is intentionally excluded — placing it outside AuthProvider
+ * prevents the SDK from intercepting the ?code= and attempting its own
+ * (CORS-blocked) token exchange before our backend can handle it.
+ */
+function AuthenticatedApp() {
+  return (
+    <AuthProvider>
+      <SeleccionarEmpresaDialog />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="pos" element={<POSPage />} />
+          <Route path="productos" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ProductosPage /></ProtectedRoute>} />
+          <Route path="precios" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><PreciosPage /></ProtectedRoute>} />
+          <Route path="compras" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ComprasPage /></ProtectedRoute>} />
+          <Route path="compras/nueva" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><NuevaOrdenCompraPage /></ProtectedRoute>} />
+          <Route path="traslados" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><TrasladosPage /></ProtectedRoute>} />
+          <Route path="ventas" element={<VentasPage />} />
+          <Route path="devoluciones" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><DevolucionesPage /></ProtectedRoute>} />
+          <Route path="cajas" element={<ProtectedRoute requiredRoles={['cajero', 'supervisor', 'admin']}><CajasPage /></ProtectedRoute>} />
+          <Route path="sucursales" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><SucursalesPage /></ProtectedRoute>} />
+          <Route path="reportes">
+            <Route index element={<ReportesHomePage />} />
+            <Route path="ventas" element={<ReporteVentasPage />} />
+            <Route path="inventario" element={<ReporteInventarioPage />} />
+            <Route path="gestion-inventario" element={<InventarioPage />} />
+            <Route path="caja" element={<ReporteCajaPage />} />
+            <Route path="kardex" element={<ReporteKardexPage />} />
+            <Route path="auditoria" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><AuditoriaPage /></ProtectedRoute>} />
+          </Route>
+          <Route
+            path="usuarios"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <UsuariosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="configuracion"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <ConfiguracionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="configuracion/sistema"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <div>Sistema - En construcción</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="categorias"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <CategoriasPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="impuestos"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <ImpuestosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="terceros"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <TercerosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="facturacion"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <DocumentosElectronicosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="configuracion/facturacion"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <ConfiguracionEmisorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="empresas"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <EmpresasPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="eticas"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <ReglasEticasPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="inteligencia"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <InteligenciaColectivaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="pipeline"
+            element={
+              <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+                <PipelineMonitorPage />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
+
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
+  );
+}
+
 function App() {
   useCriticalPrefetch();
   return (
@@ -95,148 +241,18 @@ function App() {
             horizontal: 'right',
           }}
         >
-          <AuthProvider>
-            <SeleccionarEmpresaDialog />
-            <BrowserRouter>
-              <ErrorBoundary>
+          <BrowserRouter>
+            <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/callback" element={<CallbackPage />} />
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route path="dashboard" element={<DashboardPage />} />
-                  <Route path="pos" element={<POSPage />} />
-                  <Route path="productos" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ProductosPage /></ProtectedRoute>} />
-                  <Route path="precios" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><PreciosPage /></ProtectedRoute>} />
-                  <Route path="compras" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ComprasPage /></ProtectedRoute>} />
-                  <Route path="compras/nueva" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><NuevaOrdenCompraPage /></ProtectedRoute>} />
-                  <Route path="traslados" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><TrasladosPage /></ProtectedRoute>} />
-                  <Route path="ventas" element={<VentasPage />} />
-                  <Route path="devoluciones" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><DevolucionesPage /></ProtectedRoute>} />
-                  <Route path="cajas" element={<ProtectedRoute requiredRoles={['cajero', 'supervisor', 'admin']}><CajasPage /></ProtectedRoute>} />
-                  <Route path="sucursales" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><SucursalesPage /></ProtectedRoute>} />
-                  <Route path="reportes">
-                    <Route index element={<ReportesHomePage />} />
-                    <Route path="ventas" element={<ReporteVentasPage />} />
-                    <Route path="inventario" element={<ReporteInventarioPage />} />
-                    <Route path="gestion-inventario" element={<InventarioPage />} />
-                    <Route path="caja" element={<ReporteCajaPage />} />
-                    <Route path="kardex" element={<ReporteKardexPage />} />
-                    <Route path="auditoria" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><AuditoriaPage /></ProtectedRoute>} />
-                  </Route>
-                  <Route
-                    path="usuarios"
-                    element={
-                      <ProtectedRoute requiredRoles={['admin']}>
-                        <UsuariosPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="configuracion"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <ConfiguracionPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="configuracion/sistema"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <div>Sistema - En construcción</div>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="categorias"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <CategoriasPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="impuestos"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <ImpuestosPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="terceros"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <TercerosPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="facturacion"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <DocumentosElectronicosPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="configuracion/facturacion"
-                    element={
-                      <ProtectedRoute requiredRoles={['admin']}>
-                        <ConfiguracionEmisorPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="empresas"
-                    element={
-                      <ProtectedRoute requiredRoles={['admin']}>
-                        <EmpresasPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="eticas"
-                    element={
-                      <ProtectedRoute requiredRoles={['admin']}>
-                        <ReglasEticasPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="inteligencia"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <InteligenciaColectivaPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="pipeline"
-                    element={
-                      <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-                        <PipelineMonitorPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                </Route>
-
-                <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                <Routes>
+                  {/* /callback must be outside AuthProvider so the WorkOS SDK
+                      never initializes on this URL and cannot intercept the code. */}
+                  <Route path="/callback" element={<CallbackPage />} />
+                  <Route path="*" element={<AuthenticatedApp />} />
+                </Routes>
               </Suspense>
-              </ErrorBoundary>
-            </BrowserRouter>
-          </AuthProvider>
+            </ErrorBoundary>
+          </BrowserRouter>
         </SnackbarProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />

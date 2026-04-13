@@ -36,12 +36,76 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle errors
+// Token refresh state — shared across concurrent requests
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach(cb => cb(token));
+  refreshSubscribers = [];
+}
+
+// Response interceptor to handle errors and auto-refresh tokens
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error: AxiosError<ApiError>) => {
+  async (error: AxiosError<ApiError>) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // If 401 and we have a refresh token, try to refresh
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      sessionStorage.getItem('refresh_token')
+    ) {
+      originalRequest._retry = true;
+
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const refreshToken = sessionStorage.getItem('refresh_token')!;
+          const { data } = await axios.post<{ accessToken: string; refreshToken?: string }>(
+            `${API_URL}/api/${API_VERSION}/auth/refresh`,
+            { refreshToken }
+          );
+          sessionStorage.setItem('access_token', data.accessToken);
+          if (data.refreshToken) {
+            sessionStorage.setItem('refresh_token', data.refreshToken);
+          }
+          isRefreshing = false;
+          onTokenRefreshed(data.accessToken);
+
+          // Retry the original request with the new token
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+          }
+          return apiClient(originalRequest);
+        } catch (refreshError) {
+          isRefreshing = false;
+          refreshSubscribers = [];
+          // Refresh failed — clear tokens and let auth handle redirect
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+          useAuthStore.getState().setUser(null);
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // Another request is already refreshing — queue this one
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((newToken: string) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            }
+            resolve(apiClient(originalRequest));
+          });
+        });
+      }
+    }
+
     if (error.response) {
       // Server responded with error
       const data = error.response.data;
@@ -78,6 +142,7 @@ apiClient.interceptors.response.use(
       if (error.response.status === 401) {
         // Clear stale token — let the AuthProvider handle redirect/re-auth
         sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('refresh_token');
       }
 
       return Promise.reject(apiError);
@@ -100,3 +165,4 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+

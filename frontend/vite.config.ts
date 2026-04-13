@@ -113,6 +113,12 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      // Proxy WorkOS API to avoid CORS in dev mode (browser can't call api.workos.com directly)
+      '/user_management': {
+        target: 'https://api.workos.com',
+        changeOrigin: true,
+        secure: true,
+      },
     },
   },
   build: {
@@ -129,10 +135,7 @@ export default defineConfig({
           ],
           // Auth libraries
           'vendor-auth': [
-            '@azure/msal-browser',
-            '@azure/msal-react',
-            'react-oidc-context',
-            'oidc-client-ts',
+            '@workos-inc/authkit-react',
           ],
           // Data fetching + state
           'vendor-query': ['@tanstack/react-query', 'zustand', 'axios'],

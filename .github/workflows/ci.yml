@@ -119,10 +119,8 @@ jobs:
         working-directory: frontend
         run: npm run build
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://sincopos-api.azurewebsites.net' }}
-          VITE_ENTRA_TENANT_ID: ${{ vars.VITE_ENTRA_TENANT_ID }}
-          VITE_ENTRA_CLIENT_ID: ${{ vars.VITE_ENTRA_CLIENT_ID }}
-          VITE_ENTRA_API_SCOPE: ${{ vars.VITE_ENTRA_API_SCOPE }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://sincopos-api-c6e6900a.azurewebsites.net' }}
+          VITE_WORKOS_CLIENT_ID: ${{ vars.VITE_WORKOS_CLIENT_ID }}
           VITE_API_VERSION: ${{ vars.VITE_API_VERSION || 'v1' }}
 
       - name: Upload frontend dist

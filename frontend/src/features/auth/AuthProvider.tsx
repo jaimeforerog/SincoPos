@@ -1,13 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { InteractionStatus } from '@azure/msal-browser';
-import type { AccountInfo } from '@azure/msal-browser';
-import { MsalProvider, useMsal, useIsAuthenticated } from '@azure/msal-react';
-import { AuthProvider as OidcAuthProvider, useAuth as useOidcAuth } from 'react-oidc-context';
+import { AuthKitProvider, useAuth as useWorkosAuth } from '@workos-inc/authkit-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
 import { CircularProgress, Box } from '@mui/material';
-import { loginRequest, keycloakConfig, isEntraId, msalInstance, msalInitPromise } from './msalConfig';
+import { WORKOS_CLIENT_ID } from './workosConfig';
 
 function LoadingScreen() {
   return (
@@ -17,261 +14,120 @@ function LoadingScreen() {
   );
 }
 
-// ── Entra ID Auth Initializer ──────────────────────────────────────────────
-function EntraAuthInitializer({ children }: { children: ReactNode }) {
-  const { instance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
+  const { user, isLoading, isAuthenticated, signOut, getAccessToken } = useWorkosAuth();
   const { setUser, setIdpLogout } = useAuthStore();
-
-  // Register IdP logout function
+  const backendFetchedRef = useRef(false);
+  // Timeout fallback: if WorkOS SDK doesn't initialize within 10s, unblock rendering.
+  // IMPORTANT: depend on isLoading so the timer cancels when SDK initializes normally.
+  const [initTimeout, setInitTimeout] = useState(false);
   useEffect(() => {
-    setIdpLogout(() => {
-      instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
+    if (!isLoading) return; // SDK already done — no timer needed
+    const t = setTimeout(() => {
+      console.error('[WorkOS] SDK no inicializó en 10s. Verifica VITE_WORKOS_CLIENT_ID y la red.');
+      setInitTimeout(true);
+    }, 10000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
+  // Registrar función de logout del IdP en el store
+  useEffect(() => {
+    setIdpLogout(() => signOut());
+  }, [signOut, setIdpLogout]);
+
+  // Mantener access_token en sessionStorage para el interceptor de axios
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    getAccessToken().then((token) => {
+      if (token) sessionStorage.setItem('access_token', token);
     });
-  }, [instance, setIdpLogout]);
+  }, [isAuthenticated, user?.id, getAccessToken]);
 
-  const getAccount = useCallback((): AccountInfo | null => {
-    const active = instance.getActiveAccount();
-    if (active) return active;
-    const accounts = instance.getAllAccounts();
-    if (accounts.length > 0) {
-      instance.setActiveAccount(accounts[0]);
-      return accounts[0];
-    }
-    return null;
-  }, [instance]);
-
-  const acquireToken = useCallback(async (account: AccountInfo): Promise<string | null> => {
-    try {
-      const response = await instance.acquireTokenSilent({
-        ...loginRequest,
-        account,
-      });
-      const hasApiScope = loginRequest.scopes.some(s => s.startsWith('api://'));
-      if (hasApiScope && response.accessToken) {
-        return response.accessToken;
-      }
-      // Para cuentas personales de Microsoft sin API scope configurado,
-      // usar el ID Token - el backend lo acepta como Bearer token
-      return response.idToken || account.idToken || null;
-    } catch {
-      return account.idToken ?? null;
-    }
-  }, [instance]);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      if (inProgress !== InteractionStatus.None) return;
-
-      if (isAuthenticated) {
-        const account = getAccount();
-        if (!account) {
-          console.warn('[Auth] MSAL isAuthenticated=true but no account found');
-          setUser(null);
-          return;
-        }
-
-        console.log('[Auth] Account found:', account.username);
-
-        const token = await acquireToken(account);
-        if (token) {
-          sessionStorage.setItem('access_token', token);
-          console.log('[Auth] Token acquired, calling /usuarios/me');
-
-          try {
-            const userInfo = await usuariosApi.me();
-            setUser(userInfo);
-            console.log('[Auth] User info loaded from backend');
-          } catch (error) {
-            console.error('[Auth] Backend /me failed, using token claims:', error);
-            const idTokenClaims = account.idTokenClaims as Record<string, unknown> | undefined;
-            const roles = (idTokenClaims?.['roles'] as string[] | undefined)
-              ?.filter(r => ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
-
-            setUser({
-              id: account.localAccountId,
-              username: account.username,
-              email: account.username,
-              nombre: account.name ?? account.username,
-              roles,
-              sucursalId: undefined,
-              sucursalNombre: undefined,
-              sucursalesDisponibles: [],
-            });
-          }
-        } else {
-          console.warn('[Auth] No token, setting user from account info');
-          setUser({
-            id: account.localAccountId,
-            username: account.username,
-            email: account.username,
-            nombre: account.name ?? account.username,
-            roles: [],
-            sucursalId: undefined,
-            sucursalNombre: undefined,
-            sucursalesDisponibles: [],
-          });
-        }
-      } else {
-        setUser(null);
-      }
-    };
-
-    initAuth();
-  }, [isAuthenticated, inProgress, acquireToken, getAccount, setUser]);
-
-  // Set up token refresh
+  // Refresh periódico del token cada 4 minutos
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    const interval = setInterval(async () => {
-      const account = getAccount();
-      if (!account) return;
-      const token = await acquireToken(account);
-      if (token) {
-        sessionStorage.setItem('access_token', token);
-      }
+    const interval = setInterval(() => {
+      getAccessToken().then((token) => {
+        if (token) sessionStorage.setItem('access_token', token);
+      });
     }, 4 * 60 * 1000);
-
     return () => clearInterval(interval);
-  }, [isAuthenticated, acquireToken, getAccount]);
+  }, [isAuthenticated, getAccessToken]);
 
-  if (inProgress !== InteractionStatus.None) {
-    return <LoadingScreen />;
-  }
-
-  return <>{children}</>;
-}
-
-// ── Keycloak Auth Initializer (desarrollo local) ───────────────────────────
-function KeycloakAuthInitializer({ children }: { children: ReactNode }) {
-  const oidcAuth = useOidcAuth();
-  const { setUser, setIdpLogout } = useAuthStore();
-  // Guard: solo llamar /me una vez por sesión autenticada
-  const backendFetchedRef = useRef(false);
-
-  useEffect(() => {
-    setIdpLogout(() => {
-      oidcAuth.signoutRedirect({ post_logout_redirect_uri: window.location.origin });
-    });
-  }, [oidcAuth, setIdpLogout]);
-
-  // Actualizar el token en sessionStorage cada vez que Keycloak lo renueva silenciosamente,
-  // sin re-llamar a /me (que causaba la caída de sesión).
-  useEffect(() => {
-    if (oidcAuth.user?.access_token) {
-      sessionStorage.setItem('access_token', oidcAuth.user.access_token);
-    }
-  }, [oidcAuth.user?.access_token]);
-
+  // Cargar perfil de usuario desde el backend
   useEffect(() => {
     const initAuth = async () => {
-      if (oidcAuth.isLoading) return;
+      if (isLoading) return;
 
-      if (oidcAuth.isAuthenticated && oidcAuth.user) {
-        sessionStorage.setItem('access_token', oidcAuth.user.access_token);
-
-        // Solo llamar /me si aún no hemos cargado el perfil en esta sesión
+      if (isAuthenticated && user) {
         if (backendFetchedRef.current) return;
         backendFetchedRef.current = true;
+
+        // Asegurarse de que el token esté disponible antes de llamar al backend
+        const token = await getAccessToken();
+        if (token) sessionStorage.setItem('access_token', token);
 
         try {
           const userInfo = await usuariosApi.me();
           setUser(userInfo);
         } catch (error) {
-          console.error('Failed to fetch user info from backend:', error);
-          backendFetchedRef.current = false; // permitir reintento
-          const profile = oidcAuth.user.profile;
-          let roles: string[] = [];
-          try {
-            const b64 = oidcAuth.user.access_token.split('.')[1]
-              .replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(atob(b64)) as Record<string, unknown>;
-            const realmAccess = payload['realm_access'] as { roles?: string[] } | undefined;
-            roles = realmAccess?.roles?.filter(r =>
-              ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
-          } catch {
-            const profileRealmAccess = (profile as Record<string, unknown>)['realm_access'] as { roles?: string[] } | undefined;
-            roles = profileRealmAccess?.roles?.filter(r =>
-              ['admin', 'supervisor', 'cajero', 'vendedor'].includes(r)) ?? [];
-          }
-          // Fallback mínimo: solo usar si no hay usuario ya en el store
+          console.error('[Auth] Backend /me falló, usando datos del token:', error);
+          backendFetchedRef.current = false;
           const currentUser = useAuthStore.getState().user;
           if (!currentUser) {
             setUser({
-              id: profile.sub ?? 'unknown',
-              username: profile.preferred_username ?? profile.email ?? 'unknown',
-              email: profile.email ?? '',
-              nombre: profile.name ?? profile.preferred_username ?? '',
-              roles,
+              id: user.id,
+              username: user.email,
+              email: user.email,
+              nombre: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
+              roles: [],
               sucursalId: undefined,
               sucursalNombre: undefined,
               sucursalesDisponibles: [],
             });
           }
         }
-      } else if (!oidcAuth.isLoading) {
+      } else if (!isLoading) {
         backendFetchedRef.current = false;
-        setUser(null);
+        // Only clear if no manually-set token (from our /api/v1/auth/callback flow)
+        const hasToken = !!sessionStorage.getItem('access_token');
+        if (!hasToken) {
+          setUser(null);
+        } else if (!useAuthStore.getState().user) {
+          // Token present but no user — validate by calling /me (e.g. after page refresh)
+          try {
+            const userInfo = await usuariosApi.me();
+            setUser(userInfo);
+          } catch {
+            sessionStorage.removeItem('access_token');
+            setUser(null);
+          }
+        }
       }
     };
 
     initAuth();
-  // Solo re-ejecutar cuando cambia el estado de autenticación, no en cada token refresh
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oidcAuth.isAuthenticated, oidcAuth.isLoading, setUser]);
+  }, [isAuthenticated, isLoading, user?.id]);
 
-  if (oidcAuth.isLoading) {
-    return <LoadingScreen />;
-  }
-
-  if (oidcAuth.error) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" flexDirection="column">
-        <h1>Error de autenticaci&oacute;n</h1>
-        <p>{oidcAuth.error.message}</p>
-      </Box>
-    );
-  }
+  if (isLoading && !initTimeout) return <LoadingScreen />;
 
   return <>{children}</>;
 }
 
-// ── Auth Provider (selecciona Entra ID o Keycloak) ─────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
-  if (isEntraId) {
-    return <EntraAuthWrapper>{children}</EntraAuthWrapper>;
+  if (!WORKOS_CLIENT_ID) {
+    console.error('[WorkOS] VITE_WORKOS_CLIENT_ID no está definido. El login no funcionará.');
   }
 
-  const oidcConfig = {
-    ...keycloakConfig,
-    onSigninCallback: (): void => {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    },
-  };
+  // Redirect URI explícito con /callback para coincidir con lo registrado en WorkOS dashboard.
+  // En desarrollo: http://localhost:5173/callback
+  // En producción: https://zealous-hill-0a185e00f.1.azurestaticapps.net/callback
+  const redirectUri = `${window.location.origin}/callback`;
 
   return (
-    <OidcAuthProvider {...oidcConfig}>
-      <KeycloakAuthInitializer>{children}</KeycloakAuthInitializer>
-    </OidcAuthProvider>
-  );
-}
-
-// Wrapper that awaits MSAL initialization before rendering MsalProvider
-function EntraAuthWrapper({ children }: { children: ReactNode }) {
-  const [msalReady, setMsalReady] = useState(false);
-
-  useEffect(() => {
-    msalInitPromise.then(() => setMsalReady(true));
-  }, []);
-
-  if (!msalReady) {
-    return <LoadingScreen />;
-  }
-
-  return (
-    <MsalProvider instance={msalInstance}>
-      <EntraAuthInitializer>{children}</EntraAuthInitializer>
-    </MsalProvider>
+    <AuthKitProvider clientId={WORKOS_CLIENT_ID} redirectUri={redirectUri}>
+      <WorkOsAuthInitializer>{children}</WorkOsAuthInitializer>
+    </AuthKitProvider>
   );
 }

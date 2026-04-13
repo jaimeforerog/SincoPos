@@ -105,7 +105,7 @@ public class ProductosController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        if (pageSize > 100) pageSize = 100;
+        if (pageSize > 5000) pageSize = 5000;
         if (page < 1) page = 1;
 
         var productos = await _productoService.BuscarAsync(query, categoriaId, incluirInactivos, page, pageSize);

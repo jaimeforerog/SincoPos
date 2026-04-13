@@ -53,6 +53,7 @@ export function PreciosPage() {
   const [precioActual, setPrecioActual] = useState<PrecioResueltoDTO | undefined>(undefined);
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [reloadCounter, setReloadCounter] = useState(0);
 
   // Limpiar búsqueda cuando cambia la sucursal
   useEffect(() => {
@@ -78,6 +79,7 @@ export function PreciosPage() {
       productosApi.getAll({
         query: busqueda || undefined,
         incluirInactivos: false,
+        pageSize: 5000,
       }),
     enabled: selectedSucursalId !== null,
     staleTime: 30000, // Evitar recargas innecesarias
@@ -100,7 +102,7 @@ export function PreciosPage() {
     }
 
     // Crear clave única para evitar recargas innecesarias
-    const loadKey = `${selectedSucursalId}-${productos.map(p => p.id).sort().join(',')}`;
+    const loadKey = `${selectedSucursalId}-${reloadCounter}-${productos.map(p => p.id).sort().join(',')}`;
 
     // Si ya cargamos estos datos, no hacer nada
     if (loadKey === lastLoadKeyRef.current) {
@@ -147,7 +149,7 @@ export function PreciosPage() {
         lastLoadKeyRef.current = '';
       }
     }
-  }, [productos, selectedSucursalId, productosConPrecios.length]);
+  }, [productos, selectedSucursalId, productosConPrecios.length, reloadCounter]);
 
   const handleEditarPrecio = async (producto: ProductoConPrecio) => {
     setSelectedProducto(producto);
@@ -157,8 +159,9 @@ export function PreciosPage() {
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['precios'] });
-    // Forzar recarga limpiando el lastLoadKeyRef
+    // Forzar recarga limpiando el lastLoadKeyRef e incrementando el contador
     lastLoadKeyRef.current = '';
+    setReloadCounter(c => c + 1);
   };
 
   const handleImportPrecios = async (
