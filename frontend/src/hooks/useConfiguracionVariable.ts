@@ -9,8 +9,9 @@ export function useConfiguracionVariableInt(nombre: string, defaultValue = 0): n
   const { data } = useQuery({
     queryKey: ['configuracion-variable', nombre],
     queryFn: () => configuracionVariablesApi.getByNombre(nombre),
-    retry: false,
-    staleTime: 60 * 1000,
+    retry: 1,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
   });
   return data ? parseInt(data.valor, 10) || defaultValue : defaultValue;
 }
