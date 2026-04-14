@@ -651,7 +651,6 @@ export function OrdenCompraFormDialog({
                                 fullWidth
                                 sx={{ '& .MuiSelect-select': { fontSize: '0.8rem', py: '2px' } }}
                               >
-                                <MenuItem value="" sx={{ fontSize: '0.8rem' }}>Exento (0%)</MenuItem>
                                 {impuestos.map((impuesto) => (
                                   <MenuItem key={impuesto.id} value={impuesto.id} sx={{ fontSize: '0.8rem' }}>
                                     {impuesto.nombre}

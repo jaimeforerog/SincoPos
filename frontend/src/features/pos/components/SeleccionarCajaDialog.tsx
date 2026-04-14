@@ -14,6 +14,7 @@ import {
   Box,
   Typography,
   CircularProgress,
+  TextField,
 } from '@mui/material';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import { sucursalesApi } from '@/api/sucursales';
@@ -21,18 +22,37 @@ import { cajasApi } from '@/api/cajas';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineStore } from '@/stores/offline.store';
 import { posSessionCache } from '@/offline/posSessionCache';
+import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 
 interface SeleccionarCajaDialogProps {
   open: boolean;
-  onSelect: (cajaId: number, sucursalId: number) => void;
+  onSelect: (cajaId: number, sucursalId: number, fechaVenta: string | undefined) => void;
   onClose?: () => void;
 }
+
+const nowDatetimeLocal = () => {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  return d.toISOString().slice(0, 16);
+};
 
 export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCajaDialogProps) {
   const { activeSucursalId, activeEmpresaId, user } = useAuth();
   const isOnline = useOfflineStore((s) => s.isOnline);
   const [selectedSucursalId, setSelectedSucursalId] = useState<number | null>(null);
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
+  const [fechaVenta, setFechaVenta] = useState<string>(nowDatetimeLocal());
+
+  const diaMaxVentaAtrazada = useConfiguracionVariableInt('DiaMax_VentaAtrazada');
+  const mostrarFechaVenta = diaMaxVentaAtrazada > 0;
+
+  const minFechaVenta = (() => {
+    if (!mostrarFechaVenta) return '';
+    const d = new Date();
+    d.setDate(d.getDate() - diaMaxVentaAtrazada);
+    d.setSeconds(0, 0);
+    return d.toISOString().slice(0, 16);
+  })();
 
   // Cargar sucursales desde la API (filtradas por empresa activa vía middleware)
   const { data: sucursalesOnline = [] } = useQuery({
@@ -51,6 +71,7 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
     if (open) {
       setSelectedSucursalId(null);
       setSelectedCajaId(null);
+      setFechaVenta(nowDatetimeLocal());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -99,9 +120,18 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
 
   const handleConfirm = () => {
     if (selectedCajaId && selectedSucursalId) {
-      onSelect(selectedCajaId, selectedSucursalId);
+      onSelect(
+        selectedCajaId,
+        selectedSucursalId,
+        mostrarFechaVenta ? fechaVenta : undefined,
+      );
     }
   };
+
+  const canConfirm =
+    !!selectedCajaId &&
+    !noCachedData &&
+    (!mostrarFechaVenta || !!fechaVenta);
 
   const selectedSucursal = sucursales.find((s) => s.id === selectedSucursalId);
   const noCachedData = !isOnline && sucursales.length === 0;
@@ -123,7 +153,7 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
             Iniciar Punto de Venta
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Selecciona la sucursal y caja para comenzar a vender
+            Selecciona la sucursal, caja{mostrarFechaVenta ? ' y fecha de la sesión' : ''} para comenzar a vender
           </Typography>
         </Box>
       </DialogTitle>
@@ -181,31 +211,46 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
                         : 'No hay cajas cacheadas para esta sucursal.'}
                     </Alert>
                   ) : (
-                    <>
-                      <FormControl fullWidth>
-                        <InputLabel>Caja *</InputLabel>
-                        <Select
-                          value={selectedCajaId || ''}
-                          onChange={(e) => setSelectedCajaId(e.target.value as number)}
-                          label="Caja *"
-                        >
-                          {cajas.map((caja) => (
-                            <MenuItem key={caja.id} value={caja.id}>
-                              {caja.nombre}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      {selectedCajaId && (
-                        <Alert severity="success" sx={{ mt: 2 }}>
-                          ✓ Listo para iniciar ventas
-                          {!isOnline && ' (modo offline)'}
-                        </Alert>
-                      )}
-                    </>
+                    <FormControl fullWidth sx={{ mb: mostrarFechaVenta ? 3 : 0 }}>
+                      <InputLabel>Caja *</InputLabel>
+                      <Select
+                        value={selectedCajaId || ''}
+                        onChange={(e) => setSelectedCajaId(e.target.value as number)}
+                        label="Caja *"
+                      >
+                        {cajas.map((caja) => (
+                          <MenuItem key={caja.id} value={caja.id}>
+                            {caja.nombre}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   )}
                 </>
+              )}
+
+              {/* Selector de Fecha de Venta — solo si DiaMax_VentaAtrazada > 0 */}
+              {mostrarFechaVenta && selectedCajaId && (
+                <TextField
+                  label="Fecha de inicio de sesión *"
+                  type="datetime-local"
+                  value={fechaVenta}
+                  onChange={(e) => setFechaVenta(e.target.value)}
+                  fullWidth
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    htmlInput: { min: minFechaVenta, max: nowDatetimeLocal() },
+                  }}
+                  helperText="Esta fecha se usará para todas las ventas de esta sesión y no podrá modificarse"
+                  sx={{ mb: 2 }}
+                />
+              )}
+
+              {canConfirm && (
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  ✓ Listo para iniciar ventas
+                  {!isOnline && ' (modo offline)'}
+                </Alert>
               )}
             </>
           )}
@@ -221,7 +266,7 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
         <Button
           variant="contained"
           onClick={handleConfirm}
-          disabled={!selectedCajaId || noCachedData}
+          disabled={!canConfirm}
           size="large"
           color="success"
           fullWidth

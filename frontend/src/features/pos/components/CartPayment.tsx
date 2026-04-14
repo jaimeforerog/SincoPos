@@ -7,12 +7,8 @@ interface CartPaymentProps {
   metodoPago: number;
   montoPagado: number;
   total: number;
-  fechaVenta: string;
-  mostrarFechaVenta: boolean;
-  minFechaVenta: string; // "YYYY-MM-DDTHH:mm" — fecha mínima seleccionable
   onMetodoPagoChange: (metodo: number) => void;
   onMontoPagadoChange: (monto: number) => void;
-  onFechaVentaChange: (fecha: string) => void;
 }
 
 const fmt = (v: number) =>
@@ -20,30 +16,13 @@ const fmt = (v: number) =>
 
 export function CartPayment({
   metodoPago, montoPagado, total,
-  fechaVenta, mostrarFechaVenta, minFechaVenta,
-  onMetodoPagoChange, onMontoPagadoChange, onFechaVentaChange,
+  onMetodoPagoChange, onMontoPagadoChange,
 }: CartPaymentProps) {
   const cambio = metodoPago === 0 ? Math.max(0, montoPagado - total) : 0;
   const falta  = metodoPago === 0 && montoPagado > 0 && montoPagado < total ? total - montoPagado : 0;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      {/* Fecha de la venta — visible solo si DiaMax_VentaAtrazada > 0 */}
-      {mostrarFechaVenta && (
-        <TextField
-          label="Fecha de venta"
-          type="datetime-local"
-          size="small"
-          value={fechaVenta}
-          onChange={(e) => onFechaVentaChange(e.target.value)}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: { min: minFechaVenta, max: new Date().toISOString().slice(0, 16) },
-          }}
-          fullWidth
-        />
-      )}
-
       {/* Método de pago */}
       <ToggleButtonGroup
         value={metodoPago}

@@ -8,10 +8,8 @@ import { ClienteHistorialCard } from './ClienteHistorialCard';
 import type { CartItem } from '@/stores/cart.store';
 
 interface CartPanelProps {
-  // Caja y Cliente
-  selectedCajaId: number | null;
+  // Cliente
   selectedClienteId: number | null;
-  onCajaChange: (cajaId: number | null) => void;
   onClienteChange: (clienteId: number | null) => void;
 
   // Items del carrito
@@ -30,12 +28,8 @@ interface CartPanelProps {
   // Pago
   metodoPago: number;
   montoPagado: number;
-  fechaVenta: string;
-  mostrarFechaVenta: boolean;
-  minFechaVenta: string;
   onMetodoPagoChange: (metodo: number) => void;
   onMontoPagadoChange: (monto: number) => void;
-  onFechaVentaChange: (fecha: string) => void;
 
   // Acciones
   onClear: () => void;
@@ -46,9 +40,7 @@ interface CartPanelProps {
 }
 
 export function CartPanel({
-  selectedCajaId,
   selectedClienteId,
-  onCajaChange,
   onClienteChange,
   items,
   onUpdateQuantity,
@@ -61,12 +53,8 @@ export function CartPanel({
   total,
   metodoPago,
   montoPagado,
-  fechaVenta,
-  mostrarFechaVenta,
-  minFechaVenta,
   onMetodoPagoChange,
   onMontoPagadoChange,
-  onFechaVentaChange,
   onClear,
   onCobrar,
   canCobrar,
@@ -82,9 +70,7 @@ export function CartPanel({
         </Typography>
 
         <CartHeader
-          selectedCajaId={selectedCajaId}
           selectedClienteId={selectedClienteId}
-          onCajaChange={onCajaChange}
           onClienteChange={onClienteChange}
         />
         {selectedClienteId && (
@@ -113,12 +99,8 @@ export function CartPanel({
           metodoPago={metodoPago}
           montoPagado={montoPagado}
           total={total}
-          fechaVenta={fechaVenta}
-          mostrarFechaVenta={mostrarFechaVenta}
-          minFechaVenta={minFechaVenta}
           onMetodoPagoChange={onMetodoPagoChange}
           onMontoPagadoChange={onMontoPagadoChange}
-          onFechaVentaChange={onFechaVentaChange}
         />
 
         <CartActions

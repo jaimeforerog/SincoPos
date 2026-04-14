@@ -8,6 +8,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import PersonIcon from '@mui/icons-material/Person';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { HeroBanner } from '@/components/common/HeroBanner';
@@ -44,6 +45,12 @@ export function POSPage() {
 
   // Estado de caja y cliente
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
+  // Fecha de la sesión — se fija en SeleccionarCajaDialog y no puede cambiarse
+  const nowDatetimeLocal = () => {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    return d.toISOString().slice(0, 16);
+  };
   useTurnPreload(selectedCajaId, activeSucursalId ?? null);
 
   // Cargar detalles de la caja seleccionada
@@ -64,8 +71,15 @@ export function POSPage() {
     if (selectedCajaId) return;
 
     // Si solo hay una caja abierta (online o cacheada), seleccionarla automáticamente
-    if (_cajasAbiertas.length === 1) {
-      handleSelectCaja(_cajasAbiertas[0].id, _cajasAbiertas[0].sucursalId);
+    // Cuando DiaMax_VentaAtrazada = 0 no se muestra el diálogo de fecha, se usa "ahora"
+    if (_cajasAbiertas.length === 1 && !mostrarFechaVenta) {
+      handleSelectCaja(_cajasAbiertas[0].id, _cajasAbiertas[0].sucursalId, undefined);
+      return;
+    }
+
+    // Si hay exactamente una caja pero se requiere elegir fecha, mostrar el diálogo igualmente
+    if (_cajasAbiertas.length === 1 && mostrarFechaVenta) {
+      setShowSeleccionarCaja(true);
       return;
     }
 
@@ -87,10 +101,11 @@ export function POSPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, isLoadingCajas, isFetchedCajas, _cajasAbiertas, selectedCajaId, isOnline]);
 
-  // Handler para seleccionar caja (también recibe la sucursal del diálogo)
+  // Handler para seleccionar caja (también recibe la sucursal y la fecha del diálogo)
   const { setActiveSucursal, setActiveEmpresa, empresasDisponibles } = useAuthStore();
-  const handleSelectCaja = (cajaId: number, sucursalId: number) => {
+  const handleSelectCaja = (cajaId: number, sucursalId: number, fechaVentaDialog: string | undefined) => {
     setSelectedCajaId(cajaId);
+    setFechaVenta(fechaVentaDialog ?? nowDatetimeLocal());
 
     // Sincronizar empresa primero (puede auto-seleccionar una sucursal), luego forzar la sucursal correcta
     const sucursalInfo = user?.sucursalesDisponibles.find((s) => s.id === sucursalId);
@@ -136,12 +151,7 @@ export function POSPage() {
   const [metodoPago, setMetodoPago] = useState<number>(0); // 0=Efectivo
   const [montoPagado, setMontoPagado] = useState<number>(0);
 
-  // Fecha de la venta — inicializada a "ahora" y reseteable
-  const nowDatetimeLocal = () => {
-    const d = new Date();
-    d.setSeconds(0, 0);
-    return d.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
-  };
+  // Fecha de la sesión — fijada en SeleccionarCajaDialog, no editable en el carrito
   const [fechaVenta, setFechaVenta] = useState<string>(nowDatetimeLocal);
 
   // Estado de confirmación
@@ -173,7 +183,7 @@ export function POSPage() {
       clearCart();
       setSelectedClienteId(null);
       setMontoPagado(0);
-      setFechaVenta(nowDatetimeLocal());
+      // fechaVenta se mantiene fija para toda la sesión
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
     },
@@ -469,13 +479,17 @@ export function POSPage() {
     empresasDisponibles.find((e) => e.id === activeEmpresaId)?.nombre ??
     null;
 
-  // Fecha mínima permitida según DiaMax_VentaAtrazada
-  const minFechaVenta = (() => {
-    if (!mostrarFechaVenta) return '';
-    const d = new Date();
-    d.setDate(d.getDate() - diaMaxVentaAtrazada);
-    d.setSeconds(0, 0);
-    return d.toISOString().slice(0, 16);
+  // Fecha de la sesión formateada para mostrar en el banner
+  const fechaVentaDisplay = (() => {
+    if (!mostrarFechaVenta || !fechaVenta) return null;
+    try {
+      return new Date(fechaVenta).toLocaleString('es-CO', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    } catch {
+      return fechaVenta;
+    }
   })();
 
   // Calcular totales
@@ -552,6 +566,20 @@ export function POSPage() {
                 </Box>
               </Box>
 
+              {fechaVentaDisplay && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CalendarTodayIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
+                  <Box>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                      Fecha
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
+                      {fechaVentaDisplay}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
               {!cajaActual && (
                 <Chip
                   label="⚠️ Selecciona una caja para comenzar"
@@ -595,9 +623,7 @@ export function POSPage() {
           {/* Panel Derecho - Carrito y Pago */}
           <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <CartPanel
-              selectedCajaId={selectedCajaId}
               selectedClienteId={selectedClienteId}
-              onCajaChange={setSelectedCajaId}
               onClienteChange={setSelectedClienteId}
               items={items}
               onUpdateQuantity={handleUpdateQuantity}
@@ -610,12 +636,8 @@ export function POSPage() {
               total={total}
               metodoPago={metodoPago}
               montoPagado={montoPagado}
-              fechaVenta={fechaVenta}
-              mostrarFechaVenta={mostrarFechaVenta}
-              minFechaVenta={minFechaVenta}
               onMetodoPagoChange={setMetodoPago}
               onMontoPagadoChange={setMontoPagado}
-              onFechaVentaChange={setFechaVenta}
               onClear={handleClearCart}
               onCobrar={handleCobrar}
               canCobrar={canCobrar || (!isOnline && items.length > 0 && selectedCajaId !== null)}

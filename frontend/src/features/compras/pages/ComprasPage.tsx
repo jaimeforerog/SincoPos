@@ -435,7 +435,7 @@ export function ComprasPage() {
                           </>
                         )}
 
-                        {(orden.estado === 'Pendiente' || orden.estado === 'Aprobada' || orden.estado === 'RecibidaParcial') && (
+                        {(orden.estado === 'Aprobada' || orden.estado === 'RecibidaParcial') && (
                           <Tooltip title="Recibir mercancía">
                             <IconButton size="small" color="primary" onClick={() => handleRecibir(orden)}>
                               <LocalShippingIcon fontSize="small" />
