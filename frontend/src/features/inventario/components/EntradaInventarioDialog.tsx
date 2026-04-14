@@ -207,8 +207,10 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
               value={fechaMovimiento}
               onChange={(e) => setFechaMovimiento(e.target.value)}
               fullWidth
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ min: minFechaMovimiento, max: nowDatetimeLocal() }}
+              slotProps={{
+                inputLabel: { shrink: true },
+                htmlInput: { min: minFechaMovimiento, max: nowDatetimeLocal() },
+              }}
             />
           )}
 

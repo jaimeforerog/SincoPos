@@ -381,8 +381,10 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
                         label="Fecha de Orden *"
                         value={value ?? ''}
                         onChange={(e) => onChange(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                        inputProps={{ min: minFechaOrden, max: today }}
+                        slotProps={{
+                          inputLabel: { shrink: true },
+                          htmlInput: { min: minFechaOrden, max: today },
+                        }}
                         error={!!errors.fechaOrden}
                         helperText={errors.fechaOrden?.message}
                         fullWidth
@@ -402,7 +404,10 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
                       label="Fecha de Entrega Esperada"
                       value={value ?? ''}
                       onChange={(e) => onChange(e.target.value)}
-                      InputLabelProps={{ shrink: true }}
+                      slotProps={{
+                        inputLabel: { shrink: true },
+                        htmlInput: { min: watch('fechaOrden') || today },
+                      }}
                       fullWidth
                       size="small"
                     />

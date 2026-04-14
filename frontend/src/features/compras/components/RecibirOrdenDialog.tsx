@@ -213,8 +213,10 @@ export function RecibirOrdenDialog({
                   {...field}
                   type="date"
                   label="Fecha de Recepción *"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: minFechaRecepcion, max: today }}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    htmlInput: { min: minFechaRecepcion, max: today },
+                  }}
                   error={!!errors.fechaRecepcion}
                   helperText={errors.fechaRecepcion?.message}
                   sx={{ mb: 2, width: 260 }}
@@ -312,8 +314,10 @@ export function RecibirOrdenDialog({
                                 size="small"
                                 fullWidth
                                 disabled={!detalle.manejaLotes}
-                                InputLabelProps={{ shrink: true }}
-                                inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                                slotProps={{
+                                  inputLabel: { shrink: true },
+                                  htmlInput: { min: new Date().toISOString().split('T')[0] },
+                                }}
                               />
                             )}
                           />
