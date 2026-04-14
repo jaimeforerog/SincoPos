@@ -1195,3 +1195,25 @@ export interface ActualizarEmpresaDTO {
   razonSocial?: string;
   activo:       boolean;
 }
+
+export interface ConfiguracionVariableDTO {
+  id: number;
+  nombre: string;
+  valor: string;
+  descripcion?: string;
+  activo: boolean;
+  fechaCreacion: string;
+  empresaId: number;
+}
+
+export interface CrearConfiguracionVariableDTO {
+  nombre: string;
+  valor: string;
+  descripcion?: string;
+}
+
+export interface ActualizarConfiguracionVariableDTO {
+  nombre: string;
+  valor: string;
+  descripcion?: string;
+}

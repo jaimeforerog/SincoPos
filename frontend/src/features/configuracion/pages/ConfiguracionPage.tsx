@@ -13,6 +13,7 @@ import {
   MenuBookOutlined,
   TuneOutlined,
   Shield,
+  SettingsSuggest,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfigCard } from '../components/ConfigCard';
@@ -118,6 +119,16 @@ const configModules: ConfigModule[] = [
     roles: ['admin'],
     category: 'sistema',
     color: '#c62828',
+  },
+  {
+    id: 'variables',
+    title: 'Variables del Sistema',
+    description: 'Parámetros globales: montos máximos, límites y valores configurables',
+    icon: <SettingsSuggest fontSize="large" />,
+    path: '/configuracion/variables',
+    roles: ['admin'],
+    category: 'sistema',
+    color: '#37474f',
   },
 ];
 

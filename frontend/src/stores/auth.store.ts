@@ -143,7 +143,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setIdpLogout: (fn) => set({ idpLogout: fn }),
 
   logout: () => {
-    sessionStorage.removeItem('access_token');
+    // access_token is cleared AFTER idpLogout so it can be used to build the WorkOS
+    // session logout URL (the session_id is embedded in the JWT as the 'sid' claim).
     sessionStorage.removeItem('activeEmpresaId');
     localStorage.removeItem('activeSucursalId');
     localStorage.removeItem('activeEmpresaId'); // limpiar valor legacy
@@ -153,5 +154,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (idpLogout) {
       idpLogout();
     }
+    sessionStorage.removeItem('access_token');
   },
 }));

@@ -30,9 +30,36 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [isLoading]);
 
-  // Registrar función de logout del IdP en el store
+  // Registrar función de logout del IdP en el store.
+  // Construimos la URL de logout de WorkOS usando el 'sid' del JWT almacenado,
+  // porque el SDK tiene su propio almacenamiento en memoria que puede estar vacío
+  // cuando el intercambio de código lo hizo nuestro backend (y no el SDK directamente).
   useEffect(() => {
-    setIdpLogout(() => signOut());
+    setIdpLogout(() => {
+      const returnTo = `${window.location.origin}/login`;
+      const token = sessionStorage.getItem('access_token');
+      if (token) {
+        try {
+          const payload = JSON.parse(
+            atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+          );
+          if (payload.sid) {
+            const url = new URL('https://api.workos.com/user_management/sessions/logout');
+            url.searchParams.set('session_id', payload.sid);
+            url.searchParams.set('return_to', returnTo);
+            window.location.assign(url.toString());
+            return;
+          }
+        } catch { /* token no es un JWT estándar */ }
+      }
+      // Fallback: el SDK manejó el callback y tiene el token en memoria
+      try {
+        signOut();
+      } catch {
+        // SDK sin sesión — navegar directo al login
+        window.location.assign(returnTo);
+      }
+    });
   }, [signOut, setIdpLogout]);
 
   // Mantener access_token en sessionStorage para el interceptor de axios

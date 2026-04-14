@@ -57,6 +57,7 @@ public class AppDbContext : DbContext
     public DbSet<DetalleDocumentoContable> DetallesDocumentoContable => Set<DetalleDocumentoContable>();
     public DbSet<ReglaEtica> ReglasEticas => Set<ReglaEtica>();
     public DbSet<ActivacionReglaEtica> ActivacionesReglaEtica => Set<ActivacionReglaEtica>();
+    public DbSet<ConfiguracionVariable> ConfiguracionesVariables => Set<ConfiguracionVariable>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -148,6 +149,13 @@ public class AppDbContext : DbContext
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
              s.EmpresaId == _empresaProvider.EmpresaId));
+
+        // Variables de configuración: siempre por empresa
+        modelBuilder.Entity<ConfiguracionVariable>().HasQueryFilter(c =>
+            c.Activo &&
+            (_empresaProvider == null ||
+             _empresaProvider.EmpresaId == null ||
+             c.EmpresaId == _empresaProvider.EmpresaId));
 
         // Tax Engine: impuestos, retenciones y conceptos de retención por empresa
         modelBuilder.Entity<Impuesto>().HasQueryFilter(i =>

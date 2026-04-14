@@ -44,6 +44,7 @@ const EmpresasPage = lazy(() => import('./features/empresas/pages/EmpresasPage')
 const ConfiguracionEmisorPage = lazy(() => import('./features/facturacion/pages/ConfiguracionEmisorPage').then(m => ({ default: m.ConfiguracionEmisorPage })));
 const DocumentosElectronicosPage = lazy(() => import('./features/facturacion/pages/DocumentosElectronicosPage').then(m => ({ default: m.DocumentosElectronicosPage })));
 const ReglasEticasPage = lazy(() => import('./features/eticas/pages/ReglasEticasPage').then(m => ({ default: m.ReglasEticasPage })));
+const ConfiguracionVariablesPage = lazy(() => import('./features/configuracion-variables/pages/ConfiguracionVariablesPage').then(m => ({ default: m.ConfiguracionVariablesPage })));
 const InteligenciaColectivaPage = lazy(() => import('./features/inteligencia/pages/InteligenciaColectivaPage').then(m => ({ default: m.InteligenciaColectivaPage })));
 const PipelineMonitorPage = lazy(() => import('./features/orquestador/pages/PipelineMonitorPage').then(m => ({ default: m.PipelineMonitorPage })));
 
@@ -200,6 +201,14 @@ function AuthenticatedApp() {
             element={
               <ProtectedRoute requiredRoles={['admin']}>
                 <ReglasEticasPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="configuracion/variables"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <ConfiguracionVariablesPage />
               </ProtectedRoute>
             }
           />

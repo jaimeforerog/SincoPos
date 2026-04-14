@@ -189,8 +189,9 @@ export function AbrirCajaDialog({ open, onClose, defaultSucursalId }: AbrirCajaD
                 label="Monto de Apertura"
                 fullWidth
                 margin="normal"
-                value={value}
+                value={value === 0 ? '' : value}
                 onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                placeholder="0"
                 error={!!errors.montoApertura}
                 helperText={errors.montoApertura?.message}
                 inputProps={{ min: 0, step: 1000 }}

@@ -121,7 +121,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
     },
     onError: (error: any) => {
       enqueueSnackbar(
-        error.response?.data?.error || 'Error al crear la sucursal',
+        error.response?.data?.detail || error.response?.data?.title || 'Error al crear la sucursal',
         { variant: 'error' }
       );
     },
@@ -137,7 +137,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
     },
     onError: (error: any) => {
       enqueueSnackbar(
-        error.response?.data?.error || 'Error al actualizar la sucursal',
+        error.response?.data?.detail || error.response?.data?.title || 'Error al actualizar la sucursal',
         { variant: 'error' }
       );
     },

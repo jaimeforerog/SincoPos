@@ -117,6 +117,7 @@ public class SucursalesController : ControllerBase
         // Para incluir inactivas, aplicamos el filtro de empresa explícitamente.
         var query = incluirInactivas
             ? _context.Sucursales
+                .IgnoreQueryFilters()
                 .Where(s => _empresaProvider.EmpresaId == null || s.EmpresaId == _empresaProvider.EmpresaId)
                 .AsQueryable()
             : _context.Sucursales.AsQueryable();

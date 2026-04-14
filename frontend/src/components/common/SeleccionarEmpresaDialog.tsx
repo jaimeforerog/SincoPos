@@ -16,22 +16,17 @@ import BusinessIcon from '@mui/icons-material/Business';
 import StoreIcon from '@mui/icons-material/Store';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth.store';
-import { empresasApi } from '@/api/empresas';
 import { sucursalesApi } from '@/api/sucursales';
 
 export function SeleccionarEmpresaDialog() {
-  const { isAuthenticated, isLoading, activeEmpresaId, setActiveEmpresa, setActiveSucursal, user } = useAuthStore();
+  const { isAuthenticated, isLoading, activeEmpresaId, setActiveEmpresa, setActiveSucursal, user, empresasDisponibles } = useAuthStore();
 
   const [selectedEmpresa, setSelectedEmpresa] = useState<{ id: number; nombre: string } | null>(null);
   const [selectedSucursal, setSelectedSucursal] = useState<{ id: number; nombre: string } | null>(null);
 
-  // Empresas disponibles desde la API
-  const { data: empresas = [], isLoading: loadingEmpresas } = useQuery({
-    queryKey: ['empresas-selector'],
-    queryFn: () => empresasApi.getAll().then(list => list.map(e => ({ id: e.id, nombre: e.nombre }))),
-    enabled: isAuthenticated && !isLoading && activeEmpresaId === undefined,
-    staleTime: 60_000,
-  });
+  // Empresas disponibles desde el store (ya vienen del /me endpoint, sin restricción de rol)
+  const empresas = empresasDisponibles;
+  const loadingEmpresas = isLoading;
 
   // Sucursales desde la API con el X-Empresa-Id explícito
   const { data: sucursalesApi_data = [], isLoading: loadingSucursales } = useQuery({
