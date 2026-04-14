@@ -28,7 +28,8 @@ public class CosteoService
     public Task RegistrarLoteEntrada(Guid productoId, int sucursalId,
         decimal cantidad, decimal costoUnitario, decimal porcentajeImpuesto, decimal montoImpuestoUnitario,
         string? referencia, int? terceroId,
-        string? numeroLote = null, DateOnly? fechaVencimiento = null, int? ordenCompraId = null)
+        string? numeroLote = null, DateOnly? fechaVencimiento = null, int? ordenCompraId = null,
+        DateTime? fechaEntrada = null)
     {
         var lote = new LoteInventario
         {
@@ -44,7 +45,9 @@ public class CosteoService
             OrdenCompraId = ordenCompraId,
             Referencia = referencia,
             TerceroId = terceroId,
-            FechaEntrada = DateTime.UtcNow
+            FechaEntrada = fechaEntrada.HasValue
+                ? DateTime.SpecifyKind(fechaEntrada.Value, DateTimeKind.Utc)
+                : DateTime.UtcNow
         };
         _context.LotesInventario.Add(lote);
         _logger.LogDebug("Lote registrado: Producto {ProductoId} Sucursal {SucursalId} Cantidad {Cantidad} Costo {Costo} Lote {NumeroLote}",

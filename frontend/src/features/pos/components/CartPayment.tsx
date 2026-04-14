@@ -8,6 +8,8 @@ interface CartPaymentProps {
   montoPagado: number;
   total: number;
   fechaVenta: string;
+  mostrarFechaVenta: boolean;
+  minFechaVenta: string; // "YYYY-MM-DDTHH:mm" — fecha mínima seleccionable
   onMetodoPagoChange: (metodo: number) => void;
   onMontoPagadoChange: (monto: number) => void;
   onFechaVentaChange: (fecha: string) => void;
@@ -16,22 +18,31 @@ interface CartPaymentProps {
 const fmt = (v: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v);
 
-export function CartPayment({ metodoPago, montoPagado, total, fechaVenta, onMetodoPagoChange, onMontoPagadoChange, onFechaVentaChange }: CartPaymentProps) {
+export function CartPayment({
+  metodoPago, montoPagado, total,
+  fechaVenta, mostrarFechaVenta, minFechaVenta,
+  onMetodoPagoChange, onMontoPagadoChange, onFechaVentaChange,
+}: CartPaymentProps) {
   const cambio = metodoPago === 0 ? Math.max(0, montoPagado - total) : 0;
   const falta  = metodoPago === 0 && montoPagado > 0 && montoPagado < total ? total - montoPagado : 0;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      {/* Fecha de la venta */}
-      <TextField
-        label="Fecha de venta"
-        type="datetime-local"
-        size="small"
-        value={fechaVenta}
-        onChange={(e) => onFechaVentaChange(e.target.value)}
-        slotProps={{ inputLabel: { shrink: true } }}
-        fullWidth
-      />
+      {/* Fecha de la venta — visible solo si DiaMax_VentaAtrazada > 0 */}
+      {mostrarFechaVenta && (
+        <TextField
+          label="Fecha de venta"
+          type="datetime-local"
+          size="small"
+          value={fechaVenta}
+          onChange={(e) => onFechaVentaChange(e.target.value)}
+          slotProps={{
+            inputLabel: { shrink: true },
+            htmlInput: { min: minFechaVenta, max: new Date().toISOString().slice(0, 16) },
+          }}
+          fullWidth
+        />
+      )}
 
       {/* Método de pago */}
       <ToggleButtonGroup

@@ -282,7 +282,9 @@ public class CompraRecepcionService
         // Actualizar estado de la orden
         var todasRecibidas = orden.Detalles.All(d => d.CantidadRecibida >= d.CantidadSolicitada);
         orden.Estado = todasRecibidas ? EstadoOrdenCompra.RecibidaCompleta : EstadoOrdenCompra.RecibidaParcial;
-        orden.FechaRecepcion = DateTime.UtcNow;
+        orden.FechaRecepcion = dto.FechaRecepcion.HasValue
+            ? DateTime.SpecifyKind(dto.FechaRecepcion.Value, DateTimeKind.Utc)
+            : DateTime.UtcNow;
         orden.RecibidoPorUsuarioId = usuarioId;
 
         // ===== OUTBOX ERP EMISSION =====

@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
+import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 import type { OrdenCompraDTO, RecibirOrdenCompraDTO } from '@/types/api';
 
 type LineaRecepcionError = { cantidadRecibida?: FieldError };
@@ -37,7 +38,7 @@ const lineaRecepcionSchema = z.object({
 });
 
 const recibirSchema = z.object({
-  fechaRecepcion: z.string().min(1, 'La fecha de recepción es requerida'),
+  fechaRecepcion: z.string().optional(),
   lineas: z.array(lineaRecepcionSchema),
 });
 
@@ -58,6 +59,16 @@ export function RecibirOrdenDialog({
 }: RecibirOrdenDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+
+  const diasMaxEntrada = useConfiguracionVariableInt('DiasMax_EntradaAtrazada');
+  const mostrarFechaRecepcion = diasMaxEntrada > 0;
+
+  const minFechaRecepcion = (() => {
+    if (!mostrarFechaRecepcion) return '';
+    const d = new Date();
+    d.setDate(d.getDate() - diasMaxEntrada);
+    return d.toISOString().split('T')[0];
+  })();
 
   const {
     control,
@@ -164,7 +175,12 @@ export function RecibirOrdenDialog({
       return;
     }
 
-    mutation.mutate({ lineas: lineasRecibidas, fechaRecepcion: data.fechaRecepcion });
+    mutation.mutate({
+      lineas: lineasRecibidas,
+      fechaRecepcion: mostrarFechaRecepcion && data.fechaRecepcion
+        ? new Date(data.fechaRecepcion).toISOString()
+        : undefined,
+    });
   };
 
   const handleClose = () => { reset({ fechaRecepcion: today, lineas: [] }); onClose(); };
@@ -185,23 +201,25 @@ export function RecibirOrdenDialog({
             )}
           </Alert>
 
-          <Controller
-            name="fechaRecepcion"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                type="date"
-                label="Fecha de Recepción *"
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ max: today }}
-                error={!!errors.fechaRecepcion}
-                helperText={errors.fechaRecepcion?.message}
-                sx={{ mb: 2, width: 260 }}
-                size="small"
-              />
-            )}
-          />
+          {mostrarFechaRecepcion && (
+            <Controller
+              name="fechaRecepcion"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  type="date"
+                  label="Fecha de Recepción *"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: minFechaRecepcion, max: today }}
+                  error={!!errors.fechaRecepcion}
+                  helperText={errors.fechaRecepcion?.message}
+                  sx={{ mb: 2, width: 260 }}
+                  size="small"
+                />
+              )}
+            />
+          )}
 
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">

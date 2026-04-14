@@ -10,7 +10,8 @@ public record EntradaInventarioDto(
     string? Referencia,
     string? Observaciones,
     string? NumeroLote = null,
-    DateOnly? FechaVencimiento = null
+    DateOnly? FechaVencimiento = null,
+    DateTime? FechaMovimiento = null  // null = usar DateTime.UtcNow en el servidor
 );
 
 public record AjusteInventarioDto(
@@ -225,7 +226,8 @@ public record LineaOrdenCompraDto(
 
 // REQUEST - Recibir orden de compra
 public record RecibirOrdenCompraDto(
-    List<LineaRecepcionOrdenCompraDto> Lineas
+    List<LineaRecepcionOrdenCompraDto> Lineas,
+    DateTime? FechaRecepcion = null  // null = usar DateTime.UtcNow en el servidor
 );
 
 public record LineaRecepcionOrdenCompraDto(

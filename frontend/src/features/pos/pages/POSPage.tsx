@@ -14,6 +14,7 @@ import { HeroBanner } from '@/components/common/HeroBanner';
 import { useCartStore } from '@/stores/cart.store';
 import { ventasApi } from '@/api/ventas';
 import { cajasApi } from '@/api/cajas';
+import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 import { useCajasAbiertas } from '../hooks/useCajasAbiertas';
 import { IntentSearch } from '../components/IntentSearch';
 import { CartPanel } from '../components/CartPanel';
@@ -36,6 +37,10 @@ export function POSPage() {
 
   // Cargar cajas abiertas
   const { data: _cajasAbiertas = [], isLoading: isLoadingCajas, isFetched: isFetchedCajas } = useCajasAbiertas();
+
+  // Variable de configuración: máximo de días atrás para registrar ventas
+  const diaMaxVentaAtrazada = useConfiguracionVariableInt('DiaMax_VentaAtrazada');
+  const mostrarFechaVenta = diaMaxVentaAtrazada > 0;
 
   // Estado de caja y cliente
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
@@ -347,6 +352,26 @@ export function POSPage() {
       return;
     }
 
+    // Validar fecha de venta (solo si el campo es visible)
+    if (mostrarFechaVenta) {
+      const fechaSeleccionada = new Date(fechaVenta);
+      const ahora = new Date();
+      const fechaMin = new Date();
+      fechaMin.setDate(fechaMin.getDate() - diaMaxVentaAtrazada);
+
+      if (fechaSeleccionada > ahora) {
+        operacional('La fecha de venta no puede ser futura');
+        return;
+      }
+      if (fechaSeleccionada < fechaMin) {
+        operacional(
+          `Fecha fuera de rango`,
+          `El máximo permitido es ${diaMaxVentaAtrazada} día(s) atrás`
+        );
+        return;
+      }
+    }
+
     // Validar precios
     const preciosInvalidos = items.filter((item) => item.precioUnitario <= 0);
     if (preciosInvalidos.length > 0) {
@@ -395,7 +420,7 @@ export function POSPage() {
       // Para efectivo: usar montoPagado ingresado, para otros: usar total exacto
       montoPagado: metodoPago === 0 ? montoPagado : totalVenta,
       observaciones: undefined,
-      fechaVenta: new Date(fechaVenta).toISOString(),
+      fechaVenta: mostrarFechaVenta ? new Date(fechaVenta).toISOString() : undefined,
       lineas: items.map((item) => {
         // CRÍTICO: Convertir descuentoPorcentaje a valor absoluto
         const subtotal = item.precioUnitario * item.cantidad;
@@ -443,6 +468,15 @@ export function POSPage() {
     sucursalInfo?.empresaNombre ??
     empresasDisponibles.find((e) => e.id === activeEmpresaId)?.nombre ??
     null;
+
+  // Fecha mínima permitida según DiaMax_VentaAtrazada
+  const minFechaVenta = (() => {
+    if (!mostrarFechaVenta) return '';
+    const d = new Date();
+    d.setDate(d.getDate() - diaMaxVentaAtrazada);
+    d.setSeconds(0, 0);
+    return d.toISOString().slice(0, 16);
+  })();
 
   // Calcular totales
   const subtotal = getSubtotal();
@@ -577,6 +611,8 @@ export function POSPage() {
               metodoPago={metodoPago}
               montoPagado={montoPagado}
               fechaVenta={fechaVenta}
+              mostrarFechaVenta={mostrarFechaVenta}
+              minFechaVenta={minFechaVenta}
               onMetodoPagoChange={setMetodoPago}
               onMontoPagadoChange={setMontoPagado}
               onFechaVentaChange={setFechaVenta}

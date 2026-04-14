@@ -18,6 +18,7 @@ import { productosApi } from '@/api/productos';
 import { tercerosApi } from '@/api/terceros';
 import { sucursalesApi } from '@/api/sucursales';
 import { useAuth } from '@/hooks/useAuth';
+import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -28,6 +29,16 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
   const { activeSucursalId, user, activeEmpresaId } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
+  const diasMaxEntrada = useConfiguracionVariableInt('DiasMax_EntradaAtrazada');
+  const mostrarFechaMovimiento = diasMaxEntrada > 0;
+  const nowDatetimeLocal = () => new Date().toISOString().slice(0, 16);
+  const minFechaMovimiento = (() => {
+    if (!mostrarFechaMovimiento) return '';
+    const d = new Date();
+    d.setDate(d.getDate() - diasMaxEntrada);
+    return d.toISOString().slice(0, 16);
+  })();
+
   const [productoId, setProductoId] = useState<string>('');
   const [sucursalId, setSucursalId] = useState<number>(activeSucursalId || 0);
   const [cantidad, setCantidad] = useState<string>('');
@@ -36,6 +47,7 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
   const [terceroId, setTerceroId] = useState<number | null>(null);
   const [referencia, setReferencia] = useState<string>('');
   const [observaciones, setObservaciones] = useState<string>('');
+  const [fechaMovimiento, setFechaMovimiento] = useState<string>(nowDatetimeLocal());
 
   // Cargar productos
   const { data: productosData } = useQuery({
@@ -89,6 +101,7 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
     setTerceroId(null);
     setReferencia('');
     setObservaciones('');
+    setFechaMovimiento(nowDatetimeLocal());
     onClose();
   };
 
@@ -107,6 +120,7 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
       terceroId: terceroId || undefined,
       referencia: referencia || undefined,
       observaciones: observaciones || undefined,
+      fechaMovimiento: mostrarFechaMovimiento ? new Date(fechaMovimiento).toISOString() : undefined,
     });
   };
 
@@ -185,6 +199,18 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
             fullWidth
             placeholder="Número de factura, orden, etc."
           />
+
+          {mostrarFechaMovimiento && (
+            <TextField
+              label="Fecha de Movimiento *"
+              type="datetime-local"
+              value={fechaMovimiento}
+              onChange={(e) => setFechaMovimiento(e.target.value)}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ min: minFechaMovimiento, max: nowDatetimeLocal() }}
+            />
+          )}
 
           <TextField
             label="Observaciones"

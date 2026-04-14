@@ -113,7 +113,8 @@ public class InventarioService : IInventarioService
             dto.CostoUnitario, dto.PorcentajeImpuesto,
             montoImpuestoUnitario,
             dto.Referencia, dto.TerceroId,
-            numeroLote: dto.NumeroLote, fechaVencimiento: fechaVencimientoLote);
+            numeroLote: dto.NumeroLote, fechaVencimiento: fechaVencimientoLote,
+            fechaEntrada: dto.FechaMovimiento);
 
         await _costeoService.ActualizarCostoEntrada(stock, dto.Cantidad, dto.CostoUnitario, sucursal.MetodoCosteo);
 

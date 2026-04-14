@@ -316,6 +316,7 @@ export interface LineaOrdenCompraDTO {
 
 export interface RecibirOrdenCompraDTO {
   lineas: LineaRecepcionOrdenCompraDTO[];
+  fechaRecepcion?: string; // ISO 8601 UTC — null usa DateTime.UtcNow en el servidor
 }
 
 export interface LineaRecepcionOrdenCompraDTO {
@@ -815,6 +816,7 @@ export interface EntradaInventarioDTO {
   terceroId?: number;
   referencia?: string;
   observaciones?: string;
+  fechaMovimiento?: string; // ISO 8601 UTC — null usa DateTime.UtcNow en el servidor
 }
 
 export interface AjusteInventarioDTO {
