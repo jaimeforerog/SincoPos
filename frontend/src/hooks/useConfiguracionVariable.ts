@@ -10,7 +10,7 @@ export function useConfiguracionVariableInt(nombre: string, defaultValue = 0): n
     queryKey: ['configuracion-variable', nombre],
     queryFn: () => configuracionVariablesApi.getByNombre(nombre),
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
   return data ? parseInt(data.valor, 10) || defaultValue : defaultValue;
 }

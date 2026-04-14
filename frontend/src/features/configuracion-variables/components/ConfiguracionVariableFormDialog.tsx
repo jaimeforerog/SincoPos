@@ -70,6 +70,7 @@ export function ConfiguracionVariableFormDialog({ open, onClose, variable }: Pro
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracion-variables'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracion-variable'] });
       enqueueSnackbar('Variable creada correctamente', { variant: 'success' });
       onClose();
     },
@@ -90,6 +91,7 @@ export function ConfiguracionVariableFormDialog({ open, onClose, variable }: Pro
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracion-variables'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracion-variable'] });
       enqueueSnackbar('Variable actualizada correctamente', { variant: 'success' });
       onClose();
     },

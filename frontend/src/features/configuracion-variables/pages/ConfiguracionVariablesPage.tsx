@@ -36,6 +36,7 @@ export function ConfiguracionVariablesPage() {
     mutationFn: (id: number) => configuracionVariablesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracion-variables'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracion-variable'] });
       enqueueSnackbar('Variable desactivada correctamente', { variant: 'success' });
     },
     onError: () => {
