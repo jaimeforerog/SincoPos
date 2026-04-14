@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useForm, Controller, useFieldArray, type FieldError } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, useWatch, type FieldError } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -190,6 +190,8 @@ export function OrdenCompraFormDialog({
   });
 
   const lineas = watch('lineas');
+  const fechaOrdenValue = useWatch({ control, name: 'fechaOrden' });
+  const minFechaEntrega = mostrarFechaOrden ? (fechaOrdenValue || today) : today;
 
   const calcularTotales = () => {
     let subtotal = 0;
@@ -448,7 +450,7 @@ export function OrdenCompraFormDialog({
                   onChange={(e) => onChange(e.target.value)}
                   slotProps={{
                     inputLabel: { shrink: true },
-                    htmlInput: { min: watch('fechaOrden') || today },
+                    htmlInput: { min: minFechaEntrega },
                   }}
                   fullWidth
                 />

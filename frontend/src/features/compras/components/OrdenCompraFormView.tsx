@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -174,6 +174,8 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
   }, [activeSucursalId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formaPago = watch('formaPago');
+  const fechaOrdenValue = useWatch({ control, name: 'fechaOrden' });
+  const minFechaEntrega = mostrarFechaOrden ? (fechaOrdenValue || today) : today;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
@@ -406,7 +408,7 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
                       onChange={(e) => onChange(e.target.value)}
                       slotProps={{
                         inputLabel: { shrink: true },
-                        htmlInput: { min: watch('fechaOrden') || today },
+                        htmlInput: { min: minFechaEntrega },
                       }}
                       fullWidth
                       size="small"
