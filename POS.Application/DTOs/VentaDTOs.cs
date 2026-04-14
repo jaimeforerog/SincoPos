@@ -9,7 +9,8 @@ public record CrearVentaDto(
     int MetodoPago,       // 0=Efectivo, 1=Tarjeta, 2=Transferencia, 3=Mixto
     decimal? MontoPagado,
     string? Observaciones,
-    List<LineaVentaDto> Lineas
+    List<LineaVentaDto> Lineas,
+    DateTime? FechaVenta = null  // null = usar DateTime.UtcNow en el servidor
 );
 
 public record LineaVentaDto(

@@ -30,8 +30,10 @@ interface CartPanelProps {
   // Pago
   metodoPago: number;
   montoPagado: number;
+  fechaVenta: string;
   onMetodoPagoChange: (metodo: number) => void;
   onMontoPagadoChange: (monto: number) => void;
+  onFechaVentaChange: (fecha: string) => void;
 
   // Acciones
   onClear: () => void;
@@ -57,8 +59,10 @@ export function CartPanel({
   total,
   metodoPago,
   montoPagado,
+  fechaVenta,
   onMetodoPagoChange,
   onMontoPagadoChange,
+  onFechaVentaChange,
   onClear,
   onCobrar,
   canCobrar,
@@ -105,8 +109,10 @@ export function CartPanel({
           metodoPago={metodoPago}
           montoPagado={montoPagado}
           total={total}
+          fechaVenta={fechaVenta}
           onMetodoPagoChange={onMetodoPagoChange}
           onMontoPagadoChange={onMontoPagadoChange}
+          onFechaVentaChange={onFechaVentaChange}
         />
 
         <CartActions

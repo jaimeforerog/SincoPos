@@ -131,6 +131,14 @@ export function POSPage() {
   const [metodoPago, setMetodoPago] = useState<number>(0); // 0=Efectivo
   const [montoPagado, setMontoPagado] = useState<number>(0);
 
+  // Fecha de la venta — inicializada a "ahora" y reseteable
+  const nowDatetimeLocal = () => {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    return d.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
+  };
+  const [fechaVenta, setFechaVenta] = useState<string>(nowDatetimeLocal);
+
   // Estado de confirmación
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [lastVenta, setLastVenta] = useState<VentaDTO | null>(null);
@@ -160,6 +168,7 @@ export function POSPage() {
       clearCart();
       setSelectedClienteId(null);
       setMontoPagado(0);
+      setFechaVenta(nowDatetimeLocal());
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
     },
@@ -386,6 +395,7 @@ export function POSPage() {
       // Para efectivo: usar montoPagado ingresado, para otros: usar total exacto
       montoPagado: metodoPago === 0 ? montoPagado : totalVenta,
       observaciones: undefined,
+      fechaVenta: new Date(fechaVenta).toISOString(),
       lineas: items.map((item) => {
         // CRÍTICO: Convertir descuentoPorcentaje a valor absoluto
         const subtotal = item.precioUnitario * item.cantidad;
@@ -566,8 +576,10 @@ export function POSPage() {
               total={total}
               metodoPago={metodoPago}
               montoPagado={montoPagado}
+              fechaVenta={fechaVenta}
               onMetodoPagoChange={setMetodoPago}
               onMontoPagadoChange={setMontoPagado}
+              onFechaVentaChange={setFechaVenta}
               onClear={handleClearCart}
               onCobrar={handleCobrar}
               canCobrar={canCobrar || (!isOnline && items.length > 0 && selectedCajaId !== null)}

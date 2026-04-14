@@ -211,6 +211,7 @@ export interface CrearVentaDTO {
   montoPagado?: number;
   observaciones?: string;
   lineas: CrearLineaVentaDTO[];
+  fechaVenta?: string; // ISO 8601 UTC — null usa DateTime.UtcNow en el servidor
 }
 
 export interface CrearLineaVentaDTO {

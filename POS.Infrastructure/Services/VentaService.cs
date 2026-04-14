@@ -320,7 +320,9 @@ public class VentaService : IVentaService
             MontoPagado = dto.MontoPagado,
             Cambio = cambio,
             Observaciones = dto.Observaciones,
-            FechaVenta = DateTime.UtcNow,
+            FechaVenta = dto.FechaVenta.HasValue
+                ? DateTime.SpecifyKind(dto.FechaVenta.Value, DateTimeKind.Utc)
+                : DateTime.UtcNow,
             RequiereFacturaElectronica = requiereFacturaElectronica,
             Detalles = detalles
         };
