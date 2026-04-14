@@ -128,13 +128,13 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
     }
   };
 
+  const selectedSucursal = sucursales.find((s) => s.id === selectedSucursalId);
+  const noCachedData = !isOnline && sucursales.length === 0;
+
   const canConfirm =
     !!selectedCajaId &&
     !noCachedData &&
     (!mostrarFechaVenta || !!fechaVenta);
-
-  const selectedSucursal = sucursales.find((s) => s.id === selectedSucursalId);
-  const noCachedData = !isOnline && sucursales.length === 0;
 
   return (
     <Dialog
