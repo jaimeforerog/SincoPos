@@ -305,6 +305,7 @@ export interface CrearOrdenCompraDTO {
   diasPlazo: number;
   observaciones?: string;
   lineas: LineaOrdenCompraDTO[];
+  fechaOrden?: string;
 }
 
 export interface LineaOrdenCompraDTO {

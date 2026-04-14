@@ -65,9 +65,12 @@ export function RecibirOrdenDialog({
 
   const minFechaRecepcion = (() => {
     if (!mostrarFechaRecepcion) return '';
-    const d = new Date();
-    d.setDate(d.getDate() - diasMaxEntrada);
-    return d.toISOString().split('T')[0];
+    const dLimit = new Date();
+    dLimit.setDate(dLimit.getDate() - diasMaxEntrada);
+    const limitStr = dLimit.toISOString().split('T')[0];
+    // La recepción no puede ser anterior a la fecha de la orden
+    const ordenStr = orden.fechaOrden ? orden.fechaOrden.split('T')[0] : '';
+    return ordenStr > limitStr ? ordenStr : limitStr;
   })();
 
   const {

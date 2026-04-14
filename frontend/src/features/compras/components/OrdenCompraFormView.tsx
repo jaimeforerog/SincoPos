@@ -24,6 +24,7 @@ import { sucursalesApi } from '@/api/sucursales';
 import type { CrearOrdenCompraDTO } from '@/types/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
+import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 import { ordenCompraSchema, type OrdenCompraFormData } from './OrdenCompraFormTypes';
 import { OrdenCompraFormLineas } from './OrdenCompraFormLineas';
 
@@ -40,6 +41,16 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
   const [backendError, setBackendError] = useState<string | null>(null);
   const { user, activeEmpresaId } = useAuth();
   const activeSucursalId = useAuthStore((s) => s.activeSucursalId);
+
+  const diasMaxCompra = useConfiguracionVariableInt('DiasMax_CompraAtrazada');
+  const mostrarFechaOrden = diasMaxCompra > 0;
+  const today = new Date().toISOString().split('T')[0];
+  const minFechaOrden = (() => {
+    if (!mostrarFechaOrden) return '';
+    const d = new Date();
+    d.setDate(d.getDate() - diasMaxCompra);
+    return d.toISOString().split('T')[0];
+  })();
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales', activeEmpresaId],
@@ -84,6 +95,7 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
     sucursalId: activeSucursalId ?? 0,
     proveedorId: 0,
     fechaEntregaEsperada: new Date().toISOString().split('T')[0],
+    fechaOrden: new Date().toISOString().split('T')[0],
     formaPago: 'Contado',
     diasPlazo: 0,
     observaciones: '',
@@ -145,7 +157,12 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
     },
   });
 
-  const onSubmit = (data: OrdenCompraFormData) => mutation.mutate(data);
+  const onSubmit = (data: OrdenCompraFormData) => mutation.mutate({
+    ...data,
+    fechaOrden: mostrarFechaOrden && data.fechaOrden
+      ? new Date(data.fechaOrden).toISOString()
+      : undefined,
+  });
 
   useEffect(() => {
     reset((prev) => ({
@@ -348,6 +365,28 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
                         fullWidth
                         size="small"
                         inputProps={{ min: 1 }}
+                      />
+                    )}
+                  />
+                )}
+
+                {mostrarFechaOrden && (
+                  <Controller
+                    name="fechaOrden"
+                    control={control}
+                    render={({ field: { value, onChange, ref } }) => (
+                      <TextField
+                        inputRef={ref}
+                        type="date"
+                        label="Fecha de Orden *"
+                        value={value ?? ''}
+                        onChange={(e) => onChange(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ min: minFechaOrden, max: today }}
+                        error={!!errors.fechaOrden}
+                        helperText={errors.fechaOrden?.message}
+                        fullWidth
+                        size="small"
                       />
                     )}
                   />

@@ -12,6 +12,7 @@ export const ordenCompraSchema = z.object({
   sucursalId: z.number().min(1, 'Seleccione una sucursal'),
   proveedorId: z.number().min(1, 'Seleccione un proveedor'),
   fechaEntregaEsperada: z.string().optional(),
+  fechaOrden: z.string().optional(),
   formaPago: z.enum(['Contado', 'Credito']),
   diasPlazo: z.number().min(0, 'Días de plazo no puede ser negativo'),
   observaciones: z.string().optional(),

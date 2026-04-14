@@ -213,7 +213,8 @@ public record CrearOrdenCompraDto(
     string FormaPago = "Contado",
     int DiasPlazo = 0,
     string? Observaciones = null,
-    List<LineaOrdenCompraDto> Lineas = null!
+    List<LineaOrdenCompraDto> Lineas = null!,
+    DateTime? FechaOrden = null  // null = usar DateTime.UtcNow en el servidor
 );
 
 public record LineaOrdenCompraDto(

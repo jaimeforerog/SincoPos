@@ -37,6 +37,7 @@ import { sucursalesApi } from '@/api/sucursales';
 import type { CrearOrdenCompraDTO } from '@/types/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
+import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 
 type LineaOrdenError = { productoId?: FieldError; cantidad?: FieldError; precioUnitario?: FieldError };
 
@@ -78,6 +79,7 @@ const ordenCompraSchema = z.object({
   sucursalId: z.number().min(1, 'Seleccione una sucursal'),
   proveedorId: z.number().min(1, 'Seleccione un proveedor'),
   fechaEntregaEsperada: z.string().optional(),
+  fechaOrden: z.string().optional(),
   formaPago: z.enum(['Contado', 'Credito']),
   diasPlazo: z.number().min(0, 'Días de plazo no puede ser negativo'),
   observaciones: z.string().optional(),
@@ -101,6 +103,16 @@ export function OrdenCompraFormDialog({
   const queryClient = useQueryClient();
   const [backendError, setBackendError] = useState<string | null>(null);
   const { user, activeEmpresaId } = useAuth();
+
+  const diasMaxCompra = useConfiguracionVariableInt('DiasMax_CompraAtrazada');
+  const mostrarFechaOrden = diasMaxCompra > 0;
+  const today = new Date().toISOString().split('T')[0];
+  const minFechaOrden = (() => {
+    if (!mostrarFechaOrden) return '';
+    const d = new Date();
+    d.setDate(d.getDate() - diasMaxCompra);
+    return d.toISOString().split('T')[0];
+  })();
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales', activeEmpresaId],
@@ -164,6 +176,7 @@ export function OrdenCompraFormDialog({
       sucursalId: 0,
       proveedorId: 0,
       fechaEntregaEsperada: new Date().toISOString().split('T')[0],
+      fechaOrden: new Date().toISOString().split('T')[0],
       formaPago: 'Contado',
       diasPlazo: 0,
       observaciones: '',
@@ -247,13 +260,19 @@ export function OrdenCompraFormDialog({
   });
 
   const onSubmit = (data: OrdenCompraFormData) => {
-    mutation.mutate(data);
+    mutation.mutate({
+      ...data,
+      fechaOrden: mostrarFechaOrden && data.fechaOrden
+        ? new Date(data.fechaOrden).toISOString()
+        : undefined,
+    });
   };
 
   const valoresLimpios: OrdenCompraFormData = {
     sucursalId: 0,
     proveedorId: 0,
     fechaEntregaEsperada: new Date().toISOString().split('T')[0],
+    fechaOrden: new Date().toISOString().split('T')[0],
     formaPago: 'Contado',
     diasPlazo: 0,
     observaciones: '',
@@ -387,6 +406,28 @@ export function OrdenCompraFormDialog({
                     helperText={errors.diasPlazo?.message}
                     fullWidth
                     inputProps={{ min: 1 }}
+                  />
+                )}
+              />
+            )}
+
+            {/* Fecha de orden — solo visible si DiasMax_CompraAtrazada > 0 */}
+            {mostrarFechaOrden && (
+              <Controller
+                name="fechaOrden"
+                control={control}
+                render={({ field: { value, onChange, ref } }) => (
+                  <TextField
+                    inputRef={ref}
+                    type="date"
+                    label="Fecha de Orden *"
+                    value={value ?? ''}
+                    onChange={(e) => onChange(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: minFechaOrden, max: today }}
+                    error={!!errors.fechaOrden}
+                    helperText={errors.fechaOrden?.message}
+                    fullWidth
                   />
                 )}
               />

@@ -151,7 +151,9 @@ public class CompraService : ICompraService
             SucursalId = dto.SucursalId,
             ProveedorId = dto.ProveedorId,
             Estado = EstadoOrdenCompra.Pendiente,
-            FechaOrden = DateTime.UtcNow,
+            FechaOrden = dto.FechaOrden.HasValue
+                ? DateTime.SpecifyKind(dto.FechaOrden.Value, DateTimeKind.Utc)
+                : DateTime.UtcNow,
             FechaEntregaEsperada = dto.FechaEntregaEsperada.HasValue
                 ? DateTime.SpecifyKind(dto.FechaEntregaEsperada.Value, DateTimeKind.Utc)
                 : null,
