@@ -159,11 +159,15 @@ public class AppDbContext : DbContext
              _empresaProvider.EmpresaId == null ||
              c.EmpresaId == _empresaProvider.EmpresaId));
 
-        // Tax Engine: impuestos, retenciones y conceptos de retención por empresa
+        // Tax Engine: impuestos, retenciones y conceptos de retención por empresa.
+        // Los registros con EmpresaId = null son tasas globales (IVA 5%, IVA 19%, etc.)
+        // visibles para todas las empresas; los registros con EmpresaId solo se muestran
+        // a la empresa propietaria.
         modelBuilder.Entity<Impuesto>().HasQueryFilter(i =>
             i.Activo &&
             (_empresaProvider == null ||
              _empresaProvider.EmpresaId == null ||
+             i.EmpresaId == null ||
              i.EmpresaId == _empresaProvider.EmpresaId));
 
         modelBuilder.Entity<RetencionRegla>().HasQueryFilter(r =>
