@@ -23,6 +23,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
+import { inventarioApi } from '@/api/inventario';
 import type { OrdenCompraDTO } from '@/types/api';
 
 const HERO_COLOR = '#c62828';
@@ -58,6 +59,17 @@ export function OrdenCompraDevolucion({ orden, onCancel, onDone }: Props) {
     queryFn: () => comprasApi.obtenerDevoluciones(orden.id),
     staleTime: 0,
   });
+
+  // Stock actual en la sucursal de la OC (límite físico real)
+  const { data: stockActual = [] } = useQuery({
+    queryKey: ['inventario', orden.sucursalId],
+    queryFn: () => inventarioApi.getStock({ sucursalId: orden.sucursalId }),
+    staleTime: 0,
+  });
+  const stockMap = stockActual.reduce<Record<string, number>>((acc, s) => {
+    acc[s.productoId] = s.cantidad;
+    return acc;
+  }, {});
 
   // Mapa: productoId → cantidad ya devuelta en devoluciones previas
   const yaDevueltoMap = devolucionesAnteriores
@@ -185,9 +197,10 @@ export function OrdenCompraDevolucion({ orden, onCancel, onDone }: Props) {
               <TableHead>
                 <TableRow sx={{ bgcolor: 'grey.50' }}>
                   <TableCell>Producto</TableCell>
-                  <TableCell align="center" width={90}>Recibida</TableCell>
-                  <TableCell align="center" width={90}>Ya devuelta</TableCell>
-                  <TableCell align="center" width={90}>Disponible</TableCell>
+                  <TableCell align="center" width={80}>Recibida<br/><Typography variant="caption" color="text.secondary">en esta OC</Typography></TableCell>
+                  <TableCell align="center" width={80}>Ya devuelta</TableCell>
+                  <TableCell align="center" width={80}>En stock<br/><Typography variant="caption" color="text.secondary">actual</Typography></TableCell>
+                  <TableCell align="center" width={90}>Disponible<br/><Typography variant="caption" color="text.secondary">a devolver</Typography></TableCell>
                   <TableCell align="center" width={110}>A devolver</TableCell>
                   <TableCell align="right" width={120}>Subtotal</TableCell>
                 </TableRow>
@@ -197,7 +210,10 @@ export function OrdenCompraDevolucion({ orden, onCancel, onDone }: Props) {
                   const detalle = orden.detalles[index];
                   if (!detalle) return null;
                   const yaDevuelto = yaDevueltoMap[detalle.productoId] ?? 0;
-                  const disponible = Math.max(0, detalle.cantidadRecibida - yaDevuelto);
+                  const maxPorOC = Math.max(0, detalle.cantidadRecibida - yaDevuelto);
+                  const stockDisponible = stockMap[detalle.productoId] ?? 0;
+                  // Disponible = mínimo entre lo pendiente de devolver en esta OC y el stock físico actual
+                  const disponible = Math.min(maxPorOC, stockDisponible);
                   const cantidadActual = lineas[index]?.cantidadADevolver ?? 0;
                   const subtotalLinea = cantidadActual * detalle.precioUnitario;
 
@@ -213,8 +229,11 @@ export function OrdenCompraDevolucion({ orden, onCancel, onDone }: Props) {
                         <Typography variant="body2" fontWeight={500}>
                           {detalle.nombreProducto}
                         </Typography>
-                        {disponible === 0 && (
-                          <Chip label="Sin disponible" size="small" color="default" sx={{ height: 16, fontSize: '0.65rem' }} />
+                        {disponible === 0 && maxPorOC > 0 && (
+                          <Chip label="Sin stock físico" size="small" color="warning" sx={{ height: 16, fontSize: '0.65rem' }} />
+                        )}
+                        {disponible === 0 && maxPorOC === 0 && (
+                          <Chip label="Ya devuelta" size="small" color="default" sx={{ height: 16, fontSize: '0.65rem' }} />
                         )}
                       </TableCell>
                       <TableCell align="center">
@@ -223,6 +242,11 @@ export function OrdenCompraDevolucion({ orden, onCancel, onDone }: Props) {
                       <TableCell align="center">
                         <Typography variant="body2" color={yaDevuelto > 0 ? 'warning.main' : 'text.secondary'}>
                           {yaDevuelto}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2" color={stockDisponible > 0 ? 'text.primary' : 'error.main'}>
+                          {stockDisponible}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">

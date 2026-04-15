@@ -52,7 +52,13 @@ public class CompraDevolucionService
             .GroupBy(dd => dd.ProductoId)
             .ToDictionary(g => g.Key, g => g.Sum(dd => dd.CantidadDevuelta));
 
-        // ── 3. Validar líneas de la solicitud ──────────────────────────────────
+        // ── 3. Cargar stock actual de la sucursal (necesario para validación) ───
+        var productoIds = dto.Lineas.Select(l => l.ProductoId).ToList();
+        var stocksMap = await _context.Stock
+            .Where(s => productoIds.Contains(s.ProductoId) && s.SucursalId == orden.SucursalId)
+            .ToDictionaryAsync(s => s.ProductoId);
+
+        // ── 4. Validar líneas de la solicitud ──────────────────────────────────
         var detalleDict = orden.Detalles.ToDictionary(d => d.ProductoId);
 
         foreach (var linea in dto.Lineas)
@@ -63,18 +69,19 @@ public class CompraDevolucionService
             if (linea.Cantidad <= 0)
                 return (null, $"La cantidad a devolver de '{detalle.NombreProducto}' debe ser mayor a 0.");
 
-            var disponible = detalle.CantidadRecibida - (yaDevuelto.GetValueOrDefault(linea.ProductoId, 0));
-            if (linea.Cantidad > disponible)
+            // Máximo por OC: lo recibido menos lo ya devuelto anteriormente
+            var maxPorOC = detalle.CantidadRecibida - (yaDevuelto.GetValueOrDefault(linea.ProductoId, 0));
+            if (linea.Cantidad > maxPorOC)
                 return (null,
                     $"'{detalle.NombreProducto}': cantidad a devolver ({linea.Cantidad}) supera " +
-                    $"la cantidad disponible para devolución ({disponible}).");
-        }
+                    $"lo disponible según la orden ({maxPorOC}).");
 
-        // ── 4. Cargar stock de la sucursal ─────────────────────────────────────
-        var productoIds = dto.Lineas.Select(l => l.ProductoId).ToList();
-        var stocksMap = await _context.Stock
-            .Where(s => productoIds.Contains(s.ProductoId) && s.SucursalId == orden.SucursalId)
-            .ToDictionaryAsync(s => s.ProductoId);
+            // Máximo por stock físico actual: no se puede devolver lo que ya no está en almacén
+            if (stocksMap.TryGetValue(linea.ProductoId, out var stock) && linea.Cantidad > stock.Cantidad)
+                return (null,
+                    $"'{detalle.NombreProducto}': cantidad a devolver ({linea.Cantidad}) supera " +
+                    $"el stock físico actual ({stock.Cantidad}). Es posible que parte del inventario ya fue vendido.");
+        }
 
         // ── 5. Generar número de devolución ────────────────────────────────────
         var maxId = await _context.DevolucionesCompra.IgnoreQueryFilters().MaxAsync(d => (int?)d.Id) ?? 0;
