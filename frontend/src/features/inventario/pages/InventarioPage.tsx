@@ -31,11 +31,9 @@ import WarningIcon from '@mui/icons-material/Warning';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import UndoIcon from '@mui/icons-material/Undo';
 import HistoryIcon from '@mui/icons-material/History';
 import { EntradaInventarioDialog } from '../components/EntradaInventarioDialog';
 import { AjusteInventarioDialog } from '../components/AjusteInventarioDialog';
-import { DevolucionProveedorDialog } from '../components/DevolucionProveedorDialog';
 import { LotesTab } from '../components/LotesTab';
 import { useAuth } from '@/hooks/useAuth';
 import BarcodeIcon from '@mui/icons-material/QrCode2';
@@ -72,7 +70,6 @@ export function InventarioPage() {
   // Dialogs
   const [entradaDialogOpen, setEntradaDialogOpen] = useState(false);
   const [ajusteDialogOpen, setAjusteDialogOpen] = useState(false);
-  const [devolucionDialogOpen, setDevolucionDialogOpen] = useState(false);
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
@@ -122,8 +119,6 @@ export function InventarioPage() {
         return 'info';
       case 'AjusteNegativo':
         return 'warning';
-      case 'DevolucionProveedor':
-        return 'error';
       default:
         return 'default';
     }
@@ -135,7 +130,6 @@ export function InventarioPage() {
       SalidaVenta: 'Venta',
       AjustePositivo: 'Ajuste +',
       AjusteNegativo: 'Ajuste -',
-      DevolucionProveedor: 'Devolución',
       StockMinimoActualizado: 'Stock Mín.',
     };
     return labels[tipo] || tipo;
@@ -210,17 +204,6 @@ export function InventarioPage() {
                     size="small"
                   >
                     Ajuste
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Devolución a proveedor">
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<UndoIcon />}
-                    onClick={() => setDevolucionDialogOpen(true)}
-                    size="small"
-                  >
-                    Devolución
                   </Button>
                 </Tooltip>
               </Stack>
@@ -435,11 +418,6 @@ export function InventarioPage() {
       <AjusteInventarioDialog
         open={ajusteDialogOpen}
         onClose={() => setAjusteDialogOpen(false)}
-        onSuccess={() => refetchStock()}
-      />
-      <DevolucionProveedorDialog
-        open={devolucionDialogOpen}
-        onClose={() => setDevolucionDialogOpen(false)}
         onSuccess={() => refetchStock()}
       />
     </Box>
