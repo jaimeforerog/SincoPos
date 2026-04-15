@@ -19,6 +19,7 @@ import { tercerosApi } from '@/api/terceros';
 import { sucursalesApi } from '@/api/sucursales';
 import { useAuth } from '@/hooks/useAuth';
 import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
+import { localDateTimeStr, localDateTimeStrDaysAgo } from '@/utils/dates';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -31,13 +32,8 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
 
   const diasMaxEntrada = useConfiguracionVariableInt('DiasMax_EntradaAtrazada');
   const mostrarFechaMovimiento = diasMaxEntrada > 0;
-  const nowDatetimeLocal = () => new Date().toISOString().slice(0, 16);
-  const minFechaMovimiento = (() => {
-    if (!mostrarFechaMovimiento) return '';
-    const d = new Date();
-    d.setDate(d.getDate() - diasMaxEntrada);
-    return d.toISOString().slice(0, 16);
-  })();
+  const nowDatetimeLocal = () => localDateTimeStr();
+  const minFechaMovimiento = mostrarFechaMovimiento ? localDateTimeStrDaysAgo(diasMaxEntrada) : '';
 
   const [productoId, setProductoId] = useState<string>('');
   const [sucursalId, setSucursalId] = useState<number>(activeSucursalId || 0);
@@ -86,7 +82,7 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
     },
     onError: (error: any) => {
       enqueueSnackbar(
-        error.response?.data?.error || 'Error al registrar entrada',
+        error.message || 'Error al registrar entrada',
         { variant: 'error' }
       );
     },

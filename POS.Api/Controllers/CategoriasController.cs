@@ -19,13 +19,15 @@ public class CategoriasController : ControllerBase
     private readonly AppDbContext _context;
     private readonly ILogger<CategoriasController> _logger;
     private readonly ICurrentEmpresaProvider _empresaProvider;
+    private readonly IOutputCacheStore _outputCacheStore;
     private const int NivelMaximo = 3; // Máximo 3 niveles de profundidad
 
-    public CategoriasController(AppDbContext context, ILogger<CategoriasController> logger, ICurrentEmpresaProvider empresaProvider)
+    public CategoriasController(AppDbContext context, ILogger<CategoriasController> logger, ICurrentEmpresaProvider empresaProvider, IOutputCacheStore outputCacheStore)
     {
         _context = context;
         _logger = logger;
         _empresaProvider = empresaProvider;
+        _outputCacheStore = outputCacheStore;
     }
 
     /// <summary>
@@ -91,6 +93,7 @@ public class CategoriasController : ControllerBase
 
         _context.Categorias.Add(categoria);
         await _context.SaveChangesAsync();
+        await _outputCacheStore.EvictByTagAsync("catalogo", HttpContext.RequestAborted);
 
         _logger.LogInformation("Categoría creada. Id: {Id}, Nombre: {Nombre}, Nivel: {Nivel}",
             categoria.Id, categoria.Nombre, categoria.Nivel);
@@ -298,6 +301,7 @@ public class CategoriasController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+        await _outputCacheStore.EvictByTagAsync("catalogo", HttpContext.RequestAborted);
 
         _logger.LogInformation("Categoría actualizada. Id: {Id}, Nombre: {Nombre}", categoria.Id, categoria.Nombre);
 
@@ -364,6 +368,7 @@ public class CategoriasController : ControllerBase
 
         _context.Categorias.Remove(categoria);
         await _context.SaveChangesAsync();
+        await _outputCacheStore.EvictByTagAsync("catalogo", HttpContext.RequestAborted);
 
         _logger.LogInformation("Categoría eliminada. Id: {Id}, Nombre: {Nombre}", id, categoria.Nombre);
 

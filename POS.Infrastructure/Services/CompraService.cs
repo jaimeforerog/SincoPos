@@ -59,9 +59,8 @@ public class CompraService : ICompraService
         if (proveedor == null)
             return (null, "Proveedor no encontrado");
 
-        // Cargar productos, retenciones e impuestos override
+        // Cargar productos (sin impuesto vía navigation — se carga separado con IgnoreQueryFilters)
         var productos = await _context.Productos
-            .Include(p => p.Impuesto)
             .Include(p => p.ConceptoRetencion)
             .Where(p => productosIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
@@ -75,6 +74,20 @@ public class CompraService : ICompraService
         var reglasRetencion = await _context.RetencionesReglas
             .Where(r => r.Activo).ToListAsync();
 
+        // Cargar impuestos de los productos (IgnoreQueryFilters para acceder a registros globales con EmpresaId = null)
+        var productoImpuestoIds = productos.Values
+            .Where(p => p.ImpuestoId.HasValue)
+            .Select(p => p.ImpuestoId!.Value)
+            .Distinct()
+            .ToList();
+        var impuestosProducto = productoImpuestoIds.Count > 0
+            ? await _context.Impuestos
+                .IgnoreQueryFilters()
+                .Where(i => productoImpuestoIds.Contains(i.Id))
+                .ToDictionaryAsync(i => i.Id)
+            : new Dictionary<int, Impuesto>();
+
+        // Impuestos seleccionados explícitamente por línea (también con IgnoreQueryFilters)
         var impuestoIdsOverride = dto.Lineas
             .Where(l => l.ImpuestoId.HasValue)
             .Select(l => l.ImpuestoId!.Value)
@@ -82,6 +95,7 @@ public class CompraService : ICompraService
             .ToList();
         var impuestosOverride = impuestoIdsOverride.Count > 0
             ? await _context.Impuestos
+                .IgnoreQueryFilters()
                 .Where(i => impuestoIdsOverride.Contains(i.Id))
                 .ToDictionaryAsync(i => i.Id)
             : new Dictionary<int, Impuesto>();
@@ -101,11 +115,13 @@ public class CompraService : ICompraService
             var producto = productos[linea.ProductoId];
 
             // Resolver impuesto: ImpuestoId explícito > PorcentajeImpuesto directo > impuesto del producto
+            // Usa IgnoreQueryFilters en la carga para acceder también a registros globales (EmpresaId = null)
+            var impuestoProducto = producto.ImpuestoId.HasValue && impuestosProducto.TryGetValue(producto.ImpuestoId.Value, out var ip) ? ip : null;
             Impuesto? impuesto = linea.ImpuestoId.HasValue && impuestosOverride.TryGetValue(linea.ImpuestoId.Value, out var imp)
                 ? imp
                 : linea.PorcentajeImpuesto.HasValue
                     ? new Impuesto { Nombre = $"IVA {linea.PorcentajeImpuesto}%", Porcentaje = linea.PorcentajeImpuesto.Value / 100m, Tipo = TipoImpuesto.IVA, AplicaSobreBase = true }
-                    : producto.Impuesto;
+                    : impuestoProducto;
 
             // En compras los roles son invertidos: proveedor=vendedor, sucursal=comprador
             var taxResult = _taxEngine.Calcular(new TaxRequest(
@@ -368,7 +384,8 @@ public class CompraService : ICompraService
                 PorcentajeImpuesto: d.PorcentajeImpuesto * 100,
                 MontoImpuesto: d.MontoImpuesto,
                 Subtotal: d.Subtotal,
-                NombreImpuesto: d.NombreImpuesto,
+                NombreImpuesto: d.NombreImpuesto
+                    ?? (d.PorcentajeImpuesto > 0 ? $"IVA {d.PorcentajeImpuesto * 100:0.##}%" : "Exento 0%"),
                 Observaciones: d.Observaciones,
                 ManejaLotes: d.Producto?.ManejaLotes ?? false,
                 DiasVidaUtil: d.Producto?.DiasVidaUtil

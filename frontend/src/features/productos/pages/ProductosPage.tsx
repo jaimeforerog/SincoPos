@@ -87,7 +87,7 @@ export function ProductosPage() {
     },
     onError: (error: any) => {
       const mensaje =
-        error.response?.data?.error || 'Error al desactivar el producto';
+        error.message || 'Error al desactivar el producto';
       enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });

@@ -80,7 +80,7 @@ export function MoverCategoriaDialog({
       onClose();
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error || 'Error al mover la categoría';
+      const message = error.message || 'Error al mover la categoría';
       enqueueSnackbar(message, { variant: 'error' });
     },
   });

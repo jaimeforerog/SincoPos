@@ -22,6 +22,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
 import type { OrdenCompraDTO } from '@/types/api';
+import { localDateStr } from '@/utils/dates';
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ interface Props {
 export function AccionRecibir({ orden, onCancel, onDone }: Props) {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr();
   const tieneLotes = orden.detalles.some((d) => d.manejaLotes);
 
   const {
@@ -83,7 +84,7 @@ export function AccionRecibir({ orden, onCancel, onDone }: Props) {
         if (d.manejaLotes && d.diasVidaUtil) {
           const fecha = new Date();
           fecha.setDate(fecha.getDate() + d.diasVidaUtil);
-          fechaVencimientoDefault = fecha.toISOString().split('T')[0];
+          fechaVencimientoDefault = localDateStr(fecha);
         }
         return {
           productoId: d.productoId,

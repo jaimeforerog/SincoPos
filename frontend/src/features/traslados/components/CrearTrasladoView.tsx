@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { productosApi } from '@/api/productos';
 import { inventarioApi } from '@/api/inventario';
 import type { ProductoDTO, SucursalDTO, CrearTrasladoDTO, LineaTrasladoDTO } from '@/types/api';
+import { localDateStr } from '@/utils/dates';
 
 const HERO_COLOR = '#1565c0';
 
@@ -48,10 +49,7 @@ export function CrearTrasladoView({ onBack, onSuccess }: Props) {
   const [sucursalOrigen, setSucursalOrigen] = useState<SucursalDTO | null>(null);
   const [sucursalDestino, setSucursalDestino] = useState<SucursalDTO | null>(null);
   const [observaciones, setObservaciones] = useState('');
-  const [fechaTraslado, setFechaTraslado] = useState(() => {
-    const hoy = new Date();
-    return hoy.toISOString().slice(0, 10); // "YYYY-MM-DD"
-  });
+  const [fechaTraslado, setFechaTraslado] = useState(() => localDateStr());
   const [lineas, setLineas] = useState<LineaLocal[]>([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoDTO | null>(null);
   const [cantidad, setCantidad] = useState(1);
@@ -265,7 +263,7 @@ export function CrearTrasladoView({ onBack, onSuccess }: Props) {
             value={fechaTraslado}
             onChange={(e) => setFechaTraslado(e.target.value)}
             InputLabelProps={{ shrink: true }}
-            inputProps={{ max: new Date().toISOString().slice(0, 10) }}
+            inputProps={{ max: localDateStr() }}
           />
           <TextField
             fullWidth

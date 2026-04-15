@@ -76,7 +76,7 @@ export function DevolucionProveedorDialog({ open, onClose, onSuccess }: Props) {
     },
     onError: (error: any) => {
       enqueueSnackbar(
-        error.response?.data?.error || 'Error al registrar devolución',
+        error.message || 'Error al registrar devolución',
         { variant: 'error' }
       );
     },

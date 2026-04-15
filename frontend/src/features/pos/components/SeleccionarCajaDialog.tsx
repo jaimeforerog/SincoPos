@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOfflineStore } from '@/stores/offline.store';
 import { posSessionCache } from '@/offline/posSessionCache';
 import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
+import { localDateTimeStr, localDateTimeStrDaysAgo } from '@/utils/dates';
 
 interface SeleccionarCajaDialogProps {
   open: boolean;
@@ -30,11 +31,7 @@ interface SeleccionarCajaDialogProps {
   onClose?: () => void;
 }
 
-const nowDatetimeLocal = () => {
-  const d = new Date();
-  d.setSeconds(0, 0);
-  return d.toISOString().slice(0, 16);
-};
+const nowDatetimeLocal = () => localDateTimeStr();
 
 export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCajaDialogProps) {
   const { activeSucursalId, activeEmpresaId, user } = useAuth();
@@ -46,13 +43,7 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
   const diaMaxVentaAtrazada = useConfiguracionVariableInt('DiaMax_VentaAtrazada');
   const mostrarFechaVenta = diaMaxVentaAtrazada > 0;
 
-  const minFechaVenta = (() => {
-    if (!mostrarFechaVenta) return '';
-    const d = new Date();
-    d.setDate(d.getDate() - diaMaxVentaAtrazada);
-    d.setSeconds(0, 0);
-    return d.toISOString().slice(0, 16);
-  })();
+  const minFechaVenta = mostrarFechaVenta ? localDateTimeStrDaysAgo(diaMaxVentaAtrazada) : '';
 
   // Cargar sucursales desde la API (filtradas por empresa activa vía middleware)
   const { data: sucursalesOnline = [] } = useQuery({

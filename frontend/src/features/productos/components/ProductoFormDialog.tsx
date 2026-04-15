@@ -180,7 +180,7 @@ export function ProductoFormDialog({
     },
     onError: (error: any) => {
       const mensaje =
-        error.response?.data?.error || 'Error al crear la categoría';
+        error.message || 'Error al crear la categoría';
       enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });
@@ -211,6 +211,7 @@ export function ProductoFormDialog({
     },
     onSuccess: () => {
       setBackendError(null);
+      queryClient.invalidateQueries({ queryKey: ['productos'] });
       enqueueSnackbar(
         `Producto ${isEdit ? 'actualizado' : 'creado'} exitosamente`,
         { variant: 'success' }
@@ -220,8 +221,7 @@ export function ProductoFormDialog({
     },
     onError: (error: any) => {
       const mensaje =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
+        error.message ||
         `Error al ${isEdit ? 'actualizar' : 'crear'} el producto`;
       setBackendError(mensaje);
       enqueueSnackbar(mensaje, { variant: 'error' });

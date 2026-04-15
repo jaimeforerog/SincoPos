@@ -28,6 +28,7 @@ import { useTurnPreload } from '../hooks/useTurnPreload';
 import { enqueueVenta } from '@/offline/offlineQueue.service';
 import { posSessionCache } from '@/offline/posSessionCache';
 import type { ProductoDTO, CrearVentaDTO, VentaDTO } from '@/types/api';
+import { localDateTimeStr } from '@/utils/dates';
 
 export function POSPage() {
   const navigate = useNavigate();
@@ -46,11 +47,7 @@ export function POSPage() {
   // Estado de caja y cliente
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
   // Fecha de la sesión — se fija en SeleccionarCajaDialog y no puede cambiarse
-  const nowDatetimeLocal = () => {
-    const d = new Date();
-    d.setSeconds(0, 0);
-    return d.toISOString().slice(0, 16);
-  };
+  const nowDatetimeLocal = () => localDateTimeStr();
   useTurnPreload(selectedCajaId, activeSucursalId ?? null);
 
   // Cargar detalles de la caja seleccionada

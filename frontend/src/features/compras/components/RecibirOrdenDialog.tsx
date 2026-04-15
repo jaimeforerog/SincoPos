@@ -25,6 +25,7 @@ import {
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
 import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
+import { localDateStr, localDateStrDaysAgo } from '@/utils/dates';
 import type { OrdenCompraDTO, RecibirOrdenCompraDTO } from '@/types/api';
 
 type LineaRecepcionError = { cantidadRecibida?: FieldError };
@@ -65,9 +66,7 @@ export function RecibirOrdenDialog({
 
   const minFechaRecepcion = (() => {
     if (!mostrarFechaRecepcion) return '';
-    const dLimit = new Date();
-    dLimit.setDate(dLimit.getDate() - diasMaxEntrada);
-    const limitStr = dLimit.toISOString().split('T')[0];
+    const limitStr = localDateStrDaysAgo(diasMaxEntrada);
     // La recepción no puede ser anterior a la fecha de la orden
     const ordenStr = orden.fechaOrden ? orden.fechaOrden.split('T')[0] : '';
     return ordenStr > limitStr ? ordenStr : limitStr;
@@ -81,13 +80,13 @@ export function RecibirOrdenDialog({
     formState: { errors },
   } = useForm<RecibirFormData>({
     resolver: zodResolver(recibirSchema),
-    defaultValues: { fechaRecepcion: new Date().toISOString().split('T')[0], lineas: [] },
+    defaultValues: { fechaRecepcion: localDateStr(), lineas: [] },
   });
 
   const { fields } = useFieldArray({ control, name: 'lineas' });
 
   // Default: fecha de entrega esperada si está en el pasado/hoy, si no hoy
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr();
   const defaultFechaRecepcion = (() => {
     if (orden.fechaEntregaEsperada) {
       const fe = orden.fechaEntregaEsperada.split('T')[0];
@@ -106,7 +105,7 @@ export function RecibirOrdenDialog({
           if (d.manejaLotes && d.diasVidaUtil) {
             const fecha = new Date();
             fecha.setDate(fecha.getDate() + d.diasVidaUtil);
-            fechaVencimientoDefault = fecha.toISOString().split('T')[0];
+            fechaVencimientoDefault = localDateStr(fecha);
           }
           return {
             productoId: d.productoId,
@@ -316,7 +315,7 @@ export function RecibirOrdenDialog({
                                 disabled={!detalle.manejaLotes}
                                 slotProps={{
                                   inputLabel: { shrink: true },
-                                  htmlInput: { min: new Date().toISOString().split('T')[0] },
+                                  htmlInput: { min: localDateStr() },
                                 }}
                               />
                             )}

@@ -25,6 +25,7 @@ import type { CrearOrdenCompraDTO } from '@/types/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
+import { localDateStr, localDateStrDaysAgo } from '@/utils/dates';
 import { ordenCompraSchema, type OrdenCompraFormData } from './OrdenCompraFormTypes';
 import { OrdenCompraFormLineas } from './OrdenCompraFormLineas';
 
@@ -44,13 +45,8 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
 
   const diasMaxCompra = useConfiguracionVariableInt('DiasMax_CompraAtrazada');
   const mostrarFechaOrden = diasMaxCompra > 0;
-  const today = new Date().toISOString().split('T')[0];
-  const minFechaOrden = (() => {
-    if (!mostrarFechaOrden) return '';
-    const d = new Date();
-    d.setDate(d.getDate() - diasMaxCompra);
-    return d.toISOString().split('T')[0];
-  })();
+  const today = localDateStr();
+  const minFechaOrden = mostrarFechaOrden ? localDateStrDaysAgo(diasMaxCompra) : '';
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales', activeEmpresaId],
@@ -94,8 +90,8 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
   const valoresLimpios: OrdenCompraFormData = {
     sucursalId: activeSucursalId ?? 0,
     proveedorId: 0,
-    fechaEntregaEsperada: new Date().toISOString().split('T')[0],
-    fechaOrden: new Date().toISOString().split('T')[0],
+    fechaEntregaEsperada: localDateStr(),
+    fechaOrden: localDateStr(),
     formaPago: 'Contado',
     diasPlazo: 0,
     observaciones: '',

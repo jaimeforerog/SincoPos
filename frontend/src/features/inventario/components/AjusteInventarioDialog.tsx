@@ -73,7 +73,7 @@ export function AjusteInventarioDialog({ open, onClose, onSuccess }: Props) {
     },
     onError: (error: any) => {
       enqueueSnackbar(
-        error.response?.data?.error || 'Error al ajustar inventario',
+        error.message || 'Error al ajustar inventario',
         { variant: 'error' }
       );
     },

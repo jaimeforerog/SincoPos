@@ -88,9 +88,7 @@ export function EditarPrecioDialog({
     },
     onError: (error: any) => {
       const mensaje =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Error al actualizar el precio';
+        error.message || 'Error al actualizar el precio';
       enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });
