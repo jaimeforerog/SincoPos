@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -65,6 +66,7 @@ function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {
 }
 
 export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
+  const navigate = useNavigate();
   const [accion, setAccion] = useState<Accion>(null);
 
   const { data: orden, isLoading } = useQuery({
@@ -508,7 +510,7 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
                   variant="outlined"
                   color="error"
                   size="small"
-                  onClick={() => setAccion('devolver')}
+                  onClick={() => navigate('/compras/devoluciones')}
                 >
                   Devolver al Proveedor
                 </Button>
@@ -520,7 +522,7 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
                 variant="outlined"
                 color="error"
                 size="small"
-                onClick={() => setAccion('devolver')}
+                onClick={() => navigate('/compras/devoluciones')}
               >
                 Devolver al Proveedor
               </Button>

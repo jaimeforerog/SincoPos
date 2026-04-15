@@ -219,6 +219,21 @@ export function ComprasPage() {
             <HeroStat icon={<AttachMoneyIcon />}     label="Valor total"    value={formatCurrency(stats.valorTotal)} loading={isLoading} />
 
             <Button
+              variant="outlined"
+              startIcon={<ReplayIcon />}
+              onClick={() => navigate('/compras/devoluciones')}
+              sx={{
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.35)',
+                fontWeight: 700,
+                backdropFilter: 'blur(4px)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.15)', borderColor: '#fff' },
+              }}
+            >
+              Devoluciones
+            </Button>
+
+            <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => navigate('/compras/nueva')}
