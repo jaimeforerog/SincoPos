@@ -109,7 +109,7 @@ public class ImpuestosController : ControllerBase
             AplicaSobreBase = dto.AplicaSobreBase,
             CodigoPais = dto.CodigoPais ?? "CO",
             Descripcion = dto.Descripcion,
-            EmpresaId = _empresaProvider.EmpresaId,
+            EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId requerido."),
         };
 
         _context.Impuestos.Add(impuesto);
@@ -228,7 +228,7 @@ public class ImpuestosController : ControllerBase
             PerfilComprador = dto.PerfilComprador,
             CodigoCuentaContable = dto.CodigoCuentaContable,
             ConceptoRetencionId = dto.ConceptoRetencionId,
-            EmpresaId = _empresaProvider.EmpresaId,
+            EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId requerido."),
         };
 
         _context.RetencionesReglas.Add(regla);
@@ -311,7 +311,7 @@ public class ImpuestosController : ControllerBase
             Nombre = dto.Nombre,
             CodigoDian = dto.CodigoDian,
             PorcentajeSugerido = dto.PorcentajeSugerido,
-            EmpresaId = _empresaProvider.EmpresaId,
+            EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId requerido."),
         };
 
         _context.ConceptosRetencion.Add(concepto);

@@ -49,12 +49,8 @@ public class RetencionReglaConfiguration : IEntityTypeConfiguration<RetencionReg
             .HasForeignKey(r => r.ConceptoRetencionId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // ── Seed Data Colombia 2026 ─────────────────────────────────────────────
-        // Reglas preconfiguradas siguiendo el Estatuto Tributario colombiano.
-        // El administrador puede agregar/modificar según el tipo de negocio.
-        var fecha = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        builder.HasData(
+        // Seed Data eliminado de HasData — se siembra por SQL per-empresa.
+        /* builder.HasData(
             // ReteFuente 2.5% — Gran Contribuyente retiene a Régimen Ordinario
             // (Art. 383-395 ET, compras superiores a 4 UVT)
             new RetencionRegla
@@ -101,6 +97,6 @@ public class RetencionReglaConfiguration : IEntityTypeConfiguration<RetencionReg
                 Activo = true,
                 FechaCreacion = fecha
             }
-        );
+        ); */
     }
 }

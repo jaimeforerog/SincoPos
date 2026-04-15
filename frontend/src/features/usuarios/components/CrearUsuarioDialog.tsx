@@ -62,7 +62,7 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
   });
 
   const sucursales = todasSucursales.filter(
-    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId
   );
 
   const {

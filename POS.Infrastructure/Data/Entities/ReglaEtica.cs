@@ -8,7 +8,7 @@ namespace POS.Infrastructure.Data.Entities;
 public class ReglaEtica
 {
     public int Id { get; set; }
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
 
     /// <summary>Nombre descriptivo de la regla (p.ej. "Descuento máximo cajero").</summary>
     public string Nombre { get; set; } = string.Empty;

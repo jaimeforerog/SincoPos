@@ -270,7 +270,7 @@ export function UsuariosPage() {
   });
 
   const sucursales = todasSucursalesPage.filter(
-    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId
   );
 
   // Mutations

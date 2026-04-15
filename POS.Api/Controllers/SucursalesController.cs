@@ -68,7 +68,7 @@ public class SucursalesController : ControllerBase
             Email = dto.Email,
             CentroCosto = dto.CentroCosto,
             MetodoCosteo = metodo,
-            EmpresaId = _empresaProvider.EmpresaId,
+            EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId requerido."),
         };
 
         _context.Sucursales.Add(sucursal);

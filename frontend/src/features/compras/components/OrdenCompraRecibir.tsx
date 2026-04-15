@@ -212,6 +212,7 @@ export function AccionRecibir({ orden, onCancel, onDone }: Props) {
                 <TableCell align="center">Solicitada</TableCell>
                 <TableCell align="center">Ya Recibida</TableCell>
                 <TableCell align="center">Pendiente</TableCell>
+                <TableCell align="right" width={110}>P. Unit. OC</TableCell>
                 <TableCell align="center" width={110}>Recibir Ahora</TableCell>
                 {tieneLotes && <TableCell width={140}>Nº Lote</TableCell>}
                 {tieneLotes && <TableCell width={150}>Vencimiento</TableCell>}
@@ -249,6 +250,11 @@ export function AccionRecibir({ orden, onCancel, onDone }: Props) {
                         color={pendiente > 0 ? 'warning.main' : 'success.main'}
                       >
                         {pendiente}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={500} color="text.secondary">
+                        ${detalle.precioUnitario.toLocaleString('es-CO')}
                       </Typography>
                     </TableCell>
                     <TableCell align="center">

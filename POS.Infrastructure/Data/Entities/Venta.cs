@@ -6,7 +6,7 @@ namespace POS.Infrastructure.Data.Entities;
 public class Venta : EntidadAuditable
 {
     public string NumeroVenta { get; set; } = string.Empty; // "V-0001"
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
     public int SucursalId { get; set; }
     public int CajaId { get; set; }
     public int? ClienteId { get; set; }     // Tercero (opcional)
@@ -86,7 +86,7 @@ public enum MetodoPago
 public class DevolucionVenta : EntidadAuditable
 {
     public int VentaId { get; set; }
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
     public string NumeroDevolucion { get; set; } = string.Empty; // "DEV-000001"
     public string Motivo { get; set; } = string.Empty;
     public decimal TotalDevuelto { get; set; }

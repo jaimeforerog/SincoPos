@@ -7,7 +7,7 @@ public class Sucursal : EntidadAuditable
     /// Null = sucursal sin empresa asignada (legado / seed inicial).
     /// Se asigna manualmente en la tabla Empresas.
     /// </summary>
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
     public Empresa? Empresa { get; set; }
 
     public string Nombre { get; set; } = string.Empty;

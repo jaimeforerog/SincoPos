@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (storedSucursal) {
         const storedId = parseInt(storedSucursal, 10);
         const sucursalesFiltradas = activeEmpresaId
-          ? user.sucursalesDisponibles.filter(s => s.empresaId === activeEmpresaId || s.empresaId == null)
+          ? user.sucursalesDisponibles.filter(s => s.empresaId === activeEmpresaId)
           : user.sucursalesDisponibles;
         if (sucursalesFiltradas.some(s => s.id === storedId)) {
           activeSucursalId = storedId;
@@ -80,10 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Primera sucursal disponible como fallback (solo si ya hay empresa seleccionada)
       // Prioriza sucursales de la empresa activa; si no hay, usa las sin empresa asignada
       if (activeSucursalId === undefined && activeEmpresaId !== undefined && user.sucursalesDisponibles?.length > 0) {
-        const porEmpresa = user.sucursalesDisponibles.filter(s => s.empresaId === activeEmpresaId);
-        const candidatas = porEmpresa.length > 0
-          ? porEmpresa
-          : user.sucursalesDisponibles.filter(s => s.empresaId == null);
+        const candidatas = user.sucursalesDisponibles.filter(s => s.empresaId === activeEmpresaId);
         if (candidatas.length > 0) {
           activeSucursalId = candidatas[0].id;
           localStorage.setItem('activeSucursalId', String(activeSucursalId));
@@ -127,10 +124,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Fallback a sucursales sin empresa asignada (empresaId=null, datos no migrados)
     let activeSucursalId: number | undefined;
     if (user) {
-      const porEmpresa = user.sucursalesDisponibles.filter(s => s.empresaId === id);
-      const candidatas = porEmpresa.length > 0
-        ? porEmpresa
-        : user.sucursalesDisponibles.filter(s => s.empresaId == null);
+      const candidatas = user.sucursalesDisponibles.filter(s => s.empresaId === id);
       if (candidatas.length > 0) {
         activeSucursalId = candidatas[0].id;
         localStorage.setItem('activeSucursalId', String(activeSucursalId));

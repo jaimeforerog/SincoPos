@@ -65,7 +65,7 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
   });
 
   const sucursales = todasSucursales.filter(
-    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+    (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId
   );
 
   const {

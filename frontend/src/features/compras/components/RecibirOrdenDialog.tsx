@@ -229,10 +229,11 @@ export function RecibirOrdenDialog({
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell width="25%">Producto</TableCell>
+                  <TableCell width="22%">Producto</TableCell>
                   <TableCell align="center">Solicitada</TableCell>
                   <TableCell align="center">Recibida</TableCell>
                   <TableCell align="center">Pendiente</TableCell>
+                  <TableCell align="right" width="110px">P. Unit. OC</TableCell>
                   <TableCell align="center" width="110px">Recibir Ahora</TableCell>
                   {tieneLotes && <TableCell width="130px">Nº Lote</TableCell>}
                   {tieneLotes && <TableCell width="140px">Vencimiento</TableCell>}
@@ -263,6 +264,11 @@ export function RecibirOrdenDialog({
                       <TableCell align="center">
                         <Typography variant="body2" fontWeight="medium" color={pendiente > 0 ? 'warning.main' : 'success.main'}>
                           {pendiente}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={500} color="text.secondary">
+                          ${detalle.precioUnitario.toLocaleString('es-CO')}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">

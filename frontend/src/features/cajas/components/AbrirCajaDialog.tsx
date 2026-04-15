@@ -53,7 +53,7 @@ export function AbrirCajaDialog({ open, onClose, defaultSucursalId }: AbrirCajaD
     if (isAdmin) return true;
     if (user?.sucursalesDisponibles?.length) {
       const asignadasEnEmpresa = user.sucursalesDisponibles.filter(
-        (sd) => sd.empresaId === activeEmpresaId || sd.empresaId == null
+        (sd) => sd.empresaId === activeEmpresaId
       );
       if (asignadasEnEmpresa.length > 0) return asignadasEnEmpresa.some((sd) => sd.id === s.id);
     }

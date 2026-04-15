@@ -75,7 +75,7 @@ export function AppLayout() {
   const sucursalesVisibles = sucursalesFromApi.length > 0
     ? sucursalesFromApi
     : (user?.sucursalesDisponibles.filter(
-        s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+        s => activeEmpresaId == null || s.empresaId === activeEmpresaId
       ) ?? []);
 
   // Nombre de sucursal activa — busca en API primero, luego en datos del usuario

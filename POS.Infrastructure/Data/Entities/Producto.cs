@@ -9,7 +9,7 @@ public class Producto : ISoftDelete
     /// <summary>
     /// Empresa propietaria del producto. Null = catálogo global (legado).
     /// </summary>
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
     public string CodigoBarras { get; set; } = string.Empty;
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
@@ -76,7 +76,7 @@ public class Categoria : EntidadAuditable
     /// <summary>
     /// Empresa propietaria de la categoría. Null = catálogo global (legado).
     /// </summary>
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
 
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }

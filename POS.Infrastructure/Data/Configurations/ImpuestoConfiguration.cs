@@ -41,10 +41,10 @@ public class ImpuestoConfiguration : IEntityTypeConfiguration<Impuesto>
         builder.Property(i => i.AplicaSobreBase)
             .HasDefaultValue(true);
 
-        // ── Seed Data Colombia 2026 ─────────────────────────────────────────────
-        var fecha = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        builder.HasData(
+        // Seed Data eliminado de HasData — los registros se siembran por SQL
+        // per-empresa en la migración MakeEmpresaIdRequired para respetar
+        // el constraint NOT NULL de EmpresaId.
+        /* builder.HasData(
             // IVA (Estatuto Tributario Art. 468)
             new Impuesto
             {
@@ -95,6 +95,6 @@ public class ImpuestoConfiguration : IEntityTypeConfiguration<Impuesto>
                 Descripcion = "Impuesto bolsas plásticas 2026 (Ley 1819/2016)",
                 FechaCreacion = fecha
             }
-        );
+        ); */
     }
 }

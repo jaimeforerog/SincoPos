@@ -103,7 +103,7 @@ public class TerceroLocalService : ITerceroService
             EsGranContribuyente = dto.EsGranContribuyente,
             EsAutorretenedor = dto.EsAutorretenedor,
             EsResponsableIVA = dto.EsResponsableIVA,
-            EmpresaId = _empresaProvider.EmpresaId,
+            EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId es requerido."),
             OrigenDatos = OrigenDatos.Local,
         };
 
@@ -405,7 +405,7 @@ public class TerceroLocalService : ITerceroService
                 EsGranContribuyente = GetBool(row, "EsGranContribuyente"),
                 EsAutorretenedor = GetBool(row, "EsAutorretenedor"),
                 EsResponsableIVA = GetBool(row, "EsResponsableIVA"),
-                EmpresaId = _empresaProvider.EmpresaId,
+                EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId es requerido."),
                 OrigenDatos = OrigenDatos.Local,
             };
 

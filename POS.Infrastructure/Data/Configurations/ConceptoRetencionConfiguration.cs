@@ -24,10 +24,8 @@ public class ConceptoRetencionConfiguration : IEntityTypeConfiguration<ConceptoR
         builder.Property(c => c.Activo)
             .HasDefaultValue(true);
 
-        // ── Seed Data: Conceptos DIAN comunes ───────────────────────────────────
-        var fecha = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        builder.HasData(
+        // Seed Data eliminado de HasData — se siembra por SQL per-empresa.
+        /* builder.HasData(
             new ConceptoRetencion
             {
                 Id = 1,
@@ -73,6 +71,6 @@ public class ConceptoRetencionConfiguration : IEntityTypeConfiguration<ConceptoR
                 Activo = true,
                 FechaCreacion = fecha
             }
-        );
+        ); */
     }
 }

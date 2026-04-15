@@ -47,7 +47,7 @@ export function CajasPage() {
     // Si el usuario tiene sucursales asignadas para la empresa activa, restringir solo a esas
     if (user?.sucursalesDisponibles?.length) {
       const asignadasEnEmpresa = user.sucursalesDisponibles.filter(
-        (sd) => sd.empresaId === activeEmpresaId || sd.empresaId == null
+        (sd) => sd.empresaId === activeEmpresaId
       );
       if (asignadasEnEmpresa.length > 0) return asignadasEnEmpresa.some((sd) => sd.id === s.id);
     }

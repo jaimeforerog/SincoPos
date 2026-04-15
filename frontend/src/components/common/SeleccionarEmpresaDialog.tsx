@@ -46,7 +46,7 @@ export function SeleccionarEmpresaDialog() {
     if (sucursalesApi_data.length > 0) return sucursalesApi_data;
     // Fallback: sucursales del store que coincidan con la empresa o no tengan empresa asignada
     return (user?.sucursalesDisponibles ?? [])
-      .filter(s => s.empresaId === selectedEmpresa.id || s.empresaId == null)
+      .filter(s => s.empresaId === selectedEmpresa.id)
       .map(s => ({ id: s.id, nombre: s.nombre }));
   }, [sucursalesApi_data, selectedEmpresa, user?.sucursalesDisponibles]);
 

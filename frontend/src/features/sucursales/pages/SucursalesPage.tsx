@@ -39,7 +39,7 @@ export function SucursalesPage() {
 
   // Filtrar por empresa activa de sesión (defensa en profundidad además del filtro backend)
   const sucursales = (todasSucursales ?? []).filter(
-    s => activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null
+    s => activeEmpresaId == null || s.empresaId === activeEmpresaId
   );
 
   const deleteMutation = useMutation({

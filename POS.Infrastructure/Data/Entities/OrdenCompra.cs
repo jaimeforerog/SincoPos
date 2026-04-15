@@ -17,7 +17,7 @@ public enum EstadoOrdenCompra
 public class OrdenCompra : EntidadAuditable
 {
     public string NumeroOrden { get; set; } = string.Empty;      // "OC-000001"
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
     public int SucursalId { get; set; }
     public int ProveedorId { get; set; }                         // FK a Terceros
     public EstadoOrdenCompra Estado { get; set; } = EstadoOrdenCompra.Pendiente;

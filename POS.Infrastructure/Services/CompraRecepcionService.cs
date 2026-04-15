@@ -96,6 +96,21 @@ public class CompraRecepcionService
                 .ToDictionary(g => g.Key, g => g.ToList());
         }
 
+        // Pre-cargar impuestos de la orden (por nombre) para actualizar el ImpuestoId del producto
+        // al recibirla — mantiene el catálogo de productos sincronizado con el IVA real de compra.
+        var nombresImpuestoOrden = orden.Detalles
+            .Where(d => !string.IsNullOrEmpty(d.NombreImpuesto))
+            .Select(d => d.NombreImpuesto!)
+            .Distinct()
+            .ToList();
+
+        var impuestosOrdenDict = nombresImpuestoOrden.Count > 0
+            ? await _context.Impuestos
+                .IgnoreQueryFilters()
+                .Where(i => nombresImpuestoOrden.Contains(i.Nombre) && i.EmpresaId == orden.EmpresaId)
+                .ToDictionaryAsync(i => i.Nombre)
+            : new Dictionary<string, Impuesto>();
+
         // ERP Payload Builders
         var inventarioAcumulado = new Dictionary<string, decimal>(); // Key: CuentaInventario, Value: Total
         var impuestosAcumulados = new Dictionary<string, (decimal Porcentaje, string? Cuenta, decimal MontoBase, decimal Total)>();
@@ -264,6 +279,16 @@ public class CompraRecepcionService
                     detalle.PrecioUnitario,
                     orden.Sucursal!.MetodoCosteo,
                     lotesParaCosteo);
+
+                // Actualizar ImpuestoId del producto según el IVA usado en esta compra.
+                // Garantiza que el producto quede configurado con la tasa correcta para
+                // el cálculo de IVA en el punto de venta.
+                if (!string.IsNullOrEmpty(detalle.NombreImpuesto) &&
+                    impuestosOrdenDict.TryGetValue(detalle.NombreImpuesto, out var impuestoDeCompra) &&
+                    productoCompleto.ImpuestoId != impuestoDeCompra.Id)
+                {
+                    productoCompleto.ImpuestoId = impuestoDeCompra.Id;
+                }
 
                 // Simular adición del lote en RAM para cálculos de coste en iteraciones subsecuentes
                 lotesParaCosteo.Add(new LoteInventario

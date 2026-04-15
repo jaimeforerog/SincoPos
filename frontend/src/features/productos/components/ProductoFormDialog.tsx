@@ -27,7 +27,7 @@ import { useSnackbar } from 'notistack';
 import { useAuthStore } from '@/stores/auth.store';
 import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
-import { conceptosRetencionApi } from '@/api/impuestos';
+import { conceptosRetencionApi, impuestosApi } from '@/api/impuestos';
 import type { ProductoDTO, CrearProductoDTO, ActualizarProductoDTO } from '@/types/api';
 
 const UNIDADES_MEDIDA = [
@@ -82,6 +82,7 @@ export function ProductoFormDialog({
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [backendError, setBackendError] = useState<string | null>(null);
   const [conceptoRetencionId, setConceptoRetencionId] = useState<number | ''>('');
+  const [impuestoId, setImpuestoId] = useState<number | ''>('');
   const [manejaLotes, setManejaLotes] = useState(false);
   const [diasVidaUtil, setDiasVidaUtil] = useState<number | ''>('');
 
@@ -93,6 +94,14 @@ export function ProductoFormDialog({
     queryFn: () => categoriasApi.getAll(false),
     staleTime: 0,
     enabled: open,
+  });
+
+  // Cargar impuestos (IVA/INC) disponibles para el producto
+  const { data: impuestos = [] } = useQuery({
+    queryKey: ['impuestos', activeEmpresaId],
+    queryFn: () => impuestosApi.getAll(),
+    enabled: open,
+    staleTime: 0,
   });
 
   // Cargar conceptos de retencion
@@ -146,6 +155,7 @@ export function ProductoFormDialog({
           unidadMedida: producto.unidadMedida || '94',
         });
         setConceptoRetencionId(producto.conceptoRetencionId ?? '');
+        setImpuestoId(producto.impuestoId ?? '');
         setManejaLotes(producto.manejaLotes ?? false);
         setDiasVidaUtil(producto.diasVidaUtil ?? '');
       } else {
@@ -161,6 +171,7 @@ export function ProductoFormDialog({
         // Buscar el concepto "Compras generales" (codigoDian: 2307) para asignarlo por defecto
         const conceptoComprasDefault = conceptosRetencion.find(c => c.codigoDian === '2307');
         setConceptoRetencionId(conceptoComprasDefault ? conceptoComprasDefault.id : '');
+        setImpuestoId('');
         setManejaLotes(false);
         setDiasVidaUtil('');
       }
@@ -191,7 +202,8 @@ export function ProductoFormDialog({
       if (isEdit) {
         const updateData: ActualizarProductoDTO = {
           ...(data as ActualizarProductoFormData),
-          precioVenta: 0, // Precio de venta se maneja por sucursal
+          precioVenta: 0,
+          impuestoId: impuestoId !== '' ? impuestoId : undefined,
           conceptoRetencionId: conceptoRetencionId || undefined,
           manejaLotes,
           diasVidaUtil: diasVidaUtil !== '' ? diasVidaUtil : undefined,
@@ -201,7 +213,8 @@ export function ProductoFormDialog({
       } else {
         const createData: CrearProductoDTO = {
           ...(data as CrearProductoFormData),
-          precioVenta: 0, // Precio de venta se maneja por sucursal
+          precioVenta: 0,
+          impuestoId: impuestoId !== '' ? impuestoId : undefined,
           conceptoRetencionId: conceptoRetencionId || undefined,
           manejaLotes,
           diasVidaUtil: diasVidaUtil !== '' ? diasVidaUtil : undefined,
@@ -520,6 +533,27 @@ export function ProductoFormDialog({
                 )}
               />
             )}
+
+            {/* IVA / Impuesto del producto */}
+            <FormControl fullWidth>
+              <InputLabel id="impuesto-label">IVA / Impuesto *</InputLabel>
+              <Select
+                labelId="impuesto-label"
+                label="IVA / Impuesto *"
+                value={impuestoId}
+                onChange={(e) => setImpuestoId(e.target.value as number | '')}
+              >
+                <MenuItem value="">
+                  <em>Exento (sin IVA)</em>
+                </MenuItem>
+                {impuestos.map((imp) => (
+                  <MenuItem key={imp.id} value={imp.id}>
+                    {imp.nombre}
+                    {imp.porcentaje != null && imp.porcentaje > 0 ? ` — ${(imp.porcentaje * 100).toFixed(0)}%` : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             {/* Concepto de Retencion DIAN */}
             <FormControl fullWidth>

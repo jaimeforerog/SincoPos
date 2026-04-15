@@ -395,7 +395,7 @@ export interface SucursalDTO {
   metodoCosteo: string;
   activa: boolean;
   fechaCreacion: string;
-  empresaId?: number;
+  empresaId: number;
 }
 
 export interface CrearSucursalDTO {
@@ -523,7 +523,7 @@ export interface ResultadoImportacionTercerosDTO {
 export interface SucursalResumenDTO {
   id: number;
   nombre: string;
-  empresaId?: number;
+  empresaId: number;
   empresaNombre?: string;
 }
 

@@ -76,7 +76,7 @@ export function PreciosPage() {
 
   const sucursales = todasSucursales.filter(
     (s) =>
-      (activeEmpresaId == null || s.empresaId === activeEmpresaId || s.empresaId == null) &&
+      (activeEmpresaId == null || s.empresaId === activeEmpresaId) &&
       (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
   );
 

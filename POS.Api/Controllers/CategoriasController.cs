@@ -87,7 +87,7 @@ public class CategoriasController : ControllerBase
             Nivel = nivel,
             RutaCompleta = rutaCompleta,
             MargenGanancia = dto.MargenGanancia,
-            EmpresaId = _empresaProvider.EmpresaId,
+            EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId requerido."),
             Activo = true
         };
 

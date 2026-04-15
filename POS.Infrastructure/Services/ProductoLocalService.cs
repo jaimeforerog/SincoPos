@@ -147,7 +147,7 @@ public class ProductoLocalService : IProductoService
             ConceptoRetencionId = dto.ConceptoRetencionId,
             ManejaLotes = dto.ManejaLotes,
             DiasVidaUtil = dto.DiasVidaUtil,
-            EmpresaId = _empresaProvider.EmpresaId,
+            EmpresaId = _empresaProvider.EmpresaId ?? throw new InvalidOperationException("EmpresaId es requerido para crear un producto."),
         };
 
         _context.Productos.Add(producto);

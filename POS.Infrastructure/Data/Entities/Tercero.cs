@@ -2,10 +2,7 @@ namespace POS.Infrastructure.Data.Entities;
 
 public class Tercero : EntidadAuditable
 {
-    /// <summary>
-    /// Empresa propietaria del tercero (cliente/proveedor). Null = catálogo global (legado).
-    /// </summary>
-    public int? EmpresaId { get; set; }
+    public int EmpresaId { get; set; }
 
     public TipoIdentificacion TipoIdentificacion { get; set; }
     public string Identificacion { get; set; } = string.Empty;
