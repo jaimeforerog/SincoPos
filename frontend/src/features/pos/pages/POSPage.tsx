@@ -186,6 +186,7 @@ export function POSPage() {
       // fechaVenta se mantiene fija para toda la sesión
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['inventario', activeSucursalId] });
     },
     onError: (error: any) => {
       console.error('❌ Error al crear venta:', error);

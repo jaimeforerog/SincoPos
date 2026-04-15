@@ -19,6 +19,7 @@ import { CameraInput } from './CameraInput';
 import { VoiceInput } from './VoiceInput';
 import { parseVoiceInput } from '../utils/parseVoiceInput';
 import { sincoColors } from '@/theme/tokens';
+import { useCartStore } from '@/stores/cart.store';
 import type { ProductoDTO } from '@/types/api';
 
 /**
@@ -53,6 +54,10 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
     queryFn:  () => inventarioApi.getStock({ sucursalId: activeSucursalId }),
     enabled:  !!activeSucursalId,
   });
+
+  // Cantidades ya en el carrito (para mostrar stock disponible real)
+  const cartItems = useCartStore((s) => s.items);
+  const cartQtyMap = new Map(cartItems.map((i) => [i.producto.id, i.cantidad]));
 
   // Precios resueltos en lote
   const { data: preciosResueltos = [] } = useQuery({
@@ -212,11 +217,14 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
           const stockInfo = Array.isArray(inventarios)
             ? inventarios.find((inv) => inv.productoId === producto.id)
             : null;
+          const stockReal = stockInfo?.cantidad ?? 0;
+          const enCarrito = cartQtyMap.get(producto.id) ?? 0;
+          const stockDisponible = Math.max(0, stockReal - enCarrito);
           return (
             <ProductCard
               key={producto.id}
               producto={producto}
-              stock={stockInfo?.cantidad ?? 0}
+              stock={stockDisponible}
               precio={precioMap.get(producto.id)}
               onClick={handleSelectProduct}
             />
