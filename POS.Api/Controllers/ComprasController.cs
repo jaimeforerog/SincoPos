@@ -289,4 +289,47 @@ public class ComprasController : ControllerBase
         if (!success) return error == "NOT_FOUND" ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
         return Ok(new { mensaje = "Orden de compra cancelada" });
     }
+
+    /// <summary>
+    /// Registrar una devolución de mercancía al proveedor.
+    /// Solo aplica para órdenes en estado RecibidaParcial o RecibidaCompleta.
+    /// </summary>
+    [HttpPost("{id:int}/devolucion")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(DevolucionCompraDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DevolucionCompraDto>> CrearDevolucion(
+        int id,
+        [FromBody] CrearDevolucionCompraDto dto,
+        [FromServices] CompraDevolucionService devolucionService)
+    {
+        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                 ?? User.FindFirst("email")?.Value;
+
+        var (devolucion, error) = await devolucionService.CrearAsync(id, dto, email);
+
+        if (devolucion == null)
+            return Problem(detail: error, statusCode: error != null && error.Contains("no encontrada")
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status400BadRequest);
+
+        _logger.LogInformation("Devolución compra creada. Número: {Numero}, OC: {OC}",
+            devolucion.NumeroDevolucion, devolucion.NumeroOrden);
+
+        return StatusCode(StatusCodes.Status201Created, devolucion);
+    }
+
+    /// <summary>
+    /// Listar todas las devoluciones de una orden de compra.
+    /// </summary>
+    [HttpGet("{id:int}/devoluciones")]
+    [ProducesResponseType(typeof(List<DevolucionCompraDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<DevolucionCompraDto>>> ObtenerDevoluciones(
+        int id,
+        [FromServices] CompraDevolucionService devolucionService)
+    {
+        var devoluciones = await devolucionService.ObtenerPorOrdenAsync(id);
+        return Ok(devoluciones);
+    }
 }

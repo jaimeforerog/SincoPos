@@ -23,10 +23,11 @@ import { useQuery } from '@tanstack/react-query';
 import { comprasApi } from '@/api/compras';
 import { AccionAprobar, AccionRechazar, AccionCancelar } from './OrdenCompraAcciones';
 import { AccionRecibir } from './OrdenCompraRecibir';
+import { OrdenCompraDevolucion } from './OrdenCompraDevolucion';
 
 const HERO_COLOR = '#1565c0';
 
-type Accion = 'aprobar' | 'rechazar' | 'cancelar' | 'recibir' | null;
+type Accion = 'aprobar' | 'rechazar' | 'cancelar' | 'recibir' | 'devolver' | null;
 
 const ESTADO_META: Record<string, { color: 'warning' | 'info' | 'primary' | 'success' | 'error' | 'default'; label: string }> = {
   Pendiente:        { color: 'warning', label: 'Pendiente' },
@@ -493,14 +494,35 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
             )}
 
             {orden.estado === 'RecibidaParcial' && (
+              <>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<LocalShippingIcon />}
+                  onClick={() => setAccion('recibir')}
+                >
+                  Recibir Mercancía
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  onClick={() => setAccion('devolver')}
+                >
+                  Devolver al Proveedor
+                </Button>
+              </>
+            )}
+
+            {orden.estado === 'RecibidaCompleta' && (
               <Button
-                variant="contained"
-                color="primary"
+                variant="outlined"
+                color="error"
                 size="small"
-                startIcon={<LocalShippingIcon />}
-                onClick={() => setAccion('recibir')}
+                onClick={() => setAccion('devolver')}
               >
-                Recibir Mercancía
+                Devolver al Proveedor
               </Button>
             )}
           </Paper>
@@ -535,6 +557,13 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
                 orden={orden}
                 onCancel={() => setAccion(null)}
                 onDone={handleAccionDone}
+              />
+            )}
+            {accion === 'devolver' && (
+              <OrdenCompraDevolucion
+                orden={orden}
+                onCancel={() => setAccion(null)}
+                onDone={() => { setAccion(null); }}
               />
             )}
           </Box>

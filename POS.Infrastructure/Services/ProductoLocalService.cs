@@ -65,9 +65,11 @@ public class ProductoLocalService : IProductoService
 
     public async Task<PaginatedResult<ProductoDto>> BuscarAsync(string? query, int? categoriaId, bool incluirInactivos, int page = 1, int pageSize = 50)
     {
+        // Nota: NO incluimos Impuesto aquí porque el filtro global excluiría los registros
+        // globales de seed (EmpresaId = null). Los cargamos por separado con IgnoreQueryFilters.
         var q = incluirInactivos
-            ? _context.Productos.IgnoreQueryFilters().Include(p => p.Impuesto).Include(p => p.ConceptoRetencion)
-            : (IQueryable<Producto>)_context.Productos.Include(p => p.Impuesto).Include(p => p.ConceptoRetencion).Where(p => p.Activo);
+            ? _context.Productos.IgnoreQueryFilters().Include(p => p.ConceptoRetencion)
+            : (IQueryable<Producto>)_context.Productos.Include(p => p.ConceptoRetencion).Where(p => p.Activo);
 
         if (!string.IsNullOrWhiteSpace(query))
             q = q.Where(p => p.Nombre.Contains(query) ||
@@ -84,6 +86,20 @@ public class ProductoLocalService : IProductoService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+
+        // Cargar impuestos con IgnoreQueryFilters para acceder también a registros globales (EmpresaId = null)
+        var impuestoIds = list.Where(p => p.ImpuestoId.HasValue).Select(p => p.ImpuestoId!.Value).Distinct().ToList();
+        if (impuestoIds.Count > 0)
+        {
+            var impuestosDict = await _context.Impuestos
+                .IgnoreQueryFilters()
+                .Where(i => impuestoIds.Contains(i.Id))
+                .ToDictionaryAsync(i => i.Id);
+
+            foreach (var p in list)
+                if (p.ImpuestoId.HasValue && impuestosDict.TryGetValue(p.ImpuestoId.Value, out var imp))
+                    p.Impuesto = imp;
+        }
 
         var items = list.Select(ToDto).ToList();
         return new PaginatedResult<ProductoDto>(items, totalCount, page, pageSize, totalPages);

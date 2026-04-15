@@ -284,6 +284,39 @@ public record OrdenCompraDto(
     List<DetalleOrdenCompraDto> Detalles
 );
 
+// ─── Devoluciones de Orden de Compra ──────────────────────────
+
+public record CrearDevolucionCompraDto(
+    string Motivo,
+    List<LineaDevolucionCompraDto> Lineas
+);
+
+public record LineaDevolucionCompraDto(
+    Guid ProductoId,
+    decimal Cantidad
+);
+
+public record DevolucionCompraDto(
+    int Id,
+    int OrdenCompraId,
+    string NumeroOrden,
+    string NumeroDevolucion,
+    string Motivo,
+    decimal Total,
+    DateTime FechaDevolucion,
+    string? AutorizadoPor,
+    List<DetalleDevolucionCompraDto> Detalles
+);
+
+public record DetalleDevolucionCompraDto(
+    int Id,
+    Guid ProductoId,
+    string NombreProducto,
+    decimal CantidadDevuelta,
+    decimal PrecioUnitario,
+    decimal Subtotal
+);
+
 public record DetalleOrdenCompraDto(
     int Id,
     Guid ProductoId,

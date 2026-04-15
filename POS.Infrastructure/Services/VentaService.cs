@@ -128,11 +128,28 @@ public class VentaService : IVentaService
         var productoIds = dto.Lineas.Select(l => l.ProductoId).Distinct().ToList();
 
         var productosMap = await _context.Productos
-            .Include(p => p.Impuesto)
             .Include(p => p.ConceptoRetencion)
             .Include(p => p.Categoria)
             .Where(p => productoIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
+
+        // Cargar impuestos con IgnoreQueryFilters para acceder a registros globales (EmpresaId = null)
+        var productoImpuestoIds = productosMap.Values
+            .Where(p => p.ImpuestoId.HasValue)
+            .Select(p => p.ImpuestoId!.Value)
+            .Distinct()
+            .ToList();
+        if (productoImpuestoIds.Count > 0)
+        {
+            var impuestosDict = await _context.Impuestos
+                .IgnoreQueryFilters()
+                .Where(i => productoImpuestoIds.Contains(i.Id))
+                .ToDictionaryAsync(i => i.Id);
+
+            foreach (var p in productosMap.Values)
+                if (p.ImpuestoId.HasValue && impuestosDict.TryGetValue(p.ImpuestoId.Value, out var imp))
+                    p.Impuesto = imp;
+        }
 
         var stocksMap = await _context.Stock
             .Where(s => productoIds.Contains(s.ProductoId) && s.SucursalId == dto.SucursalId)

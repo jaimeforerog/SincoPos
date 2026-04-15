@@ -6,6 +6,8 @@ import type {
   RechazarOrdenCompraDTO,
   RecibirOrdenCompraDTO,
   CancelarOrdenCompraDTO,
+  CrearDevolucionCompraDTO,
+  DevolucionCompraDTO,
   ErpOutboxErrorDTO,
   PaginatedResult,
 } from '@/types/api';
@@ -72,6 +74,16 @@ export const comprasApi = {
    */
   cancelar: async (id: number, data: CancelarOrdenCompraDTO) => {
     const response = await apiClient.post(`/compras/${id}/cancelar`, data);
+    return response.data;
+  },
+
+  crearDevolucion: async (id: number, data: CrearDevolucionCompraDTO): Promise<DevolucionCompraDTO> => {
+    const response = await apiClient.post<DevolucionCompraDTO>(`/compras/${id}/devolucion`, data);
+    return response.data;
+  },
+
+  obtenerDevoluciones: async (id: number): Promise<DevolucionCompraDTO[]> => {
+    const response = await apiClient.get<DevolucionCompraDTO[]>(`/compras/${id}/devoluciones`);
     return response.data;
   },
 

@@ -72,3 +72,38 @@ public class DetalleOrdenCompra
     public OrdenCompra OrdenCompra { get; set; } = null!;
     public Producto Producto { get; set; } = null!;
 }
+
+/// <summary>
+/// Devolución parcial o total de mercancía a proveedor, asociada a una orden de compra recibida
+/// </summary>
+public class DevolucionCompra
+{
+    public int Id { get; set; }
+    public int OrdenCompraId { get; set; }
+    public string NumeroDevolucion { get; set; } = string.Empty;  // "DC-000001"
+    public string Motivo { get; set; } = string.Empty;
+    public decimal Total { get; set; }
+    public DateTime FechaDevolucion { get; set; } = DateTime.UtcNow;
+    public int? AutorizadoPorUsuarioId { get; set; }
+
+    // Navegación
+    public OrdenCompra OrdenCompra { get; set; } = null!;
+    public ICollection<DetalleDevolucionCompra> Detalles { get; set; } = new List<DetalleDevolucionCompra>();
+}
+
+/// <summary>
+/// Línea de producto devuelto en una devolución de compra
+/// </summary>
+public class DetalleDevolucionCompra
+{
+    public int Id { get; set; }
+    public int DevolucionCompraId { get; set; }
+    public Guid ProductoId { get; set; }
+    public string NombreProducto { get; set; } = string.Empty;
+    public decimal CantidadDevuelta { get; set; }
+    public decimal PrecioUnitario { get; set; }
+    public decimal Subtotal { get; set; }
+
+    // Navegación
+    public DevolucionCompra DevolucionCompra { get; set; } = null!;
+}

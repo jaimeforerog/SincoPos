@@ -156,9 +156,60 @@ public class DetalleOrdenCompraConfiguration : IEntityTypeConfiguration<DetalleO
             .HasMaxLength(300)
             .HasColumnName("observaciones");
 
+        builder.HasOne(d => d.OrdenCompra)
+            .WithMany(o => o.Detalles)
+            .HasForeignKey(d => d.OrdenCompraId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasOne(d => d.Producto)
             .WithMany()
             .HasForeignKey(d => d.ProductoId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class DevolucionCompraConfiguration : IEntityTypeConfiguration<DevolucionCompra>
+{
+    public void Configure(EntityTypeBuilder<DevolucionCompra> builder)
+    {
+        builder.ToTable("devoluciones_compra");
+        builder.HasKey(d => d.Id);
+        builder.Property(d => d.Id).UseIdentityAlwaysColumn();
+
+        builder.Property(d => d.OrdenCompraId).IsRequired().HasColumnName("orden_compra_id");
+        builder.Property(d => d.NumeroDevolucion).IsRequired().HasMaxLength(20).HasColumnName("numero_devolucion");
+        builder.Property(d => d.Motivo).IsRequired().HasMaxLength(500).HasColumnName("motivo");
+        builder.Property(d => d.Total).HasPrecision(18, 2).HasColumnName("total");
+        builder.Property(d => d.FechaDevolucion).HasColumnName("fecha_devolucion");
+        builder.Property(d => d.AutorizadoPorUsuarioId).HasColumnName("autorizado_por_usuario_id");
+
+        builder.HasIndex(d => d.NumeroDevolucion).IsUnique().HasDatabaseName("ix_devoluciones_compra_numero");
+
+        builder.HasOne(d => d.OrdenCompra)
+            .WithMany()
+            .HasForeignKey(d => d.OrdenCompraId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class DetalleDevolucionCompraConfiguration : IEntityTypeConfiguration<DetalleDevolucionCompra>
+{
+    public void Configure(EntityTypeBuilder<DetalleDevolucionCompra> builder)
+    {
+        builder.ToTable("detalle_devoluciones_compra");
+        builder.HasKey(d => d.Id);
+        builder.Property(d => d.Id).UseIdentityAlwaysColumn();
+
+        builder.Property(d => d.DevolucionCompraId).IsRequired().HasColumnName("devolucion_compra_id");
+        builder.Property(d => d.ProductoId).IsRequired().HasColumnName("producto_id");
+        builder.Property(d => d.NombreProducto).IsRequired().HasMaxLength(200).HasColumnName("nombre_producto");
+        builder.Property(d => d.CantidadDevuelta).HasPrecision(18, 4).HasColumnName("cantidad_devuelta");
+        builder.Property(d => d.PrecioUnitario).HasPrecision(18, 4).HasColumnName("precio_unitario");
+        builder.Property(d => d.Subtotal).HasPrecision(18, 2).HasColumnName("subtotal");
+
+        builder.HasOne(d => d.DevolucionCompra)
+            .WithMany(dc => dc.Detalles)
+            .HasForeignKey(d => d.DevolucionCompraId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

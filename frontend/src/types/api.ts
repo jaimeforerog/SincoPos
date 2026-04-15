@@ -340,6 +340,37 @@ export interface CancelarOrdenCompraDTO {
   motivo: string;
 }
 
+export interface CrearDevolucionCompraDTO {
+  motivo: string;
+  lineas: LineaDevolucionCompraDTO[];
+}
+
+export interface LineaDevolucionCompraDTO {
+  productoId: string;
+  cantidad: number;
+}
+
+export interface DevolucionCompraDTO {
+  id: number;
+  ordenCompraId: number;
+  numeroOrden: string;
+  numeroDevolucion: string;
+  motivo: string;
+  total: number;
+  fechaDevolucion: string;
+  autorizadoPor?: string;
+  detalles: DetalleDevolucionCompraDTO[];
+}
+
+export interface DetalleDevolucionCompraDTO {
+  id: number;
+  productoId: string;
+  nombreProducto: string;
+  cantidadDevuelta: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
 export interface ErpOutboxErrorDTO {
   id: number;
   tipoDocumento: string;

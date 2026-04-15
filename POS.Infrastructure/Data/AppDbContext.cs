@@ -47,6 +47,8 @@ public class AppDbContext : DbContext
     public DbSet<DetalleTraslado> DetallesTraslado => Set<DetalleTraslado>();
     public DbSet<OrdenCompra> OrdenesCompra => Set<OrdenCompra>();
     public DbSet<DetalleOrdenCompra> DetallesOrdenCompra => Set<DetalleOrdenCompra>();
+    public DbSet<DevolucionCompra> DevolucionesCompra => Set<DevolucionCompra>();
+    public DbSet<DetalleDevolucionCompra> DetallesDevolucionCompra => Set<DetalleDevolucionCompra>();
     public DbSet<MigracionLog> MigracionesLog => Set<MigracionLog>();
     public DbSet<UsuarioSucursal> UsuarioSucursales => Set<UsuarioSucursal>();
     public DbSet<ConceptoRetencion> ConceptosRetencion => Set<ConceptoRetencion>();
