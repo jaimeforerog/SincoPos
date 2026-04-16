@@ -71,10 +71,10 @@ public class OrdenCompraConfiguration : IEntityTypeConfiguration<OrdenCompra>
             .HasColumnName("requiere_factura_electronica")
             .HasDefaultValue(false);
 
-        // Índices
-        builder.HasIndex(o => o.NumeroOrden)
+        // Índices — número único POR SUCURSAL (no globalmente)
+        builder.HasIndex(o => new { o.SucursalId, o.NumeroOrden })
             .IsUnique()
-            .HasDatabaseName("ix_ordenes_compra_numero");
+            .HasDatabaseName("ix_ordenes_compra_sucursal_numero");
 
         builder.HasIndex(o => o.FechaOrden)
             .HasDatabaseName("ix_ordenes_compra_fecha");

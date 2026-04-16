@@ -310,9 +310,10 @@ public class ConsecutivosMultiEmpresaTests
     // ═══════════════════════════════════════════════════════
 
     [Fact]
-    public async Task OrdenCompra_DosEmpresasObtienen_NumerosUnicos_SinColision()
+    public async Task OrdenCompra_DosEmpresasObtienen_NumerosIndependientesPorSucursal()
     {
-        // CompraService usa IgnoreQueryFilters().MaxAsync(o => o.Id) → número global único
+        // CompraService usa COUNT por sucursal → cada sucursal tiene su propia secuencia.
+        // El índice único es (sucursal_id, numero_orden) — no hay colisión entre sucursales.
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -347,20 +348,20 @@ public class ConsecutivosMultiEmpresaTests
         var oc1 = await respOC1.Content.ReadFromJsonAsync<OrdenCompraDto>(_json);
         var oc2 = await respOC2.Content.ReadFromJsonAsync<OrdenCompraDto>(_json);
 
-        // Assert: ambas creadas con números únicos (secuencia global por max Id)
+        // Assert: ambas se crean exitosamente con prefijo OC-.
+        // Con secuencia por sucursal, ambas pueden obtener OC-000001 — eso es correcto.
+        // La unicidad se garantiza por el índice compuesto (sucursal_id, numero_orden).
         oc1.Should().NotBeNull();
         oc2.Should().NotBeNull();
         oc1!.NumeroOrden.Should().StartWith("OC-");
         oc2!.NumeroOrden.Should().StartWith("OC-");
-        oc1.NumeroOrden.Should().NotBe(oc2.NumeroOrden,
-            "cada orden de compra debe tener número único (consecutivo global por max Id)");
 
         var oc1EnDb = await ctx.OrdenesCompra
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.NumeroOrden == oc1.NumeroOrden);
+            .FirstOrDefaultAsync(o => o.SucursalId == sucursalOC1.Id && o.NumeroOrden == oc1.NumeroOrden);
         var oc2EnDb = await ctx.OrdenesCompra
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.NumeroOrden == oc2.NumeroOrden);
+            .FirstOrDefaultAsync(o => o.SucursalId == sucursalOC2.Id && o.NumeroOrden == oc2.NumeroOrden);
 
         oc1EnDb!.EmpresaId.Should().Be(empresaOC1.Id);
         oc2EnDb!.EmpresaId.Should().Be(empresaOC2.Id);
