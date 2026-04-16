@@ -23,9 +23,6 @@ public class ConsecutivosMultiEmpresaTests
     private readonly HttpClient _client;
     private readonly JsonSerializerOptions _json = new() { PropertyNameCaseInsensitive = true };
 
-    private int CatId => _factory.CategoriaTestId;
-    private int TerceroId => _factory.TerceroTestId;
-
     public ConsecutivosMultiEmpresaTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
@@ -34,8 +31,18 @@ public class ConsecutivosMultiEmpresaTests
 
     // ─── Infraestructura ─────────────────────────────────────────────────────
 
-    /// <summary>Crea empresa + sucursal para tests de consecutivos.</summary>
-    private async Task<(Empresa empresa, Sucursal sucursal)> CrearEmpresaConSucursalAsync(
+    /// <summary>Crea HttpRequestMessage con X-Empresa-Id para operar en el contexto de una empresa.</summary>
+    private HttpRequestMessage ConEmpresaId(HttpMethod method, string url, int empresaId, object? body = null)
+    {
+        var req = new HttpRequestMessage(method, url);
+        req.Headers.Add("X-Empresa-Id", empresaId.ToString());
+        if (body != null)
+            req.Content = JsonContent.Create(body, options: _json);
+        return req;
+    }
+
+    /// <summary>Crea empresa + sucursal + proveedor propios para cada test.</summary>
+    private async Task<(Empresa empresa, Sucursal sucursal, int proveedorId)> CrearEmpresaConSucursalAsync(
         AppDbContext ctx, string sufijo)
     {
         var empresa = new Empresa
@@ -58,58 +65,79 @@ public class ConsecutivosMultiEmpresaTests
             CreadoPor  = "test"
         };
         ctx.Sucursales.Add(sucursal);
+
+        // Proveedor propio de la empresa (el proveedor del factory pertenece a empresa 1)
+        var proveedor = new Tercero
+        {
+            Nombre         = $"Prov-Consec-{sufijo}",
+            Identificacion = $"NIT-CONSEC-{sufijo}",
+            TipoTercero    = TipoTercero.Proveedor,
+            EmpresaId      = empresa.Id,
+            Activo         = true,
+            FechaCreacion  = DateTime.UtcNow
+        };
+        ctx.Terceros.Add(proveedor);
+
         await ctx.SaveChangesAsync();
 
-        return (empresa, sucursal);
+        return (empresa, sucursal, proveedor.Id);
     }
 
-    private async Task<Guid> CrearProductoParaSucursal(string codigo,
+    private async Task<Guid> CrearProductoParaSucursal(string codigo, int empresaId,
         decimal precioVenta = 1200m, decimal precioCosto = 600m)
     {
+        // Crear categoria propia para la empresa de prueba (la del factory pertenece a empresa 1)
+        var catDto = new { nombre = $"Cat-Consec-{empresaId}-{codigo[..Math.Min(8, codigo.Length)]}", descripcion = "Test consecutivos" };
+        var catResp = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Categorias", empresaId, catDto));
+        catResp.EnsureSuccessStatusCode();
+        var cat = await catResp.Content.ReadFromJsonAsync<JsonElement>(_json);
+        var catId = cat.GetProperty("id").GetInt32();
+
         var dto = new
         {
             codigoBarras  = codigo,
             nombre        = $"Prod-Consec-{codigo}",
-            categoriaId   = CatId,
+            categoriaId   = catId,
             precioVenta,
             precioCosto,
             unidadMedida  = "94"
         };
-        var r = await _client.PostAsJsonAsync("/api/v1/Productos", dto);
+        var r = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Productos", empresaId, dto));
         r.EnsureSuccessStatusCode();
         var result = await r.Content.ReadFromJsonAsync<ProductoDto>(_json);
         return result!.Id;
     }
 
-    private async Task AgregarStockAsync(Guid productoId, int sucursalId,
+    private async Task AgregarStockAsync(Guid productoId, int sucursalId, int empresaId,
         decimal cantidad = 100m, decimal costo = 600m)
     {
+        // No pasamos terceroId: el proveedor del factory (empresa 1) no es visible
+        // en el contexto de la empresa de prueba. TerceroId es nullable.
         var dto = new
         {
             productoId, sucursalId, cantidad, costoUnitario = costo,
-            terceroId  = TerceroId,
             referencia = $"FC-CONSEC-{Guid.NewGuid():N}"[..20],
             observaciones = "Stock para test consecutivos"
         };
-        var r = await _client.PostAsJsonAsync("/api/v1/Inventario/entrada", dto);
+        var r = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Inventario/entrada", empresaId, dto));
         r.EnsureSuccessStatusCode();
     }
 
-    private async Task<int> CrearYAbrirCaja(int sucursalId, string nombre)
+    private async Task<int> CrearYAbrirCaja(int sucursalId, string nombre, int empresaId)
     {
-        var crear = await _client.PostAsJsonAsync("/api/v1/Cajas",
-            new { nombre, sucursalId });
+        var crear = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Cajas", empresaId,
+            new { nombre, sucursalId }));
         crear.EnsureSuccessStatusCode();
         var caja = await crear.Content.ReadFromJsonAsync<CajaDto>(_json);
 
-        var abrir = await _client.PostAsJsonAsync($"/api/v1/Cajas/{caja!.Id}/abrir",
-            new { montoApertura = 100_000m });
+        var abrir = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, $"/api/v1/Cajas/{caja!.Id}/abrir", empresaId,
+            new { montoApertura = 100_000m }));
         abrir.EnsureSuccessStatusCode();
 
         return caja.Id;
     }
 
-    private async Task<VentaDto> CrearVentaAsync(int sucursalId, int cajaId, Guid productoId)
+    private async Task<VentaDto> CrearVentaAsync(int sucursalId, int cajaId, Guid productoId, int empresaId)
     {
         var dto = new
         {
@@ -122,7 +150,7 @@ public class ConsecutivosMultiEmpresaTests
                 new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m }
             }
         };
-        var r = await _client.PostAsJsonAsync("/api/v1/Ventas", dto);
+        var r = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Ventas", empresaId, dto));
         r.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Venta debe crearse exitosamente. Body: {await r.Content.ReadAsStringAsync()}");
         return (await r.Content.ReadFromJsonAsync<VentaDto>(_json))!;
@@ -139,21 +167,21 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (empresaA, sucursalA) = await CrearEmpresaConSucursalAsync(ctx, "VA");
-        var (empresaB, sucursalB) = await CrearEmpresaConSucursalAsync(ctx, "VB");
+        var (empresaA, sucursalA, _) = await CrearEmpresaConSucursalAsync(ctx, "VA");
+        var (empresaB, sucursalB, _) = await CrearEmpresaConSucursalAsync(ctx, "VB");
 
-        var prodA = await CrearProductoParaSucursal($"CONSEC-VA-{sucursalA.Id}");
-        var prodB = await CrearProductoParaSucursal($"CONSEC-VB-{sucursalB.Id}");
+        var prodA = await CrearProductoParaSucursal($"CONSEC-VA-{sucursalA.Id}", empresaA.Id);
+        var prodB = await CrearProductoParaSucursal($"CONSEC-VB-{sucursalB.Id}", empresaB.Id);
 
-        await AgregarStockAsync(prodA, sucursalA.Id);
-        await AgregarStockAsync(prodB, sucursalB.Id);
+        await AgregarStockAsync(prodA, sucursalA.Id, empresaA.Id);
+        await AgregarStockAsync(prodB, sucursalB.Id, empresaB.Id);
 
-        var cajaA = await CrearYAbrirCaja(sucursalA.Id, $"CajaConsecA-{sucursalA.Id}");
-        var cajaB = await CrearYAbrirCaja(sucursalB.Id, $"CajaConsecB-{sucursalB.Id}");
+        var cajaA = await CrearYAbrirCaja(sucursalA.Id, $"CajaConsecA-{sucursalA.Id}", empresaA.Id);
+        var cajaB = await CrearYAbrirCaja(sucursalB.Id, $"CajaConsecB-{sucursalB.Id}", empresaB.Id);
 
         // Act: crear una venta en cada empresa
-        var ventaA = await CrearVentaAsync(sucursalA.Id, cajaA, prodA);
-        var ventaB = await CrearVentaAsync(sucursalB.Id, cajaB, prodB);
+        var ventaA = await CrearVentaAsync(sucursalA.Id, cajaA, prodA, empresaA.Id);
+        var ventaB = await CrearVentaAsync(sucursalB.Id, cajaB, prodB, empresaB.Id);
 
         // Assert: ambas ventas existen en BD con sucursales distintas
         var ventaAEnDb = await ctx.Ventas
@@ -176,8 +204,6 @@ public class ConsecutivosMultiEmpresaTests
         ventaA.NumeroVenta.Should().StartWith("V-");
         ventaB.NumeroVenta.Should().StartWith("V-");
 
-        // Las dos ventas tienen número igual (V-000001 independiente por sucursal)
-        // o distinto si ya había ventas previas — lo importante es que ambas existen
         ventaAEnDb.NumeroVenta.Should().Be(ventaA.NumeroVenta);
         ventaBEnDb.NumeroVenta.Should().Be(ventaB.NumeroVenta);
     }
@@ -189,20 +215,19 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (_, sucursalC) = await CrearEmpresaConSucursalAsync(ctx, "VC");
-        var prodC = await CrearProductoParaSucursal($"CONSEC-VC-{sucursalC.Id}");
-        await AgregarStockAsync(prodC, sucursalC.Id, cantidad: 50m);
-        var cajaC = await CrearYAbrirCaja(sucursalC.Id, $"CajaConsecC-{sucursalC.Id}");
+        var (empresaC, sucursalC, _) = await CrearEmpresaConSucursalAsync(ctx, "VC");
+        var prodC = await CrearProductoParaSucursal($"CONSEC-VC-{sucursalC.Id}", empresaC.Id);
+        await AgregarStockAsync(prodC, sucursalC.Id, empresaC.Id, cantidad: 50m);
+        var cajaC = await CrearYAbrirCaja(sucursalC.Id, $"CajaConsecC-{sucursalC.Id}", empresaC.Id);
 
         // Act: dos ventas en la misma sucursal
-        var venta1 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC);
-        var venta2 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC);
+        var venta1 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC, empresaC.Id);
+        var venta2 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC, empresaC.Id);
 
         // Assert: números distintos y correlativos
         venta1.NumeroVenta.Should().NotBe(venta2.NumeroVenta,
             "cada venta en la misma sucursal debe tener número único");
 
-        // Extraer el número y verificar que la segunda es mayor
         var num1 = int.Parse(venta1.NumeroVenta.Split('-')[1]);
         var num2 = int.Parse(venta2.NumeroVenta.Split('-')[1]);
         num2.Should().Be(num1 + 1, "el consecutivo debe incrementar de uno en uno");
@@ -219,29 +244,29 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (empresaD, sucursalD) = await CrearEmpresaConSucursalAsync(ctx, "DEV-D");
-        var (empresaE, sucursalE) = await CrearEmpresaConSucursalAsync(ctx, "DEV-E");
+        var (empresaD, sucursalD, _) = await CrearEmpresaConSucursalAsync(ctx, "DEV-D");
+        var (empresaE, sucursalE, _) = await CrearEmpresaConSucursalAsync(ctx, "DEV-E");
 
-        var prodD = await CrearProductoParaSucursal($"CONSEC-DEVD-{sucursalD.Id}");
-        var prodE = await CrearProductoParaSucursal($"CONSEC-DEVE-{sucursalE.Id}");
+        var prodD = await CrearProductoParaSucursal($"CONSEC-DEVD-{sucursalD.Id}", empresaD.Id);
+        var prodE = await CrearProductoParaSucursal($"CONSEC-DEVE-{sucursalE.Id}", empresaE.Id);
 
-        await AgregarStockAsync(prodD, sucursalD.Id, cantidad: 20m);
-        await AgregarStockAsync(prodE, sucursalE.Id, cantidad: 20m);
+        await AgregarStockAsync(prodD, sucursalD.Id, empresaD.Id, cantidad: 20m);
+        await AgregarStockAsync(prodE, sucursalE.Id, empresaE.Id, cantidad: 20m);
 
-        var cajaD = await CrearYAbrirCaja(sucursalD.Id, $"CajaDevD-{sucursalD.Id}");
-        var cajaE = await CrearYAbrirCaja(sucursalE.Id, $"CajaDevE-{sucursalE.Id}");
+        var cajaD = await CrearYAbrirCaja(sucursalD.Id, $"CajaDevD-{sucursalD.Id}", empresaD.Id);
+        var cajaE = await CrearYAbrirCaja(sucursalE.Id, $"CajaDevE-{sucursalE.Id}", empresaE.Id);
 
-        var ventaD = await CrearVentaAsync(sucursalD.Id, cajaD, prodD);
-        var ventaE = await CrearVentaAsync(sucursalE.Id, cajaE, prodE);
+        var ventaD = await CrearVentaAsync(sucursalD.Id, cajaD, prodD, empresaD.Id);
+        var ventaE = await CrearVentaAsync(sucursalE.Id, cajaE, prodE, empresaE.Id);
 
-        // Act: devolucion en empresa D  → POST /Ventas/{id}/devolucion-parcial
+        // Act: devolucion en empresa D
         var dtoDevD = new
         {
             motivo = "Prueba consecutivo empresa D",
             lineas = new[] { new { productoId = prodD, cantidad = 1m } }
         };
-        var respDevD = await _client.PostAsJsonAsync(
-            $"/api/v1/Ventas/{ventaD.Id}/devolucion-parcial", dtoDevD);
+        var respDevD = await _client.SendAsync(ConEmpresaId(HttpMethod.Post,
+            $"/api/v1/Ventas/{ventaD.Id}/devolucion-parcial", empresaD.Id, dtoDevD));
         respDevD.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Devolución D debe ser exitosa. Body: {await respDevD.Content.ReadAsStringAsync()}");
 
@@ -251,8 +276,8 @@ public class ConsecutivosMultiEmpresaTests
             motivo = "Prueba consecutivo empresa E",
             lineas = new[] { new { productoId = prodE, cantidad = 1m } }
         };
-        var respDevE = await _client.PostAsJsonAsync(
-            $"/api/v1/Ventas/{ventaE.Id}/devolucion-parcial", dtoDevE);
+        var respDevE = await _client.SendAsync(ConEmpresaId(HttpMethod.Post,
+            $"/api/v1/Ventas/{ventaE.Id}/devolucion-parcial", empresaE.Id, dtoDevE));
         respDevE.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Devolución E debe ser exitosa. Body: {await respDevE.Content.ReadAsStringAsync()}");
 
@@ -269,16 +294,12 @@ public class ConsecutivosMultiEmpresaTests
         devolucionesEmpresaD.Should().NotBeEmpty("empresa D debe tener al menos una devolución");
         devolucionesEmpresaE.Should().NotBeEmpty("empresa E debe tener al menos una devolución");
 
-        // Cada empresa tiene sus propios consecutivos DEV- independientes
-        // El índice único (EmpresaId, NumeroDevolucion) garantiza no colisión
         var numDevD = devolucionesEmpresaD.First().NumeroDevolucion;
         var numDevE = devolucionesEmpresaE.First().NumeroDevolucion;
 
         numDevD.Should().StartWith("DEV-");
         numDevE.Should().StartWith("DEV-");
 
-        // Las dos pueden tener el mismo número (DEV-000001) porque son de distinta empresa
-        // y el índice único es compuesto (EmpresaId, NumeroDevolucion)
         numDevD.Should().Be(numDevE,
             "cada empresa inicia su propia secuencia DEV-000001 de forma independiente — " +
             "la unicidad está garantizada por el índice compuesto (EmpresaId, NumeroDevolucion)");
@@ -295,28 +316,28 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (empresaOC1, sucursalOC1) = await CrearEmpresaConSucursalAsync(ctx, "OC1");
-        var (empresaOC2, sucursalOC2) = await CrearEmpresaConSucursalAsync(ctx, "OC2");
+        var (empresaOC1, sucursalOC1, provOC1) = await CrearEmpresaConSucursalAsync(ctx, "OC1");
+        var (empresaOC2, sucursalOC2, provOC2) = await CrearEmpresaConSucursalAsync(ctx, "OC2");
 
-        var prodOC1 = await CrearProductoParaSucursal($"CONSEC-OC1-{sucursalOC1.Id}");
-        var prodOC2 = await CrearProductoParaSucursal($"CONSEC-OC2-{sucursalOC2.Id}");
+        var prodOC1 = await CrearProductoParaSucursal($"CONSEC-OC1-{sucursalOC1.Id}", empresaOC1.Id);
+        var prodOC2 = await CrearProductoParaSucursal($"CONSEC-OC2-{sucursalOC2.Id}", empresaOC2.Id);
 
-        // Act: crear una orden de compra para cada empresa
+        // Act: crear una orden de compra para cada empresa (proveedor propio de cada empresa)
         var dtoOC1 = new
         {
             sucursalId = sucursalOC1.Id,
-            proveedorId = TerceroId,
+            proveedorId = provOC1,
             lineas = new[] { new { productoId = prodOC1, cantidad = 10m, precioUnitario = 500m } }
         };
         var dtoOC2 = new
         {
             sucursalId = sucursalOC2.Id,
-            proveedorId = TerceroId,
+            proveedorId = provOC2,
             lineas = new[] { new { productoId = prodOC2, cantidad = 10m, precioUnitario = 500m } }
         };
 
-        var respOC1 = await _client.PostAsJsonAsync("/api/v1/Compras", dtoOC1);
-        var respOC2 = await _client.PostAsJsonAsync("/api/v1/Compras", dtoOC2);
+        var respOC1 = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Compras", empresaOC1.Id, dtoOC1));
+        var respOC2 = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Compras", empresaOC2.Id, dtoOC2));
 
         respOC1.StatusCode.Should().Be(HttpStatusCode.OK,
             $"OC empresa 1 debe crearse. Body: {await respOC1.Content.ReadAsStringAsync()}");
@@ -334,7 +355,6 @@ public class ConsecutivosMultiEmpresaTests
         oc1.NumeroOrden.Should().NotBe(oc2.NumeroOrden,
             "cada orden de compra debe tener número único (consecutivo global por max Id)");
 
-        // Verificar que ambas están en la BD con sus respectivos EmpresaId
         var oc1EnDb = await ctx.OrdenesCompra
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(o => o.NumeroOrden == oc1.NumeroOrden);
@@ -383,8 +403,8 @@ public class ConsecutivosMultiEmpresaTests
         ctx.Sucursales.AddRange(sucOrigen, sucDestino);
         await ctx.SaveChangesAsync();
 
-        var prod = await CrearProductoParaSucursal($"CONSEC-TRAS-{sucOrigen.Id}");
-        await AgregarStockAsync(prod, sucOrigen.Id, cantidad: 50m);
+        var prod = await CrearProductoParaSucursal($"CONSEC-TRAS-{sucOrigen.Id}", empresa.Id);
+        await AgregarStockAsync(prod, sucOrigen.Id, empresa.Id, cantidad: 50m);
 
         // Act: dos traslados distintos
         var dtoT1 = new
@@ -400,11 +420,11 @@ public class ConsecutivosMultiEmpresaTests
             lineas = new[] { new { productoId = prod, cantidad = 3m } }
         };
 
-        var respT1 = await _client.PostAsJsonAsync("/api/v1/Traslados", dtoT1);
+        var respT1 = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Traslados", empresa.Id, dtoT1));
         respT1.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Traslado 1 debe crearse. Body: {await respT1.Content.ReadAsStringAsync()}");
 
-        var respT2 = await _client.PostAsJsonAsync("/api/v1/Traslados", dtoT2);
+        var respT2 = await _client.SendAsync(ConEmpresaId(HttpMethod.Post, "/api/v1/Traslados", empresa.Id, dtoT2));
         respT2.StatusCode.Should().Be(HttpStatusCode.OK,
             $"Traslado 2 debe crearse. Body: {await respT2.Content.ReadAsStringAsync()}");
 

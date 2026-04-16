@@ -254,6 +254,7 @@ public class EmpresaContextMiddlewareTests
             FechaCreacion = DateTime.UtcNow
         };
         ctx.Empresas.Add(empresaInactiva);
+        await ctx.SaveChangesAsync(); // guardar primero para obtener el Id real
 
         var sucursalOtraEmpresa = new Sucursal
         {

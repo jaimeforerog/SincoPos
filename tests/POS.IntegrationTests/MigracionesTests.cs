@@ -16,9 +16,9 @@ public class MigracionesTests
     {
         _factory = factory;
         // Cliente con rol Admin
-        _client = factory.CreateAuthenticatedClient("admin@test.com");
+        _client = factory.CreateAuthenticatedClient("admin@sincopos.com");
         // Cliente con rol Supervisor (no Admin) para tests de permisos
-        _clientSupervisor = factory.CreateAuthenticatedClient("supervisor@test.com");
+        _clientSupervisor = factory.CreateAuthenticatedClient("supervisor@sincopos.com");
     }
 
     #region Consultar Historial

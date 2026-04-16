@@ -15,8 +15,8 @@ public class CategoriasJerarquicasTests
     public CategoriasJerarquicasTests(AuthenticatedWebApplicationFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateAuthenticatedClient("admin@test.com"); // Admin/Supervisor
-        _clientCajero = factory.CreateAuthenticatedClient("cajero@test.com"); // Sin permisos
+        _client = factory.CreateAuthenticatedClient("admin@sincopos.com"); // Admin/Supervisor
+        _clientCajero = factory.CreateAuthenticatedClient("cajero@sincopos.com"); // Sin permisos
     }
 
     #region Crear Categorías
