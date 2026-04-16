@@ -116,6 +116,11 @@ public class CompraRecepcionService
         var impuestosAcumulados = new Dictionary<string, (decimal Porcentaje, string? Cuenta, decimal MontoBase, decimal Total)>();
         var retencionesAcumuladas = new Dictionary<string, (string Nombre, string? Cuenta, decimal Total)>();
 
+        // Fecha efectiva de recepción (usuario la puede editar; no puede ser < fechaOrden)
+        var fechaRecepcionEfectiva = dto.FechaRecepcion.HasValue
+            ? DateTime.SpecifyKind(dto.FechaRecepcion.Value, DateTimeKind.Utc)
+            : DateTime.UtcNow;
+
         // Eventos Marten pendientes para la transacción atómica
         var pendingMartenEvents = new List<(Guid StreamId, object Evento, bool IsNew)>();
 
@@ -215,7 +220,8 @@ public class CompraRecepcionService
                     orden.NumeroOrden,
                     $"Recepción de compra - {orden.Proveedor.Nombre}",
                     null,
-                    orden.SucursalId);
+                    orden.SucursalId,
+                    fechaMovimiento: fechaRecepcionEfectiva);
 
                 pendingMartenEvents.Add((streamId, primerEvento, true));
             }
@@ -228,7 +234,8 @@ public class CompraRecepcionService
                     orden.Proveedor.Nombre,
                     orden.NumeroOrden,
                     $"Recepción de compra - {orden.Proveedor.Nombre}",
-                    null);
+                    null,
+                    fechaMovimiento: fechaRecepcionEfectiva);
 
                 pendingMartenEvents.Add((streamId, eventoEntrada, false));
             }
@@ -250,9 +257,29 @@ public class CompraRecepcionService
                 orden.ProveedorId,
                 numeroLote: lineaRecibida.NumeroLote,
                 fechaVencimiento: fechaVencimientoLote,
-                ordenCompraId: orden.Id);
+                ordenCompraId: orden.Id,
+                fechaEntrada: fechaRecepcionEfectiva);
 
-            // 3. Actualizar stock desde el diccionario pre-cargado (crear si no existe)
+            // 3. Registrar MovimientoInventario con la fecha efectiva de recepción
+            //    (usado para cálculo de stock diario y reportes de kardex)
+            _context.MovimientosInventario.Add(new MovimientoInventario
+            {
+                ProductoId      = detalle.ProductoId,
+                SucursalId      = orden.SucursalId,
+                TipoMovimiento  = TipoMovimiento.EntradaCompra,
+                Cantidad        = lineaRecibida.CantidadRecibida,
+                CostoUnitario   = detalle.PrecioUnitario,
+                CostoTotal      = lineaRecibida.CantidadRecibida * detalle.PrecioUnitario,
+                PorcentajeImpuesto = detalle.PorcentajeImpuesto,
+                MontoImpuesto   = detalle.MontoImpuesto,
+                TerceroId       = orden.ProveedorId,
+                Referencia      = orden.NumeroOrden,
+                Observaciones   = $"Recepción de compra - {orden.Proveedor.Nombre}",
+                UsuarioId       = 0,
+                FechaMovimiento = fechaRecepcionEfectiva
+            });
+
+            // 4. Actualizar stock desde el diccionario pre-cargado (crear si no existe)
             stocksDict.TryGetValue(detalle.ProductoId, out var stock);
 
             if (stock == null)
@@ -301,15 +328,21 @@ public class CompraRecepcionService
             }
         }
 
-        // Resolver usuario
+        // Resolver usuario y actualizar UsuarioId en los movimientos recién añadidos
         int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        if (usuarioId.HasValue)
+        {
+            var movimientosNuevos = _context.ChangeTracker.Entries<MovimientoInventario>()
+                .Where(e => e.State == Microsoft.EntityFrameworkCore.EntityState.Added)
+                .Select(e => e.Entity);
+            foreach (var m in movimientosNuevos)
+                m.UsuarioId = usuarioId.Value;
+        }
 
         // Actualizar estado de la orden
         var todasRecibidas = orden.Detalles.All(d => d.CantidadRecibida >= d.CantidadSolicitada);
         orden.Estado = todasRecibidas ? EstadoOrdenCompra.RecibidaCompleta : EstadoOrdenCompra.RecibidaParcial;
-        orden.FechaRecepcion = dto.FechaRecepcion.HasValue
-            ? DateTime.SpecifyKind(dto.FechaRecepcion.Value, DateTimeKind.Utc)
-            : DateTime.UtcNow;
+        orden.FechaRecepcion = fechaRecepcionEfectiva;
         orden.RecibidoPorUsuarioId = usuarioId;
 
         // ===== OUTBOX ERP EMISSION =====
@@ -336,13 +369,13 @@ public class CompraRecepcionService
             subtotalErp + totalImpuestosErp - totalRetencionesErp,
             $"CXP Proveedor {orden.Proveedor.Nombre}"));
 
-        var fechaVencimientoErp = DateTime.UtcNow.AddDays(orden.DiasPlazo);
+        var fechaVencimientoErp = fechaRecepcionEfectiva.AddDays(orden.DiasPlazo);
         var erpPayload = new CompraErpPayload(
             NumeroOrden: orden.NumeroOrden,
             NitProveedor: orden.Proveedor.Identificacion,
             FormaPago: orden.FormaPago,
             FechaVencimientoErp: fechaVencimientoErp,
-            FechaRecepcion: DateTime.UtcNow,
+            FechaRecepcion: fechaRecepcionEfectiva,
             SucursalId: orden.SucursalId,
             Asientos: asientos,
             TotalOriginalDocumento: subtotalErp + totalImpuestosErp);

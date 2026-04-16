@@ -62,14 +62,16 @@ export function RecibirOrdenDialog({
   const queryClient = useQueryClient();
 
   const diasMaxEntrada = useConfiguracionVariableInt('DiasMax_EntradaAtrazada');
-  const mostrarFechaRecepcion = diasMaxEntrada > 0;
 
+  // La fecha mínima es la fecha de la OC (no puede recibirse antes de haber ordenado).
+  // Si además hay configurado un límite de días atrás, se toma el más restrictivo.
   const minFechaRecepcion = (() => {
-    if (!mostrarFechaRecepcion) return '';
-    const limitStr = localDateStrDaysAgo(diasMaxEntrada);
-    // La recepción no puede ser anterior a la fecha de la orden
     const ordenStr = orden.fechaOrden ? orden.fechaOrden.split('T')[0] : '';
-    return ordenStr > limitStr ? ordenStr : limitStr;
+    if (diasMaxEntrada > 0) {
+      const limitStr = localDateStrDaysAgo(diasMaxEntrada);
+      return ordenStr > limitStr ? ordenStr : limitStr;
+    }
+    return ordenStr;
   })();
 
   const {
@@ -179,7 +181,7 @@ export function RecibirOrdenDialog({
 
     mutation.mutate({
       lineas: lineasRecibidas,
-      fechaRecepcion: mostrarFechaRecepcion && data.fechaRecepcion
+      fechaRecepcion: data.fechaRecepcion
         ? new Date(data.fechaRecepcion).toISOString()
         : undefined,
     });
@@ -203,27 +205,28 @@ export function RecibirOrdenDialog({
             )}
           </Alert>
 
-          {mostrarFechaRecepcion && (
-            <Controller
-              name="fechaRecepcion"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  type="date"
-                  label="Fecha de Recepción *"
-                  slotProps={{
-                    inputLabel: { shrink: true },
-                    htmlInput: { min: minFechaRecepcion, max: today },
-                  }}
-                  error={!!errors.fechaRecepcion}
-                  helperText={errors.fechaRecepcion?.message}
-                  sx={{ mb: 2, width: 260 }}
-                  size="small"
-                />
-              )}
-            />
-          )}
+          <Controller
+            name="fechaRecepcion"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                type="date"
+                label="Fecha de Recepción *"
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: minFechaRecepcion, max: today },
+                }}
+                error={!!errors.fechaRecepcion}
+                helperText={
+                  errors.fechaRecepcion?.message ||
+                  (minFechaRecepcion ? `No puede ser anterior a la fecha de la OC (${minFechaRecepcion})` : '')
+                }
+                sx={{ mb: 2, width: 300 }}
+                size="small"
+              />
+            )}
+          />
 
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">

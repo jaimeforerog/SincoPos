@@ -49,7 +49,8 @@ public class InventarioAggregate
         string? referencia,
         string? observaciones,
         int? usuarioId,
-        int? sucursalUsuarioId)
+        int? sucursalUsuarioId,
+        DateTime? fechaMovimiento = null)
     {
         if (cantidad <= 0)
             throw new InvalidOperationException("La cantidad debe ser mayor a 0.");
@@ -70,7 +71,8 @@ public class InventarioAggregate
             NombreTercero = nombreTercero,
             Referencia = referencia,
             Observaciones = observaciones,
-            UsuarioId = usuarioId
+            UsuarioId = usuarioId,
+            Timestamp = fechaMovimiento ?? DateTime.UtcNow
         };
 
         aggregate.Apply(evento);
@@ -85,7 +87,8 @@ public class InventarioAggregate
         string? nombreTercero,
         string? referencia,
         string? observaciones,
-        int? usuarioId)
+        int? usuarioId,
+        DateTime? fechaMovimiento = null)
     {
         if (cantidad <= 0)
             throw new InvalidOperationException("La cantidad debe ser mayor a 0.");
@@ -101,7 +104,8 @@ public class InventarioAggregate
             NombreTercero = nombreTercero,
             Referencia = referencia,
             Observaciones = observaciones,
-            UsuarioId = usuarioId
+            UsuarioId = usuarioId,
+            Timestamp = fechaMovimiento ?? DateTime.UtcNow
         };
 
         Apply(evento);
