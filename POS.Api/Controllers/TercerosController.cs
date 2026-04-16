@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using POS.Api.Extensions;
 using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Infrastructure.Services;
@@ -16,15 +17,18 @@ public class TercerosController : ControllerBase
     private readonly ITerceroService _service;
     private readonly IClienteHistorialService _historialService;
     private readonly ILogger<TercerosController> _logger;
+    private readonly IActivityLogService _activityLogService;
 
     public TercerosController(
         ITerceroService service,
         IClienteHistorialService historialService,
-        ILogger<TercerosController> logger)
+        ILogger<TercerosController> logger,
+        IActivityLogService activityLogService)
     {
         _service = service;
         _historialService = historialService;
         _logger = logger;
+        _activityLogService = activityLogService;
     }
 
     /// <summary>Calcular el Dígito de Verificación (DV) de un NIT (módulo 11 DIAN)</summary>
@@ -63,6 +67,15 @@ public class TercerosController : ControllerBase
             return Problem(detail: error, statusCode: StatusCodes.Status409Conflict);
 
         _logger.LogInformation("Tercero creado. Id: {Id}, Nombre: {Nombre}", result!.Id, result.Nombre);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "CrearTercero",
+            Tipo: TipoActividad.Configuracion,
+            Descripcion: $"Tercero '{result.Nombre}' ({result.TipoTercero}) creado por {User.GetEmail()}",
+            TipoEntidad: "Tercero",
+            EntidadId: result.Id.ToString(),
+            EntidadNombre: result.Nombre,
+            DatosNuevos: new { result.Identificacion, result.Nombre, result.TipoTercero, CreadoPor = User.GetEmail() }
+        ));
         return CreatedAtAction(nameof(ObtenerTercero), new { id = result.Id }, result);
     }
 
@@ -134,6 +147,15 @@ public class TercerosController : ControllerBase
         }
 
         _logger.LogInformation("Tercero {Id} actualizado.", id);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ActualizarTercero",
+            Tipo: TipoActividad.Configuracion,
+            Descripcion: $"Tercero {id} actualizado por {User.GetEmail()}",
+            TipoEntidad: "Tercero",
+            EntidadId: id.ToString(),
+            EntidadNombre: dto.Nombre,
+            DatosNuevos: new { dto.Nombre, ActualizadoPor = User.GetEmail() }
+        ));
         return NoContent();
     }
 
@@ -147,6 +169,14 @@ public class TercerosController : ControllerBase
             return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
 
         _logger.LogInformation("Tercero {Id} desactivado.", id);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "DesactivarTercero",
+            Tipo: TipoActividad.Configuracion,
+            Descripcion: $"Tercero {id} desactivado por {User.GetEmail()}",
+            TipoEntidad: "Tercero",
+            EntidadId: id.ToString(),
+            DatosNuevos: new { DesactivadoPor = User.GetEmail() }
+        ));
         return NoContent();
     }
 

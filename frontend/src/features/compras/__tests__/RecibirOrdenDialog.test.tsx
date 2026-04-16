@@ -18,6 +18,7 @@ describe('RecibirOrdenDialog', () => {
           nombreProducto: 'Producto Test',
           cantidadSolicitada: 10,
           cantidadRecibida: 0,
+          precioUnitario: 5000,
           manejaLotes: false,
         }
       ]

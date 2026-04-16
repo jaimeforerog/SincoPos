@@ -17,17 +17,20 @@ public class ProductosController : ControllerBase
     private readonly ILoteService _loteService;
     private readonly IProductoAnticipacionService _anticipacionService;
     private readonly ILogger<ProductosController> _logger;
+    private readonly IActivityLogService _activityLogService;
 
     public ProductosController(
         IProductoService productoService,
         ILoteService loteService,
         IProductoAnticipacionService anticipacionService,
-        ILogger<ProductosController> logger)
+        ILogger<ProductosController> logger,
+        IActivityLogService activityLogService)
     {
         _productoService = productoService;
         _loteService = loteService;
         _anticipacionService = anticipacionService;
         _logger = logger;
+        _activityLogService = activityLogService;
     }
 
     /// <summary>
@@ -62,6 +65,16 @@ public class ProductosController : ControllerBase
             return Problem(detail: error, statusCode: StatusCodes.Status409Conflict);
 
         _logger.LogInformation("Producto creado: {Id} - {Nombre}", result!.Id, result.Nombre);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "CrearProducto",
+            Tipo: TipoActividad.Producto,
+            Descripcion: $"Producto '{result.Nombre}' creado por {User.GetEmail()}",
+            TipoEntidad: "Producto",
+            EntidadId: result.Id.ToString(),
+            EntidadNombre: result.Nombre,
+            DatosAnteriores: null,
+            DatosNuevos: new { result.CodigoBarras, result.Nombre, result.PrecioCosto, result.CategoriaId, CreadoPor = User.GetEmail() }
+        ));
         return CreatedAtAction(nameof(ObtenerProducto), new { id = result.Id }, result);
     }
 
@@ -127,6 +140,16 @@ public class ProductosController : ControllerBase
             return error!.Contains("no encontrado") ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogInformation("Producto {Id} actualizado.", id);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ActualizarProducto",
+            Tipo: TipoActividad.Producto,
+            Descripcion: $"Producto {id} actualizado por {User.GetEmail()}",
+            TipoEntidad: "Producto",
+            EntidadId: id.ToString(),
+            EntidadNombre: dto.Nombre,
+            DatosAnteriores: null,
+            DatosNuevos: new { dto.Nombre, dto.PrecioCosto, ActualizadoPor = User.GetEmail() }
+        ));
         return NoContent();
     }
 
@@ -169,6 +192,14 @@ public class ProductosController : ControllerBase
             return error!.Contains("no encontrado") ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         _logger.LogInformation("Producto {Id} desactivado.", id);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "DesactivarProducto",
+            Tipo: TipoActividad.Producto,
+            Descripcion: $"Producto {id} desactivado por {User.GetEmail()}. Motivo: {motivo ?? "no especificado"}",
+            TipoEntidad: "Producto",
+            EntidadId: id.ToString(),
+            DatosNuevos: new { Motivo = motivo, DesactivadoPor = User.GetEmail() }
+        ));
         return NoContent();
     }
 

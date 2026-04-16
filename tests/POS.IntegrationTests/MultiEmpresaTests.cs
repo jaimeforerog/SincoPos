@@ -125,9 +125,9 @@ public class MultiEmpresaTests
     }
 
     [Fact]
-    public async Task Producto_FiltroEstricto_ExcluyeProductoSinEmpresa_EnContextoEmpresa()
+    public async Task Producto_FiltroEstricto_ExcluyeProductoDeOtraEmpresa_EnContextoEmpresa()
     {
-        // Arrange: producto con EmpresaId = null (sin empresa asignada)
+        // Arrange: producto asignado a empresa 1 — invisible cuando el contexto es empresa 99
         using var insertScope = _factory.Services.CreateScope();
         var insertCtx = insertScope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -140,7 +140,7 @@ public class MultiEmpresaTests
             PrecioVenta = 100m,
             PrecioCosto = 60m,
             UnidadMedida = "94",
-            EmpresaId = null,  // sin empresa
+            EmpresaId = 1,  // empresa distinta a 99 — filtro estricto la excluye
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         });
@@ -156,11 +156,11 @@ public class MultiEmpresaTests
             .Where(p => p.CodigoBarras == "EMP-GLOBAL-001")
             .ToListAsync();
 
-        // Assert: filtro estricto — productos sin empresa NO son visibles en contexto de empresa
+        // Assert: filtro estricto — productos de otra empresa NO son visibles en contexto de empresa 99
         // (comportamiento post-corrección multi-empresa 2026-03-23)
         productosVisibles.Should().BeEmpty(
-            "con filtro estricto, un producto con EmpresaId=null no es visible " +
-            "en el contexto de empresa 99 — debe asignarse explícitamente a esa empresa");
+            "con filtro estricto, un producto de empresa 1 no es visible " +
+            "en el contexto de empresa 99");
     }
 
     [Fact]

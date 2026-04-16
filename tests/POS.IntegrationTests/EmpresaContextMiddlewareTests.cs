@@ -258,7 +258,7 @@ public class EmpresaContextMiddlewareTests
         var sucursalOtraEmpresa = new Sucursal
         {
             Nombre    = "Suc-MW-OtraEmpresa",
-            EmpresaId = null, // sin empresa (visible globalmente)
+            EmpresaId = empresaInactiva.Id, // empresa inactiva — visible cuando EmpresaId del provider es null
             Activo    = true,
             FechaCreacion = DateTime.UtcNow,
             CreadoPor = "test"

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
+using POS.Application.Services;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 
@@ -18,12 +19,14 @@ public class SucursalesController : ControllerBase
     private readonly AppDbContext _context;
     private readonly ILogger<SucursalesController> _logger;
     private readonly POS.Application.Services.ICurrentEmpresaProvider _empresaProvider;
+    private readonly IActivityLogService _activityLogService;
 
-    public SucursalesController(AppDbContext context, ILogger<SucursalesController> logger, POS.Application.Services.ICurrentEmpresaProvider empresaProvider)
+    public SucursalesController(AppDbContext context, ILogger<SucursalesController> logger, POS.Application.Services.ICurrentEmpresaProvider empresaProvider, IActivityLogService activityLogService)
     {
         _context = context;
         _logger = logger;
         _empresaProvider = empresaProvider;
+        _activityLogService = activityLogService;
     }
 
     /// <summary>

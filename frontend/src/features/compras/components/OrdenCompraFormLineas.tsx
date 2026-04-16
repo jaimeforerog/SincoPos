@@ -94,7 +94,7 @@ export function OrdenCompraFormLineas({
     let impuestosTotal = 0;
     lineas.forEach((linea) => {
       const subtotalLinea = linea.cantidad * linea.precioUnitario;
-      const impuestoSeleccionado = linea.impuestoId
+      const impuestoSeleccionado = linea.impuestoId != null
         ? impuestos.find((imp) => imp.id === linea.impuestoId)
         : null;
       subtotal += subtotalLinea;
@@ -334,12 +334,15 @@ export function OrdenCompraFormLineas({
                             select
                             value={value ?? ''}
                             onChange={(e) =>
-                              onChange(e.target.value ? Number(e.target.value) : undefined)
+                              onChange(e.target.value !== '' ? Number(e.target.value) : undefined)
                             }
                             size="small"
                             fullWidth
                             sx={{ '& .MuiSelect-select': { fontSize: '0.8rem', py: '2px' } }}
                           >
+                            <MenuItem value="" sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                              Sin IVA
+                            </MenuItem>
                             {impuestos.map((impuesto) => (
                               <MenuItem key={impuesto.id} value={impuesto.id} sx={{ fontSize: '0.8rem' }}>
                                 {impuesto.nombre}

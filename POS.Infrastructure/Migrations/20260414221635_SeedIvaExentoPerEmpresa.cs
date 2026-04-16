@@ -19,7 +19,7 @@ namespace POS.Infrastructure.Migrations
                 INSERT INTO public.impuestos
                     (""Nombre"", ""Tipo"", ""Porcentaje"", ""ValorFijo"", ""Activo"",
                      ""AplicaSobreBase"", ""CodigoPais"", ""CodigoCuentaContable"",
-                     ""Descripcion"", ""FechaCreacion"", ""EmpresaId"")
+                     ""Descripcion"", ""FechaCreacion"", ""CreadoPor"", ""EmpresaId"")
                 SELECT
                     'Exento 0%',
                     0,
@@ -31,6 +31,7 @@ namespace POS.Infrastructure.Migrations
                     '2408',
                     'Bienes y servicios exentos de IVA',
                     '2026-01-01 00:00:00'::timestamp,
+                    'sistema',
                     e.""Id""
                 FROM public.""Empresas"" e
                 WHERE NOT EXISTS (

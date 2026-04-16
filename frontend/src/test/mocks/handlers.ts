@@ -123,4 +123,9 @@ export const handlers = [
   http.post('*/api/v1/compras', () =>
     HttpResponse.json({ id: 100, numeroOrden: 'OC-001' }, { status: 201 })
   ),
+
+  // Configuración de variables (devuelve 0 por defecto → sin restricción de fecha)
+  http.get('*/api/v1/configuracion-variables/nombre/:nombre', () =>
+    HttpResponse.json({ valor: '0' })
+  ),
 ];
