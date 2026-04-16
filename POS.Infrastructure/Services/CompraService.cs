@@ -100,9 +100,12 @@ public class CompraService : ICompraService
                 .ToDictionaryAsync(i => i.Id)
             : new Dictionary<int, Impuesto>();
 
-        // Generar número de orden con MAX(Id) global (IgnoreQueryFilters evita colisión entre empresas)
-        var maxId = await _context.OrdenesCompra.IgnoreQueryFilters().MaxAsync(o => (int?)o.Id) ?? 0;
-        var numeroOrden = $"OC-{maxId + 1:000000}";
+        // Generar número de orden secuencial POR SUCURSAL (IgnoreQueryFilters para contar globalmente
+        // sin filtros de soft-delete ni empresa, evitando huecos en la secuencia)
+        var totalSucursal = await _context.OrdenesCompra
+            .IgnoreQueryFilters()
+            .CountAsync(o => o.SucursalId == dto.SucursalId);
+        var numeroOrden = $"OC-{totalSucursal + 1:000000}";
 
         // Calcular totales usando TaxEngine
         decimal subtotal = 0;

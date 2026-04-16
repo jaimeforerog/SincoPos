@@ -39,6 +39,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { comprasApi } from '@/api/compras';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
+import { useAuthStore } from '@/stores/auth.store';
 import type { OrdenCompraDTO } from '@/types/api';
 import { OrdenCompraDetalleDialog } from '../components/OrdenCompraDetalleDialog';
 import { AprobarOrdenDialog } from '../components/AprobarOrdenDialog';
@@ -99,6 +100,7 @@ function HeroStat({ icon, label, value, loading }: HeroStatProps) {
 
 export function ComprasPage() {
   const navigate = useNavigate();
+  const activeSucursalId = useAuthStore((s) => s.activeSucursalId);
   const [estadoFiltro, setEstadoFiltro] = useState('');
   const [showDetalleDialog, setShowDetalleDialog] = useState(false);
   const [showAprobarDialog, setShowAprobarDialog] = useState(false);
@@ -110,8 +112,13 @@ export function ComprasPage() {
   const queryClient = useQueryClient();
 
   const { data: ordenesPage, isLoading, error, refetch } = useQuery({
-    queryKey: ['compras', { estado: estadoFiltro }],
-    queryFn: () => comprasApi.getAll({ estado: estadoFiltro || undefined, pageSize: 100 }),
+    queryKey: ['compras', { estado: estadoFiltro, sucursalId: activeSucursalId }],
+    queryFn: () => comprasApi.getAll({
+      estado: estadoFiltro || undefined,
+      sucursalId: activeSucursalId ?? undefined,
+      pageSize: 100,
+    }),
+    enabled: activeSucursalId != null,
   });
   const ordenes = ordenesPage?.items ?? [];
 
@@ -128,10 +135,11 @@ export function ComprasPage() {
     },
   });
 
-  // Stats para el hero (calculadas sobre TODOS los datos sin filtro de estado)
+  // Stats para el hero (calculadas sobre todas las OC de la sucursal activa)
   const { data: todasOrdenes } = useQuery({
-    queryKey: ['compras', { estado: '' }],
-    queryFn: () => comprasApi.getAll({ pageSize: 1000 }),
+    queryKey: ['compras', { estado: '', sucursalId: activeSucursalId }],
+    queryFn: () => comprasApi.getAll({ sucursalId: activeSucursalId ?? undefined, pageSize: 1000 }),
+    enabled: activeSucursalId != null,
     staleTime: 60000,
   });
   const allOrdenes = todasOrdenes?.items ?? [];

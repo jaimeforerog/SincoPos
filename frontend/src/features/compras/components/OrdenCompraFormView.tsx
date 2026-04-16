@@ -274,27 +274,14 @@ export function OrdenCompraFormView({ onBack, onSuccess }: Props) {
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Controller
-                  name="sucursalId"
-                  control={control}
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <TextField
-                      {...field}
-                      select
-                      label="Sucursal *"
-                      value={value || ''}
-                      onChange={(e) => onChange(Number(e.target.value))}
-                      error={!!errors.sucursalId}
-                      helperText={errors.sucursalId?.message}
-                      fullWidth
-                      size="small"
-                    >
-                      <MenuItem value="">Seleccione una sucursal</MenuItem>
-                      {sucursales.map((suc) => (
-                        <MenuItem key={suc.id} value={suc.id}>{suc.nombre}</MenuItem>
-                      ))}
-                    </TextField>
-                  )}
+                {/* La sucursal siempre es la activa del contexto superior — no editable */}
+                <TextField
+                  label="Sucursal"
+                  value={sucursales.find((s) => s.id === activeSucursalId)?.nombre ?? '—'}
+                  size="small"
+                  fullWidth
+                  disabled
+                  slotProps={{ input: { readOnly: true } }}
                 />
 
                 <Controller
