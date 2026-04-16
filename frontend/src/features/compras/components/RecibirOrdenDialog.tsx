@@ -181,8 +181,11 @@ export function RecibirOrdenDialog({
 
     mutation.mutate({
       lineas: lineasRecibidas,
+      // Interpretamos la fecha como medianoche en hora local del usuario (no UTC).
+      // new Date('YYYY-MM-DD') la parseaba como UTC midnight causando desfase en UTC-5.
+      // new Date('YYYY-MM-DDT00:00:00') la parsea como hora local → toISOString da la UTC correcta.
       fechaRecepcion: data.fechaRecepcion
-        ? new Date(data.fechaRecepcion).toISOString()
+        ? new Date(`${data.fechaRecepcion}T00:00:00`).toISOString()
         : undefined,
     });
   };

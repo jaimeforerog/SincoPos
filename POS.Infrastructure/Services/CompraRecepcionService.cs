@@ -121,6 +121,9 @@ public class CompraRecepcionService
             ? DateTime.SpecifyKind(dto.FechaRecepcion.Value, DateTimeKind.Utc)
             : DateTime.UtcNow;
 
+        // Resolver usuario ANTES del loop para incluirlo en los eventos del stream
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+
         // Eventos Marten pendientes para la transacción atómica
         var pendingMartenEvents = new List<(Guid StreamId, object Evento, bool IsNew)>();
 
@@ -219,7 +222,7 @@ public class CompraRecepcionService
                     orden.Proveedor.Nombre,
                     orden.NumeroOrden,
                     $"Recepción de compra - {orden.Proveedor.Nombre}",
-                    null,
+                    usuarioId,
                     orden.SucursalId,
                     fechaMovimiento: fechaRecepcionEfectiva);
 
@@ -234,7 +237,7 @@ public class CompraRecepcionService
                     orden.Proveedor.Nombre,
                     orden.NumeroOrden,
                     $"Recepción de compra - {orden.Proveedor.Nombre}",
-                    null,
+                    usuarioId,
                     fechaMovimiento: fechaRecepcionEfectiva);
 
                 pendingMartenEvents.Add((streamId, eventoEntrada, false));
@@ -328,8 +331,7 @@ public class CompraRecepcionService
             }
         }
 
-        // Resolver usuario y actualizar UsuarioId en los movimientos recién añadidos
-        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        // Actualizar UsuarioId en los movimientos recién añadidos (usuarioId resuelto antes del loop)
         if (usuarioId.HasValue)
         {
             var movimientosNuevos = _context.ChangeTracker.Entries<MovimientoInventario>()
