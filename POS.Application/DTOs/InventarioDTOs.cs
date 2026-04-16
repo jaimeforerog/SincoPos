@@ -101,7 +101,8 @@ public record AlertaLoteDto(
     string? NumeroLote,
     DateOnly FechaVencimiento,
     int DiasParaVencer,
-    decimal CantidadDisponible
+    decimal CantidadDisponible,
+    DateTime FechaEntrada
 );
 
 public record ActualizarLoteDto(

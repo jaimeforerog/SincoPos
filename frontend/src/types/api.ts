@@ -896,6 +896,7 @@ export interface AlertaLoteDTO {
   fechaVencimiento: string; // 'YYYY-MM-DD'
   diasParaVencer: number;
   cantidadDisponible: number;
+  fechaEntrada: string;     // ISO timestamp de la entrada al inventario
 }
 
 export interface ActualizarLoteDTO {

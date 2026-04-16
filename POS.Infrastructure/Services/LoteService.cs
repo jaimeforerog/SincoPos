@@ -69,7 +69,8 @@ public class LoteService : ILoteService
             l.NumeroLote,
             l.FechaVencimiento!.Value,
             l.FechaVencimiento!.Value.DayNumber - hoy.DayNumber,
-            l.CantidadDisponible
+            l.CantidadDisponible,
+            l.FechaEntrada
         )).ToList();
     }
 
@@ -108,7 +109,8 @@ public class LoteService : ILoteService
                 l.NumeroLote,
                 l.FechaVencimiento!.Value,
                 l.FechaVencimiento!.Value.DayNumber - hoy.DayNumber,
-                l.CantidadDisponible
+                l.CantidadDisponible,
+                l.FechaEntrada
             )));
         }
 

@@ -224,6 +224,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                     <TableCell>Producto</TableCell>
                     <TableCell>Sucursal</TableCell>
                     <TableCell>Nº Lote</TableCell>
+                    <TableCell>Fecha Entrada</TableCell>
                     <TableCell>Vence</TableCell>
                     <TableCell align="right">Disponible</TableCell>
                     <TableCell align="center">Vence en</TableCell>
@@ -237,6 +238,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                       <TableCell>
                         <Typography variant="body2" fontFamily="monospace">{a.numeroLote || '—'}</Typography>
                       </TableCell>
+                      <TableCell>{new Date(a.fechaEntrada).toLocaleDateString('es-CO')}</TableCell>
                       <TableCell>{a.fechaVencimiento}</TableCell>
                       <TableCell align="right">{a.cantidadDisponible}</TableCell>
                       <TableCell align="center">{chipVencimiento(a.diasParaVencer)}</TableCell>
