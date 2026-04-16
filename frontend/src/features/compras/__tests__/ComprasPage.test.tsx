@@ -14,6 +14,12 @@ vi.mock('@/api/compras', () => ({
   },
 }));
 
+// ComprasPage filtra por sucursal activa — proveer un id válido para los tests
+vi.mock('@/stores/auth.store', () => ({
+  useAuthStore: (selector: (s: { activeSucursalId: number }) => unknown) =>
+    selector({ activeSucursalId: 1 }),
+}));
+
 // Stub de diálogos pesados
 vi.mock('../components/OrdenCompraFormDialog', () => ({
   OrdenCompraFormDialog: ({ open }: { open: boolean }) =>
