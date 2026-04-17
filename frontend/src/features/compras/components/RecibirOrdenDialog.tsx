@@ -35,7 +35,6 @@ const lineaRecepcionSchema = z.object({
   cantidadRecibida: z.number().min(0, 'Cantidad debe ser mayor o igual a 0'),
   observaciones: z.string().optional(),
   numeroLote: z.string().optional(),
-  fechaVencimiento: z.string().optional(),
 });
 
 const recibirSchema = z.object({
@@ -101,27 +100,25 @@ export function RecibirOrdenDialog({
     if (open) {
       reset({
         fechaRecepcion: defaultFechaRecepcion,
-        lineas: orden.detalles.map((d) => {
-          // Pre-calcular fecha de vencimiento si el producto tiene diasVidaUtil configurado
-          let fechaVencimientoDefault = '';
-          if (d.manejaLotes && d.diasVidaUtil) {
-            const fecha = new Date();
-            fecha.setDate(fecha.getDate() + d.diasVidaUtil);
-            fechaVencimientoDefault = localDateStr(fecha);
-          }
-          return {
-            productoId: d.productoId,
-            cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
-            observaciones: '',
-            numeroLote: '',
-            fechaVencimiento: fechaVencimientoDefault,
-          };
-        }),
+        lineas: orden.detalles.map((d) => ({
+          productoId: d.productoId,
+          cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
+          observaciones: '',
+          numeroLote: '',
+        })),
       });
     }
   }, [open, orden, reset]);
 
   const lineas = watch('lineas');
+  const fechaRecepcionValue = watch('fechaRecepcion');
+
+  const calcFechaVencimiento = (diasVidaUtil: number | undefined): string => {
+    if (!diasVidaUtil || !fechaRecepcionValue) return '—';
+    const fecha = new Date(`${fechaRecepcionValue}T00:00:00`);
+    fecha.setDate(fecha.getDate() + diasVidaUtil);
+    return localDateStr(fecha);
+  };
 
   const mutation = useMutation({
     mutationFn: (data: RecibirOrdenCompraDTO) => comprasApi.recibir(orden.id, data),
@@ -171,7 +168,6 @@ export function RecibirOrdenDialog({
         cantidadRecibida: l.cantidadRecibida,
         observaciones: l.observaciones || undefined,
         numeroLote: l.numeroLote || undefined,
-        fechaVencimiento: l.fechaVencimiento || undefined,
       }));
 
     if (lineasRecibidas.length === 0) {
@@ -315,23 +311,9 @@ export function RecibirOrdenDialog({
                       )}
                       {tieneLotes && (
                         <TableCell>
-                          <Controller
-                            name={`lineas.${index}.fechaVencimiento`}
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                type="date"
-                                size="small"
-                                fullWidth
-                                disabled={!detalle.manejaLotes}
-                                slotProps={{
-                                  inputLabel: { shrink: true },
-                                  htmlInput: { min: localDateStr() },
-                                }}
-                              />
-                            )}
-                          />
+                          <Typography variant="body2" color={detalle.manejaLotes ? 'text.primary' : 'text.disabled'}>
+                            {detalle.manejaLotes ? calcFechaVencimiento(detalle.diasVidaUtil ?? undefined) : '—'}
+                          </Typography>
                         </TableCell>
                       )}
                       <TableCell>

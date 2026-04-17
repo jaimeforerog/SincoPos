@@ -31,7 +31,6 @@ const lineaRecepcionSchema = z.object({
   cantidadRecibida: z.number().min(0, 'Cantidad debe ser mayor o igual a 0'),
   observaciones: z.string().optional(),
   numeroLote: z.string().optional(),
-  fechaVencimiento: z.string().optional(),
 });
 
 const recibirSchema = z.object({
@@ -79,25 +78,24 @@ export function AccionRecibir({ orden, onCancel, onDone }: Props) {
 
     reset({
       fechaRecepcion: defaultFecha,
-      lineas: orden.detalles.map((d) => {
-        let fechaVencimientoDefault = '';
-        if (d.manejaLotes && d.diasVidaUtil) {
-          const fecha = new Date();
-          fecha.setDate(fecha.getDate() + d.diasVidaUtil);
-          fechaVencimientoDefault = localDateStr(fecha);
-        }
-        return {
-          productoId: d.productoId,
-          cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
-          observaciones: '',
-          numeroLote: '',
-          fechaVencimiento: fechaVencimientoDefault,
-        };
-      }),
+      lineas: orden.detalles.map((d) => ({
+        productoId: d.productoId,
+        cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
+        observaciones: '',
+        numeroLote: '',
+      })),
     });
   }, [orden, reset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lineas = watch('lineas');
+  const fechaRecepcionValue = watch('fechaRecepcion');
+
+  const calcFechaVencimiento = (diasVidaUtil: number | undefined): string => {
+    if (!diasVidaUtil || !fechaRecepcionValue) return '—';
+    const fecha = new Date(`${fechaRecepcionValue}T00:00:00`);
+    fecha.setDate(fecha.getDate() + diasVidaUtil);
+    return localDateStr(fecha);
+  };
   const totalUnidades = lineas.reduce((sum, l) => sum + (l.cantidadRecibida || 0), 0);
 
   const mutation = useMutation({
@@ -109,7 +107,6 @@ export function AccionRecibir({ orden, onCancel, onDone }: Props) {
           cantidadRecibida: l.cantidadRecibida,
           observaciones: l.observaciones || undefined,
           numeroLote: l.numeroLote || undefined,
-          fechaVencimiento: l.fechaVencimiento || undefined,
         }));
       return comprasApi.recibir(orden.id, { lineas: lineasRecibidas, fechaRecepcion: data.fechaRecepcion });
     },
@@ -293,21 +290,9 @@ export function AccionRecibir({ orden, onCancel, onDone }: Props) {
                     )}
                     {tieneLotes && (
                       <TableCell>
-                        <Controller
-                          name={`lineas.${index}.fechaVencimiento`}
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              {...field}
-                              type="date"
-                              size="small"
-                              fullWidth
-                              disabled={!detalle.manejaLotes}
-                              InputLabelProps={{ shrink: true }}
-                              inputProps={{ min: today }}
-                            />
-                          )}
-                        />
+                        <Typography variant="body2" color={detalle.manejaLotes ? 'text.primary' : 'text.disabled'}>
+                          {detalle.manejaLotes ? calcFechaVencimiento(detalle.diasVidaUtil ?? undefined) : '—'}
+                        </Typography>
                       </TableCell>
                     )}
                     <TableCell>
