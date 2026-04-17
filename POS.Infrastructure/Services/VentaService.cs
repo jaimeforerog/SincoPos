@@ -155,6 +155,17 @@ public class VentaService : IVentaService
             .Where(s => productoIds.Contains(s.ProductoId) && s.SucursalId == dto.SucursalId)
             .ToDictionaryAsync(s => s.ProductoId);
 
+        // Fecha efectiva de la venta (usuario la puede editar; no puede ser futura)
+        var fechaVentaEfectiva = dto.FechaVenta.HasValue
+            ? DateTime.SpecifyKind(dto.FechaVenta.Value, DateTimeKind.Utc)
+            : DateTime.UtcNow;
+
+        // Resolver usuarioId ANTES del loop para incluirlo en los eventos del stream
+        var emailCajero = _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("preferred_username")?.Value;
+        int? usuarioIdVenta = await _context.ResolverUsuarioIdAsync(emailCajero);
+
         // Procesar cada linea con el TaxEngine
         var detalles = new List<DetalleVenta>();
         var stocksVerificar = new List<(Stock stock, string nombre)>();
@@ -225,7 +236,8 @@ public class VentaService : IVentaService
                 return (null, $"No hay registro de inventario para {producto.Nombre}.");
 
             var eventoVenta = aggregate.RegistrarSalidaVenta(
-                linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta, null);
+                linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta,
+                usuarioIdVenta, fechaMovimiento: fechaVentaEfectiva);
             pendingMartenEvents.Add((streamId, eventoVenta));
 
             // Consumir inventario con la estrategia de costeo (delegada a IVentaCosteoService)
@@ -337,9 +349,7 @@ public class VentaService : IVentaService
             MontoPagado = dto.MontoPagado,
             Cambio = cambio,
             Observaciones = dto.Observaciones,
-            FechaVenta = dto.FechaVenta.HasValue
-                ? DateTime.SpecifyKind(dto.FechaVenta.Value, DateTimeKind.Utc)
-                : DateTime.UtcNow,
+            FechaVenta = fechaVentaEfectiva,
             RequiereFacturaElectronica = requiereFacturaElectronica,
             Detalles = detalles
         };

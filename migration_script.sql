@@ -76,7 +76,7 @@ DO $EF$
 BEGIN
     IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260224215349_MakeCategoriaIdRequired') THEN
 
-                    PERFORM setval(pg_get_serial_sequence('public.categorias', 'Id'),
+                    SELECT setval(pg_get_serial_sequence('public.categorias', 'Id'),
                         COALESCE((SELECT MAX("Id") FROM public.categorias), 0) + 1, false);
                 
     END IF;
@@ -1931,45 +1931,6 @@ END $EF$;
 
 DO $EF$
 BEGIN
-    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260305200000_AgregarUnidadMedidaProducto') THEN
-    ALTER TABLE public.productos ADD COLUMN unidad_medida character varying(10) NOT NULL DEFAULT '94';
-    END IF;
-END $EF$;
-
-DO $EF$
-BEGIN
-    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260305200000_AgregarUnidadMedidaProducto') THEN
-    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
-    VALUES ('20260305200000_AgregarUnidadMedidaProducto', '9.0.1');
-    END IF;
-END $EF$;
-
-DO $EF$
-BEGIN
-    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260306000000_AgregarMultiSucursalUsuario') THEN
-    CREATE TABLE public.usuario_sucursales (
-        usuario_id integer NOT NULL,
-        sucursal_id integer NOT NULL,
-        CONSTRAINT pk_usuario_sucursales PRIMARY KEY (usuario_id, sucursal_id),
-        CONSTRAINT fk_usuario_sucursales_sucursal FOREIGN KEY (sucursal_id) REFERENCES public.sucursales ("Id") ON DELETE CASCADE,
-        CONSTRAINT fk_usuario_sucursales_usuario FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
-    );
-    CREATE INDEX ix_usuario_sucursales_sucursal_id ON public.usuario_sucursales (sucursal_id);
-    INSERT INTO public.usuario_sucursales (usuario_id, sucursal_id)
-        SELECT id, sucursal_default_id FROM public.usuarios WHERE sucursal_default_id IS NOT NULL ON CONFLICT DO NOTHING;
-    END IF;
-END $EF$;
-
-DO $EF$
-BEGIN
-    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260306000000_AgregarMultiSucursalUsuario') THEN
-    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
-    VALUES ('20260306000000_AgregarMultiSucursalUsuario', '9.0.1');
-    END IF;
-END $EF$;
-
-DO $EF$
-BEGIN
     IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260306141746_FixUsuarioSucursalesNavigation') THEN
     INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
     VALUES ('20260306141746_FixUsuarioSucursalesNavigation', '9.0.1');
@@ -3151,32 +3112,32 @@ BEGIN
                     UPDATE public.ventas v
                     SET "EmpresaId" = s."EmpresaId"
                     FROM public.sucursales s
-                    WHERE v.sucursal_id = s."Id" AND s."EmpresaId" IS NOT NULL;
+                    WHERE v."SucursalId" = s."Id" AND s."EmpresaId" IS NOT NULL;
 
                     UPDATE public.cajas c
                     SET "EmpresaId" = s."EmpresaId"
                     FROM public.sucursales s
-                    WHERE c.sucursal_id = s."Id" AND s."EmpresaId" IS NOT NULL;
+                    WHERE c."SucursalId" = s."Id" AND s."EmpresaId" IS NOT NULL;
 
                     UPDATE public.ordenes_compra o
                     SET "EmpresaId" = s."EmpresaId"
                     FROM public.sucursales s
-                    WHERE o.sucursal_id = s."Id" AND s."EmpresaId" IS NOT NULL;
+                    WHERE o."SucursalId" = s."Id" AND s."EmpresaId" IS NOT NULL;
 
                     UPDATE public.traslados t
                     SET "EmpresaId" = s."EmpresaId"
                     FROM public.sucursales s
-                    WHERE t.sucursal_origen_id = s."Id" AND s."EmpresaId" IS NOT NULL;
+                    WHERE t."SucursalOrigenId" = s."Id" AND s."EmpresaId" IS NOT NULL;
 
                     UPDATE public.documentos_electronicos d
                     SET "EmpresaId" = s."EmpresaId"
                     FROM public.sucursales s
-                    WHERE d.sucursal_id = s."Id" AND s."EmpresaId" IS NOT NULL;
+                    WHERE d."SucursalId" = s."Id" AND s."EmpresaId" IS NOT NULL;
 
                     UPDATE public.devoluciones_venta dv
                     SET "EmpresaId" = v."EmpresaId"
                     FROM public.ventas v
-                    WHERE dv.venta_id = v."Id" AND v."EmpresaId" IS NOT NULL;
+                    WHERE dv."VentaId" = v."Id" AND v."EmpresaId" IS NOT NULL;
                 
     END IF;
 END $EF$;
@@ -3407,6 +3368,571 @@ BEGIN
     IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260323025710_FixUniqueIndexesPorSucursal') THEN
     INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
     VALUES ('20260323025710_FixUniqueIndexesPorSucursal', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260413194321_RenombrarKeycloakIdAExternalId') THEN
+    ALTER TABLE public.usuarios RENAME COLUMN keycloak_id TO external_id;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260413194321_RenombrarKeycloakIdAExternalId') THEN
+    ALTER INDEX public.ix_usuarios_keycloak_id RENAME TO ix_usuarios_external_id;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260413194321_RenombrarKeycloakIdAExternalId') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260413194321_RenombrarKeycloakIdAExternalId', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414154347_AddConfiguracionVariables') THEN
+    CREATE TABLE public.configuracion_variables (
+        "Id" integer GENERATED ALWAYS AS IDENTITY,
+        empresa_id integer,
+        nombre character varying(100) NOT NULL,
+        valor character varying(500) NOT NULL,
+        descripcion character varying(500),
+        creado_por character varying(200) NOT NULL,
+        fecha_creacion timestamp with time zone NOT NULL,
+        modificado_por character varying(200),
+        fecha_modificacion timestamp with time zone,
+        activo boolean NOT NULL,
+        fecha_desactivacion timestamp with time zone,
+        CONSTRAINT "PK_configuracion_variables" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_configuracion_variables_Empresas_empresa_id" FOREIGN KEY (empresa_id) REFERENCES public."Empresas" ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414154347_AddConfiguracionVariables') THEN
+    CREATE INDEX "IX_configuracion_variables_empresa_id" ON public.configuracion_variables (empresa_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414154347_AddConfiguracionVariables') THEN
+    CREATE UNIQUE INDEX ix_configuracion_variables_nombre_empresa ON public.configuracion_variables (nombre, empresa_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414154347_AddConfiguracionVariables') THEN
+    INSERT INTO public.configuracion_variables (nombre, valor, descripcion, empresa_id, activo, creado_por, fecha_creacion)
+    VALUES ('AperturaCaja_MontoMax', '5000000', 'Monto máximo permitido al abrir una caja. Valor en pesos colombianos (COP). El sistema rechazará aperturas que superen este límite.', NULL, TRUE, 'system', TIMESTAMPTZ '2026-04-14T00:00:00Z');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414154347_AddConfiguracionVariables') THEN
+    PERFORM setval(
+        pg_get_serial_sequence('public.configuracion_variables', 'Id'),
+        GREATEST(
+            (SELECT MAX("Id") FROM public.configuracion_variables) + 1,
+            nextval(pg_get_serial_sequence('public.configuracion_variables', 'Id'))),
+        false);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414154347_AddConfiguracionVariables') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260414154347_AddConfiguracionVariables', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414165033_FixConfiguracionVariablesEmpresaRequired') THEN
+
+                    UPDATE public.configuracion_variables
+                    SET empresa_id = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1)
+                    WHERE empresa_id IS NULL;
+                
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414165033_FixConfiguracionVariablesEmpresaRequired') THEN
+    ALTER TABLE public.configuracion_variables ALTER COLUMN empresa_id SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414165033_FixConfiguracionVariablesEmpresaRequired') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260414165033_FixConfiguracionVariablesEmpresaRequired', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414174202_AddDiaMaxVentaAtrazada') THEN
+
+                    INSERT INTO public.configuracion_variables
+                        (nombre, valor, descripcion, empresa_id, activo, creado_por, fecha_creacion)
+                    SELECT
+                        'DiaMax_VentaAtrazada',
+                        '0',
+                        'Cantidad máxima de días hacia atrás permitidos al registrar una venta en el POS. ' ||
+                        '0 = el campo de fecha no se muestra y se usa la fecha/hora actual del servidor. ' ||
+                        'Un valor positivo habilita el campo y restringe la fecha mínima seleccionable.',
+                        "Id",
+                        true,
+                        'system',
+                        NOW()
+                    FROM public."Empresas"
+                    ORDER BY "Id"
+                    LIMIT 1
+                    ON CONFLICT DO NOTHING;
+                
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414174202_AddDiaMaxVentaAtrazada') THEN
+
+                    INSERT INTO public.configuracion_variables
+                        (nombre, valor, descripcion, empresa_id, activo, creado_por, fecha_creacion)
+                    SELECT
+                        'DiasMax_EntradaAtrazada',
+                        '0',
+                        'Cantidad máxima de días hacia atrás permitidos al registrar la fecha de recepción ' ||
+                        'de productos (órdenes de compra y entradas manuales de inventario). ' ||
+                        '0 = el campo de fecha no se muestra y se usa la fecha/hora actual del servidor. ' ||
+                        'Un valor positivo habilita el campo y restringe la fecha mínima seleccionable.',
+                        "Id",
+                        true,
+                        'system',
+                        NOW()
+                    FROM public."Empresas"
+                    ORDER BY "Id"
+                    LIMIT 1
+                    ON CONFLICT DO NOTHING;
+                
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414174202_AddDiaMaxVentaAtrazada') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260414174202_AddDiaMaxVentaAtrazada', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414200834_AddDiasMaxCompraAtrazada') THEN
+
+                    INSERT INTO public.configuracion_variables
+                        (nombre, valor, descripcion, empresa_id, activo, creado_por, fecha_creacion)
+                    SELECT
+                        'DiasMax_CompraAtrazada',
+                        '0',
+                        'Cantidad máxima de días hacia atrás permitidos al registrar la fecha de una orden de compra. ' ||
+                        '0 = el campo de fecha no se muestra y se usa la fecha/hora actual del servidor. ' ||
+                        'Un valor positivo habilita el campo y restringe la fecha mínima seleccionable.',
+                        "Id",
+                        true,
+                        'system',
+                        NOW()
+                    FROM public."Empresas"
+                    ORDER BY "Id"
+                    LIMIT 1
+                    ON CONFLICT DO NOTHING;
+                
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414200834_AddDiasMaxCompraAtrazada') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260414200834_AddDiasMaxCompraAtrazada', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414221635_SeedIvaExentoPerEmpresa') THEN
+
+                    INSERT INTO public.impuestos
+                        ("Nombre", "Tipo", "Porcentaje", "ValorFijo", "Activo",
+                         "AplicaSobreBase", "CodigoPais", "CodigoCuentaContable",
+                         "Descripcion", "FechaCreacion", "CreadoPor", "EmpresaId")
+                    SELECT
+                        'Exento 0%',
+                        0,
+                        0.00,
+                        NULL,
+                        true,
+                        true,
+                        'CO',
+                        '2408',
+                        'Bienes y servicios exentos de IVA',
+                        '2026-01-01 00:00:00'::timestamp,
+                        'sistema',
+                        e."Id"
+                    FROM public."Empresas" e
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM public.impuestos i
+                        WHERE i."EmpresaId" = e."Id"
+                          AND i."Nombre" = 'Exento 0%'
+                    );
+                
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260414221635_SeedIvaExentoPerEmpresa') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260414221635_SeedIvaExentoPerEmpresa', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415182146_AddDevolucionCompra') THEN
+    CREATE TABLE public.devoluciones_compra (
+        "Id" integer GENERATED ALWAYS AS IDENTITY,
+        orden_compra_id integer NOT NULL,
+        numero_devolucion character varying(20) NOT NULL,
+        motivo character varying(500) NOT NULL,
+        total numeric(18,2) NOT NULL,
+        fecha_devolucion timestamp with time zone NOT NULL,
+        autorizado_por_usuario_id integer,
+        CONSTRAINT "PK_devoluciones_compra" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_devoluciones_compra_ordenes_compra_orden_compra_id" FOREIGN KEY (orden_compra_id) REFERENCES public.ordenes_compra ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415182146_AddDevolucionCompra') THEN
+    CREATE TABLE public.detalle_devoluciones_compra (
+        "Id" integer GENERATED ALWAYS AS IDENTITY,
+        devolucion_compra_id integer NOT NULL,
+        producto_id uuid NOT NULL,
+        nombre_producto character varying(200) NOT NULL,
+        cantidad_devuelta numeric(18,4) NOT NULL,
+        precio_unitario numeric(18,4) NOT NULL,
+        subtotal numeric(18,2) NOT NULL,
+        CONSTRAINT "PK_detalle_devoluciones_compra" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_detalle_devoluciones_compra_devoluciones_compra_devolucion_~" FOREIGN KEY (devolucion_compra_id) REFERENCES public.devoluciones_compra ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415182146_AddDevolucionCompra') THEN
+    CREATE INDEX "IX_detalle_devoluciones_compra_devolucion_compra_id" ON public.detalle_devoluciones_compra (devolucion_compra_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415182146_AddDevolucionCompra') THEN
+    CREATE UNIQUE INDEX ix_devoluciones_compra_numero ON public.devoluciones_compra (numero_devolucion);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415182146_AddDevolucionCompra') THEN
+    CREATE INDEX "IX_devoluciones_compra_orden_compra_id" ON public.devoluciones_compra (orden_compra_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415182146_AddDevolucionCompra') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260415182146_AddDevolucionCompra', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.impuestos             SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.retenciones_reglas    SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.conceptos_retencion   SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.categorias            SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.productos             SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.terceros              SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.sucursales            SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.cajas                 SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public."ReglasEticas"      SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.ventas                SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.devoluciones_venta    SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.traslados             SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.ordenes_compra        SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    UPDATE public.documentos_electronicos SET "EmpresaId" = (SELECT "Id" FROM public."Empresas" ORDER BY "Id" LIMIT 1) WHERE "EmpresaId" IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.sucursales DROP CONSTRAINT "FK_sucursales_Empresas_EmpresaId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.ventas ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.traslados ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.terceros ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.sucursales ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.retenciones_reglas ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public."ReglasEticas" ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.productos ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.ordenes_compra ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.impuestos ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.documentos_electronicos ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.devoluciones_venta ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.conceptos_retencion ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.categorias ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.cajas ALTER COLUMN "EmpresaId" SET NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    ALTER TABLE public.sucursales ADD CONSTRAINT "FK_sucursales_Empresas_EmpresaId" FOREIGN KEY ("EmpresaId") REFERENCES public."Empresas" ("Id") ON DELETE CASCADE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260415223930_MakeEmpresaIdRequired') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260415223930_MakeEmpresaIdRequired', '9.0.1');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260416141355_SeedImpuestosPerEmpresa') THEN
+
+                    INSERT INTO public.impuestos
+                        ("Nombre", "Tipo", "Porcentaje", "ValorFijo", "Activo",
+                         "AplicaSobreBase", "CodigoPais", "CodigoCuentaContable",
+                         "Descripcion", "FechaCreacion", "CreadoPor", "EmpresaId")
+                    SELECT
+                        imp.nombre,
+                        imp.tipo,
+                        imp.porcentaje,
+                        imp.valor_fijo,
+                        true,
+                        imp.aplica_sobre_base,
+                        'CO',
+                        imp.cuenta_contable,
+                        imp.descripcion,
+                        '2026-01-01 00:00:00'::timestamp,
+                        'sistema',
+                        e."Id"
+                    FROM public."Empresas" e
+                    CROSS JOIN (VALUES
+                        ('IVA 5%',     0::int, 0.05::numeric, NULL::numeric,  true::bool,  '2408', 'IVA tarifa diferencial 5%'),
+                        ('IVA 19%',    0::int, 0.19::numeric, NULL::numeric,  true::bool,  '2408', 'IVA tarifa general 19%'),
+                        ('INC 8%',     1::int, 0.08::numeric, NULL::numeric,  false::bool, '2412', 'INC restaurantes, bares, cafeterías (Art. 512-1 ET)'),
+                        ('Bolsa $66',  3::int, 0.00::numeric, 66.00::numeric, false::bool, '2424', 'Impuesto bolsas plásticas 2026 (Ley 1819/2016)')
+                    ) AS imp(nombre, tipo, porcentaje, valor_fijo, aplica_sobre_base, cuenta_contable, descripcion)
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM public.impuestos i
+                        WHERE i."EmpresaId" = e."Id"
+                          AND i."Nombre" = imp.nombre
+                    );
+                
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public.__ef_migrations_history WHERE "MigrationId" = '20260416141355_SeedImpuestosPerEmpresa') THEN
+    INSERT INTO public.__ef_migrations_history ("MigrationId", "ProductVersion")
+    VALUES ('20260416141355_SeedImpuestosPerEmpresa', '9.0.1');
     END IF;
 END $EF$;
 COMMIT;

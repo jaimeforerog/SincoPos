@@ -177,7 +177,8 @@ public class InventarioAggregate
         decimal porcentajeImpuesto,
         decimal montoImpuesto,
         string? referenciaVenta,
-        int? usuarioId)
+        int? usuarioId,
+        DateTime? fechaMovimiento = null)
     {
         if (cantidad <= 0)
             throw new InvalidOperationException("La cantidad debe ser mayor a 0.");
@@ -196,7 +197,8 @@ public class InventarioAggregate
             PorcentajeImpuesto = porcentajeImpuesto,
             MontoImpuesto = montoImpuesto,
             ReferenciaVenta = referenciaVenta,
-            UsuarioId = usuarioId
+            UsuarioId = usuarioId,
+            Timestamp = fechaMovimiento ?? DateTime.UtcNow
         };
 
         Apply(evento);

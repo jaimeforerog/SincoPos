@@ -15,7 +15,7 @@ import { HeroBanner } from '@/components/common/HeroBanner';
 import { useCartStore } from '@/stores/cart.store';
 import { ventasApi } from '@/api/ventas';
 import { cajasApi } from '@/api/cajas';
-import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
+import { useConfiguracionVariableIntQuery } from '@/hooks/useConfiguracionVariable';
 import { useCajasAbiertas } from '../hooks/useCajasAbiertas';
 import { IntentSearch } from '../components/IntentSearch';
 import { CartPanel } from '../components/CartPanel';
@@ -41,7 +41,8 @@ export function POSPage() {
   const { data: _cajasAbiertas = [], isLoading: isLoadingCajas, isFetched: isFetchedCajas } = useCajasAbiertas();
 
   // Variable de configuración: máximo de días atrás para registrar ventas
-  const diaMaxVentaAtrazada = useConfiguracionVariableInt('DiaMax_VentaAtrazada');
+  const { value: diaMaxVentaAtrazada, isFetched: isConfigFetched } =
+    useConfiguracionVariableIntQuery('DiaMax_VentaAtrazada');
   const mostrarFechaVenta = diaMaxVentaAtrazada > 0;
 
   // Estado de caja y cliente
@@ -65,6 +66,10 @@ export function POSPage() {
     if (isLoading) return;
     if (isLoadingCajas) return; // Esperar que la query de cajas finalice antes de decidir
     if (!isFetchedCajas && isOnline) return; // Online: esperar primera carga
+    // Esperar que la config DiaMax_VentaAtrazada haya cargado antes de decidir si auto-seleccionar.
+    // Sin este guard, un race condition hace que mostrarFechaVenta sea false mientras carga,
+    // se auto-selecciona la caja sin mostrar el diálogo de fecha, y luego la fecha queda como "ahora".
+    if (!isConfigFetched && isOnline) return;
     if (selectedCajaId) return;
 
     // Si solo hay una caja abierta (online o cacheada), seleccionarla automáticamente
@@ -96,7 +101,7 @@ export function POSPage() {
     // Mostrar diálogo (con datos cacheados si está offline)
     setShowSeleccionarCaja(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, isLoadingCajas, isFetchedCajas, _cajasAbiertas, selectedCajaId, isOnline]);
+  }, [isLoading, isLoadingCajas, isFetchedCajas, _cajasAbiertas, selectedCajaId, isOnline, isConfigFetched, mostrarFechaVenta]);
 
   // Handler para seleccionar caja (también recibe la sucursal y la fecha del diálogo)
   const { setActiveSucursal, setActiveEmpresa, empresasDisponibles } = useAuthStore();
