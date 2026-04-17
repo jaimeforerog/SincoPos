@@ -61,18 +61,22 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
       (!user?.sucursalesDisponibles?.length || user.sucursalesDisponibles.some((sd) => sd.id === s.id))
   );
 
-  const { data: productosData } = useQuery({
-    queryKey: ['productos', activeEmpresaId],
-    queryFn: () => productosApi.listar(),
-    enabled: open,
-  });
-  const productos = productosData?.items || [];
-
   const { data: inventario } = useQuery({
     queryKey: ['inventario', sucursalOrigen?.id],
     queryFn: () => inventarioApi.obtenerStock({ sucursalId: sucursalOrigen!.id }),
     enabled: !!sucursalOrigen,
   });
+
+  const { data: productosData } = useQuery({
+    queryKey: ['productos', activeEmpresaId],
+    queryFn: () => productosApi.listar(),
+    enabled: open,
+  });
+
+  // Solo mostrar productos que tienen stock > 0 en la sucursal origen al momento del traslado
+  const productosConStock = (productosData?.items || []).filter((p) =>
+    (inventario ?? []).some((s) => s.productoId === p.id && s.cantidad > 0)
+  );
 
   const crearMutation = useMutation({
     mutationFn: trasladosApi.crear,
@@ -197,7 +201,8 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
 
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 2, mb: 2 }}>
           <Autocomplete
-            options={productos || []}
+            options={productosConStock}
+            noOptionsText={!sucursalOrigen ? 'Selecciona la sucursal origen primero' : 'No hay productos con stock en esta sucursal'}
             getOptionLabel={(option) => `${option.nombre} (${option.codigoBarras})`}
             value={productoSeleccionado}
             onChange={(_, value) => {
