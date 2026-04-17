@@ -28,6 +28,7 @@ import { es } from 'date-fns/locale';
 import { reportesApi } from '@/api/reportes';
 import { productosApi } from '@/api/productos';
 import { sucursalesApi } from '@/api/sucursales';
+import { inventarioApi } from '@/api/inventario';
 import { ReportePageHeader } from '../components/ReportePageHeader';
 import { formatCurrency } from '@/utils/format';
 import type { ProductoDTO } from '@/types/api';
@@ -40,6 +41,11 @@ export function ReporteKardexPage() {
 
   const [producto, setProducto] = useState<ProductoDTO | null>(null);
   const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
+
+  const handleSucursalChange = (val: number | '') => {
+    setSucursalId(val);
+    setProducto(null); // Resetear producto al cambiar sucursal
+  };
   const [fechaDesde, setFechaDesde] = useState(format(firstDayOfMonth, 'yyyy-MM-dd'));
   const [fechaHasta, setFechaHasta] = useState(format(today, 'yyyy-MM-dd'));
 
@@ -64,6 +70,22 @@ export function ReporteKardexPage() {
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
   const productos = productosData?.items || [];
+
+  // Cargar stock de la sucursal seleccionada para filtrar productos
+  const { data: stockSucursal = [] } = useQuery({
+    queryKey: ['inventario-stock', sucursalId],
+    queryFn: () => inventarioApi.getStock({ sucursalId: sucursalId as number }),
+    enabled: !!sucursalId,
+    staleTime: 60_000,
+  });
+  const productoIdsEnSucursal = useMemo(
+    () => new Set(stockSucursal.map((s) => s.productoId)),
+    [stockSucursal]
+  );
+  const productosFiltrados = useMemo(
+    () => sucursalId ? productos.filter((p) => productoIdsEnSucursal.has(p.id)) : productos,
+    [productos, productoIdsEnSucursal, sucursalId]
+  );
 
   const { data: reporte, isLoading, isError, error } = useQuery({
     queryKey: ['kardex', queryParams],
@@ -192,7 +214,7 @@ export function ReporteKardexPage() {
               <InputLabel>Sucursal *</InputLabel>
               <Select
                 value={sucursalId}
-                onChange={(e) => setSucursalId(e.target.value as number | '')}
+                onChange={(e) => handleSucursalChange(e.target.value as number | '')}
                 label="Sucursal *"
               >
                 <MenuItem value="">Seleccionar Sucursal</MenuItem>
@@ -205,12 +227,14 @@ export function ReporteKardexPage() {
             </FormControl>
             <Box sx={{ flex: 2, minWidth: 250 }}>
               <Autocomplete
-                options={productos}
-                getOptionLabel={(option) => `${option.codigoBarras} - ${option.nombre}`}
+                options={productosFiltrados}
+                getOptionLabel={(option) => `${option.codigoBarras ? option.codigoBarras + ' - ' : ''}${option.nombre}`}
                 value={producto}
                 onChange={(_, newValue) => setProducto(newValue || null)}
+                disabled={!sucursalId}
+                noOptionsText={sucursalId ? 'No hay productos con movimientos en esta sucursal' : 'Selecciona primero una sucursal'}
                 renderInput={(params) => (
-                  <TextField {...params} label="Seleccionar Producto *" placeholder="Buscar producto..." />
+                  <TextField {...params} label="Seleccionar Producto *" placeholder={sucursalId ? 'Buscar producto...' : 'Primero selecciona una sucursal'} />
                 )}
               />
             </Box>
