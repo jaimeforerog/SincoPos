@@ -144,6 +144,10 @@ public class CompraRecepcionService
             if (lineaRecibida.CantidadRecibida > cantidadPendiente)
                 return (false, $"La cantidad recibida no puede exceder la cantidad pendiente para {detalle.NombreProducto}. Pendiente: {cantidadPendiente}");
 
+            var productoParaValidacion = productosBatch[detalle.ProductoId];
+            if (productoParaValidacion.ManejaLotes && string.IsNullOrWhiteSpace(lineaRecibida.NumeroLote))
+                return (false, $"El número de lote es obligatorio para '{detalle.NombreProducto}'");
+
             // Actualizar cantidad recibida
             detalle.CantidadRecibida += lineaRecibida.CantidadRecibida;
             if (!string.IsNullOrEmpty(lineaRecibida.Observaciones))

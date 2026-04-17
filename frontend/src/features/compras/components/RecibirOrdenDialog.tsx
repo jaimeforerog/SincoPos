@@ -32,9 +32,14 @@ type LineaRecepcionError = { cantidadRecibida?: FieldError };
 
 const lineaRecepcionSchema = z.object({
   productoId: z.string(),
+  manejaLotes: z.boolean(),
   cantidadRecibida: z.number().min(0, 'Cantidad debe ser mayor o igual a 0'),
   observaciones: z.string().optional(),
   numeroLote: z.string().optional(),
+}).superRefine((val, ctx) => {
+  if (val.manejaLotes && val.cantidadRecibida > 0 && !val.numeroLote?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'El número de lote es obligatorio', path: ['numeroLote'] });
+  }
 });
 
 const recibirSchema = z.object({
@@ -102,6 +107,7 @@ export function RecibirOrdenDialog({
         fechaRecepcion: defaultFechaRecepcion,
         lineas: orden.detalles.map((d) => ({
           productoId: d.productoId,
+          manejaLotes: d.manejaLotes,
           cantidadRecibida: d.cantidadSolicitada - d.cantidadRecibida,
           observaciones: '',
           numeroLote: '',
@@ -304,6 +310,8 @@ export function RecibirOrdenDialog({
                                 fullWidth
                                 placeholder={detalle.manejaLotes ? 'Requerido' : '—'}
                                 disabled={!detalle.manejaLotes}
+                                error={!!errors.lineas?.[index]?.numeroLote}
+                                helperText={errors.lineas?.[index]?.numeroLote?.message}
                               />
                             )}
                           />
