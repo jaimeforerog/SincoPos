@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using POS.Application.DTOs;
@@ -16,6 +17,7 @@ public class TrasladoService : ITrasladoService
     private readonly IActivityLogService _activityLogService;
     private readonly CosteoService _costeoService;
     private readonly INotificationService _notificationService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public TrasladoService(
         global::Marten.IDocumentSession session,
@@ -23,7 +25,8 @@ public class TrasladoService : ITrasladoService
         ILogger<TrasladoService> logger,
         IActivityLogService activityLogService,
         CosteoService costeoService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _session = session;
         _context = context;
@@ -31,6 +34,7 @@ public class TrasladoService : ITrasladoService
         _activityLogService = activityLogService;
         _costeoService = costeoService;
         _notificationService = notificationService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<(object? resultado, string? error)> CrearTrasladoAsync(CrearTrasladoDto dto)
@@ -130,6 +134,13 @@ public class TrasladoService : ITrasladoService
 
         var sucursal = await _context.Sucursales.FindAsync(traslado.SucursalOrigenId);
 
+        // Resolver usuario que ejecuta el envío
+        var emailEnvio = _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        var subEnvio = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioEnvioId = await _context.ResolverUsuarioIdAsync(emailEnvio, subEnvio);
+
         // Pre-cargar productos para verificar ManejaLotes
         var productoIds = traslado.Detalles.Select(d => d.ProductoId).ToList();
         var productosDict = await _context.Productos
@@ -192,7 +203,7 @@ public class TrasladoService : ITrasladoService
                 traslado.SucursalDestinoId,
                 traslado.NumeroTraslado,
                 detalle.Observaciones,
-                null);
+                usuarioEnvioId);
 
             _session.Events.Append(streamId, eventoSalida);
 
@@ -333,7 +344,9 @@ public class TrasladoService : ITrasladoService
             return (false, ex.Message);
         }
 
-        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        var subUsuario = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario, subUsuario);
 
         traslado.Estado = EstadoTraslado.Recibido;
         traslado.FechaRecepcion = DateTime.UtcNow;
@@ -382,6 +395,13 @@ public class TrasladoService : ITrasladoService
 
         var sucursal = await _context.Sucursales.FindAsync(traslado.SucursalOrigenId);
 
+        // Resolver usuario que ejecuta el rechazo
+        var emailRechazo = _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        var subRechazo = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioRechazoId = await _context.ResolverUsuarioIdAsync(emailRechazo, subRechazo);
+
         foreach (var detalle in traslado.Detalles)
         {
             var streamId = InventarioAggregate.GenerarStreamId(
@@ -396,7 +416,7 @@ public class TrasladoService : ITrasladoService
                     null, null,
                     $"REV-{traslado.NumeroTraslado}",
                     $"Reversión traslado rechazado: {dto.MotivoRechazo}",
-                    null);
+                    usuarioRechazoId);
 
                 _session.Events.Append(streamId, eventoReversion);
             }

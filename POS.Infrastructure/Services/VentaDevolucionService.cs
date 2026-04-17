@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,7 @@ public class VentaDevolucionService
     private readonly ILogger<VentaDevolucionService> _logger;
     private readonly IActivityLogService _activityLogService;
     private readonly ErpSincoOptions _erpOptions;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public VentaDevolucionService(
         AppDbContext context,
@@ -31,7 +33,8 @@ public class VentaDevolucionService
         CosteoService costeoService,
         ILogger<VentaDevolucionService> logger,
         IActivityLogService activityLogService,
-        IOptions<ErpSincoOptions> erpOptions)
+        IOptions<ErpSincoOptions> erpOptions,
+        IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _session = session;
@@ -40,6 +43,7 @@ public class VentaDevolucionService
         _logger = logger;
         _activityLogService = activityLogService;
         _erpOptions = erpOptions.Value;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<(DevolucionVentaDto? devolucion, string? error)> CrearDevolucionParcialAsync(
@@ -152,7 +156,9 @@ public class VentaDevolucionService
                     stock, dd.CantidadDevuelta, dd.CostoUnitario, sucursal.MetodoCosteo);
         }
 
-        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        var subUsuario = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario, subUsuario);
 
         var devolucion = new DevolucionVenta
         {

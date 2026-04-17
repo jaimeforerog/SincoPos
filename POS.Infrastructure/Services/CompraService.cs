@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,7 @@ public class CompraService : ICompraService
     private readonly ErpSincoOptions _erpOptions;
     private readonly ICompraErpService _compraErpService;
     private readonly CompraRecepcionService _recepcionService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public CompraService(
         AppDbContext context,
@@ -33,7 +35,8 @@ public class CompraService : ICompraService
         IActivityLogService activityLogService,
         IOptions<ErpSincoOptions> erpOptions,
         ICompraErpService compraErpService,
-        CompraRecepcionService recepcionService)
+        CompraRecepcionService recepcionService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _session = session;
@@ -45,6 +48,7 @@ public class CompraService : ICompraService
         _erpOptions = erpOptions.Value;
         _compraErpService = compraErpService;
         _recepcionService = recepcionService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<(OrdenCompraDto? orden, string? error)> CrearOrdenAsync(CrearOrdenCompraDto dto)
@@ -221,7 +225,9 @@ public class CompraService : ICompraService
         if (orden.Estado != EstadoOrdenCompra.Pendiente)
             return (false, "Solo se pueden aprobar órdenes en estado Pendiente");
 
-        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        var subUsuario = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario, subUsuario);
 
         orden.Estado = EstadoOrdenCompra.Aprobada;
         orden.FechaAprobacion = DateTime.UtcNow;

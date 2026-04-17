@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using POS.Application.DTOs;
@@ -16,19 +17,22 @@ public class InventarioService : IInventarioService
     private readonly CosteoService _costeoService;
     private readonly ILogger<InventarioService> _logger;
     private readonly IActivityLogService _activityLogService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public InventarioService(
         global::Marten.IDocumentSession session,
         AppDbContext context,
         CosteoService costeoService,
         ILogger<InventarioService> logger,
-        IActivityLogService activityLogService)
+        IActivityLogService activityLogService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _session = session;
         _context = context;
         _costeoService = costeoService;
         _logger = logger;
         _activityLogService = activityLogService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<(object? resultado, string? error)> RegistrarEntradaAsync(EntradaInventarioDto dto, string? emailUsuario)
@@ -50,7 +54,7 @@ public class InventarioService : IInventarioService
             nombreTercero = tercero.Nombre;
         }
 
-        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario, ObtenerSubClaim());
         var streamId = InventarioAggregate.GenerarStreamId(dto.ProductoId, dto.SucursalId);
         var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
 
@@ -168,7 +172,7 @@ public class InventarioService : IInventarioService
         if (aggregate == null)
             return (null, "No existe inventario para este producto en esta sucursal.");
 
-        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario, ObtenerSubClaim());
 
         try
         {
@@ -226,7 +230,7 @@ public class InventarioService : IInventarioService
 
     public async Task<(object? resultado, string? error)> AjustarInventarioAsync(AjusteInventarioDto dto, string? emailUsuario)
     {
-        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario, ObtenerSubClaim());
         var streamId = InventarioAggregate.GenerarStreamId(dto.ProductoId, dto.SucursalId);
         var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
 
@@ -313,7 +317,7 @@ public class InventarioService : IInventarioService
         if (aggregate == null)
             return (false, "NOT_FOUND");
 
-        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        var currentUserId = await _context.ResolverUsuarioIdAsync(emailUsuario, ObtenerSubClaim());
 
         try
         {
@@ -331,5 +335,13 @@ public class InventarioService : IInventarioService
 
         return (true, null);
     }
+
+    /// <summary>
+    /// Extrae el claim "sub" (WorkOS user ID) del token actual como fallback
+    /// cuando la búsqueda por email no encuentra al usuario en la tabla Usuarios.
+    /// </summary>
+    private string? ObtenerSubClaim() =>
+        _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+        ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
 }

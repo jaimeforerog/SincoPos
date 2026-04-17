@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,6 +27,7 @@ public class CompraRecepcionService
     private readonly IActivityLogService _activityLogService;
     private readonly ErpSincoOptions _erpOptions;
     private readonly ICompraErpService _compraErpService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public CompraRecepcionService(
         AppDbContext context,
@@ -36,7 +38,8 @@ public class CompraRecepcionService
         ILogger<CompraRecepcionService> logger,
         IActivityLogService activityLogService,
         IOptions<ErpSincoOptions> erpOptions,
-        ICompraErpService compraErpService)
+        ICompraErpService compraErpService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _session = session;
@@ -47,6 +50,7 @@ public class CompraRecepcionService
         _activityLogService = activityLogService;
         _erpOptions = erpOptions.Value;
         _compraErpService = compraErpService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<(bool success, string? error)> RecibirOrdenAsync(
@@ -121,8 +125,10 @@ public class CompraRecepcionService
             ? DateTime.SpecifyKind(dto.FechaRecepcion.Value, DateTimeKind.Utc)
             : DateTime.UtcNow;
 
-        // Resolver usuario ANTES del loop para incluirlo en los eventos del stream
-        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario);
+        // Resolver usuario ANTES del loop — primero por email, fallback por ExternalId (WorkOS sub)
+        var externalIdUsuario = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioId = await _context.ResolverUsuarioIdAsync(emailUsuario, externalIdUsuario);
 
         // Eventos Marten pendientes para la transacción atómica
         var pendingMartenEvents = new List<(Guid StreamId, object Evento, bool IsNew)>();

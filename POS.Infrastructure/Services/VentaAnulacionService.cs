@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,6 +25,7 @@ public class VentaAnulacionService
     private readonly IActivityLogService _activityLogService;
     private readonly ErpSincoOptions _erpOptions;
     private readonly IVentaErpService _ventaErpService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public VentaAnulacionService(
         AppDbContext context,
@@ -33,7 +35,8 @@ public class VentaAnulacionService
         ILogger<VentaAnulacionService> logger,
         IActivityLogService activityLogService,
         IOptions<ErpSincoOptions> erpOptions,
-        IVentaErpService ventaErpService)
+        IVentaErpService ventaErpService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _session = session;
@@ -43,6 +46,7 @@ public class VentaAnulacionService
         _activityLogService = activityLogService;
         _erpOptions = erpOptions.Value;
         _ventaErpService = ventaErpService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<(bool success, string? error)> AnularVentaAsync(int id, string? motivo)
@@ -57,6 +61,13 @@ public class VentaAnulacionService
 
         var sucursal = await _context.Sucursales.FindAsync(venta.SucursalId);
 
+        // Resolver usuario que ejecuta la anulación
+        var emailAnulador = _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        var subAnulador = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioAnuladorId = await _context.ResolverUsuarioIdAsync(emailAnulador, subAnulador);
+
         // Revertir cada línea de inventario
         var pendingMartenEvents = new List<(Guid StreamId, object Evento)>();
         foreach (var detalle in venta.Detalles)
@@ -69,7 +80,7 @@ public class VentaAnulacionService
                 var entradaEvento = aggregate.AgregarEntrada(
                     detalle.Cantidad, detalle.CostoUnitario,
                     null, null, $"Anulacion venta {venta.NumeroVenta}",
-                    motivo ?? "Venta anulada", null);
+                    motivo ?? "Venta anulada", usuarioAnuladorId);
                 pendingMartenEvents.Add((streamId, entradaEvento));
             }
 

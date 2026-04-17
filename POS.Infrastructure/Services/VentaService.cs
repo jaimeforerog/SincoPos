@@ -160,11 +160,13 @@ public class VentaService : IVentaService
             ? DateTime.SpecifyKind(dto.FechaVenta.Value, DateTimeKind.Utc)
             : DateTime.UtcNow;
 
-        // Resolver usuarioId ANTES del loop para incluirlo en los eventos del stream
+        // Resolver usuarioId ANTES del loop — primero por email, fallback por ExternalId (WorkOS sub)
         var emailCajero = _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
             ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
             ?? _httpContextAccessor.HttpContext?.User?.FindFirst("preferred_username")?.Value;
-        int? usuarioIdVenta = await _context.ResolverUsuarioIdAsync(emailCajero);
+        var subCajero = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioIdVenta = await _context.ResolverUsuarioIdAsync(emailCajero, subCajero);
 
         // Procesar cada linea con el TaxEngine
         var detalles = new List<DetalleVenta>();
