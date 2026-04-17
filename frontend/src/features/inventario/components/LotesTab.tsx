@@ -24,7 +24,7 @@ import { lotesApi } from '@/api/lotes';
 import { productosApi } from '@/api/productos';
 import { useAuth } from '@/hooks/useAuth';
 import type { SucursalDTO } from '@/types/api';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, formatDateOnly } from '@/utils/format';
 import { TrazabilidadLoteModal } from './TrazabilidadLoteModal';
 
 interface Props {
@@ -169,7 +169,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                           {lote.numeroLote || '—'}
                         </Typography>
                       </TableCell>
-                      <TableCell>{new Date(lote.fechaEntrada).toLocaleDateString('es-CO')}</TableCell>
+                      <TableCell>{formatDateOnly(lote.fechaEntrada)}</TableCell>
                       <TableCell>{lote.referencia || '—'}</TableCell>
                       <TableCell align="right">{lote.cantidadInicial}</TableCell>
                       <TableCell align="right">
@@ -238,7 +238,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                       <TableCell>
                         <Typography variant="body2" fontFamily="monospace">{a.numeroLote || '—'}</Typography>
                       </TableCell>
-                      <TableCell>{new Date(a.fechaEntrada).toLocaleDateString('es-CO')}</TableCell>
+                      <TableCell>{formatDateOnly(a.fechaEntrada)}</TableCell>
                       <TableCell>{a.fechaVencimiento}</TableCell>
                       <TableCell align="right">{a.cantidadDisponible}</TableCell>
                       <TableCell align="center">{chipVencimiento(a.diasParaVencer)}</TableCell>

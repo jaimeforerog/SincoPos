@@ -28,7 +28,7 @@ import {
   Inventory,
 } from '@mui/icons-material';
 import { lotesApi } from '@/api/lotes';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, formatDateOnly } from '@/utils/format';
 
 interface Props {
   loteId: number | null;
@@ -128,7 +128,7 @@ export function TrazabilidadLoteModal({ loteId, onClose }: Props) {
                 )}
                 <Box>
                   <Typography variant="caption" color="text.secondary">Fecha entrada</Typography>
-                  <Typography variant="body2">{new Date(lote!.fechaEntrada).toLocaleDateString('es-CO')}</Typography>
+                  <Typography variant="body2">{formatDateOnly(lote!.fechaEntrada)}</Typography>
                 </Box>
               </Box>
             </Box>
