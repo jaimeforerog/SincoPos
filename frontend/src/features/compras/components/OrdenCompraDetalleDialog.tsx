@@ -17,6 +17,7 @@ import {
   Divider,
 } from '@mui/material';
 import type { OrdenCompraDTO } from '@/types/api';
+import { formatDateOnly } from '@/utils/format';
 
 interface OrdenCompraDetalleDialogProps {
   open: boolean;
@@ -84,7 +85,7 @@ export function OrdenCompraDetalleDialog({
               Fecha de Orden
             </Typography>
             <Typography variant="body2">
-              {new Date(orden.fechaOrden).toLocaleDateString('es-CO')}
+              {formatDateOnly(orden.fechaOrden)}
             </Typography>
           </Box>
           <Box>
@@ -93,7 +94,7 @@ export function OrdenCompraDetalleDialog({
             </Typography>
             <Typography variant="body2">
               {orden.fechaEntregaEsperada
-                ? new Date(orden.fechaEntregaEsperada).toLocaleDateString('es-CO')
+                ? formatDateOnly(orden.fechaEntregaEsperada)
                 : 'No especificada'}
             </Typography>
           </Box>
@@ -105,7 +106,7 @@ export function OrdenCompraDetalleDialog({
                   Fecha de Aprobación
                 </Typography>
                 <Typography variant="body2">
-                  {new Date(orden.fechaAprobacion).toLocaleDateString('es-CO')}
+                  {formatDateOnly(orden.fechaAprobacion)}
                 </Typography>
               </Box>
               <Box>
@@ -133,7 +134,7 @@ export function OrdenCompraDetalleDialog({
                   Fecha de Recepción
                 </Typography>
                 <Typography variant="body2">
-                  {new Date(orden.fechaRecepcion).toLocaleDateString('es-CO')}
+                  {formatDateOnly(orden.fechaRecepcion)}
                 </Typography>
               </Box>
               <Box>

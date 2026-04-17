@@ -25,6 +25,18 @@ export const formatDate = (
   return format(dateObj, formatStr, { locale: es });
 };
 
+/**
+ * Formatea un campo fecha-solo (sin hora) almacenado como UTC midnight (ej. "2026-04-01T00:00:00Z").
+ * Extrae la parte YYYY-MM-DD del ISO string y construye una fecha local para evitar que la
+ * conversión UTC→local desplace el día (ej. medianoche UTC = 31/3 en Colombia UTC-5).
+ */
+export const formatDateOnly = (date: string | Date): string => {
+  const isoStr = typeof date === 'string' ? date : date.toISOString();
+  const datePart = isoStr.substring(0, 10); // "YYYY-MM-DD"
+  const [y, m, d] = datePart.split('-').map(Number);
+  return format(new Date(y, m - 1, d), 'dd/MM/yyyy', { locale: es });
+};
+
 export const formatDateTime = (date: string | Date): string => {
   const dateObj = typeof date === 'string' ? parseISO(date) : date;
   return format(dateObj, 'dd/MM/yyyy HH:mm', { locale: es });

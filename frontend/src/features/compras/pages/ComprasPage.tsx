@@ -38,6 +38,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { comprasApi } from '@/api/compras';
+import { formatDateOnly } from '@/utils/format';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useAuthStore } from '@/stores/auth.store';
 import type { OrdenCompraDTO } from '@/types/api';
@@ -369,7 +370,7 @@ export function ComprasPage() {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {new Date(orden.fechaOrden).toLocaleDateString('es-CO')}
+                          {formatDateOnly(orden.fechaOrden)}
                         </Typography>
                       </TableCell>
                       <TableCell>

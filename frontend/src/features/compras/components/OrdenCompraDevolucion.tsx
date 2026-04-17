@@ -25,6 +25,7 @@ import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
 import { inventarioApi } from '@/api/inventario';
 import type { OrdenCompraDTO } from '@/types/api';
+import { formatDateOnly } from '@/utils/format';
 
 const HERO_COLOR = '#c62828';
 
@@ -316,7 +317,7 @@ export function OrdenCompraDevolucion({ orden, onCancel, onDone }: Props) {
                 >
                   <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{dev.numeroDevolucion}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {new Date(dev.fechaDevolucion).toLocaleDateString('es-CO')}
+                    {formatDateOnly(dev.fechaDevolucion)}
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>{fmt(dev.total)}</Typography>
                 </Box>

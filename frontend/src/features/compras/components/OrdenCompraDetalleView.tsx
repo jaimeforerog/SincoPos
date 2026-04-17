@@ -22,6 +22,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { useQuery } from '@tanstack/react-query';
 import { comprasApi } from '@/api/compras';
+import { formatDateOnly } from '@/utils/format';
 import { AccionAprobar, AccionRechazar, AccionCancelar } from './OrdenCompraAcciones';
 import { AccionRecibir } from './OrdenCompraRecibir';
 import { OrdenCompraDevolucion } from './OrdenCompraDevolucion';
@@ -43,7 +44,7 @@ const ESTADOS_TERMINALES = ['RecibidaCompleta', 'Rechazada', 'Cancelada'];
 
 const formatFecha = (fecha?: string) => {
   if (!fecha) return '—';
-  return new Date(fecha).toLocaleDateString('es-CO');
+  return formatDateOnly(fecha);
 };
 
 interface Props {
@@ -165,7 +166,7 @@ export function OrdenCompraDetalleView({ ordenId, onBack }: Props) {
               {orden.nombreProveedor}
             </Typography>
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)' }}>
-              {new Date(orden.fechaOrden).toLocaleDateString('es-CO')}
+              {formatDateOnly(orden.fechaOrden)}
             </Typography>
           </Box>
         </Box>

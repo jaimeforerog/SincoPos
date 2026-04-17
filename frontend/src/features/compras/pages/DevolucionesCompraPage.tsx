@@ -25,6 +25,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { HeroBanner } from '@/components/common/HeroBanner';
 import { tercerosApi } from '@/api/terceros';
 import { comprasApi } from '@/api/compras';
+import { formatDateOnly } from '@/utils/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { OrdenCompraDTO, TerceroDTO } from '@/types/api';
 import { OrdenCompraDevolucion } from '../components/OrdenCompraDevolucion';
@@ -203,13 +204,13 @@ export function DevolucionesCompraPage() {
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2">
-                              {new Date(orden.fechaOrden).toLocaleDateString('es-CO')}
+                              {formatDateOnly(orden.fechaOrden)}
                             </Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2">
                               {orden.fechaRecepcion
-                                ? new Date(orden.fechaRecepcion).toLocaleDateString('es-CO')
+                                ? formatDateOnly(orden.fechaRecepcion)
                                 : '—'}
                             </Typography>
                           </TableCell>
