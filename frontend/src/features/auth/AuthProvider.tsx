@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { AuthKitProvider, useAuth as useWorkosAuth } from '@workos-inc/authkit-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
+import { setWorkosTokenGetter } from '@/api/tokenRef';
 import { CircularProgress, Box } from '@mui/material';
 import { WORKOS_CLIENT_ID } from './workosConfig';
 
@@ -17,6 +18,11 @@ function LoadingScreen() {
 function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
   const { user, isLoading, isAuthenticated, signOut, getAccessToken } = useWorkosAuth();
   const { setUser, setIdpLogout } = useAuthStore();
+
+  // Exponer getAccessToken al interceptor de axios para manejo de token expirado
+  useEffect(() => {
+    setWorkosTokenGetter(getAccessToken);
+  }, [getAccessToken]);
   const backendFetchedRef = useRef(false);
   // Timeout fallback: if WorkOS SDK doesn't initialize within 10s, unblock rendering.
   // IMPORTANT: depend on isLoading so the timer cancels when SDK initializes normally.

@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '@/types/api';
 import { useAuthStore } from '@/stores/auth.store';
+import { getWorkosToken } from '@/api/tokenRef';
 
 // Use empty string (relative paths) when VITE_API_URL is not set so requests
 // go through the Vite dev proxy (same-origin, no CORS).
@@ -56,45 +57,41 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // If 401 and we have a refresh token, try to refresh
+    // Si el servidor responde 401, intentar obtener un token fresco del SDK de WorkOS
+    // antes de rendirse — esto evita la cascada de 401 cuando el token expiró.
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      sessionStorage.getItem('refresh_token')
+      getWorkosToken
     ) {
       originalRequest._retry = true;
 
       if (!isRefreshing) {
         isRefreshing = true;
         try {
-          const refreshToken = sessionStorage.getItem('refresh_token')!;
-          const { data } = await axios.post<{ accessToken: string; refreshToken?: string }>(
-            `${API_URL}/api/${API_VERSION}/auth/refresh`,
-            { refreshToken }
-          );
-          sessionStorage.setItem('access_token', data.accessToken);
-          if (data.refreshToken) {
-            sessionStorage.setItem('refresh_token', data.refreshToken);
-          }
-          isRefreshing = false;
-          onTokenRefreshed(data.accessToken);
+          const freshToken = await getWorkosToken();
+          if (freshToken) {
+            sessionStorage.setItem('access_token', freshToken);
+            isRefreshing = false;
+            onTokenRefreshed(freshToken);
 
-          // Retry the original request with the new token
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${freshToken}`;
+            }
+            return apiClient(originalRequest);
+          } else {
+            throw new Error('WorkOS no pudo obtener un token fresco');
           }
-          return apiClient(originalRequest);
-        } catch (refreshError) {
+        } catch {
           isRefreshing = false;
           refreshSubscribers = [];
-          // Refresh failed — clear tokens and let auth handle redirect
+          // Token no renovable — cerrar sesión
           sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
           useAuthStore.getState().setUser(null);
-          return Promise.reject(refreshError);
+          return Promise.reject(error);
         }
       } else {
-        // Another request is already refreshing — queue this one
+        // Otro request ya está renovando — encolar éste
         return new Promise((resolve) => {
           subscribeTokenRefresh((newToken: string) => {
             if (originalRequest.headers) {
@@ -137,13 +134,6 @@ apiClient.interceptors.response.use(
         errors,
         statusCode: error.response.status,
       };
-
-      // Handle specific status codes
-      if (error.response.status === 401) {
-        // Clear stale token — let the AuthProvider handle redirect/re-auth
-        sessionStorage.removeItem('access_token');
-        sessionStorage.removeItem('refresh_token');
-      }
 
       return Promise.reject(apiError);
     } else if (error.request) {
