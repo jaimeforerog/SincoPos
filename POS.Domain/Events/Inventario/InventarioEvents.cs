@@ -6,7 +6,20 @@ namespace POS.Domain.Events.Inventario;
 public abstract class BaseEvent
 {
     public int? UsuarioId { get; set; }
+
+    /// <summary>
+    /// Fecha efectiva del movimiento en UTC.
+    /// Puede ser retroactiva cuando el usuario registra un movimiento con fecha pasada.
+    /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Fecha real del sistema (UTC) en que se creó y guardó el evento — solo para auditoría.
+    /// A diferencia de Timestamp, este campo nunca se sobreescribe: siempre refleja
+    /// el momento exacto en que el servidor procesó la operación.
+    /// Null en eventos anteriores a este campo (compatibilidad hacia atrás).
+    /// </summary>
+    public DateTime? FechaRegistro { get; init; } = DateTime.UtcNow;
 }
 
 /// <summary>
