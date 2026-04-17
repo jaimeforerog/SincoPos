@@ -236,25 +236,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     var workosClientId = builder.Configuration["WorkOs:ClientId"];
 
     // WorkOS soporta OIDC discovery en https://api.workos.com/.well-known/openid-configuration
+    // El middleware descarga las signing keys automáticamente desde el Authority y las renueva
+    // en background (AutomaticRefreshInterval = 1h por defecto). Esto evita que una rotación
+    // de claves en WorkOS cause 401 en todos los endpoints porque las keys estaban fijas.
     options.Authority = "https://api.workos.com";
     options.Audience = workosClientId;
     options.RequireHttpsMetadata = true;
 
-    var jwksJson = new System.Net.Http.HttpClient().GetStringAsync($"https://api.workos.com/sso/jwks/{workosClientId}").Result;
-    var signingKeys = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson).GetSigningKeys();
-
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
-        ValidIssuers = new[] { 
-            "https://api.workos.com", 
+        ValidIssuers = new[] {
+            "https://api.workos.com",
             "https://api.workos.com/",
             $"https://api.workos.com/user_management/{workosClientId}"
         },
         ValidateAudience = false,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        IssuerSigningKeys = signingKeys,
+        // IssuerSigningKeys NO se configura aquí: el middleware las obtiene del JWKS endpoint
+        // del Authority y las renueva automáticamente (ConfigurationManager del SDK).
         ClockSkew = TimeSpan.FromMinutes(5),
         RoleClaimType = ClaimTypes.Role,
     };
