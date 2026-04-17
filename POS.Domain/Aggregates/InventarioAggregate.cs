@@ -307,8 +307,8 @@ public class InventarioAggregate
 
         Cantidad = cantidadTotal;
 
-        // Agregar lote
-        _lotes.Add(new LoteInterno(e.Cantidad, e.CostoUnitario, DateTime.UtcNow));
+        // Agregar lote — usa Timestamp del evento para garantizar idempotencia en replay
+        _lotes.Add(new LoteInterno(e.Cantidad, e.CostoUnitario, e.Timestamp));
     }
 
     public void Apply(DevolucionProveedorRegistrada e)
