@@ -98,8 +98,7 @@ public class ComprasController : ControllerBase
 
         var totalCount = await query.CountAsync();
         var ordenes = await query
-            .OrderBy(o => o.FechaOrden)      // cronológico ascendente (más antigua primero)
-            .ThenBy(o => o.Id)
+            .OrderBy(o => o.NumeroOrden)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();

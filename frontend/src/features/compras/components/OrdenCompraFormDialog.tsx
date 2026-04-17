@@ -215,10 +215,10 @@ export function OrdenCompraFormDialog({
 
   const mutation = useMutation({
     mutationFn: (data: CrearOrdenCompraDTO) => comprasApi.create(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       setBackendError(null);
       queryClient.invalidateQueries({ queryKey: ['compras'] });
-      enqueueSnackbar('Orden de compra creada exitosamente', { variant: 'success' });
+      enqueueSnackbar(`Orden de compra ${data.numeroOrden} creada exitosamente`, { variant: 'success' });
       onSuccess();
       handleClose();
     },
