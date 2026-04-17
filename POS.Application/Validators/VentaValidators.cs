@@ -9,6 +9,7 @@ public class CrearVentaValidator : AbstractValidator<CrearVentaDto>
     {
         RuleFor(x => x.SucursalId).GreaterThan(0).WithMessage("SucursalId es requerido.");
         RuleFor(x => x.CajaId).GreaterThan(0).WithMessage("CajaId es requerido.");
+        RuleFor(x => x.ClienteId).NotNull().GreaterThan(0).WithMessage("El cliente es obligatorio.");
         RuleFor(x => x.Lineas).NotEmpty().WithMessage("La venta debe tener al menos una linea.");
         RuleForEach(x => x.Lineas).SetValidator(new LineaVentaValidator());
     }

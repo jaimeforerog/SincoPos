@@ -352,6 +352,11 @@ export function POSPage() {
       return;
     }
 
+    if (!selectedClienteId) {
+      operacional('El cliente es obligatorio', 'Selecciona un cliente antes de procesar la venta');
+      return;
+    }
+
     if (!activeSucursalId) {
       sistema(`Sin sucursal: ${user?.nombre ?? user?.email}`, 'Asigna una sucursal en Configuración de Usuarios');
       return;
