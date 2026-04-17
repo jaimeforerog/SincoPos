@@ -252,7 +252,7 @@ public class CompraRecepcionService
             // 2. Registrar lote de entrada (con número de lote y vencimiento si fue informado)
             var fechaVencimientoLote = lineaRecibida.FechaVencimiento
                 ?? (productoCompleto.DiasVidaUtil.HasValue
-                    ? DateOnly.FromDateTime(DateTime.Today.AddDays(productoCompleto.DiasVidaUtil.Value))
+                    ? DateOnly.FromDateTime(fechaRecepcionEfectiva.AddDays(productoCompleto.DiasVidaUtil.Value))
                     : (DateOnly?)null);
 
             await _costeoService.RegistrarLoteEntrada(
