@@ -104,12 +104,19 @@ public class CompraService : ICompraService
                 .ToDictionaryAsync(i => i.Id)
             : new Dictionary<int, Impuesto>();
 
-        // Generar número de orden secuencial POR SUCURSAL (IgnoreQueryFilters para contar globalmente
-        // sin filtros de soft-delete ni empresa, evitando huecos en la secuencia)
-        var totalSucursal = await _context.OrdenesCompra
+        // Generar número de orden secuencial POR SUCURSAL usando MAX del número actual
+        // (no COUNT, que colisiona cuando los números no son consecutivos por la migración desde índice global)
+        var lastNumeroOrden = await _context.OrdenesCompra
             .IgnoreQueryFilters()
-            .CountAsync(o => o.SucursalId == dto.SucursalId);
-        var numeroOrden = $"OC-{totalSucursal + 1:000000}";
+            .Where(o => o.SucursalId == dto.SucursalId)
+            .MaxAsync(o => (string?)o.NumeroOrden);
+        int nextNum = 1;
+        if (lastNumeroOrden != null && lastNumeroOrden.Length >= 9 && lastNumeroOrden.StartsWith("OC-"))
+        {
+            int.TryParse(lastNumeroOrden.AsSpan(3), out nextNum);
+            nextNum++;
+        }
+        var numeroOrden = $"OC-{nextNum:000000}";
 
         // Calcular totales usando TaxEngine
         decimal subtotal = 0;
