@@ -4,7 +4,7 @@ import { configuracionVariablesApi } from '@/api/configuracionVariables';
 const queryConfig = (nombre: string) => ({
   queryKey: ['configuracion-variable', nombre] as const,
   queryFn: () => configuracionVariablesApi.getByNombre(nombre),
-  retry: 1,
+  retry: false, // 404 = variable inactiva/inexistente, no reintentar
   staleTime: 0,
   gcTime: 5 * 60 * 1000,
 });
