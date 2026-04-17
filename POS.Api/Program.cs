@@ -235,13 +235,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 {
     var workosClientId = builder.Configuration["WorkOs:ClientId"];
 
-    // WorkOS soporta OIDC discovery en https://api.workos.com/.well-known/openid-configuration
-    // El middleware descarga las signing keys automáticamente desde el Authority y las renueva
-    // en background (AutomaticRefreshInterval = 1h por defecto). Esto evita que una rotación
-    // de claves en WorkOS cause 401 en todos los endpoints porque las keys estaban fijas.
     options.Authority = "https://api.workos.com";
     options.Audience = workosClientId;
     options.RequireHttpsMetadata = true;
+
+    // Cargar las signing keys desde el JWKS de WorkOS.
+    // RefreshOnIssuerKeyNotFound = true: cuando llega un token firmado con una key que no
+    // está en caché (rotación de WorkOS), el middleware descarga automáticamente el JWKS
+    // actualizado y reintenta la validación, evitando el 401 por keys obsoletas.
+    var jwksUri = $"https://api.workos.com/sso/jwks/{workosClientId}";
+    var jwksJson = new System.Net.Http.HttpClient().GetStringAsync(jwksUri).Result;
+    var signingKeys = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson).GetSigningKeys();
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -254,11 +258,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidateAudience = false,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        // IssuerSigningKeys NO se configura aquí: el middleware las obtiene del JWKS endpoint
-        // del Authority y las renueva automáticamente (ConfigurationManager del SDK).
+        IssuerSigningKeys = signingKeys,
         ClockSkew = TimeSpan.FromMinutes(5),
         RoleClaimType = ClaimTypes.Role,
     };
+
+    // Cuando un token usa una key no conocida (rotación), refrescar el JWKS automáticamente
+    options.RefreshOnIssuerKeyNotFound = true;
 
     options.Events = new JwtBearerEvents
     {
