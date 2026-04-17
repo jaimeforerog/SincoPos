@@ -105,7 +105,8 @@ describe('ReporteKardexPage', () => {
 
   it('muestra el Autocomplete para seleccionar producto', async () => {
     renderWithProviders(<ReporteKardexPage />);
-    expect(await screen.findByPlaceholderText(/producto/i)).toBeInTheDocument();
+    // El Autocomplete está deshabilitado hasta elegir sucursal; buscamos por el label
+    expect(await screen.findByLabelText(/seleccionar producto/i)).toBeInTheDocument();
   });
 
   it('muestra los campos de fecha', async () => {
