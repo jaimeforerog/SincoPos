@@ -410,6 +410,7 @@ public class CategoriasController : ControllerBase
             Nivel: categoria.Nivel,
             RutaCompleta: categoria.RutaCompleta,
             CantidadProductos: categoria.Productos?.Count ?? 0,
+            MargenGanancia: categoria.MargenGanancia,
             SubCategorias: hijos
         );
     }

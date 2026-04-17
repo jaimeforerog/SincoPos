@@ -37,6 +37,7 @@ public record CategoriaArbolDto(
     int Nivel,
     string RutaCompleta,
     int CantidadProductos,
+    decimal MargenGanancia,
     List<CategoriaArbolDto> SubCategorias
 );
 

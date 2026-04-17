@@ -84,6 +84,7 @@ export interface CategoriaArbolDTO {
   nivel: number;
   rutaCompleta: string;
   cantidadProductos: number;
+  margenGanancia: number;
   subCategorias: CategoriaArbolDTO[];
 }
 
