@@ -8,7 +8,11 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using POS.Infrastructure.Marten;
+using POS.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -127,6 +131,40 @@ builder.Services.AddRateLimiter(options =>
 var healthCheckConnStr = builder.Configuration.GetConnectionString("Postgres")!;
 builder.Services.AddHealthChecks()
     .AddNpgSql(healthCheckConnStr, name: "postgresql", tags: new[] { "db", "ready" });
+
+// ── Observabilidad: OpenTelemetry (Tracing + Metrics) ────────────────────
+var otlpEndpoint = builder.Configuration["OpenTelemetry:Endpoint"];
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(
+        serviceName: "sincopos-api",
+        serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0"))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation(opts =>
+            {
+                opts.RecordException = true;
+                // Excluir health checks y SignalR negotiate para no saturar el backend de trazas
+                opts.Filter = ctx =>
+                    !ctx.Request.Path.StartsWithSegments("/health") &&
+                    !(ctx.Request.Path.Value?.Contains("/negotiate") ?? false);
+            })
+            .AddHttpClientInstrumentation(opts => opts.RecordException = true);
+
+        if (!string.IsNullOrEmpty(otlpEndpoint))
+            tracing.AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint));
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddMeter(PipelineMetricsService.MeterName);  // métricas de negocio (ventas, pipeline)
+
+        if (!string.IsNullOrEmpty(otlpEndpoint))
+            metrics.AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint));
+    });
 
 // Activity Log Service (Singleton para Channel-based background processing)
 builder.Services.AddSingleton<POS.Application.Services.IActivityLogService, POS.Infrastructure.Services.ActivityLogService>();
@@ -260,7 +298,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             "https://api.workos.com/",
             $"https://api.workos.com/user_management/{workosClientId}"
         },
-        ValidateAudience = false,
+        ValidateAudience = true,
+        ValidAudiences = new[] { workosClientId },
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         IssuerSigningKeys = signingKeys,
@@ -286,8 +325,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
             logger.LogError(context.Exception, "Authentication failed: {Error}", context.Exception.Message);
-            var safeMessage = context.Exception.Message.Replace("\r", "").Replace("\n", " ");
-            context.Response.Headers.Append("X-Auth-Error", safeMessage);
             return Task.CompletedTask;
         },
         OnTokenValidated = async context =>
@@ -630,6 +667,13 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     // No exponer referrer fuera del origen
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    // Deshabilitar APIs de hardware/ubicación no usadas
+    context.Response.Headers.Append("Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=()");
+    // HSTS: solo en producción — Azure LB ya termina TLS, no usar en dev
+    if (!context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+        context.Response.Headers.Append("Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains");
     // CSP: para rutas API devuelve política restrictiva; Swagger UI necesita inline styles/scripts
     if (context.Request.Path.StartsWithSegments("/swagger"))
     {
