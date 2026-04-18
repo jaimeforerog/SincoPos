@@ -293,9 +293,10 @@ builder.Services.AddValidatorsFromAssemblyContaining<POS.Application.Validators.
 // Pre-cargar JWKS antes de registrar servicios para evitar .Result blocking en el delegate.
 var workosClientId = builder.Configuration["WorkOs:ClientId"];
 var jwksUri = $"https://api.workos.com/sso/jwks/{workosClientId}";
-IList<SecurityKey> workosSigningKeys;
-using (var jwksHttpClient = new System.Net.Http.HttpClient())
+IList<SecurityKey> workosSigningKeys = [];
+if (!string.IsNullOrEmpty(workosClientId))
 {
+    using var jwksHttpClient = new System.Net.Http.HttpClient();
     var jwksJson = await jwksHttpClient.GetStringAsync(jwksUri);
     workosSigningKeys = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson).GetSigningKeys();
 }
