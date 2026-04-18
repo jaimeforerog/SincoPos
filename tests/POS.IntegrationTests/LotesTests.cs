@@ -86,6 +86,7 @@ public class LotesTests
         {
             sucursalId,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 999_999m,
             lineas = new[]

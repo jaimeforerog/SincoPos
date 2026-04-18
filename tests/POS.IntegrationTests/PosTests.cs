@@ -68,6 +68,7 @@ public class PosTests
         var r = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
             sucursalId = SucId, cajaId,
+            clienteId = TercId,
             metodoPago = 0,  // 0 = Efectivo
             montoPagado = 999_999m,
             lineas = new[] { new { productoId, cantidad = (decimal)cantidad, precioUnitario = (decimal?)null, descuento = 0m } }
@@ -295,14 +296,14 @@ public class PosTests
         // Venta 1: Efectivo
         await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucId, cajaId = caja.Id, metodoPago = 0, montoPagado = 10_000m,
+            sucursalId = SucId, cajaId = caja.Id, clienteId = TercId, metodoPago = 0, montoPagado = 10_000m,
             lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)8000m, descuento = 0m } }
         });
 
         // Venta 2: Tarjeta
         await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucId, cajaId = caja.Id, metodoPago = 1, montoPagado = 8_000m,
+            sucursalId = SucId, cajaId = caja.Id, clienteId = TercId, metodoPago = 1, montoPagado = 8_000m,
             lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)8000m, descuento = 0m } }
         });
 

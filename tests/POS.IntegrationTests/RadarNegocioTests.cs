@@ -69,6 +69,7 @@ public class RadarNegocioTests
         {
             sucursalId  = SucId,
             cajaId,
+            clienteId   = _factory.TerceroTestId,
             metodoPago  = 0,
             montoPagado = 999_999m,
             lineas      = new[]

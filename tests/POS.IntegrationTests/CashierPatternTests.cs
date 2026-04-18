@@ -68,6 +68,7 @@ public class CashierPatternTests
         {
             sucursalId = SucId,
             cajaId,
+            clienteId = _factory.TerceroTestId,
             metodoPago = 0,
             montoPagado = 999_999m,
             lineas = new[]

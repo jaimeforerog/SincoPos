@@ -219,6 +219,7 @@ public class ActivityLogTests
         {
             sucursalId = _factory.SucursalPPId,
             cajaId = caja.Id,
+            clienteId = _factory.TerceroTestId,
             metodoPago = 0, // Efectivo
             montoPagado = 999_999m,
             lineas = new[]

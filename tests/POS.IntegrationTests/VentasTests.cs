@@ -117,6 +117,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0, // Efectivo
             montoPagado = 20000m,
             lineas = new[]
@@ -156,6 +157,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 15000m,
             lineas = new[]
@@ -202,6 +204,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 20000m,
             lineas = new[]
@@ -245,6 +248,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId = caja!.Id,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 5000m,
             lineas = new[]
@@ -271,6 +275,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 50000m,
             lineas = new[]
@@ -293,6 +298,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 1000m,
             lineas = Array.Empty<object>()
@@ -314,6 +320,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 1000m,
             lineas = new[]
@@ -343,6 +350,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 50000m,
             lineas = new[]
@@ -383,6 +391,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 0,
             montoPagado = 10000m,
             lineas = new[]
@@ -421,6 +430,7 @@ public class VentasTests
         {
             sucursalId = SucPp,
             cajaId,
+            clienteId = TerceroId,
             metodoPago = 1, // Tarjeta
             lineas = new[]
             {

@@ -109,7 +109,7 @@ public class DevolucionesTests
         {
             sucursalId,
             cajaId,
-            clienteId = (int?)null,
+            clienteId = TerceroId,
             metodoPago = 0, // Efectivo
             montoPagado,
             observaciones = "Test devolución",

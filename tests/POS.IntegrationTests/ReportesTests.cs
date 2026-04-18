@@ -66,6 +66,7 @@ public class ReportesTests
         {
             sucursalId = SucId,
             cajaId,
+            clienteId = TercId,
             metodoPago = 0,  // 0 = Efectivo
             montoPagado = 999_999m,
             lineas = new[] { new { productoId, cantidad = (decimal)cantidad, precioUnitario = (decimal?)null, descuento = 0m } }

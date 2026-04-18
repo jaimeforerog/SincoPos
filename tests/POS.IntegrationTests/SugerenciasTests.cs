@@ -67,6 +67,7 @@ public class SugerenciasTests
         {
             sucursalId  = SucId,
             cajaId,
+            clienteId   = _factory.TerceroTestId,
             metodoPago  = 0,
             montoPagado = 999_999m,
             lineas = new[] { new { productoId, cantidad, precioUnitario = (decimal?)null, descuento = 0m } }

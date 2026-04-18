@@ -189,7 +189,7 @@ public class ImpuestosTests
         // Act: vender 5 unidades a $1000
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 10000m,
+            sucursalId = SucPp, cajaId, clienteId = _factory.TerceroTestId, metodoPago = 0, montoPagado = 10000m,
             lineas = new[] { new { productoId, cantidad = 5m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -217,7 +217,7 @@ public class ImpuestosTests
         // Act
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 20000m,
+            sucursalId = SucPp, cajaId, clienteId = _factory.TerceroTestId, metodoPago = 0, montoPagado = 20000m,
             lineas = new[] { new { productoId, cantidad = 3m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -240,7 +240,7 @@ public class ImpuestosTests
 
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 10000m,
+            sucursalId = SucPp, cajaId, clienteId = _factory.TerceroTestId, metodoPago = 0, montoPagado = 10000m,
             lineas = new[] { new { productoId, cantidad = 2m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -266,7 +266,7 @@ public class ImpuestosTests
 
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 500_000m,
+            sucursalId = SucPp, cajaId, clienteId = _factory.TerceroTestId, metodoPago = 0, montoPagado = 500_000m,
             lineas = new[] { new { productoId, cantidad = 3m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
@@ -289,7 +289,7 @@ public class ImpuestosTests
 
         var response = await _client.PostAsJsonAsync("/api/v1/Ventas", new
         {
-            sucursalId = SucPp, cajaId, metodoPago = 0, montoPagado = 20_000m,
+            sucursalId = SucPp, cajaId, clienteId = _factory.TerceroTestId, metodoPago = 0, montoPagado = 20_000m,
             lineas = new[] { new { productoId, cantidad = 1m, precioUnitario = (decimal?)null, descuento = 0m } }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK,
