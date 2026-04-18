@@ -254,12 +254,18 @@ public class EmpresaContextMiddlewareTests
             FechaCreacion = DateTime.UtcNow
         };
         ctx.Empresas.Add(empresaInactiva);
-        await ctx.SaveChangesAsync(); // guardar primero para obtener el Id real
+        await ctx.SaveChangesAsync();
+        // IgnoreQueryFilters necesario porque Activo=false queda filtrado por el soft-delete global,
+        // impidiendo que EF Core resuelva el Id generado de la empresa inactiva.
+        var empresaInactivaId = await ctx.Empresas.IgnoreQueryFilters()
+            .Where(e => e.Nit == "900-MW-INACT")
+            .Select(e => e.Id)
+            .FirstAsync();
 
         var sucursalOtraEmpresa = new Sucursal
         {
             Nombre    = "Suc-MW-OtraEmpresa",
-            EmpresaId = empresaInactiva.Id, // empresa inactiva — visible cuando EmpresaId del provider es null
+            EmpresaId = empresaInactivaId, // empresa inactiva — visible cuando EmpresaId del provider es null
             Activo    = true,
             FechaCreacion = DateTime.UtcNow,
             CreadoPor = "test"
