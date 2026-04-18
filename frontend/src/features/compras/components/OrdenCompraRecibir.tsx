@@ -21,7 +21,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
-import type { OrdenCompraDTO } from '@/types/api';
+import type { OrdenCompraDTO , ApiError} from '@/types/api';
 import { localDateStr } from '@/utils/dates';
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ export function AccionRecibir({ orden, onCancel, onDone }: Props) {
       enqueueSnackbar('Mercancía recibida exitosamente', { variant: 'success' });
       onDone();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const statusCode: number = error?.statusCode ?? 0;
       const msg: string = error?.message ?? '';
       const errores: Record<string, string[]> | undefined = error?.errors;

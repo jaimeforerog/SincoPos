@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import type { UserInfo, SucursalResumenDTO } from '@/types/api';
 
+const empresaChannel = typeof window !== 'undefined'
+  ? new BroadcastChannel('pos-empresa')
+  : null;
+
 interface AuthState {
   user: UserInfo | null;
   isAuthenticated: boolean;
@@ -131,6 +135,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
 
+    empresaChannel?.postMessage({ type: 'empresa_changed', empresaId: id, sucursalId: activeSucursalId });
     set({ activeEmpresaId: id, activeSucursalId, empresasDisponibles: nuevasEmpresas });
   },
 
@@ -151,3 +156,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     sessionStorage.removeItem('access_token');
   },
 }));
+
+// Sincronizar empresa activa entre pestañas del mismo origen.
+// Cuando el usuario cambia de empresa en una pestaña, las demás actualizan su estado
+// para evitar inconsistencias en los headers X-Empresa-Id enviados al backend.
+if (empresaChannel) {
+  empresaChannel.onmessage = (event: MessageEvent<{ type: string; empresaId: number; sucursalId: number | undefined }>) => {
+    if (event.data?.type !== 'empresa_changed') return;
+    const { empresaId, sucursalId } = event.data;
+    if (useAuthStore.getState().activeEmpresaId === empresaId) return; // ya sincronizado
+    sessionStorage.setItem('activeEmpresaId', String(empresaId));
+    if (sucursalId != null) localStorage.setItem('activeSucursalId', String(sucursalId));
+    useAuthStore.setState({ activeEmpresaId: empresaId, activeSucursalId: sucursalId });
+  };
+}

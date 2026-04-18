@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
-import type { OrdenCompraDTO, CancelarOrdenCompraDTO, PaginatedResult } from '@/types/api';
+import type { OrdenCompraDTO, CancelarOrdenCompraDTO, PaginatedResult , ApiError} from '@/types/api';
 
 const cancelarSchema = z.object({
   motivo: z.string().min(1, 'El motivo es requerido').min(5, 'Mínimo 5 caracteres'),
@@ -70,7 +70,7 @@ export function CancelarOrdenDialog({
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       let mensaje = 'Error al cancelar la orden';
 
       if (error.response) {

@@ -89,7 +89,6 @@ export function AbrirCajaDialog({ open, onClose, defaultSucursalId }: AbrirCajaD
         nombre: data.nombre,
         sucursalId: data.sucursalId,
       };
-      console.log('[AbrirCaja] crearDto:', JSON.stringify(crearDto));
       const cajaCreada = await cajasApi.crear(crearDto);
 
       // Luego abrirla inmediatamente
@@ -116,7 +115,6 @@ export function AbrirCajaDialog({ open, onClose, defaultSucursalId }: AbrirCajaD
   });
 
   const onSubmit = (data: AbrirCajaFormData) => {
-    console.log('[AbrirCaja] submit data:', JSON.stringify(data));
     abrirMutation.mutate(data);
   };
 

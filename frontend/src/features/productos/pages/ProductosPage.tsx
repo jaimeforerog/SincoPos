@@ -36,7 +36,7 @@ import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
 import { ProductoFormDialog } from '../components/ProductoFormDialog';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
-import type { ProductoDTO } from '@/types/api';
+import type { ProductoDTO , ApiError} from '@/types/api';
 
 export function ProductosPage() {
   const { enqueueSnackbar } = useSnackbar();
@@ -85,7 +85,7 @@ export function ProductosPage() {
       queryClient.invalidateQueries({ queryKey: ['productos'] });
       enqueueSnackbar('Producto desactivado exitosamente', { variant: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const mensaje =
         error.message || 'Error al desactivar el producto';
       enqueueSnackbar(mensaje, { variant: 'error' });

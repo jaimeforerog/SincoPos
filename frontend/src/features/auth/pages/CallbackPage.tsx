@@ -20,9 +20,6 @@ const _capturedVerifier =
 // Module-level flag — survives React StrictMode unmount+remount cycles.
 let _exchanged = false;
 
-console.log('[Callback] Module loaded. code=', _capturedCode ? '✓' : 'null',
-  'verifier=', _capturedVerifier ? '✓' : 'null',
-  'error=', _capturedError);
 
 export function CallbackPage() {
   const navigate = useNavigate();
@@ -61,14 +58,11 @@ export function CallbackPage() {
     // Exchange code via backend (server-to-server, no CORS issues)
     const doExchange = async () => {
       try {
-        console.log('[Callback] Intercambiando código con backend...');
         const API_URL = import.meta.env.VITE_API_URL ?? '';
         const { data } = await axios.post<{ accessToken: string; refreshToken?: string }>(`${API_URL}/api/v1/auth/callback`, {
           code,
           codeVerifier,
         });
-        console.log('[Callback] Token recibido del backend ✓');
-
         // Store token for axios interceptor
         sessionStorage.setItem('access_token', data.accessToken);
         if (data.refreshToken) {
@@ -76,14 +70,6 @@ export function CallbackPage() {
         }
         // Clean up PKCE backup now that exchange succeeded
         localStorage.removeItem('workos:pkce-cv-backup');
-
-        // DEBUG: log JWT payload to diagnose backend 401 issues
-        try {
-          const rawPayload = JSON.parse(
-            atob(data.accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-          );
-          console.log('[Callback] JWT payload:', rawPayload);
-        } catch { /* non-JWT token */ }
 
         // Load user profile from backend
         try {

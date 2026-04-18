@@ -111,7 +111,7 @@ public class UsuariosController : ControllerBase
         var empresaInfo = sucursalIds.Any()
             ? await _db.Sucursales
                 .IgnoreQueryFilters()
-                .Where(s => sucursalIds.Contains(s.Id) && s.EmpresaId != null)
+                .Where(s => sucursalIds.Contains(s.Id))
                 .Select(s => new { s.EmpresaId, s.Empresa!.Nombre })
                 .FirstOrDefaultAsync()
             : null;

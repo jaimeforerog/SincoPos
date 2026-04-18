@@ -10,7 +10,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
-import type { OrdenCompraDTO } from '@/types/api';
+import type { OrdenCompraDTO , ApiError} from '@/types/api';
 
 interface AccionProps {
   orden: OrdenCompraDTO;
@@ -33,7 +33,7 @@ export function AccionAprobar({ orden, onCancel, onDone }: AccionProps) {
       enqueueSnackbar('Orden aprobada exitosamente', { variant: 'success' });
       onDone();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const statusCode: number = error?.statusCode ?? 0;
       const msg: string = error?.message ?? '';
       let mensaje = 'Error al aprobar la orden';
@@ -100,7 +100,7 @@ export function AccionRechazar({ orden, onCancel, onDone }: AccionProps) {
       enqueueSnackbar('Orden rechazada', { variant: 'info' });
       onDone();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const statusCode: number = error?.statusCode ?? 0;
       const msg: string = error?.message ?? '';
       let mensaje = 'Error al rechazar la orden';
@@ -178,7 +178,7 @@ export function AccionCancelar({ orden, onCancel, onDone }: AccionProps) {
       enqueueSnackbar('Orden cancelada', { variant: 'info' });
       onDone();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const statusCode: number = error?.statusCode ?? 0;
       const msg: string = error?.message ?? '';
       let mensaje = 'Error al cancelar la orden';

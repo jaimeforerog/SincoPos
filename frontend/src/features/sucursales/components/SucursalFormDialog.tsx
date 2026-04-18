@@ -18,7 +18,7 @@ import {
 import { useSnackbar } from 'notistack';
 import { sucursalesApi } from '@/api/sucursales';
 import { getPaises, getCiudadesPorPais } from '@/api/paises';
-import type { SucursalDTO, CrearSucursalDTO, ActualizarSucursalDTO } from '@/types/api';
+import type { SucursalDTO, CrearSucursalDTO, ActualizarSucursalDTO , ApiError} from '@/types/api';
 
 const sucursalSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').max(100),
@@ -119,7 +119,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
       enqueueSnackbar('Sucursal creada correctamente', { variant: 'success' });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(
         error.response?.data?.detail || error.response?.data?.title || 'Error al crear la sucursal',
         { variant: 'error' }
@@ -135,7 +135,7 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
       enqueueSnackbar('Sucursal actualizada correctamente', { variant: 'success' });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(
         error.response?.data?.detail || error.response?.data?.title || 'Error al actualizar la sucursal',
         { variant: 'error' }

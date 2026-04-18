@@ -372,46 +372,22 @@ public class UblBuilderService : IUblBuilderService
                         new XElement(Cbc + "Name", nombre)))));
 
     private static XElement BuildLegalMonetaryTotal(VentaUblData data) =>
-        new(Cac + "LegalMonetaryTotal",
-            new XElement(Cbc + "LineExtensionAmount",
-                new XAttribute("currencyID", "COP"),
-                data.SubtotalSinImpuestos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)),
-            new XElement(Cbc + "TaxExclusiveAmount",
-                new XAttribute("currencyID", "COP"),
-                data.SubtotalSinImpuestos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)),
-            new XElement(Cbc + "TaxInclusiveAmount",
-                new XAttribute("currencyID", "COP"),
-                data.Total.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)),
-            new XElement(Cbc + "AllowanceTotalAmount",
-                new XAttribute("currencyID", "COP"),
-                "0.00"),
-            new XElement(Cbc + "ChargeTotalAmount",
-                new XAttribute("currencyID", "COP"),
-                "0.00"),
-            new XElement(Cbc + "PayableAmount",
-                new XAttribute("currencyID", "COP"),
-                data.Total.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
+        BuildLegalMonetaryTotalBase(data.SubtotalSinImpuestos, data.Total);
 
     private static XElement BuildLegalMonetaryTotalFromDevolucion(DevolucionUblData data) =>
-        new(Cac + "LegalMonetaryTotal",
-            new XElement(Cbc + "LineExtensionAmount",
-                new XAttribute("currencyID", "COP"),
-                data.SubtotalSinImpuestos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)),
-            new XElement(Cbc + "TaxExclusiveAmount",
-                new XAttribute("currencyID", "COP"),
-                data.SubtotalSinImpuestos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)),
-            new XElement(Cbc + "TaxInclusiveAmount",
-                new XAttribute("currencyID", "COP"),
-                data.Total.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)),
-            new XElement(Cbc + "AllowanceTotalAmount",
-                new XAttribute("currencyID", "COP"),
-                "0.00"),
-            new XElement(Cbc + "ChargeTotalAmount",
-                new XAttribute("currencyID", "COP"),
-                "0.00"),
-            new XElement(Cbc + "PayableAmount",
-                new XAttribute("currencyID", "COP"),
-                data.Total.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
+        BuildLegalMonetaryTotalBase(data.SubtotalSinImpuestos, data.Total);
+
+    private static XElement BuildLegalMonetaryTotalBase(decimal subtotal, decimal total)
+    {
+        var fmt = System.Globalization.CultureInfo.InvariantCulture;
+        return new XElement(Cac + "LegalMonetaryTotal",
+            new XElement(Cbc + "LineExtensionAmount", new XAttribute("currencyID", "COP"), subtotal.ToString("F2", fmt)),
+            new XElement(Cbc + "TaxExclusiveAmount",  new XAttribute("currencyID", "COP"), subtotal.ToString("F2", fmt)),
+            new XElement(Cbc + "TaxInclusiveAmount",  new XAttribute("currencyID", "COP"), total.ToString("F2", fmt)),
+            new XElement(Cbc + "AllowanceTotalAmount", new XAttribute("currencyID", "COP"), "0.00"),
+            new XElement(Cbc + "ChargeTotalAmount",   new XAttribute("currencyID", "COP"), "0.00"),
+            new XElement(Cbc + "PayableAmount",       new XAttribute("currencyID", "COP"), total.ToString("F2", fmt)));
+    }
 
     private static XElement BuildInvoiceLine(LineaUblData linea) =>
         new(Cac + "InvoiceLine",
@@ -491,50 +467,29 @@ public class UblBuilderService : IUblBuilderService
 
     // ─── CUFE ────────────────────────────────────────────────────────────────
 
-    private static string CalcularCufe(VentaUblData data, EmisorUblData emisor, DateTime fechaColombia)
-    {
-        // Algoritmo SHA-384 DIAN para FV
-        // ValImp1=IVA(01), ValImp2=INC(04), ValImp3=ICA(03)
-        var totalIva = data.TotalIva19 + data.TotalIva5;
-        var totalInc = data.TotalInc;
+    private static string CalcularCufe(VentaUblData data, EmisorUblData emisor, DateTime fechaColombia) =>
+        ComputeSha384(BuildCadenaCufe(
+            data.NumeroCompleto, fechaColombia, data.SubtotalSinImpuestos,
+            data.TotalIva19 + data.TotalIva5, data.TotalInc, data.Total,
+            emisor.Nit, MapTipoDocCliente(data.ClienteTipoDocumento),
+            data.ClienteNit ?? "222222222", emisor.PinSoftware, emisor.Ambiente));
 
-        var cadena = $"{data.NumeroCompleto}" +
-                     $"{fechaColombia:yyyyMMdd}" +
-                     $"{fechaColombia:HH:mm:ss}" +
-                     $"{data.SubtotalSinImpuestos:F2}" +
-                     $"01{totalIva:F2}" +
-                     $"04{totalInc:F2}" +
-                     $"03{0:F2}" + // ICA no implementado
-                     $"{data.Total:F2}" +
-                     $"{emisor.Nit}" +
-                     $"{MapTipoDocCliente(data.ClienteTipoDocumento)}" +
-                     $"{data.ClienteNit ?? "222222222"}" +
-                     $"{emisor.PinSoftware}" +
-                     $"{emisor.Ambiente}";
+    private static string CalcularCufeNc(DevolucionUblData data, EmisorUblData emisor, DateTime fechaColombia) =>
+        ComputeSha384(BuildCadenaCufe(
+            data.NumeroCompleto, fechaColombia, data.SubtotalSinImpuestos,
+            data.TotalIva19 + data.TotalIva5, data.TotalInc, data.Total,
+            emisor.Nit, MapTipoDocCliente(data.ClienteTipoDocumento),
+            data.ClienteNit ?? "222222222", emisor.PinSoftware, emisor.Ambiente));
 
-        return ComputeSha384(cadena);
-    }
-
-    private static string CalcularCufeNc(DevolucionUblData data, EmisorUblData emisor, DateTime fechaColombia)
-    {
-        var totalIva = data.TotalIva19 + data.TotalIva5;
-
-        var cadena = $"{data.NumeroCompleto}" +
-                     $"{fechaColombia:yyyyMMdd}" +
-                     $"{fechaColombia:HH:mm:ss}" +
-                     $"{data.SubtotalSinImpuestos:F2}" +
-                     $"01{totalIva:F2}" +
-                     $"04{data.TotalInc:F2}" +
-                     $"03{0:F2}" +
-                     $"{data.Total:F2}" +
-                     $"{emisor.Nit}" +
-                     $"{MapTipoDocCliente(data.ClienteTipoDocumento)}" +
-                     $"{data.ClienteNit ?? "222222222"}" +
-                     $"{emisor.PinSoftware}" +
-                     $"{emisor.Ambiente}";
-
-        return ComputeSha384(cadena);
-    }
+    // Algoritmo SHA-384 DIAN: ValImp1=IVA(01), ValImp2=INC(04), ValImp3=ICA(03 — no implementado)
+    private static string BuildCadenaCufe(
+        string numero, DateTime fecha, decimal subtotal,
+        decimal iva, decimal inc, decimal total,
+        string nit, string tipoDocCliente, string nitCliente,
+        string pin, string ambiente) =>
+        $"{numero}{fecha:yyyyMMdd}{fecha:HH:mm:ss}{subtotal:F2}" +
+        $"01{iva:F2}04{inc:F2}03{0:F2}" +
+        $"{total:F2}{nit}{tipoDocCliente}{nitCliente}{pin}{ambiente}";
 
     private static string ComputeSha384(string input)
     {

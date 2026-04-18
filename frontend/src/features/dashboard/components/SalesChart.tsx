@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import type { TooltipProps } from 'recharts';
 import type { VentaPorHoraDTO } from '@/types/api';
 
 interface SalesChartProps {
@@ -23,7 +24,7 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload as { hora: number; total: number; cantidad: number };
     return (

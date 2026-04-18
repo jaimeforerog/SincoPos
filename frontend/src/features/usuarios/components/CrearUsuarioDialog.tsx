@@ -28,6 +28,7 @@ import { useSnackbar } from 'notistack';
 import { usuariosApi, type CrearUsuarioResult } from '@/api/usuarios';
 import { sucursalesApi } from '@/api/sucursales';
 import { useAuthStore } from '@/stores/auth.store';
+import type { ApiError } from '@/types/api';
 
 const ROLES = ['admin', 'supervisor', 'cajero', 'vendedor'] as const;
 
@@ -101,7 +102,7 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
       enqueueSnackbar('Usuario creado exitosamente', { variant: 'success' });
       setResultado(result);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const mensaje = error?.message || 'Error al crear el usuario';
       setBackendError(mensaje);
       enqueueSnackbar(mensaje, { variant: 'error' });

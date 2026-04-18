@@ -27,7 +27,7 @@ import { useOfflineSync } from '@/offline/useOfflineSync';
 import { useTurnPreload } from '../hooks/useTurnPreload';
 import { enqueueVenta } from '@/offline/offlineQueue.service';
 import { posSessionCache } from '@/offline/posSessionCache';
-import type { ProductoDTO, CrearVentaDTO, VentaDTO } from '@/types/api';
+import type { ProductoDTO, CrearVentaDTO, VentaDTO, ApiError } from '@/types/api';
 import { localDateTimeStr } from '@/utils/dates';
 
 export function POSPage() {
@@ -179,7 +179,6 @@ export function POSPage() {
   const crearVentaMutation = useMutation({
     mutationFn: (data: CrearVentaDTO) => ventasApi.create(data),
     onSuccess: (venta) => {
-      console.log('✅ Venta creada exitosamente:', venta);
       setLastVenta(venta);
       setShowConfirmDialog(true);
       clearCart();
@@ -190,14 +189,7 @@ export function POSPage() {
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
       queryClient.invalidateQueries({ queryKey: ['inventario', activeSucursalId] });
     },
-    onError: (error: any) => {
-      console.error('❌ Error al crear venta:', error);
-      console.error('Detalles:', {
-        message: error.message,
-        errors: error.errors,
-        statusCode: error.statusCode,
-        response: error.response,
-      });
+    onError: (error: ApiError) => {
       const mensaje =
         error.errors
           ? (Array.isArray(error.errors) ? error.errors.join(', ') : JSON.stringify(error.errors))
@@ -424,9 +416,6 @@ export function POSPage() {
       return;
     }
 
-    console.log('🛒 Items en carrito antes de mapear:', items);
-    console.log('📊 Total de items:', items.length);
-
     const totalVenta = getTotal();
 
     // Construir DTO
@@ -468,12 +457,10 @@ export function POSPage() {
     }
 
     // ── Modo online: enviar al servidor ──────────────────────────────────
-    console.log('📤 Enviando venta:', crearVentaDto);
     try {
       await crearVentaMutation.mutateAsync(crearVentaDto);
-    } catch (error) {
+    } catch {
       // El error ya se maneja en el onError del mutation
-      console.error('Error capturado en handleCobrar:', error);
     }
   };
 

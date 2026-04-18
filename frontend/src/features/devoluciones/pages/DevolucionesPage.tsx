@@ -35,7 +35,7 @@ import { formatCurrency, formatDate } from '@/utils/format';
 import { useSnackbar } from 'notistack';
 import SearchIcon from '@mui/icons-material/Search';
 import UndoIcon from '@mui/icons-material/Undo';
-import type { VentaDTO } from '@/types/api';
+import type { VentaDTO , ApiError} from '@/types/api';
 
 interface DevolucionFormData {
   [productoId: string]: number; // productoId -> cantidad a devolver
@@ -112,7 +112,7 @@ export function DevolucionesPage() {
         handleSeleccionarVenta(ventaSeleccionada);
       }
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(error.response?.data?.detail || 'Error al crear devolución', {
         variant: 'error',
       });

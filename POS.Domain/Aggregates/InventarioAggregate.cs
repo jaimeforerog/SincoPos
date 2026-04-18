@@ -23,13 +23,17 @@ public class InventarioAggregate
     private InventarioAggregate() { }
 
     /// <summary>
-    /// Genera el stream ID unico para un producto en una sucursal
+    /// Genera el stream ID unico para un producto en una sucursal.
     /// </summary>
+    /// <remarks>
+    /// Usa MD5 como función hash determinística (no criptográfica) para derivar un Guid
+    /// de 16 bytes a partir del par (productoId, sucursalId). MD5 es apropiado aquí
+    /// porque el objetivo es unicidad de clave, no seguridad.
+    /// IMPORTANTE: cambiar este algoritmo requiere una migración de todos los streams
+    /// existentes en Marten — los IDs históricos están almacenados en events.mt_streams.
+    /// </remarks>
     public static Guid GenerarStreamId(Guid productoId, int sucursalId)
     {
-        // GUID determinístico basado en producto+sucursal.
-        // MD5.HashData produce el mismo resultado que la versión anterior con MD5.Create()
-        // — no cambiar el algoritmo sin migrar los streams existentes en Marten.
         var input = System.Text.Encoding.UTF8.GetBytes($"inv-{productoId}-{sucursalId}");
         var hash = System.Security.Cryptography.MD5.HashData(input);
         return new Guid(hash);

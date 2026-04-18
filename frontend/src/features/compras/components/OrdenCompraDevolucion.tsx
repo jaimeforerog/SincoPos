@@ -24,7 +24,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
 import { inventarioApi } from '@/api/inventario';
-import type { OrdenCompraDTO } from '@/types/api';
+import type { OrdenCompraDTO , ApiError} from '@/types/api';
 import { formatDateOnly } from '@/utils/format';
 
 const HERO_COLOR = '#c62828';
@@ -124,7 +124,7 @@ export function OrdenCompraDevolucion({ orden, onCancel, onDone }: Props) {
       enqueueSnackbar(`Devolución ${devolucion.numeroDevolucion} registrada`, { variant: 'success' });
       onDone();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(error.message || 'Error al registrar la devolución', { variant: 'error' });
     },
   });

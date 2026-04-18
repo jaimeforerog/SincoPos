@@ -24,8 +24,7 @@ public class ReportesService : IReportesService
     public async Task<ReporteVentasDto> ObtenerReporteVentasAsync(
         DateTime fechaDesde, DateTime fechaHasta, int? sucursalId = null, int? metodoPago = null)
     {
-        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
-        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+        var (fechaDesdeUtc, fechaHastaUtc) = NormalizarRangoUtc(fechaDesde, fechaHasta);
 
         var ventasQuery = _context.Ventas
             .Where(v => v.FechaVenta >= fechaDesdeUtc && v.FechaVenta <= fechaHastaUtc);
@@ -411,8 +410,7 @@ public class ReportesService : IReportesService
     public async Task<List<TopProductoDto>> ObtenerTopProductosAsync(
         DateTime fechaDesde, DateTime fechaHasta, int? sucursalId = null, int limite = 10)
     {
-        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
-        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+        var (fechaDesdeUtc, fechaHastaUtc) = NormalizarRangoUtc(fechaDesde, fechaHasta);
 
         var ventasQuery = _context.Ventas
             .Where(v => v.FechaVenta >= fechaDesdeUtc && v.FechaVenta <= fechaHastaUtc);
@@ -473,8 +471,7 @@ public class ReportesService : IReportesService
     public async Task<ReporteKardexDto> ObtenerKardexAsync(
         Guid productoId, int sucursalId, DateTime fechaDesde, DateTime fechaHasta)
     {
-        var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
-        var fechaHastaUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+        var (fechaDesdeUtc, fechaHastaUtc) = NormalizarRangoUtc(fechaDesde, fechaHasta);
 
         var productoInfo = await _context.Productos
             .Where(p => p.Id == productoId)
@@ -643,4 +640,8 @@ public class ReportesService : IReportesService
         if (totalCant <= 0) return costoNuevo;
         return ((cantAnterior * costoAnterior) + (cantNueva * costoNuevo)) / totalCant;
     }
+
+    private static (DateTime desde, DateTime hasta) NormalizarRangoUtc(DateTime fechaDesde, DateTime fechaHasta) =>
+        (DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc),
+         DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc));
 }

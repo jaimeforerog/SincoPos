@@ -26,7 +26,7 @@ import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
 import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 import { localDateStr, localDateStrDaysAgo } from '@/utils/dates';
-import type { OrdenCompraDTO, RecibirOrdenCompraDTO } from '@/types/api';
+import type { OrdenCompraDTO, RecibirOrdenCompraDTO , ApiError} from '@/types/api';
 
 type LineaRecepcionError = { cantidadRecibida?: FieldError };
 
@@ -134,7 +134,7 @@ export function RecibirOrdenDialog({
       onSuccess();
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const statusCode: number = error?.statusCode ?? 0;
       const msg: string = error?.message ?? '';
       const errores: Record<string, string[]> | undefined = error?.errors;

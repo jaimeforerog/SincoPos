@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using POS.Application.DTOs;
 using POS.Application.Services;
 
@@ -114,8 +115,10 @@ public class FacturacionController : ControllerBase
     /// <summary>Emitir manualmente la factura de una venta (para ventas que fallaron automáticamente).</summary>
     [HttpPost("documentos/emitir-venta/{ventaId:int}")]
     [Authorize(Policy = "Admin")]
+    [EnableRateLimiting("facturacion")]
     [ProducesResponseType(typeof(DocumentoElectronicoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<DocumentoElectronicoDto>> EmitirFacturaManual(int ventaId)
     {
         var (doc, error) = await _facturacion.EmitirFacturaVentaAsync(ventaId);

@@ -23,6 +23,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { trasladosApi } from '@/api/traslados';
+import type { ApiError } from '@/types/api';
 
 interface Props {
   open: boolean;
@@ -53,7 +54,7 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ['traslado', trasladoId] });
       queryClient.invalidateQueries({ queryKey: ['traslados'] });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const errorMessage = error?.response?.data?.error || 'Error al enviar el traslado';
       enqueueSnackbar(errorMessage, { variant: 'error' });
     },
@@ -80,7 +81,7 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ['traslados'] });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const errorMessage = error?.response?.data?.error || 'Error al recibir el traslado';
       enqueueSnackbar(errorMessage, { variant: 'error' });
     },
@@ -96,7 +97,7 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
       setMotivoRechazo('');
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const errorMessage = error?.response?.data?.error || 'Error al rechazar el traslado';
       enqueueSnackbar(errorMessage, { variant: 'error' });
     },
@@ -112,7 +113,7 @@ export function DetallesTrasladoDialog({ open, trasladoId, onClose }: Props) {
       setMotivoCancelacion('');
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const errorMessage = error?.response?.data?.error || 'Error al cancelar el traslado';
       enqueueSnackbar(errorMessage, { variant: 'error' });
     },

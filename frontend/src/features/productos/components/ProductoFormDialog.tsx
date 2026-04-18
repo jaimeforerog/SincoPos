@@ -28,7 +28,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
 import { conceptosRetencionApi, impuestosApi } from '@/api/impuestos';
-import type { ProductoDTO, CrearProductoDTO, ActualizarProductoDTO } from '@/types/api';
+import type { ProductoDTO, CrearProductoDTO, ActualizarProductoDTO , ApiError} from '@/types/api';
 
 const UNIDADES_MEDIDA = [
   { codigo: '94',  label: 'Unidad (94)' },
@@ -189,7 +189,7 @@ export function ProductoFormDialog({
       setShowCategoriaInput(false);
       setNuevaCategoria('');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const mensaje =
         error.message || 'Error al crear la categoría';
       enqueueSnackbar(mensaje, { variant: 'error' });
@@ -232,7 +232,7 @@ export function ProductoFormDialog({
       onSuccess();
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const mensaje =
         error.message ||
         `Error al ${isEdit ? 'actualizar' : 'crear'} el producto`;

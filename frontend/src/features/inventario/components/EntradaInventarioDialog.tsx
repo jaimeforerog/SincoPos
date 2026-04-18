@@ -20,6 +20,7 @@ import { sucursalesApi } from '@/api/sucursales';
 import { useAuth } from '@/hooks/useAuth';
 import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
 import { localDateTimeStr, localDateTimeStrDaysAgo } from '@/utils/dates';
+import type { ApiError } from '@/types/api';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -80,7 +81,7 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
       onSuccess();
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(
         error.message || 'Error al registrar entrada',
         { variant: 'error' }

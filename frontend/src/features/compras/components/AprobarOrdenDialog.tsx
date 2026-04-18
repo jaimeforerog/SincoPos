@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { comprasApi } from '@/api/compras';
-import type { OrdenCompraDTO, AprobarOrdenCompraDTO, PaginatedResult } from '@/types/api';
+import type { OrdenCompraDTO, AprobarOrdenCompraDTO, PaginatedResult , ApiError} from '@/types/api';
 
 interface AprobarOrdenDialogProps {
   open: boolean;
@@ -58,7 +58,7 @@ export function AprobarOrdenDialog({
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       let mensaje = 'Error al aprobar la orden';
 
       if (error.response) {

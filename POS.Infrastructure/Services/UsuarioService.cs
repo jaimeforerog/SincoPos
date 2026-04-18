@@ -280,13 +280,7 @@ public class UsuarioService : IUsuarioService
             return (null, $"Error al crear usuario en proveedor de identidad: {idpError}");
 
         // 3. Asignar rol en IdP
-        var (rolSuccess, rolError) = await _identityProvider.AsignarRolAsync(externalId, dto.Rol.ToLower());
-        if (!rolSuccess)
-        {
-            _logger.LogWarning(
-                "No se pudo asignar rol {Rol} en IdP para {Email}: {Error}",
-                dto.Rol, dto.Email, rolError);
-        }
+        await SincronizarRolIdpAsync(externalId, dto.Email, dto.Rol);
 
         // 4. Crear entidad local
         var creador = await _context.Usuarios
@@ -307,55 +301,11 @@ public class UsuarioService : IUsuarioService
         _context.Usuarios.Add(usuario);
         await _context.SaveChangesAsync();
 
-        // 5. Asignar sucursales
-        if (dto.SucursalIds is { Count: > 0 })
-        {
-            var sucursalesValidas = await _context.Sucursales
-                .Where(s => dto.SucursalIds.Contains(s.Id) && s.Activo)
-                .Select(s => s.Id)
-                .ToListAsync();
-
-            foreach (var sid in sucursalesValidas)
-            {
-                _context.UsuarioSucursales.Add(new UsuarioSucursal
-                {
-                    UsuarioId = usuario.Id,
-                    SucursalId = sid
-                });
-            }
-
-            // Si hay sucursal default, asegurar que este en la lista
-            if (dto.SucursalDefaultId.HasValue &&
-                !sucursalesValidas.Contains(dto.SucursalDefaultId.Value))
-            {
-                var defaultExiste = await _context.Sucursales
-                    .AnyAsync(s => s.Id == dto.SucursalDefaultId.Value && s.Activo);
-                if (defaultExiste)
-                {
-                    _context.UsuarioSucursales.Add(new UsuarioSucursal
-                    {
-                        UsuarioId = usuario.Id,
-                        SucursalId = dto.SucursalDefaultId.Value
-                    });
-                }
-            }
-
-            await _context.SaveChangesAsync();
-        }
-        else if (dto.SucursalDefaultId.HasValue)
-        {
-            var defaultExiste = await _context.Sucursales
-                .AnyAsync(s => s.Id == dto.SucursalDefaultId.Value && s.Activo);
-            if (defaultExiste)
-            {
-                _context.UsuarioSucursales.Add(new UsuarioSucursal
-                {
-                    UsuarioId = usuario.Id,
-                    SucursalId = dto.SucursalDefaultId.Value
-                });
-                await _context.SaveChangesAsync();
-            }
-        }
+        // 5. Asignar sucursales (incluye default para garantizar que esté en la lista)
+        var idsConDefault = new HashSet<int>(dto.SucursalIds ?? []);
+        if (dto.SucursalDefaultId.HasValue) idsConDefault.Add(dto.SucursalDefaultId.Value);
+        if (idsConDefault.Count > 0)
+            await AsignarSucursalesAsync(usuario.Id, idsConDefault.ToList());
 
         _logger.LogInformation(
             "Usuario creado por admin: Id={Id}, Email={Email}, Rol={Rol}, ExternalId={ExternalId}",
@@ -415,15 +365,7 @@ public class UsuarioService : IUsuarioService
 
         // Si cambio el rol, sincronizar con IdP
         if (dto.Rol != null && dto.Rol.ToLower() != rolAnterior)
-        {
-            var (_, rolError) = await _identityProvider.AsignarRolAsync(usuario.ExternalId, dto.Rol.ToLower());
-            if (rolError != null)
-            {
-                _logger.LogWarning(
-                    "No se pudo sincronizar rol {Rol} en IdP para {Email}: {Error}",
-                    dto.Rol, usuario.Email, rolError);
-            }
-        }
+            await SincronizarRolIdpAsync(usuario.ExternalId, usuario.Email, dto.Rol);
 
         // Si se proporcionaron sucursales, reasignar
         if (dto.SucursalIds != null)
@@ -457,13 +399,7 @@ public class UsuarioService : IUsuarioService
         usuario.FechaModificacion = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        var (_, rolError) = await _identityProvider.AsignarRolAsync(usuario.ExternalId, nuevoRol.ToLower());
-        if (rolError != null)
-        {
-            _logger.LogWarning(
-                "No se pudo sincronizar rol {Rol} en IdP para {Email}: {Error}",
-                nuevoRol, usuario.Email, rolError);
-        }
+        await SincronizarRolIdpAsync(usuario.ExternalId, usuario.Email, nuevoRol);
 
         _logger.LogInformation(
             "Rol de usuario {Email} cambiado: {RolAnterior} -> {RolNuevo}",
@@ -488,6 +424,16 @@ public class UsuarioService : IUsuarioService
             usuario.Email, id);
 
         return (tempPassword, null);
+    }
+
+    // ── Helpers privados ─────────────────────────────────────────────────────
+
+    private async Task SincronizarRolIdpAsync(string externalId, string email, string rol)
+    {
+        var (_, error) = await _identityProvider.AsignarRolAsync(externalId, rol.ToLower());
+        if (error != null)
+            _logger.LogWarning(
+                "No se pudo sincronizar rol {Rol} en IdP para {Email}: {Error}", rol, email, error);
     }
 
     // ── Entity-returning methods (for backward compat: CajasController) ──────

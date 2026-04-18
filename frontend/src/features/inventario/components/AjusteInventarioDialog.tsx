@@ -20,6 +20,7 @@ import { inventarioApi } from '@/api/inventario';
 import { productosApi } from '@/api/productos';
 import { sucursalesApi } from '@/api/sucursales';
 import { useAuth } from '@/hooks/useAuth';
+import type { ApiError } from '@/types/api';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -71,7 +72,7 @@ export function AjusteInventarioDialog({ open, onClose, onSuccess }: Props) {
       onSuccess();
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(
         error.message || 'Error al ajustar inventario',
         { variant: 'error' }

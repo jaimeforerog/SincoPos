@@ -35,6 +35,10 @@ frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
 
+# ── Artefactos de deploy manual ─────────────────────────────────────────────
+deploy_api_unix.zip
+publish/
+
 # ── Docker ──────────────────────────────────────────────────────────────────
 .dockerignore.local
 

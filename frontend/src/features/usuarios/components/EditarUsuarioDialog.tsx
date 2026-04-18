@@ -31,6 +31,7 @@ import { useSnackbar } from 'notistack';
 import { usuariosApi, type UsuarioDto } from '@/api/usuarios';
 import { sucursalesApi } from '@/api/sucursales';
 import { useAuthStore } from '@/stores/auth.store';
+import type { ApiError } from '@/types/api';
 
 const ROLES = ['admin', 'supervisor', 'cajero', 'vendedor'] as const;
 
@@ -114,7 +115,7 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
       enqueueSnackbar('Usuario actualizado exitosamente', { variant: 'success' });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const mensaje = error?.message || 'Error al actualizar el usuario';
       setBackendError(mensaje);
       enqueueSnackbar(mensaje, { variant: 'error' });
@@ -127,7 +128,7 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
       setTempPassword(result.passwordTemporal);
       enqueueSnackbar('Contrasena reseteada exitosamente', { variant: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const mensaje = error?.message || 'Error al resetear la contrasena';
       enqueueSnackbar(mensaje, { variant: 'error' });
     },

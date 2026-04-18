@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { categoriasApi } from '@/api/categorias';
-import type { CategoriaDTO, CategoriaArbolDTO } from '@/types/api';
+import type { CategoriaDTO, CategoriaArbolDTO , ApiError} from '@/types/api';
 
 interface MoverCategoriaDialogProps {
   open: boolean;
@@ -79,7 +79,7 @@ export function MoverCategoriaDialog({
       enqueueSnackbar('Categoría movida correctamente', { variant: 'success' });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const message = error.message || 'Error al mover la categoría';
       enqueueSnackbar(message, { variant: 'error' });
     },

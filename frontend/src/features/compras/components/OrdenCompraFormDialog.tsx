@@ -34,7 +34,7 @@ import { productosApi } from '@/api/productos';
 import { impuestosApi } from '@/api/impuestos';
 import { inventarioApi } from '@/api/inventario';
 import { sucursalesApi } from '@/api/sucursales';
-import type { CrearOrdenCompraDTO } from '@/types/api';
+import type { CrearOrdenCompraDTO , ApiError} from '@/types/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { useConfiguracionVariableInt } from '@/hooks/useConfiguracionVariable';
@@ -222,7 +222,7 @@ export function OrdenCompraFormDialog({
       onSuccess();
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const statusCode: number = error?.statusCode ?? 0;
       const msg: string = error?.message ?? '';
       const errores: Record<string, string[]> | undefined = error?.errors;

@@ -107,6 +107,24 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
 
+    // Política ventas: 30 ventas/min por IP — protege contra bots de caja y double-submit
+    options.AddFixedWindowLimiter("ventas", opt =>
+    {
+        opt.PermitLimit = 30;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 2;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+
+    // Política facturación DIAN: 10 envíos/min por IP — cada llamada sale a internet
+    options.AddFixedWindowLimiter("facturacion", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+
     // Particionar por IP remota — excluir health checks y SignalR negotiate
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     {
@@ -149,7 +167,8 @@ builder.Services.AddOpenTelemetry()
                     !ctx.Request.Path.StartsWithSegments("/health") &&
                     !(ctx.Request.Path.Value?.Contains("/negotiate") ?? false);
             })
-            .AddHttpClientInstrumentation(opts => opts.RecordException = true);
+            .AddHttpClientInstrumentation(opts => opts.RecordException = true)
+            .AddEntityFrameworkCoreInstrumentation();
 
         if (!string.IsNullOrEmpty(otlpEndpoint))
             tracing.AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint));

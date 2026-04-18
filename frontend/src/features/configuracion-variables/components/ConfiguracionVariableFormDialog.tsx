@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { configuracionVariablesApi } from '@/api/configuracionVariables';
-import type { ConfiguracionVariableDTO } from '@/types/api';
+import type { ConfiguracionVariableDTO , ApiError} from '@/types/api';
 
 const schema = z.object({
   nombre: z
@@ -74,7 +74,7 @@ export function ConfiguracionVariableFormDialog({ open, onClose, variable }: Pro
       enqueueSnackbar('Variable creada correctamente', { variant: 'success' });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(
         error.response?.data?.detail || error.response?.data?.title || 'Error al crear la variable',
         { variant: 'error' }
@@ -95,7 +95,7 @@ export function ConfiguracionVariableFormDialog({ open, onClose, variable }: Pro
       enqueueSnackbar('Variable actualizada correctamente', { variant: 'success' });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(
         error.response?.data?.detail || error.response?.data?.title || 'Error al actualizar la variable',
         { variant: 'error' }

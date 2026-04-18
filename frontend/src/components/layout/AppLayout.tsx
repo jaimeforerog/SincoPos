@@ -32,6 +32,7 @@ import { APP_NAME } from '@/utils/constants';
 import { MenuSection } from './MenuSection';
 import { menuSections } from './menuSections';
 import { NotificationBell } from '@/components/common/NotificationBell';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const DRAWER_WIDTH = 200;
 
@@ -302,7 +303,9 @@ export function AppLayout() {
           mt: 8,
         }}
       >
-        <Outlet />
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </Box>
     </Box>
   );

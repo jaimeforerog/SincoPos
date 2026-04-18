@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { preciosApi } from '@/api/precios';
-import type { ProductoDTO, PrecioResueltoDTO } from '@/types/api';
+import type { ProductoDTO, PrecioResueltoDTO , ApiError} from '@/types/api';
 
 const precioSchema = z.object({
   precioVenta: z.number().min(0, 'Debe ser mayor o igual a 0'),
@@ -86,7 +86,7 @@ export function EditarPrecioDialog({
       onSuccess();
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       const mensaje =
         error.message || 'Error al actualizar el precio';
       enqueueSnackbar(mensaje, { variant: 'error' });

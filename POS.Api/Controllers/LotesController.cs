@@ -81,7 +81,6 @@ public class LotesController : ControllerBase
     /// Útil para corregir datos al recibir la documentación del proveedor.
     /// </summary>
     /// <param name="id">Id del lote.</param>
-    /// <param name="dto">Campos a actualizar.</param>
     /// <summary>
     /// Trazabilidad completa de un lote: entrada, ventas, devoluciones y traslados.
     /// </summary>

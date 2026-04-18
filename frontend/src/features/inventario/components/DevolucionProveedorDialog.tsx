@@ -21,6 +21,7 @@ import { productosApi } from '@/api/productos';
 import { sucursalesApi } from '@/api/sucursales';
 import { tercerosApi } from '@/api/terceros';
 import { useAuth } from '@/hooks/useAuth';
+import type { ApiError } from '@/types/api';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -74,7 +75,7 @@ export function DevolucionProveedorDialog({ open, onClose, onSuccess }: Props) {
       onSuccess();
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       enqueueSnackbar(
         error.message || 'Error al registrar devolución',
         { variant: 'error' }

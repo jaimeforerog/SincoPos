@@ -207,7 +207,7 @@ public class BootstrapController : ControllerBase
         // Sucursales sin empresa
         var sucursales = await _db.Sucursales
             .IgnoreQueryFilters()
-            .Where(s => s.EmpresaId == null)
+            .Where(s => s.EmpresaId == 0)
             .ToListAsync();
         sucursales.ForEach(s => { s.EmpresaId = empresaId; s.FechaModificacion = ahora; s.ModificadoPor = email; });
         conteos["Sucursales"] = sucursales.Count;
@@ -215,7 +215,7 @@ public class BootstrapController : ControllerBase
         // Cajas sin empresa
         var cajas = await _db.Cajas
             .IgnoreQueryFilters()
-            .Where(c => c.EmpresaId == null)
+            .Where(c => c.EmpresaId == 0)
             .ToListAsync();
         cajas.ForEach(c => { c.EmpresaId = empresaId; c.FechaModificacion = ahora; c.ModificadoPor = email; });
         conteos["Cajas"] = cajas.Count;
@@ -223,7 +223,7 @@ public class BootstrapController : ControllerBase
         // Categorías sin empresa
         var categorias = await _db.Categorias
             .IgnoreQueryFilters()
-            .Where(c => c.EmpresaId == null)
+            .Where(c => c.EmpresaId == 0)
             .ToListAsync();
         categorias.ForEach(c => { c.EmpresaId = empresaId; c.FechaModificacion = ahora; c.ModificadoPor = email; });
         conteos["Categorias"] = categorias.Count;
@@ -231,7 +231,7 @@ public class BootstrapController : ControllerBase
         // Productos sin empresa
         var productos = await _db.Productos
             .IgnoreQueryFilters()
-            .Where(p => p.EmpresaId == null)
+            .Where(p => p.EmpresaId == 0)
             .ToListAsync();
         productos.ForEach(p => { p.EmpresaId = empresaId; p.FechaModificacion = ahora; p.ModificadoPor = email; });
         conteos["Productos"] = productos.Count;
@@ -239,7 +239,7 @@ public class BootstrapController : ControllerBase
         // Terceros sin empresa
         var terceros = await _db.Terceros
             .IgnoreQueryFilters()
-            .Where(t => t.EmpresaId == null)
+            .Where(t => t.EmpresaId == 0)
             .ToListAsync();
         terceros.ForEach(t => { t.EmpresaId = empresaId; t.FechaModificacion = ahora; t.ModificadoPor = email; });
         conteos["Terceros"] = terceros.Count;
@@ -247,7 +247,7 @@ public class BootstrapController : ControllerBase
         // Impuestos sin empresa
         var impuestos = await _db.Impuestos
             .IgnoreQueryFilters()
-            .Where(i => i.EmpresaId == null)
+            .Where(i => i.EmpresaId == 0)
             .ToListAsync();
         impuestos.ForEach(i => { i.EmpresaId = empresaId; i.FechaModificacion = ahora; i.ModificadoPor = email; });
         conteos["Impuestos"] = impuestos.Count;
@@ -255,7 +255,7 @@ public class BootstrapController : ControllerBase
         // Conceptos de retención sin empresa
         var conceptos = await _db.ConceptosRetencion
             .IgnoreQueryFilters()
-            .Where(c => c.EmpresaId == null)
+            .Where(c => c.EmpresaId == 0)
             .ToListAsync();
         conceptos.ForEach(c => { c.EmpresaId = empresaId; c.FechaModificacion = ahora; c.ModificadoPor = email; });
         conteos["ConceptosRetencion"] = conceptos.Count;
@@ -263,7 +263,7 @@ public class BootstrapController : ControllerBase
         // Reglas de retención sin empresa
         var retenciones = await _db.RetencionesReglas
             .IgnoreQueryFilters()
-            .Where(r => r.EmpresaId == null)
+            .Where(r => r.EmpresaId == 0)
             .ToListAsync();
         retenciones.ForEach(r => { r.EmpresaId = empresaId; r.FechaModificacion = ahora; r.ModificadoPor = email; });
         conteos["RetencionesReglas"] = retenciones.Count;

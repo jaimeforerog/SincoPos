@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
 using POS.Application.Services;
@@ -45,8 +46,10 @@ public class VentasController : ControllerBase
     /// <response code="400">Caja cerrada, stock insuficiente, precio inválido u otro error de negocio.</response>
     [HttpPost]
     [Authorize(Policy = "Cajero")]
+    [EnableRateLimiting("ventas")]
     [ProducesResponseType(typeof(VentaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<VentaDto>> CrearVenta([FromBody] CrearVentaDto dto)
     {
         var validResult = await new CrearVentaValidator().ValidateAsync(dto);
