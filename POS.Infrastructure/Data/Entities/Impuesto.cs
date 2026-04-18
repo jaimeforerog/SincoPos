@@ -121,3 +121,27 @@ public class ConceptoRetencion : EntidadAuditable
     public ICollection<RetencionRegla> ReglasRetencion { get; set; } = new List<RetencionRegla>();
     public ICollection<Producto> Productos { get; set; } = new List<Producto>();
 }
+
+/// <summary>
+/// Tramos del impuesto a las bebidas azucaradas (Ley 2277/2022, Art. 513-521).
+/// Tabla global (sin EmpresaId): los valores los define la ley, no cada empresa.
+/// Actualizar cada vez que el Ministerio de Hacienda publique nuevas tarifas.
+/// </summary>
+public class TramoBebidasAzucaradas
+{
+    public int Id { get; set; }
+
+    /// <summary>
+    /// Límite superior del tramo en gramos de azúcar por 100 ml.
+    /// El último tramo (sin límite) usa null.
+    /// </summary>
+    public decimal? MaxGramosPor100ml { get; set; }
+
+    /// <summary>Valor en pesos colombianos por cada 100 ml vendidos.</summary>
+    public decimal ValorPor100ml { get; set; }
+
+    /// <summary>Fecha desde la que rige este set de tarifas.</summary>
+    public DateOnly VigenciaDesde { get; set; }
+
+    public bool Activo { get; set; } = true;
+}

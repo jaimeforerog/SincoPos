@@ -116,6 +116,12 @@ public class VentaService : IVentaService
             .Where(r => r.Activo)
             .ToListAsync();
 
+        var hoyVenta = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
+            .Where(t => t.Activo && t.VigenciaDesde <= hoyVenta)
+            .OrderBy(t => t.MaxGramosPor100ml)
+            .ToListAsync();
+
         // Perfil del comprador (si aplica)
         string perfilComprador = "REGIMEN_COMUN";
         if (dto.ClienteId.HasValue)
@@ -218,7 +224,8 @@ public class VentaService : IVentaService
                 CodigoMunicipio: sucursal.CodigoMunicipio ?? string.Empty,
                 ConceptoRetencionId: producto.ConceptoRetencionId,
                 ValorUVT: sucursal.ValorUVT,
-                ReglasRetencion: reglasRetencion
+                ReglasRetencion: reglasRetencion,
+                TramosBebidasAzucaradas: tramosBebidasAzucaradas
             ));
 
             // Acumular flag de factura electrónica (si cualquier línea lo requiere)

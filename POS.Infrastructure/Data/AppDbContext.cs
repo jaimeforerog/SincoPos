@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
     public DbSet<PrecioSucursal> PreciosSucursal => Set<PrecioSucursal>();
     public DbSet<Impuesto> Impuestos => Set<Impuesto>();
     public DbSet<RetencionRegla> RetencionesReglas => Set<RetencionRegla>();
+    public DbSet<TramoBebidasAzucaradas> TramosBebidasAzucaradas => Set<TramoBebidasAzucaradas>();
     public DbSet<Venta> Ventas => Set<Venta>();
     public DbSet<DetalleVenta> DetalleVentas => Set<DetalleVenta>();
     public DbSet<DevolucionVenta> DevolucionesVenta => Set<DevolucionVenta>();

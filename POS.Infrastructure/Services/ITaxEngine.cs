@@ -49,7 +49,8 @@ public record TaxRequest(
 
     // ── Parámetros DIAN ────────────────────────────────────────────────────────
     decimal ValorUVT,                 // Valor UVT vigente (ej. 47065 en 2026)
-    List<RetencionRegla> ReglasRetencion  // Catálogo de reglas activas de la sucursal
+    List<RetencionRegla> ReglasRetencion,    // Catálogo de reglas activas de la sucursal
+    List<TramoBebidasAzucaradas> TramosBebidasAzucaradas  // Tramos Ley 2277/2022 vigentes
 );
 
 /// <summary>

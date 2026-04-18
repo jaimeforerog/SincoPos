@@ -78,6 +78,12 @@ public class CompraService : ICompraService
         var reglasRetencion = await _context.RetencionesReglas
             .Where(r => r.Activo).ToListAsync();
 
+        var hoyCompra = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
+            .Where(t => t.Activo && t.VigenciaDesde <= hoyCompra)
+            .OrderBy(t => t.MaxGramosPor100ml)
+            .ToListAsync();
+
         // Cargar impuestos de los productos (IgnoreQueryFilters para acceder a registros globales con EmpresaId = null)
         var productoImpuestoIds = productos.Values
             .Where(p => p.ImpuestoId.HasValue)
@@ -150,7 +156,8 @@ public class CompraService : ICompraService
                 CodigoMunicipio: sucursal.CodigoMunicipio ?? string.Empty,
                 ConceptoRetencionId: producto.ConceptoRetencionId,
                 ValorUVT: sucursal.ValorUVT,
-                ReglasRetencion: reglasRetencion
+                ReglasRetencion: reglasRetencion,
+                TramosBebidasAzucaradas: tramosBebidasAzucaradas
             ));
 
             var primerImpuesto = taxResult.Impuestos.FirstOrDefault();

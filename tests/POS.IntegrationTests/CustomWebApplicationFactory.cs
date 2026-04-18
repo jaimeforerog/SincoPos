@@ -256,6 +256,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         var reteica = new POS.Infrastructure.Data.Entities.RetencionRegla { Nombre = "ReteICA Bogotá 0.966%", Tipo = POS.Infrastructure.Data.Entities.TipoRetencion.ReteICA, Porcentaje = 0.00966m, BaseMinUVT = 0m, CodigoMunicipio = "11001", PerfilVendedor = "REGIMEN_ORDINARIO", PerfilComprador = "GRAN_CONTRIBUYENTE", CodigoCuentaContable = "1356", EmpresaId = empresa.Id, Activo = true, FechaCreacion = fecha };
         context.RetencionesReglas.AddRange(retefuente, reteica);
 
+        // Seed tramos bebidas azucaradas (Ley 2277/2022) — requeridos por TaxEngine
+        if (!context.TramosBebidasAzucaradas.Any())
+        {
+            context.TramosBebidasAzucaradas.AddRange(
+                new POS.Infrastructure.Data.Entities.TramoBebidasAzucaradas { MaxGramosPor100ml = 6m,   ValorPor100ml = 18m, VigenciaDesde = new DateOnly(2023, 1, 1), Activo = true },
+                new POS.Infrastructure.Data.Entities.TramoBebidasAzucaradas { MaxGramosPor100ml = 10m,  ValorPor100ml = 35m, VigenciaDesde = new DateOnly(2023, 1, 1), Activo = true },
+                new POS.Infrastructure.Data.Entities.TramoBebidasAzucaradas { MaxGramosPor100ml = null, ValorPor100ml = 55m, VigenciaDesde = new DateOnly(2023, 1, 1), Activo = true }
+            );
+        }
+
         await context.SaveChangesAsync();
         TerceroTestId = tercero.Id;
         ConceptoComprasId = concepto2.Id;

@@ -37,6 +37,13 @@ public class TaxEngineUnitTests
         ConceptoRetencionId = conceptoId
     };
 
+    private static List<TramoBebidasAzucaradas> TramosLey2277() =>
+    [
+        new() { MaxGramosPor100ml = 6m,   ValorPor100ml = 18m, VigenciaDesde = new DateOnly(2022, 1, 1), Activo = true },
+        new() { MaxGramosPor100ml = 10m,  ValorPor100ml = 35m, VigenciaDesde = new DateOnly(2022, 1, 1), Activo = true },
+        new() { MaxGramosPor100ml = null, ValorPor100ml = 55m, VigenciaDesde = new DateOnly(2022, 1, 1), Activo = true },
+    ];
+
     private static TaxRequest BaseRequest(
         decimal precioUnitario = 100_000m,
         decimal cantidad = 1m,
@@ -54,7 +61,8 @@ public class TaxEngineUnitTests
             CodigoMunicipio: "11001",
             ConceptoRetencionId: null,
             ValorUVT: valorUVT,
-            ReglasRetencion: reglas ?? new List<RetencionRegla>()
+            ReglasRetencion: reglas ?? new List<RetencionRegla>(),
+            TramosBebidasAzucaradas: new List<TramoBebidasAzucaradas>()
         );
 
     // ── IVA ──────────────────────────────────────────────────────────────────
@@ -240,7 +248,8 @@ public class TaxEngineUnitTests
             CodigoMunicipio: "11001",
             ConceptoRetencionId: null,
             ValorUVT: 47_065m,
-            ReglasRetencion: new List<RetencionRegla>());
+            ReglasRetencion: new List<RetencionRegla>(),
+            TramosBebidasAzucaradas: new List<TramoBebidasAzucaradas>());
 
         var result = _engine.Calcular(req);
 
@@ -295,7 +304,8 @@ public class TaxEngineUnitTests
             CodigoMunicipio: "11001",
             ConceptoRetencionId: null,
             ValorUVT: 47_065m,
-            ReglasRetencion: new List<RetencionRegla>());
+            ReglasRetencion: new List<RetencionRegla>(),
+            TramosBebidasAzucaradas: TramosLey2277());
 
         var result = _engine.Calcular(req);
 
@@ -320,7 +330,8 @@ public class TaxEngineUnitTests
             CodigoMunicipio: "11001",
             ConceptoRetencionId: null,
             ValorUVT: 47_065m,
-            ReglasRetencion: new List<RetencionRegla>());
+            ReglasRetencion: new List<RetencionRegla>(),
+            TramosBebidasAzucaradas: TramosLey2277());
 
         var result = _engine.Calcular(req);
 

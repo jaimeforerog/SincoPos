@@ -18,15 +18,6 @@ namespace POS.Infrastructure.Services;
 /// </summary>
 public class TaxEngine : ITaxEngine
 {
-    // ── Tabla de tramos bebidas azucaradas (Ley 2277/2022, Art. 513) ───────────
-    // Valor en pesos colombianos por cada 100 ml.
-    // (El legislador actualiza estos valores cada año, se pueden externalizar.)
-    private static readonly (decimal MaxGramos, decimal ValorPor100ml)[] _tramosBebidasAzucaradas =
-    {
-        (6m,   18m),   // > 0 g/100ml hasta  6 g/100ml → $18 por 100 ml
-        (10m,  35m),   // > 6 g/100ml hasta 10 g/100ml → $35 por 100 ml
-        (decimal.MaxValue, 55m)  // > 10 g/100ml → $55 por 100 ml
-    };
 
     public TaxResult Calcular(TaxRequest req)
     {
@@ -82,9 +73,10 @@ public class TaxEngine : ITaxEngine
         }
 
         // 3b. Bebidas azucaradas — tabla de tramos g/100ml × volumen
-        if (req.GramosAzucarPor100ml.HasValue && req.GramosAzucarPor100ml.Value > 0)
+        if (req.GramosAzucarPor100ml.HasValue && req.GramosAzucarPor100ml.Value > 0
+            && req.TramosBebidasAzucaradas.Count > 0)
         {
-            var tarifa = ObtenerTarifaBebidaAzucarada(req.GramosAzucarPor100ml.Value);
+            var tarifa = ObtenerTarifaBebidaAzucarada(req.GramosAzucarPor100ml.Value, req.TramosBebidasAzucaradas);
             // Se asume que PrecioUnitario equivale a 100ml para el cálculo;
             // en producción el volumen vendría del sku del producto.
             var monto = Math.Round(tarifa * req.Cantidad, 2);
@@ -188,16 +180,14 @@ public class TaxEngine : ITaxEngine
         return true;
     }
 
-    /// <summary>
-    /// Retorna la tarifa en pesos por 100ml según la tabla de tramos de bebidas azucaradas.
-    /// </summary>
-    private static decimal ObtenerTarifaBebidaAzucarada(decimal gramosPor100ml)
+    private static decimal ObtenerTarifaBebidaAzucarada(
+        decimal gramosPor100ml, List<TramoBebidasAzucaradas> tramos)
     {
-        foreach (var (maxGramos, valor) in _tramosBebidasAzucaradas)
+        foreach (var t in tramos.OrderBy(t => t.MaxGramosPor100ml ?? decimal.MaxValue))
         {
-            if (gramosPor100ml <= maxGramos)
-                return valor;
+            if (!t.MaxGramosPor100ml.HasValue || gramosPor100ml <= t.MaxGramosPor100ml)
+                return t.ValorPor100ml;
         }
-        return _tramosBebidasAzucaradas[^1].ValorPor100ml;
+        return tramos.MaxBy(t => t.MaxGramosPor100ml ?? decimal.MaxValue)!.ValorPor100ml;
     }
 }

@@ -81,6 +81,12 @@ public class CompraRecepcionService
         var reglasRetencion = await _context.RetencionesReglas
             .Where(r => r.Activo).ToListAsync();
 
+        var hoyRecepcion = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
+            .Where(t => t.Activo && t.VigenciaDesde <= hoyRecepcion)
+            .OrderBy(t => t.MaxGramosPor100ml)
+            .ToListAsync();
+
         // 1. Cargar Stocks
         var stocksDict = await _context.Stock
             .Where(s => s.SucursalId == orden.SucursalId && productosIds.Contains(s.ProductoId))
@@ -200,7 +206,8 @@ public class CompraRecepcionService
                 CodigoMunicipio: orden.Sucursal!.CodigoMunicipio ?? string.Empty,
                 ConceptoRetencionId: productoCompleto.ConceptoRetencionId,
                 ValorUVT: orden.Sucursal!.ValorUVT,
-                ReglasRetencion: reglasRetencion
+                ReglasRetencion: reglasRetencion,
+                TramosBebidasAzucaradas: tramosBebidasAzucaradas
             ));
 
             foreach (var ret in taxResultRecepcion.Retenciones)
