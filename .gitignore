@@ -1,4 +1,6 @@
 # ── .NET / ASP.NET Core ─────────────────────────────────────────────────────
+# Secretos locales — usar: dotnet user-secrets set "WorkOs:ApiKey" "..."
+**/appsettings.Development.json
 bin/
 obj/
 /packages/
