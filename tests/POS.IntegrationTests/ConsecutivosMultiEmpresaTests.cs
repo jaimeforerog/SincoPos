@@ -41,8 +41,8 @@ public class ConsecutivosMultiEmpresaTests
         return req;
     }
 
-    /// <summary>Crea empresa + sucursal + proveedor propios para cada test.</summary>
-    private async Task<(Empresa empresa, Sucursal sucursal, int proveedorId)> CrearEmpresaConSucursalAsync(
+    /// <summary>Crea empresa + sucursal + proveedor + cliente propios para cada test.</summary>
+    private async Task<(Empresa empresa, Sucursal sucursal, int proveedorId, int clienteId)> CrearEmpresaConSucursalAsync(
         AppDbContext ctx, string sufijo)
     {
         var empresa = new Empresa
@@ -78,9 +78,21 @@ public class ConsecutivosMultiEmpresaTests
         };
         ctx.Terceros.Add(proveedor);
 
+        // Cliente propio de la empresa (requerido por validador de venta)
+        var cliente = new Tercero
+        {
+            Nombre         = $"Cliente-Consec-{sufijo}",
+            Identificacion = $"CC-CONSEC-{sufijo}",
+            TipoTercero    = TipoTercero.Cliente,
+            EmpresaId      = empresa.Id,
+            Activo         = true,
+            FechaCreacion  = DateTime.UtcNow
+        };
+        ctx.Terceros.Add(cliente);
+
         await ctx.SaveChangesAsync();
 
-        return (empresa, sucursal, proveedor.Id);
+        return (empresa, sucursal, proveedor.Id, cliente.Id);
     }
 
     private async Task<Guid> CrearProductoParaSucursal(string codigo, int empresaId,
@@ -137,12 +149,13 @@ public class ConsecutivosMultiEmpresaTests
         return caja.Id;
     }
 
-    private async Task<VentaDto> CrearVentaAsync(int sucursalId, int cajaId, Guid productoId, int empresaId)
+    private async Task<VentaDto> CrearVentaAsync(int sucursalId, int cajaId, Guid productoId, int empresaId, int clienteId)
     {
         var dto = new
         {
             sucursalId,
             cajaId,
+            clienteId,
             metodoPago  = 0, // Efectivo
             montoPagado = 999_999m,
             lineas = new[]
@@ -167,8 +180,8 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (empresaA, sucursalA, _) = await CrearEmpresaConSucursalAsync(ctx, "VA");
-        var (empresaB, sucursalB, _) = await CrearEmpresaConSucursalAsync(ctx, "VB");
+        var (empresaA, sucursalA, _, clienteA) = await CrearEmpresaConSucursalAsync(ctx, "VA");
+        var (empresaB, sucursalB, _, clienteB) = await CrearEmpresaConSucursalAsync(ctx, "VB");
 
         var prodA = await CrearProductoParaSucursal($"CONSEC-VA-{sucursalA.Id}", empresaA.Id);
         var prodB = await CrearProductoParaSucursal($"CONSEC-VB-{sucursalB.Id}", empresaB.Id);
@@ -180,8 +193,8 @@ public class ConsecutivosMultiEmpresaTests
         var cajaB = await CrearYAbrirCaja(sucursalB.Id, $"CajaConsecB-{sucursalB.Id}", empresaB.Id);
 
         // Act: crear una venta en cada empresa
-        var ventaA = await CrearVentaAsync(sucursalA.Id, cajaA, prodA, empresaA.Id);
-        var ventaB = await CrearVentaAsync(sucursalB.Id, cajaB, prodB, empresaB.Id);
+        var ventaA = await CrearVentaAsync(sucursalA.Id, cajaA, prodA, empresaA.Id, clienteA);
+        var ventaB = await CrearVentaAsync(sucursalB.Id, cajaB, prodB, empresaB.Id, clienteB);
 
         // Assert: ambas ventas existen en BD con sucursales distintas
         var ventaAEnDb = await ctx.Ventas
@@ -215,14 +228,14 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (empresaC, sucursalC, _) = await CrearEmpresaConSucursalAsync(ctx, "VC");
+        var (empresaC, sucursalC, _, clienteC) = await CrearEmpresaConSucursalAsync(ctx, "VC");
         var prodC = await CrearProductoParaSucursal($"CONSEC-VC-{sucursalC.Id}", empresaC.Id);
         await AgregarStockAsync(prodC, sucursalC.Id, empresaC.Id, cantidad: 50m);
         var cajaC = await CrearYAbrirCaja(sucursalC.Id, $"CajaConsecC-{sucursalC.Id}", empresaC.Id);
 
         // Act: dos ventas en la misma sucursal
-        var venta1 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC, empresaC.Id);
-        var venta2 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC, empresaC.Id);
+        var venta1 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC, empresaC.Id, clienteC);
+        var venta2 = await CrearVentaAsync(sucursalC.Id, cajaC, prodC, empresaC.Id, clienteC);
 
         // Assert: números distintos y correlativos
         venta1.NumeroVenta.Should().NotBe(venta2.NumeroVenta,
@@ -244,8 +257,8 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (empresaD, sucursalD, _) = await CrearEmpresaConSucursalAsync(ctx, "DEV-D");
-        var (empresaE, sucursalE, _) = await CrearEmpresaConSucursalAsync(ctx, "DEV-E");
+        var (empresaD, sucursalD, _, clienteD) = await CrearEmpresaConSucursalAsync(ctx, "DEV-D");
+        var (empresaE, sucursalE, _, clienteE) = await CrearEmpresaConSucursalAsync(ctx, "DEV-E");
 
         var prodD = await CrearProductoParaSucursal($"CONSEC-DEVD-{sucursalD.Id}", empresaD.Id);
         var prodE = await CrearProductoParaSucursal($"CONSEC-DEVE-{sucursalE.Id}", empresaE.Id);
@@ -256,8 +269,8 @@ public class ConsecutivosMultiEmpresaTests
         var cajaD = await CrearYAbrirCaja(sucursalD.Id, $"CajaDevD-{sucursalD.Id}", empresaD.Id);
         var cajaE = await CrearYAbrirCaja(sucursalE.Id, $"CajaDevE-{sucursalE.Id}", empresaE.Id);
 
-        var ventaD = await CrearVentaAsync(sucursalD.Id, cajaD, prodD, empresaD.Id);
-        var ventaE = await CrearVentaAsync(sucursalE.Id, cajaE, prodE, empresaE.Id);
+        var ventaD = await CrearVentaAsync(sucursalD.Id, cajaD, prodD, empresaD.Id, clienteD);
+        var ventaE = await CrearVentaAsync(sucursalE.Id, cajaE, prodE, empresaE.Id, clienteE);
 
         // Act: devolucion en empresa D
         var dtoDevD = new
@@ -317,8 +330,8 @@ public class ConsecutivosMultiEmpresaTests
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var (empresaOC1, sucursalOC1, provOC1) = await CrearEmpresaConSucursalAsync(ctx, "OC1");
-        var (empresaOC2, sucursalOC2, provOC2) = await CrearEmpresaConSucursalAsync(ctx, "OC2");
+        var (empresaOC1, sucursalOC1, provOC1, _) = await CrearEmpresaConSucursalAsync(ctx, "OC1");
+        var (empresaOC2, sucursalOC2, provOC2, _) = await CrearEmpresaConSucursalAsync(ctx, "OC2");
 
         var prodOC1 = await CrearProductoParaSucursal($"CONSEC-OC1-{sucursalOC1.Id}", empresaOC1.Id);
         var prodOC2 = await CrearProductoParaSucursal($"CONSEC-OC2-{sucursalOC2.Id}", empresaOC2.Id);
