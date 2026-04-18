@@ -230,22 +230,27 @@ builder.Services.ConfigureOptions<POS.Api.Infrastructure.ConfigureSwaggerOptions
 builder.Services.AddValidatorsFromAssemblyContaining<POS.Application.Validators.CrearProductoValidator>();
 
 // Authentication & Authorization — WorkOS AuthKit
+// Pre-cargar JWKS antes de registrar servicios para evitar .Result blocking en el delegate.
+var workosClientId = builder.Configuration["WorkOs:ClientId"];
+var jwksUri = $"https://api.workos.com/sso/jwks/{workosClientId}";
+IList<SecurityKey> workosSigningKeys;
+using (var jwksHttpClient = new System.Net.Http.HttpClient())
+{
+    var jwksJson = await jwksHttpClient.GetStringAsync(jwksUri);
+    workosSigningKeys = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson).GetSigningKeys();
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
-    var workosClientId = builder.Configuration["WorkOs:ClientId"];
-
     options.Authority = "https://api.workos.com";
     options.Audience = workosClientId;
     options.RequireHttpsMetadata = true;
 
-    // Cargar las signing keys desde el JWKS de WorkOS.
     // RefreshOnIssuerKeyNotFound = true: cuando llega un token firmado con una key que no
     // está en caché (rotación de WorkOS), el middleware descarga automáticamente el JWKS
     // actualizado y reintenta la validación, evitando el 401 por keys obsoletas.
-    var jwksUri = $"https://api.workos.com/sso/jwks/{workosClientId}";
-    var jwksJson = new System.Net.Http.HttpClient().GetStringAsync(jwksUri).Result;
-    var signingKeys = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson).GetSigningKeys();
+    var signingKeys = workosSigningKeys;
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
