@@ -19,17 +19,20 @@ namespace POS.Api.Controllers;
 public class UsuariosController : ControllerBase
 {
     private readonly IUsuarioService _usuarioService;
+    private readonly IUsuarioAdminService _usuarioAdminService;
     private readonly ILogger<UsuariosController> _logger;
     private readonly IActivityLogService _activityLogService;
     private readonly AppDbContext _db;
 
     public UsuariosController(
         IUsuarioService usuarioService,
+        IUsuarioAdminService usuarioAdminService,
         ILogger<UsuariosController> logger,
         IActivityLogService activityLogService,
         AppDbContext db)
     {
         _usuarioService = usuarioService;
+        _usuarioAdminService = usuarioAdminService;
         _logger = logger;
         _activityLogService = activityLogService;
         _db = db;
@@ -199,7 +202,7 @@ public class UsuariosController : ControllerBase
             return Unauthorized("No se pudo identificar al usuario");
 
         var creadorRol = ObtenerRolActual();
-        var (result, error) = await _usuarioService.CrearUsuarioAsync(dto, externalId, creadorRol);
+        var (result, error) = await _usuarioAdminService.CrearUsuarioAsync(dto, externalId, creadorRol);
         if (result == null)
             return Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
 
@@ -263,7 +266,7 @@ public class UsuariosController : ControllerBase
             return Problem(detail: "No puedes cambiar tu propio rol", statusCode: StatusCodes.Status400BadRequest);
 
         var creadorRol = ObtenerRolActual();
-        var (success, error) = await _usuarioService.ActualizarUsuarioAsync(id, dto, creadorRol);
+        var (success, error) = await _usuarioAdminService.ActualizarUsuarioAsync(id, dto, creadorRol);
         if (!success)
         {
             if (error == "NOT_FOUND")
@@ -338,7 +341,7 @@ public class UsuariosController : ControllerBase
         var creadorRol = ObtenerRolActual();
         var rolAnterior = usuario.Rol;
 
-        var (success, error) = await _usuarioService.CambiarRolAsync(id, dto.Rol, creadorRol);
+        var (success, error) = await _usuarioAdminService.CambiarRolAsync(id, dto.Rol, creadorRol);
         if (!success)
         {
             if (error == "NOT_FOUND")
@@ -384,7 +387,7 @@ public class UsuariosController : ControllerBase
         if (usuario == null)
             return Problem(detail: $"Usuario con ID {id} no encontrado", statusCode: StatusCodes.Status404NotFound);
 
-        var (tempPassword, error) = await _usuarioService.ResetPasswordAsync(id);
+        var (tempPassword, error) = await _usuarioAdminService.ResetPasswordAsync(id);
         if (tempPassword == null)
         {
             if (error == "NOT_FOUND")

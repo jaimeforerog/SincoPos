@@ -45,6 +45,7 @@ builder.Services.AddHttpClient("workos");
 // Usuario service: interface + concrete (concrete kept for backward compat with CajasController)
 builder.Services.AddScoped<POS.Application.Services.IUsuarioService, POS.Infrastructure.Services.UsuarioService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.UsuarioService>();
+builder.Services.AddScoped<POS.Application.Services.IUsuarioAdminService, POS.Infrastructure.Services.UsuarioAdminService>();
 
 builder.Services.AddScoped<POS.Infrastructure.Services.MigracionLogService>();
 builder.Services.AddScoped<POS.Infrastructure.Services.ITaxEngine, POS.Infrastructure.Services.TaxEngine>();
@@ -61,6 +62,8 @@ builder.Services.AddScoped<POS.Application.Services.ITrasladoService, POS.Infras
 builder.Services.AddScoped<POS.Application.Services.IInventarioService, POS.Infrastructure.Services.InventarioService>();
 builder.Services.AddScoped<POS.Application.Services.ILoteService, POS.Infrastructure.Services.LoteService>();
 builder.Services.AddScoped<POS.Application.Services.IReportesService, POS.Infrastructure.Services.ReportesService>();
+builder.Services.AddScoped<POS.Application.Services.IDashboardService, POS.Infrastructure.Services.DashboardService>();
+builder.Services.AddScoped<POS.Application.Services.IKardexService, POS.Infrastructure.Services.KardexService>();
 builder.Services.AddScoped<POS.Application.Services.IEthicalGuardService, POS.Infrastructure.Services.EthicalGuardService>();
 builder.Services.AddScoped<POS.Application.Services.IColectivaService, POS.Infrastructure.Services.ColectivaService>();
 builder.Services.AddSingleton<POS.Application.Services.IPipelineMetricsService, POS.Infrastructure.Services.PipelineMetricsService>();

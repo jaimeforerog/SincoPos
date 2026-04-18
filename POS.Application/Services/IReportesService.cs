@@ -13,11 +13,5 @@ public interface IReportesService
     Task<(ReporteCajaDto? reporte, string? error)> ObtenerReporteCajaAsync(
         int cajaId, DateTime? fechaDesde = null, DateTime? fechaHasta = null);
 
-    Task<DashboardDto> ObtenerDashboardAsync(int? sucursalId = null);
 
-    Task<List<TopProductoDto>> ObtenerTopProductosAsync(
-        DateTime fechaDesde, DateTime fechaHasta, int? sucursalId = null, int limite = 10);
-
-    Task<ReporteKardexDto> ObtenerKardexAsync(
-        Guid productoId, int sucursalId, DateTime fechaDesde, DateTime fechaHasta);
 }

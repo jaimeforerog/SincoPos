@@ -12,10 +12,17 @@ namespace POS.Api.Controllers;
 public class ReportesController : ControllerBase
 {
     private readonly IReportesService _reportesService;
+    private readonly IDashboardService _dashboardService;
+    private readonly IKardexService _kardexService;
 
-    public ReportesController(IReportesService reportesService)
+    public ReportesController(
+        IReportesService reportesService,
+        IDashboardService dashboardService,
+        IKardexService kardexService)
     {
         _reportesService = reportesService;
+        _dashboardService = dashboardService;
+        _kardexService = kardexService;
     }
 
     /// <summary>
@@ -85,7 +92,7 @@ public class ReportesController : ControllerBase
     public async Task<ActionResult<DashboardDto>> ObtenerDashboard(
         [FromQuery] int? sucursalId = null)
     {
-        var dashboard = await _reportesService.ObtenerDashboardAsync(sucursalId);
+        var dashboard = await _dashboardService.ObtenerDashboardAsync(sucursalId);
         return Ok(dashboard);
     }
 
@@ -105,7 +112,7 @@ public class ReportesController : ControllerBase
         if (fechaDesde > fechaHasta)
             return Problem(detail: "La fecha desde no puede ser mayor que la fecha hasta.", statusCode: StatusCodes.Status400BadRequest);
 
-        var topProductos = await _reportesService.ObtenerTopProductosAsync(
+        var topProductos = await _dashboardService.ObtenerTopProductosAsync(
             fechaDesde, fechaHasta, sucursalId, limite);
 
         return Ok(topProductos);
@@ -131,7 +138,7 @@ public class ReportesController : ControllerBase
 
         try
         {
-            var reporte = await _reportesService.ObtenerKardexAsync(
+            var reporte = await _kardexService.ObtenerKardexAsync(
                 productoId, sucursalId, fechaDesde, fechaHasta);
 
             return Ok(reporte);
