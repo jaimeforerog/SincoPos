@@ -68,34 +68,9 @@ public class FacturacionService : IFacturacionService
             return (null, $"Se agotó el rango de numeración ({emisor.NumeroDesde}-{emisor.NumeroHasta}). Solicite nueva resolución.");
 
         // 3. Obtener siguiente número con bloqueo pesimista
-        long siguienteNumero;
-        await using var tx = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            // Bloqueo a nivel de fila con raw SQL
-            await _context.Database.ExecuteSqlRawAsync(
-                "SELECT id FROM public.configuracion_emisor WHERE id = {0} FOR UPDATE",
-                emisor.Id);
-
-            // Recargar para obtener el valor más reciente
-            await _context.Entry(emisor).ReloadAsync();
-
-            if (emisor.NumeroActual >= emisor.NumeroHasta)
-            {
-                await tx.RollbackAsync();
-                return (null, "Rango de numeración agotado.");
-            }
-
-            emisor.NumeroActual++;
-            siguienteNumero = emisor.NumeroActual;
-            await _context.SaveChangesAsync();
-            await tx.CommitAsync();
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+        var siguienteNumero = await ObtenerSiguienteNumeroAsync(emisor);
+        if (siguienteNumero == 0)
+            return (null, "Rango de numeración agotado.");
 
         var numeroCompleto = $"{emisor.Prefijo}{siguienteNumero:D8}";
 
@@ -137,18 +112,7 @@ public class FacturacionService : IFacturacionService
         var (xmlSinFirmar, cufe) = _ublBuilder.GenerarFacturaVenta(ublData, ToEmisorData(emisor));
 
         // 6. Firmar XML
-        string xmlFirmado;
-        try
-        {
-            xmlFirmado = !string.IsNullOrEmpty(emisor.CertificadoBase64)
-                ? _firmaDigital.FirmarXml(xmlSinFirmar, emisor.CertificadoBase64, emisor.CertificadoPassword)
-                : xmlSinFirmar; // Sin certificado: modo prueba sin firma
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error firmando XML, guardando sin firma");
-            xmlFirmado = xmlSinFirmar;
-        }
+        var xmlFirmado = FirmarXmlSafe(xmlSinFirmar, emisor);
 
         // 7. Guardar documento en estado Firmado
         var documento = new DocumentoElectronico
@@ -169,46 +133,7 @@ public class FacturacionService : IFacturacionService
         await _context.SaveChangesAsync();
 
         // 8. Enviar a DIAN
-        if (!string.IsNullOrEmpty(emisor.CertificadoBase64))
-        {
-            try
-            {
-                var respuesta = await _dianSoap.EnviarDocumentoAsync(xmlFirmado, cufe, emisor.Nit, emisor.Ambiente);
-                documento.FechaEnvioDian = DateTime.UtcNow;
-                documento.CodigoRespuestaDian = respuesta.Codigo;
-                documento.MensajeRespuestaDian = respuesta.Descripcion;
-                documento.Intentos++;
-                documento.Estado = respuesta.EsValido ? EstadoDocumento.Aceptado : EstadoDocumento.Rechazado;
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation(
-                    "Factura {Numero} enviada a DIAN. EsValido={EsValido}, Código={Codigo}",
-                    numeroCompleto, respuesta.EsValido, respuesta.Codigo);
-
-                var tipo = respuesta.EsValido ? "factura_aceptada" : "factura_rechazada";
-                var nivel = respuesta.EsValido ? "success" : "error";
-                await _notificationService.EnviarNotificacionSucursalAsync(documento.SucursalId,
-                    new NotificacionDto(tipo, "Facturación DIAN",
-                        respuesta.EsValido
-                            ? $"Factura {numeroCompleto} aceptada por DIAN"
-                            : $"Factura {numeroCompleto} rechazada: {respuesta.Descripcion}",
-                        nivel, DateTime.UtcNow,
-                        new { documento.Id, NumeroCompleto = numeroCompleto, respuesta.Codigo }));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error enviando factura {Numero} a DIAN", numeroCompleto);
-                documento.Estado = EstadoDocumento.Rechazado;
-                documento.MensajeRespuestaDian = ex.Message;
-                await _context.SaveChangesAsync();
-            }
-        }
-        else
-        {
-            // Sin certificado: dejar en estado Firmado para envío manual posterior
-            _logger.LogInformation(
-                "Factura {Numero} generada en modo prueba (sin certificado digital)", numeroCompleto);
-        }
+        await EnviarADianAsync(documento, xmlFirmado, cufe, emisor, numeroCompleto, enviarNotificacion: true);
 
         return (MapToDto(documento, venta.Sucursal.Nombre), null);
     }
@@ -241,30 +166,9 @@ public class FacturacionService : IFacturacionService
             return (null, "No hay configuración de emisor para esta sucursal.");
 
         // Obtener siguiente número (mismo contador que FV por ahora, DIAN lo maneja por prefijo NC)
-        long siguienteNumero;
-        await using var tx = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            await _context.Database.ExecuteSqlRawAsync(
-                "SELECT id FROM public.configuracion_emisor WHERE id = {0} FOR UPDATE", emisor.Id);
-            await _context.Entry(emisor).ReloadAsync();
-
-            if (emisor.NumeroActual >= emisor.NumeroHasta)
-            {
-                await tx.RollbackAsync();
-                return (null, "Rango de numeración agotado.");
-            }
-
-            emisor.NumeroActual++;
-            siguienteNumero = emisor.NumeroActual;
-            await _context.SaveChangesAsync();
-            await tx.CommitAsync();
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+        var siguienteNumero = await ObtenerSiguienteNumeroAsync(emisor);
+        if (siguienteNumero == 0)
+            return (null, "Rango de numeración agotado.");
 
         var prefijoNc = "NC";
         var numeroCompleto = $"{prefijoNc}{siguienteNumero:D8}";
@@ -309,19 +213,7 @@ public class FacturacionService : IFacturacionService
         );
 
         var (xmlSinFirmar, cufe) = _ublBuilder.GenerarNotaCredito(ublData, ToEmisorData(emisor));
-
-        string xmlFirmado;
-        try
-        {
-            xmlFirmado = !string.IsNullOrEmpty(emisor.CertificadoBase64)
-                ? _firmaDigital.FirmarXml(xmlSinFirmar, emisor.CertificadoBase64, emisor.CertificadoPassword)
-                : xmlSinFirmar;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error firmando Nota Crédito, guardando sin firma");
-            xmlFirmado = xmlSinFirmar;
-        }
+        var xmlFirmado = FirmarXmlSafe(xmlSinFirmar, emisor);
 
         var documento = new DocumentoElectronico
         {
@@ -340,26 +232,7 @@ public class FacturacionService : IFacturacionService
         _context.DocumentosElectronicos.Add(documento);
         await _context.SaveChangesAsync();
 
-        if (!string.IsNullOrEmpty(emisor.CertificadoBase64))
-        {
-            try
-            {
-                var respuesta = await _dianSoap.EnviarDocumentoAsync(xmlFirmado, cufe, emisor.Nit, emisor.Ambiente);
-                documento.FechaEnvioDian = DateTime.UtcNow;
-                documento.CodigoRespuestaDian = respuesta.Codigo;
-                documento.MensajeRespuestaDian = respuesta.Descripcion;
-                documento.Intentos++;
-                documento.Estado = respuesta.EsValido ? EstadoDocumento.Aceptado : EstadoDocumento.Rechazado;
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error enviando Nota Crédito {Numero} a DIAN", numeroCompleto);
-                documento.Estado = EstadoDocumento.Rechazado;
-                documento.MensajeRespuestaDian = ex.Message;
-                await _context.SaveChangesAsync();
-            }
-        }
+        await EnviarADianAsync(documento, xmlFirmado, cufe, emisor, numeroCompleto, enviarNotificacion: false);
 
         return (MapToDto(documento, venta.Sucursal.Nombre), null);
     }
@@ -497,6 +370,105 @@ public class FacturacionService : IFacturacionService
             config.CertificadoPassword = dto.CertificadoPassword;
 
         await _context.SaveChangesAsync();
+    }
+
+    // ─── Private helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Incrementa NumeroActual con bloqueo pesimista por fila.
+    /// Retorna 0 si el rango está agotado.
+    /// </summary>
+    private async Task<long> ObtenerSiguienteNumeroAsync(ConfiguracionEmisor emisor)
+    {
+        await using var tx = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "SELECT id FROM public.configuracion_emisor WHERE id = {0} FOR UPDATE", emisor.Id);
+            await _context.Entry(emisor).ReloadAsync();
+
+            if (emisor.NumeroActual >= emisor.NumeroHasta)
+            {
+                await tx.RollbackAsync();
+                return 0;
+            }
+
+            emisor.NumeroActual++;
+            var numero = emisor.NumeroActual;
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return numero;
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
+
+    private string FirmarXmlSafe(string xmlSinFirmar, ConfiguracionEmisor emisor)
+    {
+        if (string.IsNullOrEmpty(emisor.CertificadoBase64))
+        {
+            _logger.LogInformation("Generando XML en modo prueba (sin certificado digital)");
+            return xmlSinFirmar;
+        }
+        try
+        {
+            return _firmaDigital.FirmarXml(xmlSinFirmar, emisor.CertificadoBase64, emisor.CertificadoPassword);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error firmando XML, guardando sin firma");
+            return xmlSinFirmar;
+        }
+    }
+
+    private async Task EnviarADianAsync(
+        DocumentoElectronico documento,
+        string xmlFirmado,
+        string cufe,
+        ConfiguracionEmisor emisor,
+        string numeroCompleto,
+        bool enviarNotificacion)
+    {
+        if (string.IsNullOrEmpty(emisor.CertificadoBase64))
+            return;
+
+        try
+        {
+            var respuesta = await _dianSoap.EnviarDocumentoAsync(xmlFirmado, cufe, emisor.Nit, emisor.Ambiente);
+            documento.FechaEnvioDian = DateTime.UtcNow;
+            documento.CodigoRespuestaDian = respuesta.Codigo;
+            documento.MensajeRespuestaDian = respuesta.Descripcion;
+            documento.Intentos++;
+            documento.Estado = respuesta.EsValido ? EstadoDocumento.Aceptado : EstadoDocumento.Rechazado;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Documento {Numero} enviado a DIAN. EsValido={EsValido}, Código={Codigo}",
+                numeroCompleto, respuesta.EsValido, respuesta.Codigo);
+
+            if (enviarNotificacion)
+            {
+                var tipo = respuesta.EsValido ? "factura_aceptada" : "factura_rechazada";
+                var nivel = respuesta.EsValido ? "success" : "error";
+                await _notificationService.EnviarNotificacionSucursalAsync(documento.SucursalId,
+                    new NotificacionDto(tipo, "Facturación DIAN",
+                        respuesta.EsValido
+                            ? $"Factura {numeroCompleto} aceptada por DIAN"
+                            : $"Factura {numeroCompleto} rechazada: {respuesta.Descripcion}",
+                        nivel, DateTime.UtcNow,
+                        new { documento.Id, NumeroCompleto = numeroCompleto, respuesta.Codigo }));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enviando documento {Numero} a DIAN", numeroCompleto);
+            documento.Estado = EstadoDocumento.Rechazado;
+            documento.MensajeRespuestaDian = ex.Message;
+            await _context.SaveChangesAsync();
+        }
     }
 
     // ─── Mappers ──────────────────────────────────────────────────────────────

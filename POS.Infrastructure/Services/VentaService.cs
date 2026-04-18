@@ -292,47 +292,8 @@ public class VentaService : IVentaService
         var (permitido, errorGuard) = await _ethicalGuard.EvaluarVentaAsync(guardDto);
         if (!permitido) return (null, errorGuard);
 
-        // ── Acumular asientos contables ERP ───────────────────────────────
-        var centroCosto = sucursal.CentroCosto ?? string.Empty;
-        var ingresosErp = new Dictionary<string, decimal>();   // cuentaIngreso → subtotal
-        var ivaErp = new Dictionary<string, (string Cuenta, decimal Total)>(); // "IVA 19%" → (cuenta, total)
-
-        foreach (var det in detalles)
-        {
-            var prod = productosMap[det.ProductoId];
-            var cuentaIngreso = prod.Categoria?.CuentaIngreso ?? "4135";
-            ingresosErp.TryAdd(cuentaIngreso, 0);
-            ingresosErp[cuentaIngreso] += det.Subtotal;
-
-            if (det.PorcentajeImpuesto > 0)
-            {
-                var nombreImp = $"IVA {det.PorcentajeImpuesto * 100:0.##}%";
-                var cuentaImp = prod.Impuesto?.CodigoCuentaContable ?? "2408";
-                ivaErp.TryGetValue(nombreImp, out var cur);
-                ivaErp[nombreImp] = (cuentaImp, cur.Total + det.MontoImpuesto);
-            }
-        }
-
-        var cuentaDebito = ((MetodoPago)dto.MetodoPago) switch
-        {
-            MetodoPago.Tarjeta       => _erpOptions.CuentaTarjeta,
-            MetodoPago.Transferencia => _erpOptions.CuentaTransferencia,
-            _                        => _erpOptions.CuentaCaja
-        };
-
-        var asientosVenta = new List<AsientoContableErp>();
-        asientosVenta.Add(new AsientoContableErp(
-            cuentaDebito, centroCosto, "Debito", total,
-            $"Cobro venta {numeroVenta} - {((MetodoPago)dto.MetodoPago)}"));
-        foreach (var ing in ingresosErp)
-            asientosVenta.Add(new AsientoContableErp(
-                ing.Key, centroCosto, "Credito", ing.Value,
-                $"Ingreso venta {numeroVenta}"));
-        foreach (var iva in ivaErp)
-            asientosVenta.Add(new AsientoContableErp(
-                iva.Value.Cuenta, centroCosto, "Credito", iva.Value.Total,
-                $"{iva.Key} generado venta {numeroVenta}"));
-        // ──────────────────────────────────────────────────────────────────
+        var asientosVenta = ConstruirAsientosErp(
+            detalles, productosMap, total, numeroVenta, dto.MetodoPago, sucursal.CentroCosto ?? string.Empty);
 
         // Crear venta
         var venta = new Venta
@@ -366,102 +327,14 @@ public class VentaService : IVentaService
             ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
             ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
 
-        // Guardar todo en una sola transacción atómica (Marten + EF Core)
-        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
-        {
-            var npgsqlConn = (Npgsql.NpgsqlConnection)_context.Database.GetDbConnection();
-            if (npgsqlConn.State != System.Data.ConnectionState.Open)
-                await npgsqlConn.OpenAsync();
-            await using var npgsqlTx = await npgsqlConn.BeginTransactionAsync();
-            await _context.Database.UseTransactionAsync(npgsqlTx);
-            await using var martenTx = _store.LightweightSession(
-                global::Marten.Services.SessionOptions.ForTransaction(npgsqlTx));
-            foreach (var (sid, evt) in pendingMartenEvents)
-                martenTx.Events.Append(sid, evt);
-
-            // Capa 5 — emitir VentaCompletadaEvent para UserBehaviorProjection
-            if (externalId != null && Guid.TryParse(externalId, out var userStreamId))
-            {
-                var ventaEvt = new VentaCompletadaEvent(
-                    ExternalUserId: externalId,
-                    SucursalId:     dto.SucursalId,
-                    CajaId:         dto.CajaId,
-                    HoraDelDia:     DateTime.UtcNow.Hour,
-                    DiaSemana:      (int)DateTime.UtcNow.DayOfWeek,
-                    Items:          detalles.Select(d => new VentaItemLine(d.ProductoId, d.NombreProducto, d.Cantidad, d.PrecioUnitario)).ToList(),
-                    Total:          total,
-                    ClienteId:      dto.ClienteId  // Capa 4
-                );
-                martenTx.Events.Append(userStreamId, ventaEvt);
-            }
-
-            await martenTx.SaveChangesAsync();
-            await _context.SaveChangesAsync(); // genera venta.Id
-
-            // ERP Outbox: emitir dentro de la transacción con venta.Id ya disponible
-            var ventaPayload = new VentaErpPayload(
-                NumeroVenta: venta.NumeroVenta,
-                NitCliente: nitCliente,
-                MetodoPago: ((MetodoPago)dto.MetodoPago).ToString(),
-                FechaVenta: venta.FechaVenta,
-                SucursalId: venta.SucursalId,
-                Asientos: asientosVenta,
-                TotalOriginalDocumento: total);
-            await _ventaErpService.EmitirVentaAsync(venta, asientosVenta, ventaPayload);
-            await _context.SaveChangesAsync(); // guarda DocumentoContable + ErpOutboxMessage
-
-            await npgsqlTx.CommitAsync();
-        });
+        await EjecutarTransaccionAtomicaAsync(venta, pendingMartenEvents, externalId, dto, nitCliente, total, asientosVenta, detalles);
 
         _logger.LogInformation("Venta {NumeroVenta} completada. Total: {Total}, Items: {Items}",
             numeroVenta, total, detalles.Count);
 
-        // Facturación electrónica fire-and-forget
-        if (venta.RequiereFacturaElectronica)
-            _facturacionBackground.Encolar(venta.Id);
-
-        // Notificaciones en tiempo real
-        await _notificationService.EnviarNotificacionSucursalAsync(dto.SucursalId, new NotificacionDto(
-            "venta_completada", "Venta completada",
-            $"Venta {numeroVenta} — ${total:N0}", "success", DateTime.UtcNow,
-            new { VentaId = venta.Id, NumeroVenta = numeroVenta, Total = total }));
-
-        foreach (var (stockItem, nombre) in stocksVerificar)
-            if (stockItem.Cantidad >= 0 && stockItem.Cantidad <= stockItem.StockMinimo)
-                await _notificationService.EnviarNotificacionSucursalAsync(dto.SucursalId, new NotificacionDto(
-                    "stock_bajo", "Stock bajo",
-                    $"{nombre}: quedan {stockItem.Cantidad:F0} unidades", "warning", DateTime.UtcNow,
-                    new { stockItem.ProductoId, NombreProducto = nombre, StockActual = stockItem.Cantidad }));
-
-        // Activity Log
-        await _activityLogService.LogActivityAsync(new ActivityLogDto(
-            Accion: "CrearVenta",
-            Tipo: TipoActividad.Venta,
-            Descripcion: $"Venta {numeroVenta} creada. Total: ${total:N2}, Items: {detalles.Count}",
-            SucursalId: dto.SucursalId,
-            TipoEntidad: "Venta",
-            EntidadId: venta.Id.ToString(),
-            EntidadNombre: numeroVenta,
-            DatosNuevos: new
-            {
-                NumeroVenta = numeroVenta,
-                Total = total,
-                Subtotal = subtotal,
-                Descuento = descuentoTotal,
-                Impuestos = totalImpuestos,
-                MetodoPago = ((MetodoPago)dto.MetodoPago).ToString(),
-                CantidadItems = detalles.Count,
-                ClienteId = dto.ClienteId,
-                CajaId = dto.CajaId,
-                Productos = detalles.Select(d => new {
-                    d.ProductoId,
-                    d.NombreProducto,
-                    d.Cantidad,
-                    d.PrecioUnitario,
-                    d.Subtotal
-                })
-            }
-        ));
+        await NotificarVentaAsync(venta, dto.SucursalId, numeroVenta, total, subtotal,
+            descuentoTotal, totalImpuestos, dto.MetodoPago, dto.ClienteId, dto.CajaId,
+            detalles, stocksVerificar);
 
         return (MapToDto(venta, sucursal.Nombre, caja.Nombre, nombreCliente), null);
     }
@@ -476,6 +349,172 @@ public class VentaService : IVentaService
         int ventaId, CrearDevolucionParcialDto dto, string? emailUsuario)
         => _devolucionService.CrearDevolucionParcialAsync(ventaId, dto, emailUsuario);
 
+
+    // ─── Private helpers ──────────────────────────────
+
+    private List<AsientoContableErp> ConstruirAsientosErp(
+        List<DetalleVenta> detalles,
+        Dictionary<Guid, Producto> productosMap,
+        decimal total,
+        string numeroVenta,
+        int metodoPago,
+        string centroCosto)
+    {
+        var ingresosErp = new Dictionary<string, decimal>();
+        var ivaErp = new Dictionary<string, (string Cuenta, decimal Total)>();
+
+        foreach (var det in detalles)
+        {
+            var prod = productosMap[det.ProductoId];
+            var cuentaIngreso = prod.Categoria?.CuentaIngreso ?? "4135";
+            ingresosErp.TryAdd(cuentaIngreso, 0);
+            ingresosErp[cuentaIngreso] += det.Subtotal;
+
+            if (det.PorcentajeImpuesto > 0)
+            {
+                var nombreImp = $"IVA {det.PorcentajeImpuesto * 100:0.##}%";
+                var cuentaImp = prod.Impuesto?.CodigoCuentaContable ?? "2408";
+                ivaErp.TryGetValue(nombreImp, out var cur);
+                ivaErp[nombreImp] = (cuentaImp, cur.Total + det.MontoImpuesto);
+            }
+        }
+
+        var cuentaDebito = ((MetodoPago)metodoPago) switch
+        {
+            MetodoPago.Tarjeta       => _erpOptions.CuentaTarjeta,
+            MetodoPago.Transferencia => _erpOptions.CuentaTransferencia,
+            _                        => _erpOptions.CuentaCaja
+        };
+
+        var asientos = new List<AsientoContableErp>();
+        asientos.Add(new AsientoContableErp(
+            cuentaDebito, centroCosto, "Debito", total,
+            $"Cobro venta {numeroVenta} - {((MetodoPago)metodoPago)}"));
+        foreach (var ing in ingresosErp)
+            asientos.Add(new AsientoContableErp(
+                ing.Key, centroCosto, "Credito", ing.Value,
+                $"Ingreso venta {numeroVenta}"));
+        foreach (var iva in ivaErp)
+            asientos.Add(new AsientoContableErp(
+                iva.Value.Cuenta, centroCosto, "Credito", iva.Value.Total,
+                $"{iva.Key} generado venta {numeroVenta}"));
+
+        return asientos;
+    }
+
+    private async Task EjecutarTransaccionAtomicaAsync(
+        Venta venta,
+        List<(Guid StreamId, object Evento)> pendingMartenEvents,
+        string? externalId,
+        CrearVentaDto dto,
+        string? nitCliente,
+        decimal total,
+        List<AsientoContableErp> asientosVenta,
+        List<DetalleVenta> detalles)
+    {
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            var npgsqlConn = (Npgsql.NpgsqlConnection)_context.Database.GetDbConnection();
+            if (npgsqlConn.State != System.Data.ConnectionState.Open)
+                await npgsqlConn.OpenAsync();
+            await using var npgsqlTx = await npgsqlConn.BeginTransactionAsync();
+            await _context.Database.UseTransactionAsync(npgsqlTx);
+            await using var martenTx = _store.LightweightSession(
+                global::Marten.Services.SessionOptions.ForTransaction(npgsqlTx));
+            foreach (var (sid, evt) in pendingMartenEvents)
+                martenTx.Events.Append(sid, evt);
+
+            if (externalId != null && Guid.TryParse(externalId, out var userStreamId))
+            {
+                var ventaEvt = new VentaCompletadaEvent(
+                    ExternalUserId: externalId,
+                    SucursalId:     dto.SucursalId,
+                    CajaId:         dto.CajaId,
+                    HoraDelDia:     DateTime.UtcNow.Hour,
+                    DiaSemana:      (int)DateTime.UtcNow.DayOfWeek,
+                    Items:          detalles.Select(d => new VentaItemLine(d.ProductoId, d.NombreProducto, d.Cantidad, d.PrecioUnitario)).ToList(),
+                    Total:          total,
+                    ClienteId:      dto.ClienteId
+                );
+                martenTx.Events.Append(userStreamId, ventaEvt);
+            }
+
+            await martenTx.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+
+            var ventaPayload = new VentaErpPayload(
+                NumeroVenta: venta.NumeroVenta,
+                NitCliente: nitCliente,
+                MetodoPago: ((MetodoPago)dto.MetodoPago).ToString(),
+                FechaVenta: venta.FechaVenta,
+                SucursalId: venta.SucursalId,
+                Asientos: asientosVenta,
+                TotalOriginalDocumento: total);
+            await _ventaErpService.EmitirVentaAsync(venta, asientosVenta, ventaPayload);
+            await _context.SaveChangesAsync();
+
+            await npgsqlTx.CommitAsync();
+        });
+    }
+
+    private async Task NotificarVentaAsync(
+        Venta venta,
+        int sucursalId,
+        string numeroVenta,
+        decimal total,
+        decimal subtotal,
+        decimal descuentoTotal,
+        decimal totalImpuestos,
+        int metodoPago,
+        int? clienteId,
+        int cajaId,
+        List<DetalleVenta> detalles,
+        List<(Stock stock, string nombre)> stocksVerificar)
+    {
+        if (venta.RequiereFacturaElectronica)
+            _facturacionBackground.Encolar(venta.Id);
+
+        await _notificationService.EnviarNotificacionSucursalAsync(sucursalId, new NotificacionDto(
+            "venta_completada", "Venta completada",
+            $"Venta {numeroVenta} — ${total:N0}", "success", DateTime.UtcNow,
+            new { VentaId = venta.Id, NumeroVenta = numeroVenta, Total = total }));
+
+        foreach (var (stockItem, nombre) in stocksVerificar)
+            if (stockItem.Cantidad >= 0 && stockItem.Cantidad <= stockItem.StockMinimo)
+                await _notificationService.EnviarNotificacionSucursalAsync(sucursalId, new NotificacionDto(
+                    "stock_bajo", "Stock bajo",
+                    $"{nombre}: quedan {stockItem.Cantidad:F0} unidades", "warning", DateTime.UtcNow,
+                    new { stockItem.ProductoId, NombreProducto = nombre, StockActual = stockItem.Cantidad }));
+
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "CrearVenta",
+            Tipo: TipoActividad.Venta,
+            Descripcion: $"Venta {numeroVenta} creada. Total: ${total:N2}, Items: {detalles.Count}",
+            SucursalId: sucursalId,
+            TipoEntidad: "Venta",
+            EntidadId: venta.Id.ToString(),
+            EntidadNombre: numeroVenta,
+            DatosNuevos: new
+            {
+                NumeroVenta = numeroVenta,
+                Total = total,
+                Subtotal = subtotal,
+                Descuento = descuentoTotal,
+                Impuestos = totalImpuestos,
+                MetodoPago = ((MetodoPago)metodoPago).ToString(),
+                CantidadItems = detalles.Count,
+                ClienteId = clienteId,
+                CajaId = cajaId,
+                Productos = detalles.Select(d => new {
+                    d.ProductoId,
+                    d.NombreProducto,
+                    d.Cantidad,
+                    d.PrecioUnitario,
+                    d.Subtotal
+                })
+            }
+        ));
+    }
 
     // ─── Mappers ───────────────────────────────────────
 
