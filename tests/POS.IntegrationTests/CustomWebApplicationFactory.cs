@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace POS.IntegrationTests;
 
@@ -93,24 +94,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
 
-        // Recrear schema desde el modelo actual (sin depender de migraciones con Designer)
+        // Liberar conexiones idle del pool (Marten las abre en startup con AutoCreateSchemaObjects).
+        // Sin esto, PostgreSQL rechaza el DROP DATABASE por conexiones activas de Marten en CI.
+        NpgsqlConnection.ClearAllPools();
+
         await context.Database.EnsureDeletedAsync();
         await context.Database.EnsureCreatedAsync();
-
-        // Limpiar datos de tests anteriores y reiniciar secuencias de IDs
-        await context.Database.ExecuteSqlRawAsync(@"
-            TRUNCATE TABLE public.stock RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.lotes_inventario RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.productos RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.terceros RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.usuarios RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.sucursales RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.categorias RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.conceptos_retencion RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.configuracion_emisor RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.documentos_electronicos RESTART IDENTITY CASCADE;
-            TRUNCATE TABLE public.erp_outbox_messages RESTART IDENTITY CASCADE;
-        ");
 
         // Limpiar Marten event store
         try
@@ -120,7 +109,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 TRUNCATE TABLE events.mt_streams CASCADE;
             ");
         }
-        catch { /* Marten tables may not exist yet */ }
+        catch { /* Marten tables may not exist yet on first run */ }
 
         // Seed: Empresa de prueba (requerida por FK_sucursales_Empresas_EmpresaId)
         var empresa = new POS.Infrastructure.Data.Entities.Empresa
@@ -271,7 +260,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         ConceptoComprasId = concepto2.Id;
     }
 
-    public new async Task DisposeAsync()
+public new async Task DisposeAsync()
     {
         await base.DisposeAsync();
     }
