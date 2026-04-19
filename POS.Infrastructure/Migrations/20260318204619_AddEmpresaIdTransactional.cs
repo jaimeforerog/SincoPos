@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -57,32 +57,32 @@ namespace POS.Infrastructure.Migrations
                 UPDATE public.ventas v
                 SET ""EmpresaId"" = s.""EmpresaId""
                 FROM public.sucursales s
-                WHERE v.""SucursalId"" = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
+                WHERE v.sucursal_id = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
 
                 UPDATE public.cajas c
                 SET ""EmpresaId"" = s.""EmpresaId""
                 FROM public.sucursales s
-                WHERE c.""SucursalId"" = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
+                WHERE c.sucursal_id = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
 
                 UPDATE public.ordenes_compra o
                 SET ""EmpresaId"" = s.""EmpresaId""
                 FROM public.sucursales s
-                WHERE o.""SucursalId"" = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
+                WHERE o.sucursal_id = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
 
                 UPDATE public.traslados t
                 SET ""EmpresaId"" = s.""EmpresaId""
                 FROM public.sucursales s
-                WHERE t.""SucursalOrigenId"" = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
+                WHERE t.sucursal_origen_id = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
 
                 UPDATE public.documentos_electronicos d
                 SET ""EmpresaId"" = s.""EmpresaId""
                 FROM public.sucursales s
-                WHERE d.""SucursalId"" = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
+                WHERE d.sucursal_id = s.""Id"" AND s.""EmpresaId"" IS NOT NULL;
 
                 UPDATE public.devoluciones_venta dv
                 SET ""EmpresaId"" = v.""EmpresaId""
                 FROM public.ventas v
-                WHERE dv.""VentaId"" = v.""Id"" AND v.""EmpresaId"" IS NOT NULL;
+                WHERE dv.venta_id = v.""Id"" AND v.""EmpresaId"" IS NOT NULL;
             ");
         }
 
