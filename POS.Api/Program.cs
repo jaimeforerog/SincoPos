@@ -321,7 +321,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             "https://api.workos.com/",
             $"https://api.workos.com/user_management/{workosClientId}"
         },
-        ValidateAudience = true,
+        ValidateAudience = false,
         ValidAudiences = new[] { workosClientId },
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
