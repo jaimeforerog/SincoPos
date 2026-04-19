@@ -7,7 +7,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace POS.IntegrationTests;
 
@@ -94,23 +93,44 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
 
-        // Terminar conexiones activas de Marten (AutoCreateSchemaObjects las abre en startup)
-        // DESPUÉS de que el host arranca. Se usa conexión al sistema 'postgres' (no a pos_test)
-        // para que PostgreSQL acepte el DROP DATABASE sin "other sessions using the database".
-        await TerminarConexionesPosTestAsync();
+        // El host ya ejecutó MigrateAsync() en startup — el schema siempre está al día.
+        // Truncar todas las tablas de datos (excluir historial de migraciones) y resetear
+        // secuencias de IDs. Esto evita DROP DATABASE y los problemas de conexiones activas
+        // de Marten (AutoCreateSchemaObjects) que bloqueaban EnsureDeletedAsync en CI.
+        await context.Database.ExecuteSqlRawAsync(@"
+            DO $$
+            DECLARE r record;
+            BEGIN
+                FOR r IN (
+                    SELECT tablename FROM pg_tables
+                    WHERE schemaname = 'public'
+                    AND tablename NOT IN ('__ef_migrations_history')
+                )
+                LOOP
+                    EXECUTE 'TRUNCATE TABLE public.' || quote_ident(r.tablename) || ' RESTART IDENTITY CASCADE';
+                END LOOP;
+            END $$;
+        ");
 
-        await context.Database.EnsureDeletedAsync();
-        await context.Database.EnsureCreatedAsync();
-
-        // Limpiar Marten event store
-        try
+        // Limpiar schemas de Marten: eventos (events.*) y documentos de proyecciones (pos.*)
+        // En desarrollo Marten usa DatabaseSchemaName="pos" para documentos y "events" para eventos.
+        foreach (var schema in new[] { "events", "pos" })
         {
-            await context.Database.ExecuteSqlRawAsync(@"
-                TRUNCATE TABLE events.mt_events CASCADE;
-                TRUNCATE TABLE events.mt_streams CASCADE;
-            ");
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync($@"
+                    DO $$
+                    DECLARE r record;
+                    BEGIN
+                        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}')
+                        LOOP
+                            EXECUTE 'TRUNCATE TABLE {schema}.' || quote_ident(r.tablename) || ' CASCADE';
+                        END LOOP;
+                    END $$;
+                ");
+            }
+            catch { /* El schema puede no existir en el primer run */ }
         }
-        catch { /* Marten tables may not exist yet on first run */ }
 
         // Seed: Empresa de prueba (requerida por FK_sucursales_Empresas_EmpresaId)
         var empresa = new POS.Infrastructure.Data.Entities.Empresa
@@ -261,23 +281,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         ConceptoComprasId = concepto2.Id;
     }
 
-    /// <summary>
-    /// Abre una conexión directa al sistema 'postgres' (no a pos_test) y termina
-    /// todas las conexiones activas a pos_test — incluidas las de Marten startup.
-    /// Esto se ejecuta ANTES de Services.CreateScope() para que EnsureDeletedAsync no falle.
-    /// </summary>
-    private static async Task TerminarConexionesPosTestAsync()
-    {
-        const string dbName = "pos_test";
-        var sysConnStr = TestConnectionString.Replace($"Database={dbName}", "Database=postgres");
-        await using var conn = new NpgsqlConnection(sysConnStr);
-        await conn.OpenAsync();
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{dbName}'";
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    public new async Task DisposeAsync()
+public new async Task DisposeAsync()
     {
         await base.DisposeAsync();
     }
