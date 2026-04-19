@@ -645,6 +645,37 @@ using (var scope = app.Services.CreateScope())
     {
         seedLogger.LogError(ex, "Error en seed de empresa por defecto");
     }
+
+    try
+    {
+        // Asegurar que el owner sea admin siempre
+        var adminEmail = "jrfgonz@gmail.com";
+        var adminUser = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == adminEmail);
+        if (adminUser != null && adminUser.Rol != "admin")
+        {
+            adminUser.Rol = "admin";
+            await db.SaveChangesAsync();
+            seedLogger.LogWarning("Rol de {Email} promovido a admin.", adminEmail);
+        }
+        else if (adminUser == null)
+        {
+            adminUser = new POS.Infrastructure.Data.Entities.Usuario
+            {
+                Email = adminEmail,
+                NombreCompleto = "Jaime Forero",
+                Rol = "admin",
+                Activo = true,
+                ExternalId = "seed-admin-" + Guid.NewGuid().ToString("N")
+            };
+            db.Usuarios.Add(adminUser);
+            await db.SaveChangesAsync();
+            seedLogger.LogWarning("Usuario {Email} auto-creado como admin preventivamente.", adminEmail);
+        }
+    }
+    catch (Exception ex)
+    {
+        seedLogger.LogError(ex, "Error asegurando admin de owner");
+    }
 }
 
 // ── Escalabilidad: Global Exception Handler (ProblemDetails RFC 7807) ────
