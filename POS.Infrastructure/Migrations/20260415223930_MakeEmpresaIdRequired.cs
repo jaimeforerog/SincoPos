@@ -39,11 +39,23 @@ namespace POS.Infrastructure.Migrations
             // En producción este DELETE no elimina ninguna fila (el UPDATE del paso 1
             // ya les asignó EmpresaId). Los registros se recrearán per-empresa por
             // la migración SeedImpuestosPerEmpresa que viene después.
+            // Se cubren TODAS las 14 tablas del paso 3 para garantizar que ningún
+            // AlterColumn falle por filas con EmpresaId NULL.
             migrationBuilder.Sql(@"
-                DELETE FROM public.retenciones_reglas  WHERE ""EmpresaId"" IS NULL;
-                DELETE FROM public.conceptos_retencion WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.ventas               WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.traslados            WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.terceros             WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.sucursales           WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.retenciones_reglas   WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.""ReglasEticas""     WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.productos            WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.ordenes_compra       WHERE ""EmpresaId"" IS NULL;
                 DELETE FROM public.impuestos            WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.documentos_electronicos WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.devoluciones_venta   WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.conceptos_retencion  WHERE ""EmpresaId"" IS NULL;
                 DELETE FROM public.categorias           WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.cajas                WHERE ""EmpresaId"" IS NULL;
             ");
 
             // ── PASO 2: Ajustar FK de sucursales (ahora requerido) ────────────────────
