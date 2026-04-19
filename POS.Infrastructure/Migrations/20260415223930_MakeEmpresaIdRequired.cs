@@ -43,6 +43,7 @@ namespace POS.Infrastructure.Migrations
                 DELETE FROM public.retenciones_reglas  WHERE ""EmpresaId"" IS NULL;
                 DELETE FROM public.conceptos_retencion WHERE ""EmpresaId"" IS NULL;
                 DELETE FROM public.impuestos            WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.categorias           WHERE ""EmpresaId"" IS NULL;
             ");
 
             // ── PASO 2: Ajustar FK de sucursales (ahora requerido) ────────────────────
