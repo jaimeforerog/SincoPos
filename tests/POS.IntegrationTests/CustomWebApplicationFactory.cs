@@ -89,7 +89,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
 
-        // El host ya ejecutó MigrateAsync() en startup — el schema siempre está al día.
+        // Garantizar que el schema esté al día incluso si Program.cs swallowed un error
+        // de migración. MigrateAsync() es idempotente: no-op si ya todo está aplicado.
+        await context.Database.MigrateAsync();
+
         // Truncar todas las tablas de datos (excluir historial de migraciones) y resetear
         // secuencias de IDs. Esto evita DROP DATABASE y los problemas de conexiones activas
         // de Marten (AutoCreateSchemaObjects) que bloqueaban EnsureDeletedAsync en CI.
