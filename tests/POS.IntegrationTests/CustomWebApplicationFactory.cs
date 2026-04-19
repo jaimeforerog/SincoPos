@@ -94,9 +94,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
 
-        // Liberar conexiones idle del pool (Marten las abre en startup con AutoCreateSchemaObjects).
-        // Sin esto, PostgreSQL rechaza el DROP DATABASE por conexiones activas de Marten en CI.
-        NpgsqlConnection.ClearAllPools();
+        // Terminar conexiones activas de Marten (AutoCreateSchemaObjects las abre en startup)
+        // DESPUÉS de que el host arranca. Se usa conexión al sistema 'postgres' (no a pos_test)
+        // para que PostgreSQL acepte el DROP DATABASE sin "other sessions using the database".
+        await TerminarConexionesPosTestAsync();
 
         await context.Database.EnsureDeletedAsync();
         await context.Database.EnsureCreatedAsync();
@@ -260,7 +261,23 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         ConceptoComprasId = concepto2.Id;
     }
 
-public new async Task DisposeAsync()
+    /// <summary>
+    /// Abre una conexión directa al sistema 'postgres' (no a pos_test) y termina
+    /// todas las conexiones activas a pos_test — incluidas las de Marten startup.
+    /// Esto se ejecuta ANTES de Services.CreateScope() para que EnsureDeletedAsync no falle.
+    /// </summary>
+    private static async Task TerminarConexionesPosTestAsync()
+    {
+        const string dbName = "pos_test";
+        var sysConnStr = TestConnectionString.Replace($"Database={dbName}", "Database=postgres");
+        await using var conn = new NpgsqlConnection(sysConnStr);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{dbName}'";
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public new async Task DisposeAsync()
     {
         await base.DisposeAsync();
     }
