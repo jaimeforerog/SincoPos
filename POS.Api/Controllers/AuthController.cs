@@ -20,15 +20,18 @@ public class AuthController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly WorkOsOptions _workos;
     private readonly ILogger<AuthController> _logger;
+    private readonly POS.Application.Services.IUsuarioService _usuarioService;
 
     public AuthController(
         IHttpClientFactory httpClientFactory,
         IOptions<WorkOsOptions> workosOptions,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        POS.Application.Services.IUsuarioService usuarioService)
     {
         _httpClientFactory = httpClientFactory;
         _workos = workosOptions.Value;
         _logger = logger;
+        _usuarioService = usuarioService;
     }
 
     /// <summary>
@@ -87,6 +90,29 @@ public class AuthController : ControllerBase
         {
             _logger.LogError("WorkOS authentication response did not contain an access token. Body: {Body}", responseBody);
             return StatusCode(500, new { message = "Invalid auth response from identity provider." });
+        }
+
+        // Recuperar información de User desde payload de WorkOS para bindear el id con la bd antes del /me
+        if (root.TryGetProperty("user", out var userEl))
+        {
+            var externalId = userEl.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
+            var email = userEl.TryGetProperty("email", out var eEl) ? eEl.GetString() : null;
+            var firstName = userEl.TryGetProperty("first_name", out var fEl) ? fEl.GetString() : "";
+            var lastName = userEl.TryGetProperty("last_name", out var lEl) ? lEl.GetString() : "";
+            var nombreCompleto = $"{firstName} {lastName}".Trim();
+            
+            // WorkOS a veces no manda rol explicito aca pero sabemos el email y el id, así que podemos atarlo
+            if (!string.IsNullOrEmpty(externalId) && !string.IsNullOrEmpty(email))
+            {
+                try
+                {
+                    await _usuarioService.ObtenerOCrearUsuarioAsync(externalId, email, string.IsNullOrEmpty(nombreCompleto) ? null : nombreCompleto, null);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error sincronizando usuario WorkOS: {Email}", email);
+                }
+            }
         }
 
         return Ok(new { accessToken, refreshToken });

@@ -640,6 +640,31 @@ using (var scope = app.Services.CreateScope())
                 $"""UPDATE public.sucursales SET "EmpresaId" = {empresa.Id} WHERE "EmpresaId" IS NULL""");
             seedLogger.LogWarning("Sucursales sin empresa asignadas a EmpresaId={Id}", empresa.Id);
         }
+
+        // Crear una sucursal por defecto si no hay NINGUNA en el sistema
+        var tieneSucursal = await db.Sucursales.IgnoreQueryFilters().AnyAsync();
+        if (!tieneSucursal)
+        {
+            var empresaFallback = await db.Empresas.IgnoreQueryFilters().FirstOrDefaultAsync();
+            if (empresaFallback != null)
+            {
+                var sucursal = new POS.Infrastructure.Data.Entities.Sucursal
+                {
+                    Nombre = "Sucursal Principal",
+                    Direccion = "Centro",
+                    Ciudad = "Bogotá",
+                    CodigoPais = "CO",
+                    NombrePais = "Colombia",
+                    Activo = true,
+                    FechaCreacion = DateTime.UtcNow,
+                    MetodoCosteo = POS.Infrastructure.Data.Entities.MetodoCosteo.PromedioPonderado,
+                    EmpresaId = empresaFallback.Id
+                };
+                db.Sucursales.Add(sucursal);
+                await db.SaveChangesAsync();
+                seedLogger.LogWarning("Sucursal por defecto creada con Id={Id} asignada a EmpresaId={EmpresaId}", sucursal.Id, empresaFallback.Id);
+            }
+        }
     }
     catch (Exception ex)
     {
