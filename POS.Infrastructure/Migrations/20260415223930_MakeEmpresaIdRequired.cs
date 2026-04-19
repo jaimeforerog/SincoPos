@@ -33,6 +33,18 @@ namespace POS.Infrastructure.Migrations
             migrationBuilder.Sql($@"UPDATE public.ordenes_compra        SET ""EmpresaId"" = {primerEmpresa} WHERE ""EmpresaId"" IS NULL;");
             migrationBuilder.Sql($@"UPDATE public.documentos_electronicos SET ""EmpresaId"" = {primerEmpresa} WHERE ""EmpresaId"" IS NULL;");
 
+            // ── PASO 1b: Eliminar registros de catálogo seeded globalmente que no ────
+            // pudieron ser asignados a ninguna empresa (el subquery devuelve NULL cuando
+            // no existe ninguna empresa, ej: BD recién creada en CI).
+            // En producción este DELETE no elimina ninguna fila (el UPDATE del paso 1
+            // ya les asignó EmpresaId). Los registros se recrearán per-empresa por
+            // la migración SeedImpuestosPerEmpresa que viene después.
+            migrationBuilder.Sql(@"
+                DELETE FROM public.retenciones_reglas  WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.conceptos_retencion WHERE ""EmpresaId"" IS NULL;
+                DELETE FROM public.impuestos            WHERE ""EmpresaId"" IS NULL;
+            ");
+
             // ── PASO 2: Ajustar FK de sucursales (ahora requerido) ────────────────────
             migrationBuilder.DropForeignKey(
                 name: "FK_sucursales_Empresas_EmpresaId",
