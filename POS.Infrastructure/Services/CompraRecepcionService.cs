@@ -432,7 +432,7 @@ public class CompraRecepcionService
 
         await _activityLogService.LogActivityAsync(new ActivityLogDto(
             Accion: "RecibirOrdenCompra",
-            Tipo: TipoActividad.Inventario,
+            Tipo: TipoActividad.Compra,
             Descripcion: $"Orden de compra {orden.NumeroOrden} recibida ({orden.Estado})",
             SucursalId: orden.SucursalId,
             TipoEntidad: "OrdenCompra",

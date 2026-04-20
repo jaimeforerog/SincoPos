@@ -191,3 +191,32 @@ public record ReporteKardexQueryDto(
     DateTime FechaDesde,
     DateTime FechaHasta
 );
+
+// ─── Reporte de Auditoría de Compras ──────────────────────────────────────
+
+public record ReporteAuditoriaComprasQueryDto(
+    DateTime FechaDesde,
+    DateTime FechaHasta,
+    int? SucursalId = null,
+    int? ProveedorId = null,
+    string? UsuarioEmail = null,
+    string? Accion = null,
+    bool? SoloErrores = null,
+    int PageNumber = 1,
+    int PageSize = 50
+);
+
+public record KpisAuditoriaComprasDto(
+    int TotalEventos,
+    int EventosExitosos,
+    int EventosFallidos,
+    Dictionary<string, int> EventosPorAccion,
+    int OrdenesConErrorErp,
+    int TotalDevoluciones,
+    decimal ValorTotalComprado
+);
+
+public record ReporteAuditoriaComprasDto(
+    KpisAuditoriaComprasDto Kpis,
+    PaginatedResult<ActivityLogFullDto> Logs
+);

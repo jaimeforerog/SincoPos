@@ -14,15 +14,18 @@ public class ReportesController : ControllerBase
     private readonly IReportesService _reportesService;
     private readonly IDashboardService _dashboardService;
     private readonly IKardexService _kardexService;
+    private readonly IActivityLogService _activityLogService;
 
     public ReportesController(
         IReportesService reportesService,
         IDashboardService dashboardService,
-        IKardexService kardexService)
+        IKardexService kardexService,
+        IActivityLogService activityLogService)
     {
         _reportesService = reportesService;
         _dashboardService = dashboardService;
         _kardexService = kardexService;
+        _activityLogService = activityLogService;
     }
 
     /// <summary>
@@ -147,5 +150,46 @@ public class ReportesController : ControllerBase
         {
             return Problem(detail: ex.Message, statusCode: StatusCodes.Status404NotFound);
         }
+    }
+
+    /// <summary>
+    /// Auditoría de compras: KPIs del período y log paginado de eventos sobre órdenes de compra.
+    /// </summary>
+    [HttpGet("auditoria-compras")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(ReporteAuditoriaComprasDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ReporteAuditoriaComprasDto>> ObtenerAuditoriaCompras(
+        [FromQuery] DateTime fechaDesde,
+        [FromQuery] DateTime fechaHasta,
+        [FromQuery] int? sucursalId = null,
+        [FromQuery] int? proveedorId = null,
+        [FromQuery] string? usuarioEmail = null,
+        [FromQuery] string? accion = null,
+        [FromQuery] bool? soloErrores = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        if (fechaDesde > fechaHasta)
+            return Problem(detail: "La fecha desde no puede ser mayor que la fecha hasta.", statusCode: StatusCodes.Status400BadRequest);
+
+        var query = new ReporteAuditoriaComprasQueryDto(
+            fechaDesde, fechaHasta, sucursalId, proveedorId,
+            usuarioEmail, accion, soloErrores, pageNumber, pageSize);
+
+        var reporte = await _reportesService.ObtenerAuditoriaComprasAsync(query);
+        return Ok(reporte);
+    }
+
+    /// <summary>
+    /// Timeline completo de cambios sobre una orden de compra específica.
+    /// </summary>
+    [HttpGet("auditoria-compras/orden/{ordenId:int}")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(HistorialEntidadDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HistorialEntidadDto>> ObtenerHistorialOrden(int ordenId)
+    {
+        var historial = await _activityLogService.GetEntityHistoryAsync("OrdenCompra", ordenId.ToString());
+        return Ok(historial);
     }
 }

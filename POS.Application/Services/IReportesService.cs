@@ -13,5 +13,6 @@ public interface IReportesService
     Task<(ReporteCajaDto? reporte, string? error)> ObtenerReporteCajaAsync(
         int cajaId, DateTime? fechaDesde = null, DateTime? fechaHasta = null);
 
-
+    Task<ReporteAuditoriaComprasDto> ObtenerAuditoriaComprasAsync(
+        ReporteAuditoriaComprasQueryDto query);
 }

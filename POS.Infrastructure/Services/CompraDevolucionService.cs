@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
+using POS.Application.Services;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 
@@ -12,10 +13,12 @@ namespace POS.Infrastructure.Services;
 public class CompraDevolucionService
 {
     private readonly AppDbContext _context;
+    private readonly IActivityLogService _activityLogService;
 
-    public CompraDevolucionService(AppDbContext context)
+    public CompraDevolucionService(AppDbContext context, IActivityLogService activityLogService)
     {
         _context = context;
+        _activityLogService = activityLogService;
     }
 
     public async Task<(DevolucionCompraDto? devolucion, string? error)> CrearAsync(
@@ -133,6 +136,17 @@ public class CompraDevolucionService
         // ── 8. Persistir ───────────────────────────────────────────────────────
         _context.DevolucionesCompra.Add(devolucion);
         await _context.SaveChangesAsync();
+
+        _ = _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "DevolucionCompra",
+            Tipo: TipoActividad.Compra,
+            Descripcion: $"Devolución {numeroDevolucion} de orden {orden.NumeroOrden}. Total: ${totalDevolucion:N2}",
+            SucursalId: orden.SucursalId,
+            TipoEntidad: "DevolucionCompra",
+            EntidadId: devolucion.Id.ToString(),
+            EntidadNombre: numeroDevolucion,
+            DatosNuevos: new { OrdenId = ordenId, NumeroDevolucion = numeroDevolucion, dto.Motivo, Total = totalDevolucion }
+        ));
 
         // ── 9. Construir respuesta ─────────────────────────────────────────────
         return (BuildDto(devolucion, orden.NumeroOrden, null), null);

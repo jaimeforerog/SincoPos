@@ -4,7 +4,9 @@ import type {
   ReporteInventarioValorizadoDTO,
   ReporteCajaDTO,
   ReporteKardexDTO,
+  ReporteAuditoriaComprasDTO,
 } from '@/types/api';
+import type { HistorialEntidadDTO } from '@/types/api';
 
 export const reportesApi = {
   /**
@@ -88,6 +90,31 @@ export const reportesApi = {
     const response = await apiClient.get<ReporteKardexDTO>('/reportes/kardex', {
       params,
     });
+    return response.data;
+  },
+
+  auditoriaCompras: async (params: {
+    fechaDesde: string;
+    fechaHasta: string;
+    sucursalId?: number;
+    proveedorId?: number;
+    usuarioEmail?: string;
+    accion?: string;
+    soloErrores?: boolean;
+    pageNumber?: number;
+    pageSize?: number;
+  }) => {
+    const response = await apiClient.get<ReporteAuditoriaComprasDTO>(
+      '/reportes/auditoria-compras',
+      { params }
+    );
+    return response.data;
+  },
+
+  historialOrden: async (ordenId: number) => {
+    const response = await apiClient.get<HistorialEntidadDTO>(
+      `/reportes/auditoria-compras/orden/${ordenId}`
+    );
     return response.data;
   },
 };

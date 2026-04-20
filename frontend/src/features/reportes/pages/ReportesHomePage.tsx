@@ -72,6 +72,15 @@ const reportModules: ReporteModule[] = [
     roles: ['supervisor', 'admin'],
     color: '#c62828',
   },
+  {
+    id: 'auditoria-compras',
+    title: 'Auditoría de Compras',
+    description: 'Trazabilidad de aprobaciones, recepciones y devoluciones a proveedores',
+    icon: <ShoppingCart fontSize="large" />,
+    path: '/reportes/auditoria-compras',
+    roles: ['supervisor', 'admin'],
+    color: '#1565c0',
+  },
 ];
 
 const formatCurrency = (value: number) =>

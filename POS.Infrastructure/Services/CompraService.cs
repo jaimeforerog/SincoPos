@@ -211,7 +211,7 @@ public class CompraService : ICompraService
 
         await _activityLogService.LogActivityAsync(new ActivityLogDto(
             Accion: "CrearOrdenCompra",
-            Tipo: TipoActividad.Inventario,
+            Tipo: TipoActividad.Compra,
             Descripcion: $"Orden de compra {numeroOrden} creada para proveedor {proveedor.Nombre}",
             SucursalId: dto.SucursalId,
             TipoEntidad: "OrdenCompra",
@@ -255,7 +255,7 @@ public class CompraService : ICompraService
 
         await _activityLogService.LogActivityAsync(new ActivityLogDto(
             Accion: "AprobarOrdenCompra",
-            Tipo: TipoActividad.Inventario,
+            Tipo: TipoActividad.Compra,
             Descripcion: $"Orden de compra {orden.NumeroOrden} aprobada",
             SucursalId: orden.SucursalId,
             TipoEntidad: "OrdenCompra",
@@ -285,7 +285,7 @@ public class CompraService : ICompraService
 
         await _activityLogService.LogActivityAsync(new ActivityLogDto(
             Accion: "RechazarOrdenCompra",
-            Tipo: TipoActividad.Inventario,
+            Tipo: TipoActividad.Compra,
             Descripcion: $"Orden de compra {orden.NumeroOrden} rechazada: {dto.MotivoRechazo}",
             SucursalId: orden.SucursalId,
             TipoEntidad: "OrdenCompra",
@@ -328,7 +328,7 @@ public class CompraService : ICompraService
 
         await _activityLogService.LogActivityAsync(new ActivityLogDto(
             Accion: "CancelarOrdenCompra",
-            Tipo: TipoActividad.Inventario,
+            Tipo: TipoActividad.Compra,
             Descripcion: $"Orden de compra {orden.NumeroOrden} cancelada: {dto.Motivo}",
             SucursalId: orden.SucursalId,
             TipoEntidad: "OrdenCompra",

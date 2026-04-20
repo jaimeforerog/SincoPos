@@ -1038,6 +1038,42 @@ export interface ActividadRecienteDTO {
   exitosa: boolean;
 }
 
+// ── Auditoría de Compras ────────────────────────────────────────────────────
+
+export interface KpisAuditoriaComprasDTO {
+  totalEventos: number;
+  eventosExitosos: number;
+  eventosFallidos: number;
+  eventosPorAccion: Record<string, number>;
+  ordenesConErrorErp: number;
+  totalDevoluciones: number;
+  valorTotalComprado: number;
+}
+
+export interface ReporteAuditoriaComprasDTO {
+  kpis: KpisAuditoriaComprasDTO;
+  logs: PaginatedResult<ActivityLogFullDTO>;
+}
+
+export interface CambioEntidadDTO {
+  id: number;
+  fechaHora: string;
+  usuarioEmail: string;
+  accion: string;
+  descripcion?: string;
+  datosAnteriores?: string;
+  datosNuevos?: string;
+  exitosa: boolean;
+}
+
+export interface HistorialEntidadDTO {
+  tipoEntidad: string;
+  entidadId: string;
+  entidadNombre?: string;
+  totalCambios: number;
+  cambios: CambioEntidadDTO[];
+}
+
 // ─── Facturación Electrónica DIAN ─────────────────────────────────────────
 
 export interface ConfiguracionEmisorDTO {

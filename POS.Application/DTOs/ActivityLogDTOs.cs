@@ -28,6 +28,11 @@ public enum TipoActividad
     Usuario = 4,
 
     /// <summary>
+    /// Operaciones de compras a proveedores (creación, aprobación, recepción, devolución)
+    /// </summary>
+    Compra = 5,
+
+    /// <summary>
     /// Cambios de precios - ALTA
     /// </summary>
     Precio = 10,
