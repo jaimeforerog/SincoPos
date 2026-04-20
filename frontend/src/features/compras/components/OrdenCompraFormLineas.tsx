@@ -161,11 +161,11 @@ export function OrdenCompraFormLineas({
         </Alert>
       )}
 
-      <TableContainer sx={{ maxHeight: 420, overflowY: 'auto' }}>
+      <TableContainer sx={{ maxHeight: 420, overflowY: 'auto', overflowX: 'auto' }}>
         <Table
           size="small"
           stickyHeader
-          sx={{ tableLayout: 'fixed', '& .MuiTableCell-root': { py: 0.25, px: 0.75 } }}
+          sx={{ tableLayout: 'fixed', minWidth: 640, '& .MuiTableCell-root': { py: 0.25, px: 0.75 } }}
         >
           <TableHead>
             <TableRow
