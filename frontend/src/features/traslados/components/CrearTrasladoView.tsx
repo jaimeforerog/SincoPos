@@ -299,7 +299,8 @@ export function CrearTrasladoView({ onBack, onSuccess }: Props) {
             }}
           >
             <Autocomplete
-              options={productos}
+              options={productos.filter(p => getStock(p.id) > 0)}
+              noOptionsText={!sucursalOrigen ? 'Primero selecciona sucursal origen' : 'No hay productos con stock'}
               getOptionLabel={(o) => `${o.nombre} (${o.codigoBarras})`}
               value={productoSeleccionado}
               onChange={(_, v) => {
