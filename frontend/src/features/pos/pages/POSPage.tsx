@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { HeroBanner } from '@/components/common/HeroBanner';
 import { useCartStore } from '@/stores/cart.store';
 import { ventasApi } from '@/api/ventas';
+import { orquestadorApi } from '@/api/orquestador';
 import { cajasApi } from '@/api/cajas';
 import { useConfiguracionVariableIntQuery } from '@/hooks/useConfiguracionVariable';
 import { useCajasAbiertas } from '../hooks/useCajasAbiertas';
@@ -177,8 +178,10 @@ export function POSPage() {
 
   // Mutación para crear venta
   const crearVentaMutation = useMutation({
-    mutationFn: (data: CrearVentaDTO) => ventasApi.create(data),
-    onSuccess: (venta) => {
+    mutationFn: (data: CrearVentaDTO) => orquestadorApi.procesarVenta(data),
+    onSuccess: (result) => {
+      const venta = result.venta;
+      if (!venta) return;
       setLastVenta(venta);
       setShowConfirmDialog(true);
       clearCart();
