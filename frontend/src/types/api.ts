@@ -316,6 +316,14 @@ export interface LineaOrdenCompraDTO {
   impuestoId?: number;
 }
 
+export interface ActualizarOrdenCompraDTO {
+  fechaEntregaEsperada?: string;
+  observaciones?: string;
+  formaPago?: string;
+  diasPlazo?: number;
+  lineas?: LineaOrdenCompraDTO[];
+}
+
 export interface RecibirOrdenCompraDTO {
   lineas: LineaRecepcionOrdenCompraDTO[];
   fechaRecepcion?: string; // ISO 8601 UTC — null usa DateTime.UtcNow en el servidor
@@ -991,6 +999,7 @@ export interface CancelarTrasladoDTO {
 export interface ActivityLogFullDTO {
   id: number;
   usuarioEmail: string;
+  usuarioNombre?: string;
   usuarioId?: number;
   fechaHora: string;
   accion: string;
@@ -1059,6 +1068,7 @@ export interface CambioEntidadDTO {
   id: number;
   fechaHora: string;
   usuarioEmail: string;
+  usuarioNombre?: string;
   accion: string;
   descripcion?: string;
   datosAnteriores?: string;

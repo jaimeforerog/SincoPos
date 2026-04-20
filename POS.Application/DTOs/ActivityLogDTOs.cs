@@ -86,6 +86,7 @@ public record ActivityLogDto(
 public record ActivityLogFullDto(
     long Id,
     string UsuarioEmail,
+    string? UsuarioNombre,
     int? UsuarioId,
     DateTime FechaHora,
     string Accion,
@@ -180,6 +181,7 @@ public record CambioEntidadDto(
     long Id,
     DateTime FechaHora,
     string UsuarioEmail,
+    string? UsuarioNombre,
     string Accion,
     string? Descripcion,
     string? DatosAnteriores,

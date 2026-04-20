@@ -62,7 +62,7 @@ public class ActivityLogService : IActivityLogService
         {
             var httpContext = _httpContextAccessor.HttpContext;
             var usuarioEmail = ObtenerUsuarioActual(httpContext);
-            var usuarioId = ObtenerUsuarioId(httpContext);
+            var usuarioId = await ObtenerUsuarioIdAsync(httpContext, usuarioEmail);
 
             var log = new ActivityLog
             {
@@ -111,6 +111,7 @@ public class ActivityLogService : IActivityLogService
 
         var query = context.ActivityLogs
             .Include(a => a.Sucursal)
+            .Include(a => a.Usuario)
             .AsQueryable();
 
         // Aplicar filtros
@@ -160,6 +161,7 @@ public class ActivityLogService : IActivityLogService
         var items = entities.Select(a => new ActivityLogFullDto(
             a.Id,
             a.UsuarioEmail,
+            a.Usuario?.NombreCompleto,
             a.UsuarioId,
             a.FechaHora,
             a.Accion,
@@ -200,12 +202,14 @@ public class ActivityLogService : IActivityLogService
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         return await context.ActivityLogs
+            .Include(a => a.Usuario)
             .Where(a => a.TipoEntidad == tipoEntidad && a.EntidadId == entidadId)
             .OrderByDescending(a => a.FechaHora)
             .Select(a => new CambioEntidadDto(
                 a.Id,
                 a.FechaHora,
                 a.UsuarioEmail,
+                a.Usuario != null ? a.Usuario.NombreCompleto : null,
                 a.Accion,
                 a.Descripcion,
                 a.DatosAnteriores,
@@ -337,18 +341,24 @@ public class ActivityLogService : IActivityLogService
         return "sistema";
     }
 
-    private int? ObtenerUsuarioId(HttpContext? httpContext)
+    private async Task<int?> ObtenerUsuarioIdAsync(HttpContext? httpContext, string emailUsuario)
     {
-        if (httpContext?.User?.Identity?.IsAuthenticated == true)
+        if (httpContext?.User?.Identity?.IsAuthenticated != true)
+            return null;
+
+        var externalId = httpContext.User.FindFirst("sub")?.Value
+            ?? httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        try
         {
-            var userIdClaim = httpContext.User.FindFirst("user_id")?.Value
-                             ?? httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (int.TryParse(userIdClaim, out var userId))
-                return userId;
+            using var scope = _serviceScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            return await context.ResolverUsuarioIdAsync(emailUsuario, externalId);
         }
-
-        return null;
+        catch
+        {
+            return null;
+        }
     }
 }
 

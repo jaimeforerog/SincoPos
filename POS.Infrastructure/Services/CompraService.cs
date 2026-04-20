@@ -340,6 +340,145 @@ public class CompraService : ICompraService
         return (true, null);
     }
 
+    public async Task<(OrdenCompraDto? orden, string? error)> ActualizarOrdenAsync(int id, ActualizarOrdenCompraDto dto)
+    {
+        var orden = await _context.OrdenesCompra
+            .Include(o => o.Sucursal)
+            .Include(o => o.Proveedor)
+            .Include(o => o.Detalles)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (orden == null) return (null, "NOT_FOUND");
+        if (orden.Estado != EstadoOrdenCompra.Pendiente)
+            return (null, "Solo se pueden editar órdenes en estado Pendiente");
+
+        var anterior = new
+        {
+            orden.Observaciones,
+            orden.FormaPago,
+            orden.DiasPlazo,
+            FechaEntregaEsperada = orden.FechaEntregaEsperada,
+            Lineas = orden.Detalles.Select(d => new { d.ProductoId, d.CantidadSolicitada, d.PrecioUnitario }).ToList()
+        };
+
+        if (dto.FechaEntregaEsperada.HasValue)
+            orden.FechaEntregaEsperada = DateTime.SpecifyKind(dto.FechaEntregaEsperada.Value, DateTimeKind.Utc);
+        if (dto.Observaciones != null)
+            orden.Observaciones = dto.Observaciones;
+        if (dto.FormaPago != null)
+            orden.FormaPago = dto.FormaPago;
+        if (dto.DiasPlazo.HasValue)
+            orden.DiasPlazo = dto.DiasPlazo.Value;
+
+        if (dto.Lineas != null && dto.Lineas.Count > 0)
+        {
+            var productosIds = dto.Lineas.Select(l => l.ProductoId).ToList();
+            var productos = await _context.Productos
+                .Include(p => p.ConceptoRetencion)
+                .Where(p => productosIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
+
+            foreach (var linea in dto.Lineas)
+                if (!productos.ContainsKey(linea.ProductoId))
+                    return (null, $"Producto {linea.ProductoId} no encontrado");
+
+            var reglasRetencion = await _context.RetencionesReglas.Where(r => r.Activo).ToListAsync();
+            var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+            var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
+                .Where(t => t.Activo && t.VigenciaDesde <= hoy)
+                .OrderBy(t => t.MaxGramosPor100ml).ToListAsync();
+
+            var impuestoIdsOverride = dto.Lineas.Where(l => l.ImpuestoId.HasValue)
+                .Select(l => l.ImpuestoId!.Value).Distinct().ToList();
+            var impuestosOverride = impuestoIdsOverride.Count > 0
+                ? await _context.Impuestos.IgnoreQueryFilters()
+                    .Where(i => impuestoIdsOverride.Contains(i.Id)).ToDictionaryAsync(i => i.Id)
+                : new Dictionary<int, Impuesto>();
+
+            var productoImpuestoIds = productos.Values.Where(p => p.ImpuestoId.HasValue)
+                .Select(p => p.ImpuestoId!.Value).Distinct().ToList();
+            var impuestosProducto = productoImpuestoIds.Count > 0
+                ? await _context.Impuestos.IgnoreQueryFilters()
+                    .Where(i => productoImpuestoIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id)
+                : new Dictionary<int, Impuesto>();
+
+            _context.RemoveRange(orden.Detalles);
+
+            decimal subtotal = 0, impuestosTotal = 0;
+            bool requiereFactura = false;
+            var nuevosDetalles = new List<DetalleOrdenCompra>();
+
+            foreach (var linea in dto.Lineas)
+            {
+                var producto = productos[linea.ProductoId];
+                var impuestoProducto = producto.ImpuestoId.HasValue && impuestosProducto.TryGetValue(producto.ImpuestoId.Value, out var ip) ? ip : null;
+                Impuesto? impuesto = linea.ImpuestoId.HasValue && impuestosOverride.TryGetValue(linea.ImpuestoId.Value, out var imp)
+                    ? imp
+                    : linea.PorcentajeImpuesto.HasValue
+                        ? new Impuesto { Nombre = $"IVA {linea.PorcentajeImpuesto}%", Porcentaje = linea.PorcentajeImpuesto.Value / 100m, Tipo = TipoImpuesto.IVA, AplicaSobreBase = true }
+                        : impuestoProducto;
+
+                var taxResult = _taxEngine.Calcular(new TaxRequest(
+                    ProductoId: linea.ProductoId,
+                    Cantidad: linea.Cantidad,
+                    PrecioUnitario: linea.PrecioUnitario,
+                    Impuesto: impuesto,
+                    EsAlimentoUltraprocesado: producto.EsAlimentoUltraprocesado,
+                    GramosAzucarPor100ml: producto.GramosAzucarPor100ml,
+                    PerfilVendedor: orden.Proveedor.PerfilTributario,
+                    PerfilComprador: orden.Sucursal.PerfilTributario,
+                    CodigoMunicipio: orden.Sucursal.CodigoMunicipio ?? string.Empty,
+                    ConceptoRetencionId: producto.ConceptoRetencionId,
+                    ValorUVT: orden.Sucursal.ValorUVT,
+                    ReglasRetencion: reglasRetencion,
+                    TramosBebidasAzucaradas: tramosBebidasAzucaradas
+                ));
+
+                var primerImpuesto = taxResult.Impuestos.FirstOrDefault();
+                nuevosDetalles.Add(new DetalleOrdenCompra
+                {
+                    ProductoId = linea.ProductoId,
+                    NombreProducto = producto.Nombre,
+                    CantidadSolicitada = linea.Cantidad,
+                    CantidadRecibida = 0,
+                    PrecioUnitario = linea.PrecioUnitario,
+                    PorcentajeImpuesto = primerImpuesto?.Porcentaje ?? 0,
+                    MontoImpuesto = taxResult.TotalImpuestos,
+                    Subtotal = taxResult.BaseImponible,
+                    NombreImpuesto = primerImpuesto?.Nombre
+                });
+
+                subtotal += taxResult.BaseImponible;
+                impuestosTotal += taxResult.TotalImpuestos;
+                requiereFactura |= taxResult.RequiereFacturaElectronica;
+            }
+
+            orden.Detalles = nuevosDetalles;
+            orden.Subtotal = subtotal;
+            orden.Impuestos = impuestosTotal;
+            orden.Total = subtotal + impuestosTotal;
+            orden.RequiereFacturaElectronica = requiereFactura;
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Orden de compra {NumeroOrden} actualizada", orden.NumeroOrden);
+
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ActualizarOrdenCompra",
+            Tipo: TipoActividad.Compra,
+            Descripcion: $"Orden de compra {orden.NumeroOrden} editada" + (dto.Lineas != null ? $" — {dto.Lineas.Count} línea(s)" : ""),
+            SucursalId: orden.SucursalId,
+            TipoEntidad: "OrdenCompra",
+            EntidadId: orden.Id.ToString(),
+            EntidadNombre: orden.NumeroOrden,
+            DatosAnteriores: anterior,
+            DatosNuevos: new { dto }
+        ));
+
+        return (BuildOrdenCompraDto(orden, null, null), null);
+    }
+
     // ─── Mappers públicos (usados también por el controller para lecturas) ────
 
     public static OrdenCompraDto MapearOrdenCompraDtoSync(OrdenCompra orden, Dictionary<int, string?> usuariosDict)

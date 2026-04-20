@@ -139,6 +139,28 @@ public class ComprasController : ControllerBase
         return Ok(await CompraService.MapearOrdenCompraDtoAsync(orden, _context));
     }
 
+    /// <summary>
+    /// Actualizar una orden de compra en estado Pendiente.
+    /// Permite modificar observaciones, fechas, forma de pago y líneas de insumos.
+    /// </summary>
+    /// <response code="200">Orden actualizada.</response>
+    /// <response code="400">Orden no está en estado Pendiente o datos inválidos.</response>
+    /// <response code="404">Orden no encontrada.</response>
+    [HttpPut("{id:int}")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(OrdenCompraDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<OrdenCompraDto>> ActualizarOrden(int id, [FromBody] ActualizarOrdenCompraDto dto)
+    {
+        var (orden, error) = await _compraService.ActualizarOrdenAsync(id, dto);
+        if (orden == null)
+            return error == "NOT_FOUND"
+                ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound)
+                : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
+        return Ok(orden);
+    }
+
     /// <summary>Aprobar orden de compra (Pendiente → Aprobada).</summary>
     /// <response code="200">Orden aprobada.</response>
     /// <response code="404">Orden no encontrada.</response>

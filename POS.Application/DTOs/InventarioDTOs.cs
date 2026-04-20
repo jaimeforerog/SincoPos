@@ -226,6 +226,15 @@ public record LineaOrdenCompraDto(
     decimal? PorcentajeImpuesto = null     // alternativa a ImpuestoId: porcentaje directo (0-100), ej. 19 = 19%
 );
 
+// REQUEST - Actualizar orden de compra pendiente
+public record ActualizarOrdenCompraDto(
+    DateTime? FechaEntregaEsperada = null,
+    string? Observaciones = null,
+    string? FormaPago = null,
+    int? DiasPlazo = null,
+    List<LineaOrdenCompraDto>? Lineas = null   // null = no modificar líneas
+);
+
 // REQUEST - Recibir orden de compra
 public record RecibirOrdenCompraDto(
     List<LineaRecepcionOrdenCompraDto> Lineas,

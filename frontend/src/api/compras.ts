@@ -2,6 +2,7 @@ import apiClient from './client';
 import type {
   OrdenCompraDTO,
   CrearOrdenCompraDTO,
+  ActualizarOrdenCompraDTO,
   AprobarOrdenCompraDTO,
   RechazarOrdenCompraDTO,
   RecibirOrdenCompraDTO,
@@ -42,6 +43,15 @@ export const comprasApi = {
    */
   create: async (data: CrearOrdenCompraDTO) => {
     const response = await apiClient.post<OrdenCompraDTO>('/compras', data);
+    return response.data;
+  },
+
+  /**
+   * Actualizar una orden de compra en estado Pendiente
+   * (campos generales y/o líneas de insumos)
+   */
+  update: async (id: number, data: ActualizarOrdenCompraDTO) => {
+    const response = await apiClient.put<OrdenCompraDTO>(`/compras/${id}`, data);
     return response.data;
   },
 

@@ -83,7 +83,11 @@ function LogRow({
         <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
           {formatDateTime(log.fechaHora)}
         </TableCell>
-        <TableCell sx={{ fontSize: '0.8rem' }}>{log.usuarioEmail}</TableCell>
+        <TableCell sx={{ fontSize: '0.8rem' }}>
+          <Tooltip title={log.usuarioEmail}>
+            <span>{log.usuarioNombre ?? log.usuarioEmail}</span>
+          </Tooltip>
+        </TableCell>
         <TableCell sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
           <Chip label={log.accion} size="small" variant="outlined" color="primary" />
         </TableCell>
@@ -415,7 +419,7 @@ export function AuditoriaComprasPage() {
               entries={historial.cambios.map((c: CambioEntidadDTO) => ({
                 id: String(c.id),
                 timestamp: c.fechaHora,
-                actor: c.usuarioEmail,
+                actor: c.usuarioNombre ?? c.usuarioEmail,
                 actorType: 'human' as const,
                 action: c.accion,
                 details: c.descripcion,
