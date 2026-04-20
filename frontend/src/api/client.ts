@@ -20,7 +20,7 @@ export const apiClient = axios.create({
 // Request interceptor to add auth token and empresa context
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = sessionStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -49,6 +49,24 @@ function onTokenRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+async function tryRefreshViaBackend(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return null;
+  try {
+    const API_URL = import.meta.env.VITE_API_URL ?? '';
+    const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
+    const { data } = await axios.post<{ accessToken: string; refreshToken?: string }>(
+      `${API_URL}/api/${API_VERSION}/auth/refresh`,
+      { refreshToken }
+    );
+    localStorage.setItem('access_token', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
+    return data.accessToken;
+  } catch {
+    return null;
+  }
+}
+
 // Response interceptor to handle errors and auto-refresh tokens
 apiClient.interceptors.response.use(
   (response) => {
@@ -57,21 +75,27 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Si el servidor responde 401, intentar obtener un token fresco del SDK de WorkOS
-    // antes de rendirse — esto evita la cascada de 401 cuando el token expiró.
+    // Si el servidor responde 401, intentar renovar el token antes de rendirse.
+    // Orden: 1) SDK de WorkOS  2) refresh_token almacenado via backend
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry &&
-      getWorkosToken
+      !originalRequest._retry
     ) {
       originalRequest._retry = true;
 
       if (!isRefreshing) {
         isRefreshing = true;
         try {
-          const freshToken = await getWorkosToken();
+          // Intento 1: SDK de WorkOS (funciona si la cookie de sesión sigue vigente)
+          let freshToken = getWorkosToken ? await getWorkosToken() : null;
+
+          // Intento 2: refresh_token almacenado (funciona aunque la cookie haya expirado)
+          if (!freshToken) {
+            freshToken = await tryRefreshViaBackend();
+          }
+
           if (freshToken) {
-            sessionStorage.setItem('access_token', freshToken);
+            localStorage.setItem('access_token', freshToken);
             isRefreshing = false;
             onTokenRefreshed(freshToken);
 
@@ -80,13 +104,14 @@ apiClient.interceptors.response.use(
             }
             return apiClient(originalRequest);
           } else {
-            throw new Error('WorkOS no pudo obtener un token fresco');
+            throw new Error('No se pudo renovar la sesión');
           }
         } catch {
           isRefreshing = false;
           refreshSubscribers = [];
-          // Token no renovable — cerrar sesión
-          sessionStorage.removeItem('access_token');
+          // Sin opciones de renovación — cerrar sesión
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
           useAuthStore.getState().setUser(null);
           return Promise.reject(error);
         }

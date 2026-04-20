@@ -64,9 +64,9 @@ export function CallbackPage() {
           codeVerifier,
         });
         // Store token for axios interceptor
-        sessionStorage.setItem('access_token', data.accessToken);
+        localStorage.setItem('access_token', data.accessToken);
         if (data.refreshToken) {
-          sessionStorage.setItem('refresh_token', data.refreshToken);
+          localStorage.setItem('refresh_token', data.refreshToken);
         }
         // Clean up PKCE backup now that exchange succeeded
         localStorage.removeItem('workos:pkce-cv-backup');

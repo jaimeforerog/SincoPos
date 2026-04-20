@@ -43,7 +43,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIdpLogout(() => {
       const returnTo = `${window.location.origin}/login`;
-      const token = sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token');
       if (token) {
         try {
           const payload = JSON.parse(
@@ -68,11 +68,11 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
     });
   }, [signOut, setIdpLogout]);
 
-  // Mantener access_token en sessionStorage para el interceptor de axios
+  // Mantener access_token en localStorage para el interceptor de axios
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     getAccessToken().then((token) => {
-      if (token) sessionStorage.setItem('access_token', token);
+      if (token) localStorage.setItem('access_token', token);
     });
   }, [isAuthenticated, user?.id, getAccessToken]);
 
@@ -81,7 +81,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
     if (!isAuthenticated) return;
     const interval = setInterval(() => {
       getAccessToken().then((token) => {
-        if (token) sessionStorage.setItem('access_token', token);
+        if (token) localStorage.setItem('access_token', token);
       });
     }, 4 * 60 * 1000);
     return () => clearInterval(interval);
@@ -98,7 +98,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
 
         // Asegurarse de que el token esté disponible antes de llamar al backend
         const token = await getAccessToken();
-        if (token) sessionStorage.setItem('access_token', token);
+        if (token) localStorage.setItem('access_token', token);
 
         try {
           const userInfo = await usuariosApi.me();
@@ -123,7 +123,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
       } else if (!isLoading) {
         backendFetchedRef.current = false;
         // Only clear if no manually-set token (from our /api/v1/auth/callback flow)
-        const hasToken = !!sessionStorage.getItem('access_token');
+        const hasToken = !!localStorage.getItem('access_token');
         if (!hasToken) {
           setUser(null);
         } else if (!useAuthStore.getState().user) {
@@ -132,7 +132,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
             const userInfo = await usuariosApi.me();
             setUser(userInfo);
           } catch {
-            sessionStorage.removeItem('access_token');
+            localStorage.removeItem('access_token');
             setUser(null);
           }
         }
