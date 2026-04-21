@@ -238,7 +238,6 @@ else
     builder.Services.AddSingleton<POS.Application.Services.IErpClient, POS.Infrastructure.Services.Erp.MockErpClient>();
 }
 
-builder.Services.AddHostedService<POS.Infrastructure.Services.Erp.ErpSyncBackgroundService>();
 builder.Services.AddHostedService<POS.Infrastructure.Services.AlertaVencimientoBackgroundService>();
 
 // Marten Event Store (PostgreSQL - schema events)
@@ -260,8 +259,11 @@ builder.Services.AddOutputCache(options =>
         .Tag("catalogo"));
 });
 
-// SignalR
-builder.Services.AddSignalR();
+// SignalR — Azure SignalR Service como transporte (fallback a local si no hay connection string)
+var azureSignalRCs = builder.Configuration["AzureSignalRConnectionString"];
+var signalRBuilder = builder.Services.AddSignalR();
+if (!string.IsNullOrEmpty(azureSignalRCs))
+    signalRBuilder.AddAzureSignalR(azureSignalRCs);
 builder.Services.AddScoped<POS.Application.Services.INotificationService,
     POS.Api.Services.NotificationService>();
 
