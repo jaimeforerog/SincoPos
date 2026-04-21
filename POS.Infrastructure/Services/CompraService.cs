@@ -53,62 +53,11 @@ public class CompraService : ICompraService
 
     public async Task<(OrdenCompraDto? orden, string? error)> CrearOrdenAsync(CrearOrdenCompraDto dto)
     {
-        // Validar sucursal y proveedor en una sola query
-        var productosIds = dto.Lineas.Select(l => l.ProductoId).ToList();
         var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
-        if (sucursal == null)
-            return (null, "Sucursal no encontrada");
+        if (sucursal == null) return (null, "Sucursal no encontrada");
 
         var proveedor = await _context.Terceros.FindAsync(dto.ProveedorId);
-        if (proveedor == null)
-            return (null, "Proveedor no encontrado");
-
-        // Cargar productos (sin impuesto vía navigation — se carga separado con IgnoreQueryFilters)
-        var productos = await _context.Productos
-            .Include(p => p.ConceptoRetencion)
-            .Where(p => productosIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id);
-
-        foreach (var linea in dto.Lineas)
-        {
-            if (!productos.ContainsKey(linea.ProductoId))
-                return (null, $"Producto {linea.ProductoId} no encontrado");
-        }
-
-        var reglasRetencion = await _context.RetencionesReglas
-            .Where(r => r.Activo).ToListAsync();
-
-        var hoyCompra = DateOnly.FromDateTime(DateTime.UtcNow);
-        var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
-            .Where(t => t.Activo && t.VigenciaDesde <= hoyCompra)
-            .OrderBy(t => t.MaxGramosPor100ml)
-            .ToListAsync();
-
-        // Cargar impuestos de los productos (IgnoreQueryFilters para acceder a registros globales con EmpresaId = null)
-        var productoImpuestoIds = productos.Values
-            .Where(p => p.ImpuestoId.HasValue)
-            .Select(p => p.ImpuestoId!.Value)
-            .Distinct()
-            .ToList();
-        var impuestosProducto = productoImpuestoIds.Count > 0
-            ? await _context.Impuestos
-                .IgnoreQueryFilters()
-                .Where(i => productoImpuestoIds.Contains(i.Id))
-                .ToDictionaryAsync(i => i.Id)
-            : new Dictionary<int, Impuesto>();
-
-        // Impuestos seleccionados explícitamente por línea (también con IgnoreQueryFilters)
-        var impuestoIdsOverride = dto.Lineas
-            .Where(l => l.ImpuestoId.HasValue)
-            .Select(l => l.ImpuestoId!.Value)
-            .Distinct()
-            .ToList();
-        var impuestosOverride = impuestoIdsOverride.Count > 0
-            ? await _context.Impuestos
-                .IgnoreQueryFilters()
-                .Where(i => impuestoIdsOverride.Contains(i.Id))
-                .ToDictionaryAsync(i => i.Id)
-            : new Dictionary<int, Impuesto>();
+        if (proveedor == null) return (null, "Proveedor no encontrado");
 
         // Generar número de orden secuencial POR SUCURSAL usando MAX del número actual
         // (no COUNT, que colisiona cuando los números no son consecutivos por la migración desde índice global)
@@ -124,63 +73,10 @@ public class CompraService : ICompraService
         }
         var numeroOrden = $"OC-{nextNum:000000}";
 
-        // Calcular totales usando TaxEngine
-        decimal subtotal = 0;
-        decimal impuestosTotal = 0;
-        bool requiereFacturaElectronica = false;
+        var (detalles, subtotal, impuestosTotal, requiereFactura, calcError) =
+            await CalcularDetallesLineasAsync(dto.Lineas, proveedor, sucursal);
+        if (calcError != null) return (null, calcError);
 
-        var detalles = new List<DetalleOrdenCompra>();
-        foreach (var linea in dto.Lineas)
-        {
-            var producto = productos[linea.ProductoId];
-
-            // Resolver impuesto: ImpuestoId explícito > PorcentajeImpuesto directo > impuesto del producto
-            // Usa IgnoreQueryFilters en la carga para acceder también a registros globales (EmpresaId = null)
-            var impuestoProducto = producto.ImpuestoId.HasValue && impuestosProducto.TryGetValue(producto.ImpuestoId.Value, out var ip) ? ip : null;
-            Impuesto? impuesto = linea.ImpuestoId.HasValue && impuestosOverride.TryGetValue(linea.ImpuestoId.Value, out var imp)
-                ? imp
-                : linea.PorcentajeImpuesto.HasValue
-                    ? new Impuesto { Nombre = $"IVA {linea.PorcentajeImpuesto}%", Porcentaje = linea.PorcentajeImpuesto.Value / 100m, Tipo = TipoImpuesto.IVA, AplicaSobreBase = true }
-                    : impuestoProducto;
-
-            // En compras los roles son invertidos: proveedor=vendedor, sucursal=comprador
-            var taxResult = _taxEngine.Calcular(new TaxRequest(
-                ProductoId: linea.ProductoId,
-                Cantidad: linea.Cantidad,
-                PrecioUnitario: linea.PrecioUnitario,
-                Impuesto: impuesto,
-                EsAlimentoUltraprocesado: producto.EsAlimentoUltraprocesado,
-                GramosAzucarPor100ml: producto.GramosAzucarPor100ml,
-                PerfilVendedor: proveedor.PerfilTributario,
-                PerfilComprador: sucursal.PerfilTributario,
-                CodigoMunicipio: sucursal.CodigoMunicipio ?? string.Empty,
-                ConceptoRetencionId: producto.ConceptoRetencionId,
-                ValorUVT: sucursal.ValorUVT,
-                ReglasRetencion: reglasRetencion,
-                TramosBebidasAzucaradas: tramosBebidasAzucaradas
-            ));
-
-            var primerImpuesto = taxResult.Impuestos.FirstOrDefault();
-
-            detalles.Add(new DetalleOrdenCompra
-            {
-                ProductoId = linea.ProductoId,
-                NombreProducto = producto.Nombre,
-                CantidadSolicitada = linea.Cantidad,
-                CantidadRecibida = 0,
-                PrecioUnitario = linea.PrecioUnitario,
-                PorcentajeImpuesto = primerImpuesto?.Porcentaje ?? 0,
-                MontoImpuesto = taxResult.TotalImpuestos,
-                Subtotal = taxResult.BaseImponible,
-                NombreImpuesto = primerImpuesto?.Nombre
-            });
-
-            subtotal += taxResult.BaseImponible;
-            impuestosTotal += taxResult.TotalImpuestos;
-            requiereFacturaElectronica |= taxResult.RequiereFacturaElectronica;
-        }
-
-        // Crear orden de compra
         var orden = new OrdenCompra
         {
             NumeroOrden = numeroOrden,
@@ -200,8 +96,8 @@ public class CompraService : ICompraService
             Subtotal = subtotal,
             Impuestos = impuestosTotal,
             Total = subtotal + impuestosTotal,
-            RequiereFacturaElectronica = requiereFacturaElectronica,
-            Detalles = detalles
+            RequiereFacturaElectronica = requiereFactura,
+            Detalles = detalles!
         };
 
         _context.OrdenesCompra.Add(orden);
@@ -224,7 +120,7 @@ public class CompraService : ICompraService
         orden.Sucursal = sucursal;
         orden.Proveedor = proveedor;
 
-        return (BuildOrdenCompraDto(orden, null, null), null);
+        return (CompraMapper.BuildOrdenCompraDto(orden, null, null), null);
     }
 
     public async Task<(bool success, string? error)> AprobarOrdenAsync(
@@ -372,88 +268,12 @@ public class CompraService : ICompraService
 
         if (dto.Lineas != null && dto.Lineas.Count > 0)
         {
-            var productosIds = dto.Lineas.Select(l => l.ProductoId).ToList();
-            var productos = await _context.Productos
-                .Include(p => p.ConceptoRetencion)
-                .Where(p => productosIds.Contains(p.Id))
-                .ToDictionaryAsync(p => p.Id);
-
-            foreach (var linea in dto.Lineas)
-                if (!productos.ContainsKey(linea.ProductoId))
-                    return (null, $"Producto {linea.ProductoId} no encontrado");
-
-            var reglasRetencion = await _context.RetencionesReglas.Where(r => r.Activo).ToListAsync();
-            var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
-            var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
-                .Where(t => t.Activo && t.VigenciaDesde <= hoy)
-                .OrderBy(t => t.MaxGramosPor100ml).ToListAsync();
-
-            var impuestoIdsOverride = dto.Lineas.Where(l => l.ImpuestoId.HasValue)
-                .Select(l => l.ImpuestoId!.Value).Distinct().ToList();
-            var impuestosOverride = impuestoIdsOverride.Count > 0
-                ? await _context.Impuestos.IgnoreQueryFilters()
-                    .Where(i => impuestoIdsOverride.Contains(i.Id)).ToDictionaryAsync(i => i.Id)
-                : new Dictionary<int, Impuesto>();
-
-            var productoImpuestoIds = productos.Values.Where(p => p.ImpuestoId.HasValue)
-                .Select(p => p.ImpuestoId!.Value).Distinct().ToList();
-            var impuestosProducto = productoImpuestoIds.Count > 0
-                ? await _context.Impuestos.IgnoreQueryFilters()
-                    .Where(i => productoImpuestoIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id)
-                : new Dictionary<int, Impuesto>();
+            var (detalles, subtotal, impuestosTotal, requiereFactura, calcError) =
+                await CalcularDetallesLineasAsync(dto.Lineas, orden.Proveedor, orden.Sucursal);
+            if (calcError != null) return (null, calcError);
 
             _context.RemoveRange(orden.Detalles);
-
-            decimal subtotal = 0, impuestosTotal = 0;
-            bool requiereFactura = false;
-            var nuevosDetalles = new List<DetalleOrdenCompra>();
-
-            foreach (var linea in dto.Lineas)
-            {
-                var producto = productos[linea.ProductoId];
-                var impuestoProducto = producto.ImpuestoId.HasValue && impuestosProducto.TryGetValue(producto.ImpuestoId.Value, out var ip) ? ip : null;
-                Impuesto? impuesto = linea.ImpuestoId.HasValue && impuestosOverride.TryGetValue(linea.ImpuestoId.Value, out var imp)
-                    ? imp
-                    : linea.PorcentajeImpuesto.HasValue
-                        ? new Impuesto { Nombre = $"IVA {linea.PorcentajeImpuesto}%", Porcentaje = linea.PorcentajeImpuesto.Value / 100m, Tipo = TipoImpuesto.IVA, AplicaSobreBase = true }
-                        : impuestoProducto;
-
-                var taxResult = _taxEngine.Calcular(new TaxRequest(
-                    ProductoId: linea.ProductoId,
-                    Cantidad: linea.Cantidad,
-                    PrecioUnitario: linea.PrecioUnitario,
-                    Impuesto: impuesto,
-                    EsAlimentoUltraprocesado: producto.EsAlimentoUltraprocesado,
-                    GramosAzucarPor100ml: producto.GramosAzucarPor100ml,
-                    PerfilVendedor: orden.Proveedor.PerfilTributario,
-                    PerfilComprador: orden.Sucursal.PerfilTributario,
-                    CodigoMunicipio: orden.Sucursal.CodigoMunicipio ?? string.Empty,
-                    ConceptoRetencionId: producto.ConceptoRetencionId,
-                    ValorUVT: orden.Sucursal.ValorUVT,
-                    ReglasRetencion: reglasRetencion,
-                    TramosBebidasAzucaradas: tramosBebidasAzucaradas
-                ));
-
-                var primerImpuesto = taxResult.Impuestos.FirstOrDefault();
-                nuevosDetalles.Add(new DetalleOrdenCompra
-                {
-                    ProductoId = linea.ProductoId,
-                    NombreProducto = producto.Nombre,
-                    CantidadSolicitada = linea.Cantidad,
-                    CantidadRecibida = 0,
-                    PrecioUnitario = linea.PrecioUnitario,
-                    PorcentajeImpuesto = primerImpuesto?.Porcentaje ?? 0,
-                    MontoImpuesto = taxResult.TotalImpuestos,
-                    Subtotal = taxResult.BaseImponible,
-                    NombreImpuesto = primerImpuesto?.Nombre
-                });
-
-                subtotal += taxResult.BaseImponible;
-                impuestosTotal += taxResult.TotalImpuestos;
-                requiereFactura |= taxResult.RequiereFacturaElectronica;
-            }
-
-            orden.Detalles = nuevosDetalles;
+            orden.Detalles = detalles!;
             orden.Subtotal = subtotal;
             orden.Impuestos = impuestosTotal;
             orden.Total = subtotal + impuestosTotal;
@@ -476,81 +296,106 @@ public class CompraService : ICompraService
             DatosNuevos: new { dto }
         ));
 
-        return (BuildOrdenCompraDto(orden, null, null), null);
+        return (CompraMapper.BuildOrdenCompraDto(orden, null, null), null);
     }
 
-    // ─── Mappers públicos (usados también por el controller para lecturas) ────
+    // ─── Private helpers ────────────────────────────────────────────────────
 
-    public static OrdenCompraDto MapearOrdenCompraDtoSync(OrdenCompra orden, Dictionary<int, string?> usuariosDict)
+    private async Task<(List<DetalleOrdenCompra>? Detalles, decimal Subtotal, decimal ImpuestosTotal, bool RequiereFactura, string? Error)>
+        CalcularDetallesLineasAsync(
+            IReadOnlyList<LineaOrdenCompraDto> lineas,
+            Tercero proveedor,
+            Sucursal sucursal)
     {
-        var aprobadoPor = orden.AprobadoPorUsuarioId.HasValue
-            ? usuariosDict.GetValueOrDefault(orden.AprobadoPorUsuarioId.Value)
-            : null;
-        var recibidoPor = orden.RecibidoPorUsuarioId.HasValue
-            ? usuariosDict.GetValueOrDefault(orden.RecibidoPorUsuarioId.Value)
-            : null;
-        return BuildOrdenCompraDto(orden, aprobadoPor, recibidoPor);
-    }
+        var productosIds = lineas.Select(l => l.ProductoId).ToList();
 
-    public static async Task<OrdenCompraDto> MapearOrdenCompraDtoAsync(OrdenCompra orden, AppDbContext context)
-    {
-        string? aprobadoPor = null;
-        if (orden.AprobadoPorUsuarioId.HasValue)
-        {
-            var u = await context.Usuarios.FindAsync(orden.AprobadoPorUsuarioId.Value);
-            aprobadoPor = u?.Email;
-        }
-        string? recibidoPor = null;
-        if (orden.RecibidoPorUsuarioId.HasValue)
-        {
-            var u = await context.Usuarios.FindAsync(orden.RecibidoPorUsuarioId.Value);
-            recibidoPor = u?.Email;
-        }
-        return BuildOrdenCompraDto(orden, aprobadoPor, recibidoPor);
-    }
+        var productos = await _context.Productos
+            .Include(p => p.ConceptoRetencion)
+            .Where(p => productosIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
 
-    public static OrdenCompraDto BuildOrdenCompraDto(OrdenCompra orden, string? aprobadoPor, string? recibidoPor)
-        => new OrdenCompraDto(
-            Id: orden.Id,
-            NumeroOrden: orden.NumeroOrden,
-            SucursalId: orden.SucursalId,
-            NombreSucursal: orden.Sucursal.Nombre,
-            ProveedorId: orden.ProveedorId,
-            NombreProveedor: orden.Proveedor.Nombre,
-            Estado: orden.Estado.ToString(),
-            FormaPago: orden.FormaPago,
-            DiasPlazo: orden.DiasPlazo,
-            FechaOrden: orden.FechaOrden,
-            FechaEntregaEsperada: orden.FechaEntregaEsperada,
-            FechaAprobacion: orden.FechaAprobacion,
-            FechaRecepcion: orden.FechaRecepcion,
-            AprobadoPor: aprobadoPor,
-            RecibidoPor: recibidoPor,
-            Observaciones: orden.Observaciones,
-            MotivoRechazo: orden.MotivoRechazo,
-            Subtotal: orden.Subtotal,
-            Impuestos: orden.Impuestos,
-            Total: orden.Total,
-            RequiereFacturaElectronica: orden.RequiereFacturaElectronica,
-            SincronizadoErp: orden.SincronizadoErp,
-            FechaSincronizacionErp: orden.FechaSincronizacionErp,
-            ErpReferencia: orden.ErpReferencia,
-            ErrorSincronizacion: orden.ErrorSincronizacion,
-            Detalles: orden.Detalles.Select(d => new DetalleOrdenCompraDto(
-                Id: d.Id,
-                ProductoId: d.ProductoId,
-                NombreProducto: d.NombreProducto,
-                CantidadSolicitada: d.CantidadSolicitada,
-                CantidadRecibida: d.CantidadRecibida,
-                PrecioUnitario: d.PrecioUnitario,
-                PorcentajeImpuesto: d.PorcentajeImpuesto * 100,
-                MontoImpuesto: d.MontoImpuesto,
-                Subtotal: d.Subtotal,
-                NombreImpuesto: d.NombreImpuesto
-                    ?? (d.PorcentajeImpuesto > 0 ? $"IVA {d.PorcentajeImpuesto * 100:0.##}%" : "Exento 0%"),
-                Observaciones: d.Observaciones,
-                ManejaLotes: d.Producto?.ManejaLotes ?? false,
-                DiasVidaUtil: d.Producto?.DiasVidaUtil
-            )).ToList()
-        );
+        foreach (var linea in lineas)
+            if (!productos.ContainsKey(linea.ProductoId))
+                return (null, 0, 0, false, $"Producto {linea.ProductoId} no encontrado");
+
+        var reglasRetencion = await _context.RetencionesReglas
+            .Where(r => r.Activo).ToListAsync();
+
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
+            .Where(t => t.Activo && t.VigenciaDesde <= hoy)
+            .OrderBy(t => t.MaxGramosPor100ml)
+            .ToListAsync();
+
+        // Cargar impuestos de los productos y los overrides por línea (IgnoreQueryFilters para registros globales con EmpresaId = null)
+        var productoImpuestoIds = productos.Values
+            .Where(p => p.ImpuestoId.HasValue)
+            .Select(p => p.ImpuestoId!.Value).Distinct().ToList();
+        var impuestosProducto = productoImpuestoIds.Count > 0
+            ? await _context.Impuestos.IgnoreQueryFilters()
+                .Where(i => productoImpuestoIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id)
+            : new Dictionary<int, Impuesto>();
+
+        var impuestoIdsOverride = lineas
+            .Where(l => l.ImpuestoId.HasValue)
+            .Select(l => l.ImpuestoId!.Value).Distinct().ToList();
+        var impuestosOverride = impuestoIdsOverride.Count > 0
+            ? await _context.Impuestos.IgnoreQueryFilters()
+                .Where(i => impuestoIdsOverride.Contains(i.Id)).ToDictionaryAsync(i => i.Id)
+            : new Dictionary<int, Impuesto>();
+
+        decimal subtotal = 0, impuestosTotal = 0;
+        bool requiereFactura = false;
+        var detalles = new List<DetalleOrdenCompra>();
+
+        foreach (var linea in lineas)
+        {
+            var producto = productos[linea.ProductoId];
+            var impuestoProducto = producto.ImpuestoId.HasValue && impuestosProducto.TryGetValue(producto.ImpuestoId.Value, out var ip) ? ip : null;
+
+            // Resolver impuesto: ImpuestoId explícito > PorcentajeImpuesto directo > impuesto del producto
+            Impuesto? impuesto = linea.ImpuestoId.HasValue && impuestosOverride.TryGetValue(linea.ImpuestoId.Value, out var imp)
+                ? imp
+                : linea.PorcentajeImpuesto.HasValue
+                    ? new Impuesto { Nombre = $"IVA {linea.PorcentajeImpuesto}%", Porcentaje = linea.PorcentajeImpuesto.Value / 100m, Tipo = TipoImpuesto.IVA, AplicaSobreBase = true }
+                    : impuestoProducto;
+
+            // En compras los roles son invertidos: proveedor=vendedor, sucursal=comprador
+            var taxResult = _taxEngine.Calcular(new TaxRequest(
+                ProductoId: linea.ProductoId,
+                Cantidad: linea.Cantidad,
+                PrecioUnitario: linea.PrecioUnitario,
+                Impuesto: impuesto,
+                EsAlimentoUltraprocesado: producto.EsAlimentoUltraprocesado,
+                GramosAzucarPor100ml: producto.GramosAzucarPor100ml,
+                PerfilVendedor: proveedor.PerfilTributario,
+                PerfilComprador: sucursal.PerfilTributario,
+                CodigoMunicipio: sucursal.CodigoMunicipio ?? string.Empty,
+                ConceptoRetencionId: producto.ConceptoRetencionId,
+                ValorUVT: sucursal.ValorUVT,
+                ReglasRetencion: reglasRetencion,
+                TramosBebidasAzucaradas: tramosBebidasAzucaradas
+            ));
+
+            var primerImpuesto = taxResult.Impuestos.FirstOrDefault();
+            detalles.Add(new DetalleOrdenCompra
+            {
+                ProductoId = linea.ProductoId,
+                NombreProducto = producto.Nombre,
+                CantidadSolicitada = linea.Cantidad,
+                CantidadRecibida = 0,
+                PrecioUnitario = linea.PrecioUnitario,
+                PorcentajeImpuesto = primerImpuesto?.Porcentaje ?? 0,
+                MontoImpuesto = taxResult.TotalImpuestos,
+                Subtotal = taxResult.BaseImponible,
+                NombreImpuesto = primerImpuesto?.Nombre
+            });
+
+            subtotal += taxResult.BaseImponible;
+            impuestosTotal += taxResult.TotalImpuestos;
+            requiereFactura |= taxResult.RequiereFacturaElectronica;
+        }
+
+        return (detalles, subtotal, impuestosTotal, requiereFactura, null);
+    }
 }

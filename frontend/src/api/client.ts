@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '@/types/api';
 import { useAuthStore } from '@/stores/auth.store';
-import { getWorkosToken } from '@/api/tokenRef';
+import { getWorkosToken, getRefreshToken, setRefreshToken, clearRefreshToken } from '@/api/tokenRef';
 
 // Use empty string (relative paths) when VITE_API_URL is not set so requests
 // go through the Vite dev proxy (same-origin, no CORS).
@@ -50,7 +50,7 @@ function onTokenRefreshed(token: string) {
 }
 
 async function tryRefreshViaBackend(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('refresh_token');
+  const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
   try {
     const API_URL = import.meta.env.VITE_API_URL ?? '';
@@ -60,7 +60,7 @@ async function tryRefreshViaBackend(): Promise<string | null> {
       { refreshToken }
     );
     localStorage.setItem('access_token', data.accessToken);
-    if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
+    if (data.refreshToken) setRefreshToken(data.refreshToken);
     return data.accessToken;
   } catch {
     return null;
@@ -111,7 +111,7 @@ apiClient.interceptors.response.use(
           refreshSubscribers = [];
           // Sin opciones de renovación — cerrar sesión
           localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          clearRefreshToken();
           useAuthStore.getState().setUser(null);
           return Promise.reject(error);
         }

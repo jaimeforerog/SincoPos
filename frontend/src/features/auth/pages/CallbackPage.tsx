@@ -4,6 +4,7 @@ import { Box, CircularProgress, Typography, Button, Alert } from '@mui/material'
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
+import { setRefreshToken } from '@/api/tokenRef';
 
 // Captured at MODULE LOAD TIME — before React renders, before AuthKitProvider's
 // useEffect runs, before the SDK cleans the URL and sessionStorage.
@@ -66,7 +67,7 @@ export function CallbackPage() {
         // Store token for axios interceptor
         localStorage.setItem('access_token', data.accessToken);
         if (data.refreshToken) {
-          localStorage.setItem('refresh_token', data.refreshToken);
+          setRefreshToken(data.refreshToken);
         }
         // Clean up PKCE backup now that exchange succeeded
         localStorage.removeItem('workos:pkce-cv-backup');

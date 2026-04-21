@@ -113,7 +113,7 @@ public class ComprasController : ControllerBase
                 .ToDictionaryAsync(u => u.Id, u => (string?)u.Email)
             : new Dictionary<int, string?>();
 
-        var items = ordenes.Select(o => CompraService.MapearOrdenCompraDtoSync(o, usuariosDict)).ToList();
+        var items = ordenes.Select(o => CompraMapper.MapearOrdenCompraDtoSync(o, usuariosDict)).ToList();
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
         return Ok(new PaginatedResult<OrdenCompraDto>(items, totalCount, page, pageSize, totalPages));
     }
@@ -136,7 +136,7 @@ public class ComprasController : ControllerBase
         if (orden == null)
             return Problem(detail: "Orden de compra no encontrada", statusCode: StatusCodes.Status404NotFound);
 
-        return Ok(await CompraService.MapearOrdenCompraDtoAsync(orden, _context));
+        return Ok(await CompraMapper.MapearOrdenCompraDtoAsync(orden, _context));
     }
 
     /// <summary>
