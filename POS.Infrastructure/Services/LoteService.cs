@@ -208,6 +208,7 @@ public class LoteService : ILoteService
         var q = _context.LotesInventario
             .Include(l => l.Producto)
             .Include(l => l.Sucursal)
+            .Where(l => l.Producto.ManejaLotes)
             .AsQueryable();
 
         if (query.SoloConStock)
