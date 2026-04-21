@@ -17,9 +17,11 @@ var host = new HostBuilder()
     {
         var config = context.Configuration;
 
-        // EF Core — usa el constructor simple de AppDbContext (sin ICurrentEmpresaProvider),
-        // lo que hace que los filtros globales de multi-tenant pasen todo (comportamiento correcto
-        // para servicios de background que procesan datos de todas las empresas).
+        // EF Core necesita ICurrentEmpresaProvider registrado porque los query filters
+        // de AppDbContext lo referencian. Con EmpresaId = null el filtro pasa todas las filas
+        // — comportamiento correcto para un background service que procesa datos de todas las empresas.
+        services.AddScoped<ICurrentEmpresaProvider, BackgroundEmpresaProvider>();
+
         var connectionString = config.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("Connection string 'Postgres' no encontrada.");
         services.AddDbContext<AppDbContext>(options =>
@@ -48,3 +50,9 @@ var host = new HostBuilder()
     .Build();
 
 await host.RunAsync();
+
+// ICurrentEmpresaProvider sin contexto HTTP — EmpresaId null hace pasar todos los query filters.
+internal sealed class BackgroundEmpresaProvider : ICurrentEmpresaProvider
+{
+    public int? EmpresaId { get; set; } = null;
+}
