@@ -48,14 +48,14 @@ const crearProductoSchema = z.object({
   nombre: z.string().min(1, 'Nombre es requerido').max(200, 'Máximo 200 caracteres'),
   descripcion: z.string().max(500, 'Máximo 500 caracteres').optional(),
   categoriaId: z.number().min(1, 'Categoría es requerida'),
-  precioCosto: z.number().min(0, 'Debe ser mayor o igual a 0'),
+  precioCosto: z.number({ invalid_type_error: 'Ingrese un precio válido' }).min(0, 'Debe ser mayor o igual a 0'),
   unidadMedida: z.string().min(1, 'Unidad de medida es requerida'),
 });
 
 const actualizarProductoSchema = z.object({
   nombre: z.string().min(1, 'Nombre es requerido').max(200, 'Máximo 200 caracteres'),
   descripcion: z.string().max(500, 'Máximo 500 caracteres').optional(),
-  precioCosto: z.number().min(0, 'Debe ser mayor o igual a 0'),
+  precioCosto: z.number({ invalid_type_error: 'Ingrese un precio válido' }).min(0, 'Debe ser mayor o igual a 0'),
   unidadMedida: z.string().min(1, 'Unidad de medida es requerida'),
 });
 
@@ -464,8 +464,8 @@ export function ProductoFormDialog({
                     {...field}
                     type="number"
                     label="Precio Costo *"
-                    value={value}
-                    onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+                    value={Number.isNaN(value) ? '' : value}
+                    onChange={(e) => onChange(e.target.value === '' ? NaN : parseFloat(e.target.value))}
                     error={!!errorsActualizar.precioCosto}
                     helperText={errorsActualizar.precioCosto?.message}
                     fullWidth
@@ -486,8 +486,8 @@ export function ProductoFormDialog({
                     {...field}
                     type="number"
                     label="Precio Costo *"
-                    value={value}
-                    onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+                    value={Number.isNaN(value) ? '' : value}
+                    onChange={(e) => onChange(e.target.value === '' ? NaN : parseFloat(e.target.value))}
                     error={!!errorsCrear.precioCosto}
                     helperText={errorsCrear.precioCosto?.message || "Los precios de venta se configuran por sucursal"}
                     fullWidth

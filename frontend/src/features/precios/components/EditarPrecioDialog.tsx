@@ -21,7 +21,7 @@ import { preciosApi } from '@/api/precios';
 import type { ProductoDTO, PrecioResueltoDTO , ApiError} from '@/types/api';
 
 const precioSchema = z.object({
-  precioVenta: z.number().min(0, 'Debe ser mayor o igual a 0'),
+  precioVenta: z.number({ invalid_type_error: 'Ingrese un precio válido' }).min(0, 'Debe ser mayor o igual a 0'),
   precioMinimo: z.number().min(0, 'Debe ser mayor o igual a 0').optional(),
 });
 
@@ -164,8 +164,8 @@ export function EditarPrecioDialog({
                   {...field}
                   type="number"
                   label="Precio Venta *"
-                  value={value}
-                  onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+                  value={Number.isNaN(value) ? '' : value}
+                  onChange={(e) => onChange(e.target.value === '' ? NaN : parseFloat(e.target.value))}
                   error={!!errors.precioVenta}
                   helperText={
                     errors.precioVenta?.message ||
