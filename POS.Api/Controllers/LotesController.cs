@@ -96,6 +96,24 @@ public class LotesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Reporte completo de lotes: stock disponible, fechas de vencimiento y estado.
+    /// Abarca todos los productos de todas las sucursales en una sola consulta.
+    /// </summary>
+    [HttpGet("reporte")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(ReporteLotesDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ReporteLotesDto>> ObtenerReporte(
+        [FromQuery] int? sucursalId = null,
+        [FromQuery] Guid? productoId = null,
+        [FromQuery] bool soloConStock = true,
+        [FromQuery] string? estadoVencimiento = null)
+    {
+        var query = new ReporteLotesQueryDto(sucursalId, productoId, soloConStock, estadoVencimiento);
+        var reporte = await _loteService.ObtenerReporteAsync(query);
+        return Ok(reporte);
+    }
+
     [HttpPut("{id:int}")]
     [Authorize(Policy = "Supervisor")]
     [ProducesResponseType(typeof(LoteDto), StatusCodes.Status200OK)]

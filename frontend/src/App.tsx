@@ -42,6 +42,7 @@ const TercerosPage = lazy(() => import('./features/terceros/pages/TercerosPage')
 const UsuariosPage = lazy(() => import('./features/usuarios/pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
 const AuditoriaPage = lazy(() => import('./features/auditoria/pages/AuditoriaPage'));
 const AuditoriaComprasPage = lazy(() => import('./features/compras/pages/AuditoriaComprasPage').then(m => ({ default: m.AuditoriaComprasPage })));
+const ReporteLotesVencimientoPage = lazy(() => import('./features/reportes/pages/ReporteLotesVencimientoPage').then(m => ({ default: m.ReporteLotesVencimientoPage })));
 const EmpresasPage = lazy(() => import('./features/empresas/pages/EmpresasPage').then(m => ({ default: m.EmpresasPage })));
 const ConfiguracionEmisorPage = lazy(() => import('./features/facturacion/pages/ConfiguracionEmisorPage').then(m => ({ default: m.ConfiguracionEmisorPage })));
 const DocumentosElectronicosPage = lazy(() => import('./features/facturacion/pages/DocumentosElectronicosPage').then(m => ({ default: m.DocumentosElectronicosPage })));
@@ -127,6 +128,7 @@ function AuthenticatedApp() {
             <Route path="kardex" element={<ReporteKardexPage />} />
             <Route path="auditoria" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><AuditoriaPage /></ProtectedRoute>} />
             <Route path="auditoria-compras" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><AuditoriaComprasPage /></ProtectedRoute>} />
+            <Route path="lotes-vencimiento" element={<ProtectedRoute requiredRoles={['supervisor', 'admin']}><ReporteLotesVencimientoPage /></ProtectedRoute>} />
           </Route>
           <Route
             path="usuarios"

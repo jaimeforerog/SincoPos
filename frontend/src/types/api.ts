@@ -936,6 +936,38 @@ export interface TrazabilidadLoteDTO {
   movimientos: TrazabilidadMovimientoDTO[];
 }
 
+// ─── Reporte de Lotes por Vencimiento ──────────────────────────────────────
+
+export interface LoteReporteItemDTO {
+  id: number;
+  productoId: string;
+  nombreProducto: string;
+  codigoBarras?: string;
+  sucursalId: number;
+  nombreSucursal: string;
+  numeroLote?: string;
+  fechaVencimiento?: string;   // 'YYYY-MM-DD'
+  diasParaVencer?: number;     // null = sin fecha de vencimiento
+  cantidadDisponible: number;
+  costoUnitario: number;
+  valorTotal: number;
+  referencia?: string;
+  fechaEntrada: string;
+  estadoVencimiento: 'Vencido' | 'Critico' | 'Proximo' | 'Vigente' | 'SinFecha';
+}
+
+export interface ReporteLotesDTO {
+  totalLotes: number;
+  totalUnidades: number;
+  valorTotalInventario: number;
+  lotesVencidos: number;
+  lotesCriticos: number;
+  lotesProximos: number;
+  lotesVigentes: number;
+  lotesSinFecha: number;
+  items: LoteReporteItemDTO[];
+}
+
 // ─── Traslados ─────────────────────────────────────────
 
 export interface TrasladoDTO {

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { LoteDTO, AlertaLoteDTO, ActualizarLoteDTO, TrazabilidadLoteDTO } from '@/types/api';
+import type { LoteDTO, AlertaLoteDTO, ActualizarLoteDTO, TrazabilidadLoteDTO, ReporteLotesDTO } from '@/types/api';
 
 export const lotesApi = {
   /**
@@ -40,6 +40,16 @@ export const lotesApi = {
 
   trazabilidad: async (id: number) => {
     const response = await apiClient.get<TrazabilidadLoteDTO>(`/lotes/${id}/trazabilidad`);
+    return response.data;
+  },
+
+  reporte: async (params?: {
+    sucursalId?: number;
+    productoId?: string;
+    soloConStock?: boolean;
+    estadoVencimiento?: string;
+  }) => {
+    const response = await apiClient.get<ReporteLotesDTO>('/lotes/reporte', { params });
     return response.data;
   },
 };

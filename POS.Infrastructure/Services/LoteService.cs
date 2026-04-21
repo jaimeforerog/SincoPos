@@ -201,6 +201,66 @@ public class LoteService : ILoteService
         return (new TrazabilidadLoteDto(loteDto, entrada, movimientos), null);
     }
 
+    public async Task<ReporteLotesDto> ObtenerReporteAsync(ReporteLotesQueryDto query)
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var q = _context.LotesInventario
+            .Include(l => l.Producto)
+            .Include(l => l.Sucursal)
+            .AsQueryable();
+
+        if (query.SoloConStock)
+            q = q.Where(l => l.CantidadDisponible > 0);
+
+        if (query.SucursalId.HasValue)
+            q = q.Where(l => l.SucursalId == query.SucursalId.Value);
+
+        if (query.ProductoId.HasValue)
+            q = q.Where(l => l.ProductoId == query.ProductoId.Value);
+
+        var lotes = await q.OrderBy(l => l.FechaVencimiento).ThenBy(l => l.Producto.Nombre).ToListAsync();
+
+        var items = lotes.Select(l =>
+        {
+            int? dias = l.FechaVencimiento.HasValue
+                ? l.FechaVencimiento.Value.DayNumber - hoy.DayNumber
+                : null;
+
+            string estado = dias switch
+            {
+                null        => "SinFecha",
+                <= 0        => "Vencido",
+                <= 7        => "Critico",
+                <= 30       => "Proximo",
+                _           => "Vigente"
+            };
+
+            return new LoteReporteItemDto(
+                l.Id, l.ProductoId, l.Producto.Nombre, l.Producto.CodigoBarras,
+                l.SucursalId, l.Sucursal.Nombre, l.NumeroLote,
+                l.FechaVencimiento, dias,
+                l.CantidadDisponible, l.CostoUnitario,
+                l.CantidadDisponible * l.CostoUnitario,
+                l.Referencia, l.FechaEntrada, estado);
+        }).ToList();
+
+        if (!string.IsNullOrEmpty(query.EstadoVencimiento))
+            items = items.Where(i => i.EstadoVencimiento == query.EstadoVencimiento).ToList();
+
+        return new ReporteLotesDto(
+            TotalLotes: items.Count,
+            TotalUnidades: items.Sum(i => i.CantidadDisponible),
+            ValorTotalInventario: items.Sum(i => i.ValorTotal),
+            LotesVencidos: items.Count(i => i.EstadoVencimiento == "Vencido"),
+            LotesCriticos: items.Count(i => i.EstadoVencimiento == "Critico"),
+            LotesProximos: items.Count(i => i.EstadoVencimiento == "Proximo"),
+            LotesVigentes: items.Count(i => i.EstadoVencimiento == "Vigente"),
+            LotesSinFecha: items.Count(i => i.EstadoVencimiento == "SinFecha"),
+            Items: items
+        );
+    }
+
     public async Task<(LoteDto? result, string? error)> ActualizarLoteAsync(int id, ActualizarLoteDto dto)
     {
         var lote = await _context.LotesInventario

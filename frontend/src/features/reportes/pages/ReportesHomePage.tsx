@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   AttachMoney,
   ReceiptLong,
+  EventBusy,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,6 +81,15 @@ const reportModules: ReporteModule[] = [
     path: '/reportes/auditoria-compras',
     roles: ['supervisor', 'admin'],
     color: '#1565c0',
+  },
+  {
+    id: 'lotes-vencimiento',
+    title: 'Lotes y Vencimientos',
+    description: 'Stock disponible por lote, fecha de vencimiento y estado de vigencia por sucursal',
+    icon: <EventBusy fontSize="large" />,
+    path: '/reportes/lotes-vencimiento',
+    roles: ['supervisor', 'admin'],
+    color: '#00695c',
   },
 ];
 

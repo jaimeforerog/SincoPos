@@ -5,6 +5,7 @@ import type {
   ProductoValorizadoDTO,
   ReporteCajaDTO,
   ReporteKardexDTO,
+  ReporteLotesDTO,
 } from '@/types/api';
 
 function descargar(wb: XLSX.WorkBook, filename: string) {
@@ -155,6 +156,54 @@ const kardexTipoLabel: Record<string, string> = {
   TrasladoEntrada: 'Ent. Traslado',
   TrasladoSalida: 'Sal. Traslado',
 };
+
+// ── Reporte de Lotes por Vencimiento ──────────────────────────────────────────
+export function exportarReporteLotes(reporte: ReporteLotesDTO) {
+  const hoy = new Date().toLocaleDateString('es-CO');
+  const resumen = [
+    ['Informe de Inventario por Lote y Vencimiento'],
+    ['Generado', hoy],
+    [],
+    ['Total lotes',             reporte.totalLotes],
+    ['Total unidades',          reporte.totalUnidades],
+    ['Valor total inventario',  moneda(reporte.valorTotalInventario)],
+    [],
+    ['Vencidos',                reporte.lotesVencidos],
+    ['Críticos (≤ 7 días)',     reporte.lotesCriticos],
+    ['Próximos (≤ 30 días)',    reporte.lotesProximos],
+    ['Vigentes',                reporte.lotesVigentes],
+    ['Sin fecha de vencimiento',reporte.lotesSinFecha],
+  ];
+
+  const encabezados = [
+    'Producto', 'Código', 'Sucursal', 'Nº Lote',
+    'Fecha Vencimiento', 'Días para vencer', 'Estado',
+    'Disponible', 'Costo Unitario', 'Valor Total', 'Referencia', 'Fecha Entrada',
+  ];
+
+  const estadoLabel: Record<string, string> = {
+    Vencido: 'Vencido', Critico: 'Crítico', Proximo: 'Próximo a vencer',
+    Vigente: 'Vigente', SinFecha: 'Sin fecha',
+  };
+
+  const filas = reporte.items.map(i => [
+    i.nombreProducto,
+    i.codigoBarras ?? '',
+    i.nombreSucursal,
+    i.numeroLote ?? '',
+    i.fechaVencimiento ?? '',
+    i.diasParaVencer ?? '',
+    estadoLabel[i.estadoVencimiento] ?? i.estadoVencimiento,
+    i.cantidadDisponible,
+    moneda(i.costoUnitario),
+    moneda(i.valorTotal),
+    i.referencia ?? '',
+    i.fechaEntrada.substring(0, 10),
+  ] as (string | number | null)[]);
+
+  const wb = hojaUnica('Lotes', resumen, encabezados, filas);
+  descargar(wb, `lotes-vencimiento-${new Date().toISOString().substring(0, 10)}`);
+}
 
 export function exportarReporteKardex(reporte: ReporteKardexDTO) {
   const entradas = reporte.movimientos.reduce((a, m) => a + m.entrada, 0);

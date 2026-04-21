@@ -342,3 +342,42 @@ public record DetalleOrdenCompraDto(
     bool ManejaLotes = false,
     int? DiasVidaUtil = null
 );
+
+// ─── Reporte de Lotes por Vencimiento ─────────────────────────────────────────
+
+public record ReporteLotesQueryDto(
+    int? SucursalId = null,
+    Guid? ProductoId = null,
+    bool SoloConStock = true,
+    string? EstadoVencimiento = null   // "Vencido" | "Critico" | "Proximo" | "Vigente" | "SinFecha"
+);
+
+public record LoteReporteItemDto(
+    int Id,
+    Guid ProductoId,
+    string NombreProducto,
+    string? CodigoBarras,
+    int SucursalId,
+    string NombreSucursal,
+    string? NumeroLote,
+    DateOnly? FechaVencimiento,
+    int? DiasParaVencer,
+    decimal CantidadDisponible,
+    decimal CostoUnitario,
+    decimal ValorTotal,
+    string? Referencia,
+    DateTime FechaEntrada,
+    string EstadoVencimiento   // "Vencido" | "Critico" | "Proximo" | "Vigente" | "SinFecha"
+);
+
+public record ReporteLotesDto(
+    int TotalLotes,
+    decimal TotalUnidades,
+    decimal ValorTotalInventario,
+    int LotesVencidos,
+    int LotesCriticos,
+    int LotesProximos,
+    int LotesVigentes,
+    int LotesSinFecha,
+    List<LoteReporteItemDto> Items
+);
