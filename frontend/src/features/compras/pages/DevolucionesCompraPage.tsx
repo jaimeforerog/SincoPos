@@ -41,7 +41,7 @@ const ESTADO_META: Record<string, { color: 'primary' | 'success'; label: string 
 };
 
 export function DevolucionesCompraPage() {
-  const { activeEmpresaId } = useAuth();
+  const { activeEmpresaId, activeSucursalId } = useAuth();
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState<TerceroDTO | null>(null);
   const [ordenSeleccionada, setOrdenSeleccionada] = useState<OrdenCompraDTO | null>(null);
 
@@ -55,11 +55,11 @@ export function DevolucionesCompraPage() {
 
   // Cargar OCs del proveedor seleccionado (estados devolvibles)
   const { data: ordenesData, isLoading: loadingOrdenes } = useQuery({
-    queryKey: ['compras-devolvibles', proveedorSeleccionado?.id],
+    queryKey: ['compras-devolvibles', proveedorSeleccionado?.id, activeSucursalId],
     queryFn: async () => {
       const [parciales, completas] = await Promise.all([
-        comprasApi.getAll({ proveedorId: proveedorSeleccionado!.id, estado: 'RecibidaParcial', pageSize: 100 }),
-        comprasApi.getAll({ proveedorId: proveedorSeleccionado!.id, estado: 'RecibidaCompleta', pageSize: 100 }),
+        comprasApi.getAll({ proveedorId: proveedorSeleccionado!.id, sucursalId: activeSucursalId ?? undefined, estado: 'RecibidaParcial', pageSize: 100 }),
+        comprasApi.getAll({ proveedorId: proveedorSeleccionado!.id, sucursalId: activeSucursalId ?? undefined, estado: 'RecibidaCompleta', pageSize: 100 }),
       ]);
       return [...(parciales.items ?? []), ...(completas.items ?? [])]
         .sort((a, b) => new Date(b.fechaOrden).getTime() - new Date(a.fechaOrden).getTime());
