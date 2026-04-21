@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircleOutline as ActivarIcon } from '@mui/icons-material';
 import { configuracionVariablesApi } from '@/api/configuracionVariables';
 import type { ConfiguracionVariableDTO } from '@/types/api';
 import { useSnackbar } from 'notistack';
@@ -44,6 +44,18 @@ export function ConfiguracionVariablesPage() {
     },
   });
 
+  const activarMutation = useMutation({
+    mutationFn: (id: number) => configuracionVariablesApi.activate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracion-variables'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracion-variable'] });
+      enqueueSnackbar('Variable activada correctamente', { variant: 'success' });
+    },
+    onError: () => {
+      enqueueSnackbar('Error al activar la variable', { variant: 'error' });
+    },
+  });
+
   const handleCreate = () => {
     setSelected(null);
     setOpenDialog(true);
@@ -57,6 +69,12 @@ export function ConfiguracionVariablesPage() {
   const handleDelete = (id: number) => {
     if (confirm('¿Está seguro de desactivar esta variable?')) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleActivar = (id: number) => {
+    if (confirm('¿Está seguro de activar esta variable?')) {
+      activarMutation.mutate(id);
     }
   };
 
@@ -134,6 +152,13 @@ export function ConfiguracionVariablesPage() {
           onClick={() => handleDelete(params.row.id)}
           showInMenu={false}
           disabled={!params.row.activo}
+        />,
+        <GridActionsCellItem
+          icon={<ActivarIcon />}
+          label="Activar"
+          onClick={() => handleActivar(params.row.id)}
+          showInMenu={false}
+          disabled={params.row.activo}
         />,
       ],
     },

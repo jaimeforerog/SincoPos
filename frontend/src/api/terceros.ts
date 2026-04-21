@@ -43,6 +43,10 @@ export const tercerosApi = {
     await apiClient.delete(`/terceros/${id}`);
   },
 
+  activate: async (id: number) => {
+    await apiClient.patch(`/terceros/${id}/activar`);
+  },
+
   calcularDV: async (nit: string): Promise<{ dv: string }> => {
     const response = await apiClient.get<{ dv: string }>('/terceros/calcular-dv', {
       params: { nit },

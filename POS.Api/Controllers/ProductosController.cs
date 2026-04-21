@@ -203,6 +203,28 @@ public class ProductosController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Reactivar un producto previamente desactivado.</summary>
+    [HttpPatch("{id:guid}/activar")]
+    [Authorize(Policy = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ActivarProducto(Guid id)
+    {
+        var (success, error) = await _productoService.ActivarAsync(id);
+        if (!success)
+            return error!.Contains("no encontrado") ? Problem(detail: error, statusCode: StatusCodes.Status404NotFound) : Problem(detail: error, statusCode: StatusCodes.Status400BadRequest);
+
+        _logger.LogInformation("Producto {Id} reactivado.", id);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ActivarProducto",
+            Tipo: TipoActividad.Producto,
+            Descripcion: $"Producto {id} reactivado por {User.GetEmail()}",
+            TipoEntidad: "Producto",
+            EntidadId: id.ToString()
+        ));
+        return NoContent();
+    }
+
     /// <summary>
     /// Capa 5 — Retorna los productos más frecuentes del cajero autenticado.
     /// Alimentado por UserBehaviorProjection vía eventos VentaCompletadaEvent.

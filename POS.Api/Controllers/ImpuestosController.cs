@@ -179,6 +179,18 @@ public class ImpuestosController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Reactivar un impuesto previamente desactivado.</summary>
+    [HttpPatch("{id:int}/activar")]
+    [Authorize(Policy = "Admin")]
+    public async Task<ActionResult> ActivarImpuesto(int id)
+    {
+        var impuesto = await _context.Impuestos.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.Id == id);
+        if (impuesto == null) return Problem(detail: "Impuesto no encontrado.", statusCode: StatusCodes.Status404NotFound);
+        impuesto.Activo = true;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
     // ─── Retenciones ──────────────────────────────────────────────────────────
 
     /// <summary>
@@ -277,6 +289,18 @@ public class ImpuestosController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Reactivar una regla de retención previamente desactivada.</summary>
+    [HttpPatch("/api/v{version:apiVersion}/Retenciones/{id:int}/activar")]
+    [Authorize(Policy = "Admin")]
+    public async Task<ActionResult> ActivarRetencion(int id)
+    {
+        var regla = await _context.RetencionesReglas.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == id);
+        if (regla == null) return NotFound();
+        regla.Activo = true;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
     // ─── Conceptos de Retención ─────────────────────────────────────────────
 
     /// <summary>
@@ -355,6 +379,18 @@ public class ImpuestosController : ControllerBase
         var concepto = await _context.ConceptosRetencion.FindAsync(id);
         if (concepto == null) return Problem(detail: "Concepto de retención no encontrado.", statusCode: StatusCodes.Status404NotFound);
         concepto.Activo = false;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>Reactivar un concepto de retención previamente desactivado.</summary>
+    [HttpPatch("conceptos-retencion/{id:int}/activar")]
+    [Authorize(Policy = "Admin")]
+    public async Task<ActionResult> ActivarConceptoRetencion(int id)
+    {
+        var concepto = await _context.ConceptosRetencion.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Id == id);
+        if (concepto == null) return Problem(detail: "Concepto de retención no encontrado.", statusCode: StatusCodes.Status404NotFound);
+        concepto.Activo = true;
         await _context.SaveChangesAsync();
         return NoContent();
     }

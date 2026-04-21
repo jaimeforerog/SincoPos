@@ -171,6 +171,25 @@ public class TerceroLocalService : ITerceroService
         return (true, null);
     }
 
+    public async Task<(bool Success, string? Error)> ActivarAsync(int id)
+    {
+        var tercero = await _context.Terceros
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == id);
+
+        if (tercero == null)
+            return (false, $"Tercero {id} no encontrado.");
+
+        if (tercero.Activo)
+            return (false, $"Tercero {id} ya está activo.");
+
+        tercero.Activo = true;
+        tercero.FechaModificacion = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return (true, null);
+    }
+
     // ── Actividades CIIU ──────────────────────────────────────────────────────
 
     public async Task<(TerceroActividadDto? Result, string? Error)> AgregarActividadAsync(int terceroId, AgregarActividadDto dto)

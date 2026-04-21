@@ -28,6 +28,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Block as BlockIcon,
+  CheckCircleOutline as ActivarIcon,
   List as ListIcon,
   FileUpload as FileUploadIcon,
 } from '@mui/icons-material';
@@ -97,6 +98,12 @@ export default function TercerosPage() {
   const handleDesactivar = async (t: TerceroDTO) => {
     if (!window.confirm(`¿Desactivar "${t.nombre}"?`)) return;
     await tercerosApi.deactivate(t.id);
+    cargar();
+  };
+
+  const handleActivar = async (t: TerceroDTO) => {
+    if (!window.confirm(`¿Activar "${t.nombre}"?`)) return;
+    await tercerosApi.activate(t.id);
     cargar();
   };
 
@@ -278,10 +285,16 @@ export default function TercerosPage() {
                       <ListIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  {t.activo && (
+                  {t.activo ? (
                     <Tooltip title="Desactivar">
                       <IconButton size="small" color="error" onClick={() => handleDesactivar(t)}>
                         <BlockIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title="Activar">
+                      <IconButton size="small" color="success" onClick={() => handleActivar(t)}>
+                        <ActivarIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   )}

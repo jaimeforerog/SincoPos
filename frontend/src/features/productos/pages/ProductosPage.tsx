@@ -28,6 +28,7 @@ const HERO_COLOR = '#1565c0';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
 import { useAuth } from '@/hooks/useAuth';
@@ -92,6 +93,19 @@ export function ProductosPage() {
     },
   });
 
+  const activarMutation = useMutation({
+    mutationFn: async (producto: ProductoDTO) => {
+      await productosApi.activate(producto.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productos'] });
+      enqueueSnackbar('Producto activado exitosamente', { variant: 'success' });
+    },
+    onError: () => {
+      enqueueSnackbar('Error al activar el producto', { variant: 'error' });
+    },
+  });
+
   const handleNuevo = () => {
     setSelectedProducto(null);
     setFormOpen(true);
@@ -103,12 +117,14 @@ export function ProductosPage() {
   };
 
   const handleDesactivar = (producto: ProductoDTO) => {
-    if (
-      window.confirm(
-        `¿Estás seguro de desactivar el producto "${producto.nombre}"?`
-      )
-    ) {
+    if (window.confirm(`¿Estás seguro de desactivar el producto "${producto.nombre}"?`)) {
       desactivarMutation.mutate(producto);
+    }
+  };
+
+  const handleActivar = (producto: ProductoDTO) => {
+    if (window.confirm(`¿Estás seguro de activar el producto "${producto.nombre}"?`)) {
+      activarMutation.mutate(producto);
     }
   };
 
@@ -312,6 +328,17 @@ export function ProductosPage() {
                                 color="error"
                               >
                                 <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          {isAdmin() && !producto.activo && (
+                            <Tooltip title="Activar">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleActivar(producto)}
+                                color="success"
+                              >
+                                <CheckCircleOutlineIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           )}

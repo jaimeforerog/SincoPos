@@ -14,4 +14,5 @@ public interface IProductoService
     Task<(ProductoDto? Result, string? Error)> CrearAsync(CrearProductoDto dto);
     Task<(bool Success, string? Error)> ActualizarAsync(Guid id, ActualizarProductoDto dto);
     Task<(bool Success, string? Error)> DesactivarAsync(Guid id, string? motivo);
+    Task<(bool Success, string? Error)> ActivarAsync(Guid id);
 }

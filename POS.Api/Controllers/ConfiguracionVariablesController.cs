@@ -197,4 +197,20 @@ public class ConfiguracionVariablesController : ControllerBase
         _logger.LogInformation("Variable de configuración {Id} desactivada.", id);
         return NoContent();
     }
+
+    /// <summary>Reactivar una variable de configuración previamente desactivada.</summary>
+    [HttpPatch("{id:int}/activar")]
+    [Authorize(Policy = "Admin")]
+    public async Task<ActionResult> ActivarVariable(int id)
+    {
+        var variable = await _context.ConfiguracionesVariables.IgnoreQueryFilters().FirstOrDefaultAsync(v => v.Id == id);
+        if (variable == null)
+            return Problem(detail: $"Variable {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
+
+        variable.Activo = true;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Variable de configuración {Id} reactivada.", id);
+        return NoContent();
+    }
 }

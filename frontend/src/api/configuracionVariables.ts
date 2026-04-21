@@ -41,4 +41,8 @@ export const configuracionVariablesApi = {
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/configuracion-variables/${id}`);
   },
+
+  activate: async (id: number): Promise<void> => {
+    await apiClient.patch(`/configuracion-variables/${id}/activar`);
+  },
 };

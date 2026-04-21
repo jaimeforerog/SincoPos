@@ -33,6 +33,10 @@ export const impuestosApi = {
   deactivate: async (id: number): Promise<void> => {
     await apiClient.delete(`/impuestos/${id}`);
   },
+
+  activate: async (id: number): Promise<void> => {
+    await apiClient.patch(`/impuestos/${id}/activar`);
+  },
 };
 
 export const retencionesApi = {
@@ -51,6 +55,10 @@ export const retencionesApi = {
 
   deactivate: async (id: number): Promise<void> => {
     await apiClient.delete(`/retenciones/${id}`);
+  },
+
+  activate: async (id: number): Promise<void> => {
+    await apiClient.patch(`/retenciones/${id}/activar`);
   },
 };
 
@@ -71,5 +79,9 @@ export const conceptosRetencionApi = {
 
   deactivate: async (id: number): Promise<void> => {
     await apiClient.delete(`/impuestos/conceptos-retencion/${id}`);
+  },
+
+  activate: async (id: number): Promise<void> => {
+    await apiClient.patch(`/impuestos/conceptos-retencion/${id}/activar`);
   },
 };

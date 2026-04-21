@@ -258,4 +258,20 @@ public class SucursalesController : ControllerBase
         _logger.LogInformation("Sucursal {Id} desactivada.", id);
         return NoContent();
     }
+
+    /// <summary>Reactivar una sucursal previamente desactivada.</summary>
+    [HttpPatch("{id:int}/activar")]
+    [Authorize(Policy = "Admin")]
+    public async Task<ActionResult> ActivarSucursal(int id)
+    {
+        var sucursal = await _context.Sucursales.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == id);
+        if (sucursal == null)
+            return Problem(detail: $"Sucursal {id} no encontrada.", statusCode: StatusCodes.Status404NotFound);
+
+        sucursal.Activo = true;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Sucursal {Id} reactivada.", id);
+        return NoContent();
+    }
 }

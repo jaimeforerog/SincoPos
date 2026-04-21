@@ -16,6 +16,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  CheckCircleOutline as ActivarIcon,
 } from '@mui/icons-material';
 import { sucursalesApi } from '@/api/sucursales';
 import type { SucursalDTO } from '@/types/api';
@@ -53,6 +54,17 @@ export function SucursalesPage() {
     },
   });
 
+  const activarMutation = useMutation({
+    mutationFn: (id: number) => sucursalesApi.activate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sucursales'] });
+      enqueueSnackbar('Sucursal activada correctamente', { variant: 'success' });
+    },
+    onError: () => {
+      enqueueSnackbar('Error al activar la sucursal', { variant: 'error' });
+    },
+  });
+
   const handleCreate = () => {
     setSelectedSucursal(null);
     setOpenDialog(true);
@@ -66,6 +78,12 @@ export function SucursalesPage() {
   const handleDelete = (id: number) => {
     if (confirm('¿Está seguro de desactivar esta sucursal?')) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleActivar = (id: number) => {
+    if (confirm('¿Está seguro de activar esta sucursal?')) {
+      activarMutation.mutate(id);
     }
   };
 
@@ -147,6 +165,13 @@ export function SucursalesPage() {
           onClick={() => handleDelete(params.row.id)}
           showInMenu={false}
           disabled={!params.row.activa}
+        />,
+        <GridActionsCellItem
+          icon={<ActivarIcon />}
+          label="Activar"
+          onClick={() => handleActivar(params.row.id)}
+          showInMenu={false}
+          disabled={params.row.activa}
         />,
       ],
     },

@@ -41,4 +41,8 @@ export const sucursalesApi = {
   delete: async (id: number) => {
     await apiClient.delete(`/sucursales/${id}`);
   },
+
+  activate: async (id: number) => {
+    await apiClient.patch(`/sucursales/${id}/activar`);
+  },
 };

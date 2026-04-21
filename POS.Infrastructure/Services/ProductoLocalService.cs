@@ -207,4 +207,17 @@ public class ProductoLocalService : IProductoService
         await _context.SaveChangesAsync();
         return (true, null);
     }
+
+    public async Task<(bool Success, string? Error)> ActivarAsync(Guid id)
+    {
+        var producto = await _context.Productos.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
+        if (producto == null) return (false, $"Producto {id} no encontrado.");
+        if (producto.Activo) return (false, "El producto ya está activo.");
+
+        producto.Activo = true;
+        producto.FechaModificacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return (true, null);
+    }
 }

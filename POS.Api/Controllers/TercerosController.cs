@@ -180,6 +180,26 @@ public class TercerosController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Reactivar un tercero previamente desactivado.</summary>
+    [HttpPatch("{id:int}/activar")]
+    [Authorize(Policy = "Supervisor")]
+    public async Task<ActionResult> ActivarTercero(int id)
+    {
+        var (success, error) = await _service.ActivarAsync(id);
+        if (!success)
+            return Problem(detail: error, statusCode: StatusCodes.Status404NotFound);
+
+        _logger.LogInformation("Tercero {Id} reactivado.", id);
+        await _activityLogService.LogActivityAsync(new ActivityLogDto(
+            Accion: "ActivarTercero",
+            Tipo: TipoActividad.Configuracion,
+            Descripcion: $"Tercero {id} reactivado por {User.GetEmail()}",
+            TipoEntidad: "Tercero",
+            EntidadId: id.ToString()
+        ));
+        return NoContent();
+    }
+
     // ── Importación Excel ─────────────────────────────────────────────────────
 
     /// <summary>Descarga la plantilla Excel para importar terceros</summary>

@@ -11,6 +11,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Block as BlockIcon,
+  CheckCircleOutline as ActivarIcon,
 } from '@mui/icons-material';
 import { impuestosApi, retencionesApi, conceptosRetencionApi } from '@/api/impuestos';
 import type { ImpuestoDTO, RetencionReglaDTO, ConceptoRetencionDTO } from '@/types/api';
@@ -134,6 +135,12 @@ export default function ImpuestosPage() {
     catch (e: any) { setError(e?.response?.data ?? 'No se puede desactivar'); }
   };
 
+  const activarImpuesto = async (id: number) => {
+    if (!window.confirm('¿Activar este impuesto?')) return;
+    try { await impuestosApi.activate(id); await cargarImpuestos(); }
+    catch { setError('No se puede activar el impuesto'); }
+  };
+
   // ── Retenciones handlers ──────────────────────────────────────────────────
 
   const openCrearRetencion = () => {
@@ -182,6 +189,12 @@ export default function ImpuestosPage() {
     catch { setError('No se puede desactivar la retencion'); }
   };
 
+  const activarRetencion = async (id: number) => {
+    if (!window.confirm('¿Activar esta regla de retención?')) return;
+    try { await retencionesApi.activate(id); await cargarRetenciones(); }
+    catch { setError('No se puede activar la retención'); }
+  };
+
   // ── Conceptos Retencion handlers ──────────────────────────────────────────
 
   const openCrearConcepto = () => {
@@ -218,6 +231,12 @@ export default function ImpuestosPage() {
     if (!window.confirm('Desactivar este concepto de retencion?')) return;
     try { await conceptosRetencionApi.deactivate(id); await cargarConceptos(); }
     catch { setError('No se puede desactivar el concepto'); }
+  };
+
+  const activarConcepto = async (id: number) => {
+    if (!window.confirm('¿Activar este concepto de retención?')) return;
+    try { await conceptosRetencionApi.activate(id); await cargarConceptos(); }
+    catch { setError('No se puede activar el concepto'); }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -325,6 +344,7 @@ export default function ImpuestosPage() {
                   <TableCell align="center">
                     <Tooltip title="Editar"><IconButton id={`btn-editar-impuesto-${imp.id}`} size="small" onClick={() => openEditarImpuesto(imp)}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     <Tooltip title="Desactivar"><IconButton id={`btn-desactivar-impuesto-${imp.id}`} size="small" color="error" onClick={() => desactivarImpuesto(imp.id)}><BlockIcon fontSize="small" /></IconButton></Tooltip>
+                    <Tooltip title="Activar"><IconButton id={`btn-activar-impuesto-${imp.id}`} size="small" color="success" onClick={() => activarImpuesto(imp.id)}><ActivarIcon fontSize="small" /></IconButton></Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -382,7 +402,10 @@ export default function ImpuestosPage() {
                   <TableCell><Chip label={r.activo ? 'Activa' : 'Inactiva'} size="small" color={r.activo ? 'success' : 'default'} /></TableCell>
                   <TableCell align="center">
                     <Tooltip title="Editar"><IconButton id={`btn-editar-retencion-${r.id}`} size="small" onClick={() => openEditarRetencion(r)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                    {r.activo && <Tooltip title="Desactivar"><IconButton id={`btn-desactivar-retencion-${r.id}`} size="small" color="error" onClick={() => desactivarRetencion(r.id)}><BlockIcon fontSize="small" /></IconButton></Tooltip>}
+                    {r.activo
+                      ? <Tooltip title="Desactivar"><IconButton id={`btn-desactivar-retencion-${r.id}`} size="small" color="error" onClick={() => desactivarRetencion(r.id)}><BlockIcon fontSize="small" /></IconButton></Tooltip>
+                      : <Tooltip title="Activar"><IconButton id={`btn-activar-retencion-${r.id}`} size="small" color="success" onClick={() => activarRetencion(r.id)}><ActivarIcon fontSize="small" /></IconButton></Tooltip>
+                    }
                   </TableCell>
                 </TableRow>
               ))}
@@ -426,7 +449,10 @@ export default function ImpuestosPage() {
                   <TableCell><Chip label={c.activo ? 'Activo' : 'Inactivo'} size="small" color={c.activo ? 'success' : 'default'} /></TableCell>
                   <TableCell align="center">
                     <Tooltip title="Editar"><IconButton id={`btn-editar-concepto-${c.id}`} size="small" onClick={() => openEditarConcepto(c)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                    {c.activo && <Tooltip title="Desactivar"><IconButton id={`btn-desactivar-concepto-${c.id}`} size="small" color="error" onClick={() => desactivarConcepto(c.id)}><BlockIcon fontSize="small" /></IconButton></Tooltip>}
+                    {c.activo
+                      ? <Tooltip title="Desactivar"><IconButton id={`btn-desactivar-concepto-${c.id}`} size="small" color="error" onClick={() => desactivarConcepto(c.id)}><BlockIcon fontSize="small" /></IconButton></Tooltip>
+                      : <Tooltip title="Activar"><IconButton id={`btn-activar-concepto-${c.id}`} size="small" color="success" onClick={() => activarConcepto(c.id)}><ActivarIcon fontSize="small" /></IconButton></Tooltip>
+                    }
                   </TableCell>
                 </TableRow>
               ))}

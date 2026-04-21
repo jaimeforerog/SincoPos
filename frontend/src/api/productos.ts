@@ -57,6 +57,10 @@ export const productosApi = {
     await apiClient.delete(`/productos/${id}`);
   },
 
+  activate: async (id: string) => {
+    await apiClient.patch(`/productos/${id}/activar`);
+  },
+
   getAnticipated: async (limite = 20): Promise<ProductoDTO[]> => {
     const response = await apiClient.get<ProductoDTO[]>('/productos/anticipados', {
       params: { limite },
