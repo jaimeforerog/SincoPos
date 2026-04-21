@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,9 +18,10 @@ var host = new HostBuilder()
     {
         var config = context.Configuration;
 
-        // EF Core necesita ICurrentEmpresaProvider registrado porque los query filters
-        // de AppDbContext lo referencian. Con EmpresaId = null el filtro pasa todas las filas
-        // — comportamiento correcto para un background service que procesa datos de todas las empresas.
+        // AppDbContext tiene dos constructores. DI usa el completo solo si puede resolver TODOS sus parámetros.
+        // Registramos ambas dependencias para que use el constructor completo con _empresaProvider != null
+        // y EmpresaId = null, lo que hace que los query filters de multi-tenant pasen todas las filas.
+        services.AddSingleton<IHttpContextAccessor, NullHttpContextAccessor>();
         services.AddScoped<ICurrentEmpresaProvider, BackgroundEmpresaProvider>();
 
         var connectionString = config.GetConnectionString("Postgres")
@@ -55,4 +57,9 @@ await host.RunAsync();
 internal sealed class BackgroundEmpresaProvider : ICurrentEmpresaProvider
 {
     public int? EmpresaId { get; set; } = null;
+}
+
+internal sealed class NullHttpContextAccessor : IHttpContextAccessor
+{
+    public HttpContext? HttpContext { get; set; } = null;
 }
