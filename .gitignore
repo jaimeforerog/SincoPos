@@ -14,6 +14,9 @@ coverage/
 *.coverage
 *.coveragexml
 
+# ── Azure Functions local settings (contienen secrets) ──────────────────────
+POS.Functions/local.settings.json
+
 # ── Variables de entorno (NUNCA al repo) ────────────────────────────────────
 .env
 .env.*
