@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS.IntegrationTests", "tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS.UnitTests", "tests\POS.UnitTests\POS.UnitTests.csproj", "{641FE9F6-9313-4BC7-BA23-D0DC2FE3323C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS.Functions", "POS.Functions\POS.Functions.csproj", "{22B450C3-F928-45C5-AF03-BA3CE1DA484A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -96,6 +98,18 @@ Global
 		{641FE9F6-9313-4BC7-BA23-D0DC2FE3323C}.Release|x64.Build.0 = Release|Any CPU
 		{641FE9F6-9313-4BC7-BA23-D0DC2FE3323C}.Release|x86.ActiveCfg = Release|Any CPU
 		{641FE9F6-9313-4BC7-BA23-D0DC2FE3323C}.Release|x86.Build.0 = Release|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Debug|x64.Build.0 = Debug|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Debug|x86.Build.0 = Debug|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Release|x64.ActiveCfg = Release|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Release|x64.Build.0 = Release|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Release|x86.ActiveCfg = Release|Any CPU
+		{22B450C3-F928-45C5-AF03-BA3CE1DA484A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
