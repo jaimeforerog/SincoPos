@@ -29,7 +29,7 @@ export function ProductSearch({ onSelectProduct, fechaVenta }: ProductSearchProp
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { activeSucursalId, activeEmpresaId } = useAuth();
 
-  const usarHistorico = !!fechaVenta && new Date(fechaVenta) < new Date(Date.now() - 5 * 60 * 1000);
+  const usarHistorico = !!fechaVenta;
 
   const { data: productosData, isLoading } = useQuery({
     queryKey: ['productos', debouncedSearch, activeEmpresaId],

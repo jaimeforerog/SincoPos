@@ -42,7 +42,7 @@ export function IntentSearch({ onSelectProduct, fechaVenta }: IntentSearchProps)
   const { activeSucursalId, activeEmpresaId } = useAuth();
 
   // Usar stock histórico solo cuando la fecha de sesión es retroactiva (>5 min en el pasado)
-  const usarHistorico = !!fechaVenta && new Date(fechaVenta) < new Date(Date.now() - 5 * 60 * 1000);
+  const usarHistorico = !!fechaVenta;
 
   // Catálogo paginado con búsqueda debounced
   const { data: productosData, isLoading } = useQuery({
