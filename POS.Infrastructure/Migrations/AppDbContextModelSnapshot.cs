@@ -989,6 +989,48 @@ namespace POS.Infrastructure.Migrations
                     b.ToTable("detalle_ventas", "public");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleVentaLote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cantidad");
+
+                    b.Property<decimal>("CostoUnitario")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("costo_unitario");
+
+                    b.Property<int>("DetalleVentaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("detalle_venta_id");
+
+                    b.Property<int>("LoteInventarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("lote_inventario_id");
+
+                    b.Property<string>("NumeroLote")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("numero_lote");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DetalleVentaId")
+                        .HasDatabaseName("ix_dvl_detalle_venta_id");
+
+                    b.HasIndex("LoteInventarioId")
+                        .HasDatabaseName("ix_dvl_lote_id");
+
+                    b.ToTable("detalle_venta_lotes", "public");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DevolucionCompra", b =>
                 {
                     b.Property<int>("Id")
@@ -3094,6 +3136,25 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("Venta");
                 });
 
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleVentaLote", b =>
+                {
+                    b.HasOne("POS.Infrastructure.Data.Entities.DetalleVenta", "DetalleVenta")
+                        .WithMany("Lotes")
+                        .HasForeignKey("DetalleVentaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("POS.Infrastructure.Data.Entities.LoteInventario", "LoteInventario")
+                        .WithMany()
+                        .HasForeignKey("LoteInventarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DetalleVenta");
+
+                    b.Navigation("LoteInventario");
+                });
+
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DevolucionCompra", b =>
                 {
                     b.HasOne("POS.Infrastructure.Data.Entities.OrdenCompra", "OrdenCompra")
@@ -3408,6 +3469,11 @@ namespace POS.Infrastructure.Migrations
                     b.Navigation("Productos");
 
                     b.Navigation("ReglasRetencion");
+                });
+
+            modelBuilder.Entity("POS.Infrastructure.Data.Entities.DetalleVenta", b =>
+                {
+                    b.Navigation("Lotes");
                 });
 
             modelBuilder.Entity("POS.Infrastructure.Data.Entities.DevolucionCompra", b =>

@@ -146,7 +146,7 @@ export function VentasPage() {
     refetchInterval: 30000,
   });
 
-  const ventas = ventasPage?.items ?? [];
+  const ventas = useMemo(() => ventasPage?.items ?? [], [ventasPage]);
   const totalCount = ventasPage?.totalCount ?? 0;
   const totalPages = ventasPage?.totalPages ?? 1;
 

@@ -558,6 +558,7 @@ export function UsuariosPage() {
 
       {/* Diálogo editar usuario */}
       <EditarUsuarioDialog
+        key={usuarioEditar?.id ?? 'new'}
         open={!!usuarioEditar}
         usuario={usuarioEditar}
         onClose={() => setUsuarioEditar(null)}

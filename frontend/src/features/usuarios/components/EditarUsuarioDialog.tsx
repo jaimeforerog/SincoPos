@@ -95,8 +95,6 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
         sucursalDefaultId: usuario.sucursalDefaultId ?? undefined,
         sucursalIds: usuario.sucursalesAsignadas?.map((s) => s.id) ?? [],
       });
-      setBackendError(null);
-      setTempPassword(null);
     }
   }, [open, usuario]); // eslint-disable-line react-hooks/exhaustive-deps
 
