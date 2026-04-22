@@ -43,20 +43,22 @@ export function ReporteCard({ module, index = 0 }: ReporteCardProps) {
       }}
       onClick={() => navigate(module.path)}
     >
-      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
         {/* Icono + flecha */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
           <Box
             sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
+              width: 40,
+              height: 40,
+              borderRadius: 1.5,
               bgcolor: alpha(color, 0.1),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: color,
               transition: 'background-color 0.25s',
+              fontSize: 20,
+              '& .MuiSvgIcon-fontSizeLarge': { fontSize: 20 },
               '.MuiCard-root:hover &': {
                 bgcolor: alpha(color, 0.18),
               },
@@ -79,20 +81,20 @@ export function ReporteCard({ module, index = 0 }: ReporteCardProps) {
         {/* Barra de color */}
         <Box
           sx={{
-            width: 32,
-            height: 3,
+            width: 24,
+            height: 2.5,
             borderRadius: 2,
             bgcolor: color,
-            mb: 1.5,
+            mb: 1,
             transition: 'width 0.25s',
-            '.MuiCard-root:hover &': { width: 48 },
+            '.MuiCard-root:hover &': { width: 36 },
           }}
         />
 
-        <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ lineHeight: 1.3 }}>
+        <Typography variant="body2" fontWeight={700} gutterBottom sx={{ lineHeight: 1.3 }}>
           {module.title}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4, display: 'block' }}>
           {module.description}
         </Typography>
       </CardContent>

@@ -287,8 +287,9 @@ export function ReportesHomePage() {
             xs: '1fr',
             sm: 'repeat(2, 1fr)',
             md: 'repeat(3, 1fr)',
+            lg: 'repeat(4, 1fr)',
           },
-          gap: 2.5,
+          gap: 2,
         }}
       >
         {availableModules.map((module, index) => (
