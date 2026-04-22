@@ -281,16 +281,34 @@ public class AppDbContext : DbContext
         var httpContext = _httpContextAccessor?.HttpContext;
         if (httpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            // Intentar obtener email del usuario
             var email = httpContext.User.FindFirst(ClaimTypes.Email)?.Value
                        ?? httpContext.User.FindFirst("email")?.Value
                        ?? httpContext.User.FindFirst(ClaimTypes.Name)?.Value
                        ?? httpContext.User.FindFirst("preferred_username")?.Value;
 
-            return email ?? "usuario-autenticado";
+            if (email != null) return email;
+
+            // WorkOS no incluye email en el JWT — buscar en BD por externalId (sub)
+            var externalId = httpContext.User.FindFirst("sub")?.Value
+                            ?? httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (externalId != null)
+            {
+                try
+                {
+                    var emailBd = Set<Entities.Usuario>()
+                        .AsNoTracking()
+                        .Where(u => u.ExternalId == externalId)
+                        .Select(u => u.Email)
+                        .FirstOrDefault();
+                    if (emailBd != null) return emailBd;
+                }
+                catch { }
+            }
+
+            return "usuario-autenticado";
         }
 
-        // Si no hay usuario autenticado (seeds, migraciones, etc.)
         return "sistema";
     }
 }
