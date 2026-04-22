@@ -11,6 +11,7 @@ import {
   AttachMoney,
   ReceiptLong,
   EventBusy,
+  Receipt,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -81,6 +82,15 @@ const reportModules: ReporteModule[] = [
     path: '/reportes/auditoria-compras',
     roles: ['supervisor', 'admin'],
     color: '#1565c0',
+  },
+  {
+    id: 'auditoria-ventas',
+    title: 'Auditoría de Ventas',
+    description: 'Trazabilidad de ventas, anulaciones y devoluciones con KPIs del período',
+    icon: <Receipt fontSize="large" />,
+    path: '/reportes/auditoria-ventas',
+    roles: ['supervisor', 'admin'],
+    color: '#e65100',
   },
   {
     id: 'lotes-vencimiento',
