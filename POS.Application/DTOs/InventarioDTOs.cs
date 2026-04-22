@@ -132,7 +132,8 @@ public record TrazabilidadMovimientoDto(
     string Referencia,
     DateTime Fecha,
     decimal Cantidad,
-    string? Detalle        // cliente, destino, motivo, etc.
+    string? Detalle,       // cliente, destino, motivo, etc.
+    decimal Saldo          // saldo acumulado del lote después de este movimiento
 );
 
 // ─── Traslados ─────────────────────────────────────────

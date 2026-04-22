@@ -26,6 +26,7 @@ import {
   Undo,
   SwapHoriz,
   Inventory,
+  AddCircleOutline,
 } from '@mui/icons-material';
 import { lotesApi } from '@/api/lotes';
 import { formatCurrency, formatDateOnly } from '@/utils/format';
@@ -59,6 +60,10 @@ function entradaTipoChip(tipo: string) {
   }
 }
 
+function esEntrada(tipo: string) {
+  return tipo === 'Devolucion';
+}
+
 export function TrazabilidadLoteModal({ loteId, onClose }: Props) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['lotes', 'trazabilidad', loteId],
@@ -73,7 +78,7 @@ export function TrazabilidadLoteModal({ loteId, onClose }: Props) {
   return (
     <Dialog open={loteId !== null} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
-        Trazabilidad de lote
+        Kardex de lote
         {lote && (
           <Typography variant="subtitle2" color="text.secondary">
             {lote.nombreProducto} — Lote: <strong>{lote.numeroLote || '(sin número)'}</strong>
@@ -89,7 +94,7 @@ export function TrazabilidadLoteModal({ loteId, onClose }: Props) {
         )}
 
         {isError && (
-          <Alert severity="error">No se pudo cargar la trazabilidad del lote.</Alert>
+          <Alert severity="error">No se pudo cargar el kardex del lote.</Alert>
         )}
 
         {data && (
@@ -117,8 +122,14 @@ export function TrazabilidadLoteModal({ loteId, onClose }: Props) {
                   <Typography variant="body2">{lote!.cantidadInicial}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Cantidad disponible</Typography>
-                  <Typography variant="body2" fontWeight={600}>{lote!.cantidadDisponible}</Typography>
+                  <Typography variant="caption" color="text.secondary">Saldo actual</Typography>
+                  <Typography
+                    variant="body2"
+                    fontWeight={700}
+                    color={lote!.cantidadDisponible > 0 ? 'success.main' : 'text.secondary'}
+                  >
+                    {lote!.cantidadDisponible}
+                  </Typography>
                 </Box>
                 {lote!.fechaVencimiento && (
                   <Box>
@@ -158,7 +169,7 @@ export function TrazabilidadLoteModal({ loteId, onClose }: Props) {
 
             <Divider />
 
-            {/* ── Movimientos ── */}
+            {/* ── Kardex ── */}
             <Box>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                 Movimientos ({movimientos.length})
@@ -169,36 +180,89 @@ export function TrazabilidadLoteModal({ loteId, onClose }: Props) {
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small">
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
                         <TableCell>Tipo</TableCell>
                         <TableCell>Referencia</TableCell>
                         <TableCell>Fecha</TableCell>
-                        <TableCell align="right">Cantidad</TableCell>
+                        <TableCell align="right">Entrada</TableCell>
+                        <TableCell align="right">Salida</TableCell>
+                        <TableCell align="right">Saldo</TableCell>
                         <TableCell>Detalle</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {movimientos.map((m, i) => (
-                        <TableRow key={i}>
-                          <TableCell>{tipoChip(m.tipo)}</TableCell>
+                      {/* Fila de apertura con la entrada inicial */}
+                      {entrada && (
+                        <TableRow sx={{ bgcolor: 'success.50' }}>
                           <TableCell>
-                            <Typography variant="body2" fontFamily="monospace">{m.referencia}</Typography>
+                            <Chip icon={<AddCircleOutline fontSize="small" />} label="Apertura" color="success" size="small" />
                           </TableCell>
-                          <TableCell>{new Date(m.fecha).toLocaleDateString('es-CO')}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontFamily="monospace">{entrada.referencia}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">{new Date(entrada.fecha).toLocaleDateString('es-CO')}</Typography>
+                          </TableCell>
                           <TableCell align="right">
-                            <Typography
-                              variant="body2"
-                              fontWeight={600}
-                              color={m.tipo === 'Devolucion' ? 'success.main' : 'text.primary'}
-                            >
-                              {m.tipo === 'Devolucion' ? '+' : '-'}{m.cantidad}
+                            <Typography variant="body2" fontWeight={600} color="success.main">
+                              +{entrada.cantidadInicial}
+                            </Typography>
+                          </TableCell>
+                          <TableCell />
+                          <TableCell align="right">
+                            <Typography variant="body2" fontWeight={700}>
+                              {lote!.cantidadInicial}
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="caption" color="text.secondary">{m.detalle || '—'}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatCurrency(entrada.costoUnitario)} c/u
+                              {entrada.proveedor && ` · ${entrada.proveedor}`}
+                            </Typography>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )}
+
+                      {movimientos.map((m, i) => {
+                        const entrada_ = esEntrada(m.tipo);
+                        return (
+                          <TableRow key={i} hover>
+                            <TableCell>{tipoChip(m.tipo)}</TableCell>
+                            <TableCell>
+                              <Typography variant="body2" fontFamily="monospace">{m.referencia}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">{new Date(m.fecha).toLocaleDateString('es-CO')}</Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              {entrada_ && (
+                                <Typography variant="body2" fontWeight={600} color="success.main">
+                                  +{m.cantidad}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="right">
+                              {!entrada_ && (
+                                <Typography variant="body2" fontWeight={600} color="error.main">
+                                  -{m.cantidad}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography
+                                variant="body2"
+                                fontWeight={700}
+                                color={m.saldo <= 0 ? 'text.disabled' : 'text.primary'}
+                              >
+                                {m.saldo}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary">{m.detalle || '—'}</Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>

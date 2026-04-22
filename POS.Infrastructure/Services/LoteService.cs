@@ -154,20 +154,22 @@ public class LoteService : ILoteService
                 null, lote.CantidadInicial, lote.CostoUnitario);
         }
 
-        // ── Movimientos: ventas, devoluciones, traslados ──────────────────────
-        var movimientos = new List<TrazabilidadMovimientoDto>();
+        // ── Movimientos: ventas (por DetalleVentaLote), devoluciones, traslados ──
+        // Estructura intermedia para calcular saldo al final
+        var items = new List<(DateTime Fecha, string Tipo, string Referencia, decimal Cantidad, string? Detalle)>();
 
-        // Ventas que consumieron este lote
-        var detallesVenta = await _context.DetalleVentas
-            .Include(dv => dv.Venta)
-            .Where(dv => dv.LoteInventarioId == loteId)
-            .OrderBy(dv => dv.Venta.FechaVenta)
+        // Ventas: usar DetalleVentaLotes para capturar exactamente cuánto salió de este lote,
+        // incluso cuando la venta consumió varios lotes distintos para el mismo producto.
+        var lotesVenta = await _context.DetalleVentaLotes
+            .Include(dvl => dvl.DetalleVenta).ThenInclude(dv => dv.Venta)
+            .Where(dvl => dvl.LoteInventarioId == loteId)
+            .OrderBy(dvl => dvl.DetalleVenta.Venta.FechaVenta)
             .ToListAsync();
 
-        foreach (var dv in detallesVenta)
-            movimientos.Add(new TrazabilidadMovimientoDto(
-                "Venta", dv.Venta.NumeroVenta, dv.Venta.FechaVenta,
-                dv.Cantidad, $"Precio: ${dv.PrecioUnitario:N0}"));
+        foreach (var dvl in lotesVenta)
+            items.Add((dvl.DetalleVenta.Venta.FechaVenta, "Venta",
+                dvl.DetalleVenta.Venta.NumeroVenta, dvl.Cantidad,
+                $"Precio: ${dvl.DetalleVenta.PrecioUnitario:N0}"));
 
         // Devoluciones que reintegraron a este lote
         var detallesDev = await _context.DetallesDevolucion
@@ -177,10 +179,9 @@ public class LoteService : ILoteService
             .ToListAsync();
 
         foreach (var dd in detallesDev)
-            movimientos.Add(new TrazabilidadMovimientoDto(
-                "Devolucion", dd.DevolucionVenta.NumeroDevolucion,
-                dd.DevolucionVenta.FechaDevolucion,
-                dd.CantidadDevuelta, dd.DevolucionVenta.Motivo));
+            items.Add((dd.DevolucionVenta.FechaDevolucion, "Devolucion",
+                dd.DevolucionVenta.NumeroDevolucion, dd.CantidadDevuelta,
+                dd.DevolucionVenta.Motivo));
 
         // Traslados donde este lote fue enviado
         var detallesTraslado = await _context.DetallesTraslado
@@ -190,13 +191,20 @@ public class LoteService : ILoteService
             .ToListAsync();
 
         foreach (var dt in detallesTraslado)
-            movimientos.Add(new TrazabilidadMovimientoDto(
-                "Traslado", dt.Traslado.NumeroTraslado,
-                dt.Traslado.FechaEnvio ?? dt.Traslado.FechaTraslado,
-                dt.CantidadSolicitada,
+            items.Add((dt.Traslado.FechaEnvio ?? dt.Traslado.FechaTraslado, "Traslado",
+                dt.Traslado.NumeroTraslado, dt.CantidadSolicitada,
                 $"Destino: {dt.Traslado.SucursalDestino?.Nombre ?? "—"}"));
 
-        movimientos = movimientos.OrderBy(m => m.Fecha).ToList();
+        // Calcular saldo acumulado en orden cronológico
+        var saldo = lote.CantidadInicial;
+        var movimientos = items
+            .OrderBy(x => x.Fecha)
+            .Select(x =>
+            {
+                saldo += x.Tipo == "Devolucion" ? x.Cantidad : -x.Cantidad;
+                return new TrazabilidadMovimientoDto(x.Tipo, x.Referencia, x.Fecha, x.Cantidad, x.Detalle, saldo);
+            })
+            .ToList();
 
         return (new TrazabilidadLoteDto(loteDto, entrada, movimientos), null);
     }

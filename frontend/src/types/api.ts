@@ -936,6 +936,7 @@ export interface TrazabilidadMovimientoDTO {
   fecha: string;
   cantidad: number;
   detalle?: string;
+  saldo: number;
 }
 
 export interface TrazabilidadLoteDTO {
