@@ -4,6 +4,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using POS.Application.DTOs;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
 
@@ -130,7 +131,8 @@ public class EmpresaContextMiddlewareTests
         var response = await client.GetAsync("/api/v1/Sucursales");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var sucursales = await response.Content.ReadFromJsonAsync<List<SucursalResumenDto>>(_json);
+        var paginado = await response.Content.ReadFromJsonAsync<PaginatedResult<SucursalResumenDto>>(_json);
+        var sucursales = paginado?.Items;
         sucursales.Should().NotBeNull();
 
         // Assert: solo aparece la sucursal de empresa A
@@ -160,7 +162,8 @@ public class EmpresaContextMiddlewareTests
         var response = await client.GetAsync("/api/v1/Sucursales");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var sucursales = await response.Content.ReadFromJsonAsync<List<SucursalResumenDto>>(_json);
+        var paginado = await response.Content.ReadFromJsonAsync<PaginatedResult<SucursalResumenDto>>(_json);
+        var sucursales = paginado?.Items;
         sucursales.Should().NotBeNull();
 
         // Assert: sucursal C visible, sucursal D NO
@@ -201,7 +204,8 @@ public class EmpresaContextMiddlewareTests
         var response = await client.GetAsync("/api/v1/Sucursales");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var sucursales = await response.Content.ReadFromJsonAsync<List<SucursalResumenDto>>(_json);
+        var paginado = await response.Content.ReadFromJsonAsync<PaginatedResult<SucursalResumenDto>>(_json);
+        var sucursales = paginado?.Items;
         sucursales.Should().NotBeNull();
 
         // Assert: empresa F resuelta automáticamente → sucursal F visible, sucursal G NO
@@ -229,7 +233,8 @@ public class EmpresaContextMiddlewareTests
         var response = await client.GetAsync("/api/v1/Sucursales");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var sucursales = await response.Content.ReadFromJsonAsync<List<SucursalResumenDto>>(_json);
+        var paginado = await response.Content.ReadFromJsonAsync<PaginatedResult<SucursalResumenDto>>(_json);
+        var sucursales = paginado?.Items;
         sucursales.Should().NotBeNull();
 
         // Assert: sucursal H es visible porque no hay filtro de empresa aplicado
@@ -283,7 +288,8 @@ public class EmpresaContextMiddlewareTests
         // Assert: respuesta exitosa (no error) aunque la empresa sea inactiva;
         // el middleware hace fallback silencioso → EmpresaId null → datos visibles
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var sucursales = await response.Content.ReadFromJsonAsync<List<SucursalResumenDto>>(_json);
+        var paginado = await response.Content.ReadFromJsonAsync<PaginatedResult<SucursalResumenDto>>(_json);
+        var sucursales = paginado?.Items;
         sucursales.Should().NotBeNull();
     }
 

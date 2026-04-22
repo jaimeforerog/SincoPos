@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using POS.Application.DTOs;
 
 namespace POS.IntegrationTests;
 
@@ -39,10 +40,10 @@ public class MultiSucursalTests
         var response = await client.GetAsync("/api/v1/Usuarios");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var lista = await response.Content.ReadFromJsonAsync<List<JsonElement>>(_jsonOptions);
-        lista.Should().NotBeNull();
+        var resultado = await response.Content.ReadFromJsonAsync<PaginatedResult<JsonElement>>(_jsonOptions);
+        resultado.Should().NotBeNull();
         // El usuario seeded en el factory debe estar en la lista
-        lista.Should().Contain(u => u.GetProperty("id").GetInt32() == UsuarioId);
+        resultado!.Items.Should().Contain(u => u.GetProperty("id").GetInt32() == UsuarioId);
     }
 
     [Fact]
@@ -73,9 +74,9 @@ public class MultiSucursalTests
         var response = await client.GetAsync("/api/v1/Usuarios?rol=admin");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var lista = await response.Content.ReadFromJsonAsync<List<JsonElement>>(_jsonOptions);
+        var resultado = await response.Content.ReadFromJsonAsync<PaginatedResult<JsonElement>>(_jsonOptions);
         // Todos los resultados deben ser admins
-        lista!.Should().AllSatisfy(u =>
+        resultado!.Items.Should().AllSatisfy(u =>
             u.GetProperty("rol").GetString().Should().Be("admin"));
     }
 
