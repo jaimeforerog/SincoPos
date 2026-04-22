@@ -28,7 +28,9 @@ import {
   Error as ErrorIcon,
   Schedule as ScheduleIcon,
   HelpOutline as SinFechaIcon,
+  Timeline as TimelineIcon,
 } from '@mui/icons-material';
+import { IconButton } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { lotesApi } from '@/api/lotes';
 import { sucursalesApi } from '@/api/sucursales';
@@ -36,6 +38,7 @@ import { ReportePageHeader } from '../components/ReportePageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { exportarReporteLotes } from '@/utils/exportReportes';
 import type { LoteReporteItemDTO } from '@/types/api';
+import { TrazabilidadLoteModal } from '@/features/inventario/components/TrazabilidadLoteModal';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,7 +91,7 @@ function KpiCard({ label, value, color }: { label: string; value: string | numbe
 
 // ── Fila de tabla ─────────────────────────────────────────────────────────────
 
-function LoteRow({ item }: { item: LoteReporteItemDTO }) {
+function LoteRow({ item, onKardex }: { item: LoteReporteItemDTO; onKardex: (id: number) => void }) {
   return (
     <TableRow hover>
       <TableCell sx={{ fontSize: '0.8rem', maxWidth: 200 }}>
@@ -117,6 +120,13 @@ function LoteRow({ item }: { item: LoteReporteItemDTO }) {
       <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
         {item.referencia ?? '—'}
       </TableCell>
+      <TableCell align="center" sx={{ px: 0.5 }}>
+        <Tooltip title="Ver kardex">
+          <IconButton size="small" onClick={() => onKardex(item.id)}>
+            <TimelineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </TableCell>
     </TableRow>
   );
 }
@@ -129,6 +139,7 @@ export function ReporteLotesVencimientoPage() {
   const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId ?? '');
   const [estadoVencimiento, setEstadoVencimiento] = useState('');
   const [soloConStock, setSoloConStock] = useState(true);
+  const [kardexLoteId, setKardexLoteId] = useState<number | null>(null);
 
   const [applied, setApplied] = useState({
     sucursalId: activeSucursalId ?? ('' as number | ''),
@@ -270,6 +281,7 @@ export function ReporteLotesVencimientoPage() {
                 <TableCell align="right">Costo unit.</TableCell>
                 <TableCell align="right">Valor total</TableCell>
                 <TableCell>Referencia</TableCell>
+                <TableCell align="center"></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -284,7 +296,7 @@ export function ReporteLotesVencimientoPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                data.items.map(item => <LoteRow key={item.id} item={item} />)
+                data.items.map(item => <LoteRow key={item.id} item={item} onKardex={setKardexLoteId} />)
               )}
             </TableBody>
           </Table>
@@ -297,6 +309,11 @@ export function ReporteLotesVencimientoPage() {
           </Box>
         )}
       </Paper>
+
+      <TrazabilidadLoteModal
+        loteId={kardexLoteId}
+        onClose={() => setKardexLoteId(null)}
+      />
     </Box>
   );
 }
