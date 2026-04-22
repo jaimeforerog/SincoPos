@@ -555,26 +555,6 @@ export function ProductoFormDialog({
               </Select>
             </FormControl>
 
-            {/* Concepto de Retencion DIAN */}
-            <FormControl fullWidth>
-              <InputLabel id="concepto-retencion-label">Concepto Retencion DIAN</InputLabel>
-              <Select
-                labelId="concepto-retencion-label"
-                label="Concepto Retencion DIAN"
-                value={conceptoRetencionId}
-                onChange={(e) => setConceptoRetencionId(e.target.value as number | '')}
-              >
-                <MenuItem value="">
-                  <em>Sin concepto (aplican todas las reglas)</em>
-                </MenuItem>
-                {conceptosRetencion.filter(c => c.activo).map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.codigoDian ? `${c.codigoDian} - ` : ''}{c.nombre}{c.porcentajeSugerido != null ? ` (${c.porcentajeSugerido}%)` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
             {/* Manejo de Lotes */}
             <FormControlLabel
               control={

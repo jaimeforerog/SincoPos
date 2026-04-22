@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/test-utils';
 import ImpuestosPage from '../pages/ImpuestosPage';
-import type { ImpuestoDTO, RetencionReglaDTO, ConceptoRetencionDTO } from '@/types/api';
+import type { ImpuestoDTO, RetencionReglaDTO } from '@/types/api';
 
 vi.mock('@/api/impuestos', () => ({
   impuestosApi: {
@@ -13,12 +13,6 @@ vi.mock('@/api/impuestos', () => ({
     deactivate: vi.fn(),
   },
   retencionesApi: {
-    getAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    deactivate: vi.fn(),
-  },
-  conceptosRetencionApi: {
     getAll: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -51,22 +45,12 @@ const makeRetencion = (overrides: Partial<RetencionReglaDTO> = {}): RetencionReg
   ...overrides,
 });
 
-const makeConcepto = (overrides: Partial<ConceptoRetencionDTO> = {}): ConceptoRetencionDTO => ({
-  id: 1,
-  nombre: 'Servicios Generales',
-  codigoDian: '1001',
-  porcentajeSugerido: 0.04,
-  activo: true,
-  ...overrides,
-});
-
 describe('ImpuestosPage', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    const { impuestosApi, retencionesApi, conceptosRetencionApi } = await import('@/api/impuestos');
+    const { impuestosApi, retencionesApi } = await import('@/api/impuestos');
     vi.mocked(impuestosApi.getAll).mockResolvedValue([makeImpuesto()]);
     vi.mocked(retencionesApi.getAll).mockResolvedValue([makeRetencion()]);
-    vi.mocked(conceptosRetencionApi.getAll).mockResolvedValue([makeConcepto()]);
   });
 
   it('muestra el encabezado "Motor de Impuestos"', async () => {
@@ -74,11 +58,11 @@ describe('ImpuestosPage', () => {
     expect((await screen.findAllByText('Motor de Impuestos')).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('muestra las pestañas de Impuestos, Retenciones y Conceptos', async () => {
+  it('muestra las pestañas de Impuestos y Retenciones', async () => {
     renderWithProviders(<ImpuestosPage />);
     expect(await screen.findByRole('button', { name: /impuestos \(iva, inc/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retenciones/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /conceptos retencion dian/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /conceptos retencion dian/i })).not.toBeInTheDocument();
   });
 
   it('muestra la pestaña de Impuestos activa por defecto', async () => {
@@ -106,11 +90,10 @@ describe('ImpuestosPage', () => {
     expect(await screen.findByText('ReteFuente Servicios')).toBeInTheDocument();
   });
 
-  it('cambia a la pestaña de Conceptos al hacer clic', async () => {
+  it('solo muestra las pestañas de Impuestos y Retenciones', async () => {
     renderWithProviders(<ImpuestosPage />);
     await screen.findByRole('button', { name: /impuestos \(iva, inc/i });
-    await userEvent.click(screen.getByRole('button', { name: /conceptos retencion dian/i }));
-    expect(await screen.findByRole('button', { name: /nuevo concepto/i })).toBeInTheDocument();
-    expect(await screen.findByText('Servicios Generales')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^retenciones$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /conceptos retencion dian/i })).not.toBeInTheDocument();
   });
 });

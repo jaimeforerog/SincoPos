@@ -13,8 +13,8 @@ import {
   Block as BlockIcon,
   CheckCircleOutline as ActivarIcon,
 } from '@mui/icons-material';
-import { impuestosApi, retencionesApi, conceptosRetencionApi } from '@/api/impuestos';
-import type { ImpuestoDTO, RetencionReglaDTO, ConceptoRetencionDTO } from '@/types/api';
+import { impuestosApi, retencionesApi } from '@/api/impuestos';
+import type { ImpuestoDTO, RetencionReglaDTO } from '@/types/api';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ const chipColor = (tipo: string) => {
   return map[tipo] ?? 'default';
 };
 
-type TabType = 'impuestos' | 'retenciones' | 'conceptos';
+type TabType = 'impuestos' | 'retenciones';
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -55,7 +55,6 @@ export default function ImpuestosPage() {
   const [tab, setTab] = useState<TabType>('impuestos');
   const [impuestos, setImpuestos] = useState<ImpuestoDTO[]>([]);
   const [retenciones, setRetenciones] = useState<RetencionReglaDTO[]>([]);
-  const [conceptos, setConceptos] = useState<ConceptoRetencionDTO[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Dialogo impuesto
@@ -66,14 +65,9 @@ export default function ImpuestosPage() {
   // Dialogo retencion
   const [openRetDialog, setOpenRetDialog] = useState(false);
   const [editRetencion, setEditRetencion] = useState<RetencionReglaDTO | null>(null);
-  const [retForm, setRetForm] = useState({ nombre: '', tipo: 'ReteFuente', porcentaje: '', baseMinUVT: '4', codigoMunicipio: '', perfilVendedor: 'REGIMEN_ORDINARIO', perfilComprador: 'GRAN_CONTRIBUYENTE', cuentaContable: '', conceptoRetencionId: '' });
+  const [retForm, setRetForm] = useState({ nombre: '', tipo: 'ReteFuente', porcentaje: '', baseMinUVT: '4', codigoMunicipio: '', perfilVendedor: 'REGIMEN_ORDINARIO', perfilComprador: 'GRAN_CONTRIBUYENTE', cuentaContable: '' });
 
-  // Dialogo concepto retencion
-  const [openConceptoDialog, setOpenConceptoDialog] = useState(false);
-  const [editConcepto, setEditConcepto] = useState<ConceptoRetencionDTO | null>(null);
-  const [conceptoForm, setConceptoForm] = useState({ nombre: '', codigoDian: '', porcentajeSugerido: '' });
-
-  useEffect(() => { cargarImpuestos(); cargarRetenciones(); cargarConceptos(); }, []);
+  useEffect(() => { cargarImpuestos(); cargarRetenciones(); }, []);
 
   const cargarImpuestos = async () => {
     try { setImpuestos(await impuestosApi.getAll()); }
@@ -83,11 +77,6 @@ export default function ImpuestosPage() {
   const cargarRetenciones = async () => {
     try { setRetenciones(await retencionesApi.getAll()); }
     catch { setError('Error al cargar retenciones'); }
-  };
-
-  const cargarConceptos = async () => {
-    try { setConceptos(await conceptosRetencionApi.getAll()); }
-    catch { setError('Error al cargar conceptos de retencion'); }
   };
 
   // ── Impuestos handlers ────────────────────────────────────────────────────
@@ -145,7 +134,7 @@ export default function ImpuestosPage() {
 
   const openCrearRetencion = () => {
     setEditRetencion(null);
-    setRetForm({ nombre: '', tipo: 'ReteFuente', porcentaje: '', baseMinUVT: '4', codigoMunicipio: '', perfilVendedor: 'REGIMEN_ORDINARIO', perfilComprador: 'GRAN_CONTRIBUYENTE', cuentaContable: '', conceptoRetencionId: '' });
+    setRetForm({ nombre: '', tipo: 'ReteFuente', porcentaje: '', baseMinUVT: '4', codigoMunicipio: '', perfilVendedor: 'REGIMEN_ORDINARIO', perfilComprador: 'GRAN_CONTRIBUYENTE', cuentaContable: '' });
     setOpenRetDialog(true);
   };
 
@@ -159,7 +148,6 @@ export default function ImpuestosPage() {
       perfilVendedor: r.perfilVendedor,
       perfilComprador: r.perfilComprador,
       cuentaContable: r.codigoCuentaContable ?? '',
-      conceptoRetencionId: r.conceptoRetencionId ? String(r.conceptoRetencionId) : '',
     });
     setOpenRetDialog(true);
   };
@@ -174,7 +162,6 @@ export default function ImpuestosPage() {
         perfilVendedor: retForm.perfilVendedor,
         perfilComprador: retForm.perfilComprador,
         codigoCuentaContable: retForm.cuentaContable || undefined,
-        conceptoRetencionId: retForm.conceptoRetencionId ? parseInt(retForm.conceptoRetencionId) : undefined,
       };
       if (editRetencion) await retencionesApi.update(editRetencion.id, payload);
       else await retencionesApi.create(payload);
@@ -195,50 +182,6 @@ export default function ImpuestosPage() {
     catch { setError('No se puede activar la retención'); }
   };
 
-  // ── Conceptos Retencion handlers ──────────────────────────────────────────
-
-  const openCrearConcepto = () => {
-    setEditConcepto(null);
-    setConceptoForm({ nombre: '', codigoDian: '', porcentajeSugerido: '' });
-    setOpenConceptoDialog(true);
-  };
-
-  const openEditarConcepto = (c: ConceptoRetencionDTO) => {
-    setEditConcepto(c);
-    setConceptoForm({
-      nombre: c.nombre,
-      codigoDian: c.codigoDian ?? '',
-      porcentajeSugerido: c.porcentajeSugerido != null ? String(c.porcentajeSugerido) : '',
-    });
-    setOpenConceptoDialog(true);
-  };
-
-  const guardarConcepto = async () => {
-    try {
-      const payload = {
-        nombre: conceptoForm.nombre,
-        codigoDian: conceptoForm.codigoDian || undefined,
-        porcentajeSugerido: conceptoForm.porcentajeSugerido ? parseFloat(conceptoForm.porcentajeSugerido) : undefined,
-      };
-      if (editConcepto) await conceptosRetencionApi.update(editConcepto.id, payload);
-      else await conceptosRetencionApi.create(payload);
-      setOpenConceptoDialog(false);
-      await cargarConceptos();
-    } catch { setError('Error al guardar el concepto de retencion'); }
-  };
-
-  const desactivarConcepto = async (id: number) => {
-    if (!window.confirm('Desactivar este concepto de retencion?')) return;
-    try { await conceptosRetencionApi.deactivate(id); await cargarConceptos(); }
-    catch { setError('No se puede desactivar el concepto'); }
-  };
-
-  const activarConcepto = async (id: number) => {
-    if (!window.confirm('¿Activar este concepto de retención?')) return;
-    try { await conceptosRetencionApi.activate(id); await cargarConceptos(); }
-    catch { setError('No se puede activar el concepto'); }
-  };
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -246,7 +189,7 @@ export default function ImpuestosPage() {
 
       <ReportePageHeader
         title="Motor de Impuestos"
-        subtitle="Configuración de IVA, INC, retenciones DIAN y conceptos"
+        subtitle="Configuración de IVA, INC y retenciones"
         breadcrumbs={[
           { label: 'Configuración', path: '/configuracion' },
           { label: 'Motor de Impuestos' },
@@ -267,12 +210,6 @@ export default function ImpuestosPage() {
                 Nueva Retencion
               </Button>
             )}
-            {tab === 'conceptos' && (
-              <Button id="btn-nuevo-concepto" variant="contained" startIcon={<AddIcon />} onClick={openCrearConcepto}
-                sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', fontWeight: 700, '&:hover': { bgcolor: 'rgba(255,255,255,0.25)', borderColor: '#fff' } }}>
-                Nuevo Concepto
-              </Button>
-            )}
           </Box>
         }
       />
@@ -284,7 +221,6 @@ export default function ImpuestosPage() {
         {([
           { key: 'impuestos' as TabType, label: 'Impuestos (IVA, INC...)' },
           { key: 'retenciones' as TabType, label: 'Retenciones' },
-          { key: 'conceptos' as TabType, label: 'Conceptos Retencion DIAN' },
         ]).map((t) => (
           <Button key={t.key} id={`tab-${t.key}`}
             variant={tab === t.key ? 'contained' : 'outlined'}
@@ -376,7 +312,6 @@ export default function ImpuestosPage() {
                 <TableCell>Tipo</TableCell>
                 <TableCell align="right">%</TableCell>
                 <TableCell align="right">Base mín. (UVT)</TableCell>
-                <TableCell>Concepto DIAN</TableCell>
                 <TableCell>Municipio</TableCell>
                 <TableCell>Perfil Vendedor / Comprador</TableCell>
                 <TableCell>Estado</TableCell>
@@ -390,11 +325,6 @@ export default function ImpuestosPage() {
                   <TableCell><Chip label={TIPO_RETENCION_LABELS[r.tipo] ?? r.tipo} size="small" color="warning" /></TableCell>
                   <TableCell align="right">{(r.porcentaje * 100).toFixed(3)}%</TableCell>
                   <TableCell align="right">{r.baseMinUVT}</TableCell>
-                  <TableCell>
-                    {r.conceptoRetencionNombre
-                      ? <Chip label={r.conceptoRetencionNombre} size="small" variant="outlined" color="info" />
-                      : <Typography variant="caption" color="text.secondary">Todos</Typography>}
-                  </TableCell>
                   <TableCell>{r.codigoMunicipio ?? 'Nacional'}</TableCell>
                   <TableCell>
                     <Typography variant="caption">{r.perfilVendedor} / {r.perfilComprador}</Typography>
@@ -410,54 +340,7 @@ export default function ImpuestosPage() {
                 </TableRow>
               ))}
               {retenciones.length === 0 && (
-                <TableRow><TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>No hay reglas de retencion</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-
-      {/* ── Tabla de Conceptos de Retencion ─────────────────────────────────── */}
-      {tab === 'conceptos' && (
-        <TableContainer component={Paper} variant="outlined">
-          <Table id="tabla-conceptos-retencion" size="small">
-            <TableHead>
-              <TableRow
-                sx={{
-                  background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
-                  '& .MuiTableCell-head': {
-                    color: HERO_COLOR, fontWeight: 700,
-                    fontSize: '0.75rem', textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
-                  },
-                }}
-              >
-                <TableCell>Nombre</TableCell>
-                <TableCell>Código DIAN</TableCell>
-                <TableCell align="right">% Sugerido</TableCell>
-                <TableCell>Estado</TableCell>
-                <TableCell align="center">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {conceptos.map((c) => (
-                <TableRow key={c.id} hover sx={{ opacity: c.activo ? 1 : 0.5 }}>
-                  <TableCell><Typography fontWeight={600}>{c.nombre}</Typography></TableCell>
-                  <TableCell><code>{c.codigoDian ?? '\u2014'}</code></TableCell>
-                  <TableCell align="right">{c.porcentajeSugerido != null ? `${c.porcentajeSugerido}%` : '\u2014'}</TableCell>
-                  <TableCell><Chip label={c.activo ? 'Activo' : 'Inactivo'} size="small" color={c.activo ? 'success' : 'default'} /></TableCell>
-                  <TableCell align="center">
-                    <Tooltip title="Editar"><IconButton id={`btn-editar-concepto-${c.id}`} size="small" onClick={() => openEditarConcepto(c)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                    {c.activo
-                      ? <Tooltip title="Desactivar"><IconButton id={`btn-desactivar-concepto-${c.id}`} size="small" color="error" onClick={() => desactivarConcepto(c.id)}><BlockIcon fontSize="small" /></IconButton></Tooltip>
-                      : <Tooltip title="Activar"><IconButton id={`btn-activar-concepto-${c.id}`} size="small" color="success" onClick={() => activarConcepto(c.id)}><ActivarIcon fontSize="small" /></IconButton></Tooltip>
-                    }
-                  </TableCell>
-                </TableRow>
-              ))}
-              {conceptos.length === 0 && (
-                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>No hay conceptos de retencion</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>No hay reglas de retencion</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -509,27 +392,6 @@ export default function ImpuestosPage() {
             <TextField id="ret-porcentaje" label="Porcentaje (%)" type="number" value={retForm.porcentaje} onChange={e => setRetForm(f => ({ ...f, porcentaje: e.target.value }))} helperText="Ej: 2.5" />
             <TextField id="ret-base-uvt" label="Base minima (UVT)" type="number" value={retForm.baseMinUVT} onChange={e => setRetForm(f => ({ ...f, baseMinUVT: e.target.value }))} helperText="Ej: 4 UVT" />
           </Box>
-          {retForm.tipo === 'ReteFuente' && (
-            <FormControl fullWidth>
-              <InputLabel id="ret-concepto-label">Concepto Retencion DIAN</InputLabel>
-              <Select
-                id="ret-concepto"
-                labelId="ret-concepto-label"
-                label="Concepto Retencion DIAN"
-                value={retForm.conceptoRetencionId}
-                onChange={e => setRetForm(f => ({ ...f, conceptoRetencionId: e.target.value }))}
-              >
-                <MenuItem value="">
-                  <em>Todos los conceptos</em>
-                </MenuItem>
-                {conceptos.filter(c => c.activo).map(c => (
-                  <MenuItem key={c.id} value={String(c.id)}>
-                    {c.codigoDian ? `${c.codigoDian} - ` : ''}{c.nombre}{c.porcentajeSugerido != null ? ` (${c.porcentajeSugerido}%)` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
           <TextField id="ret-municipio" label="Codigo Municipio DANE" value={retForm.codigoMunicipio} onChange={e => setRetForm(f => ({ ...f, codigoMunicipio: e.target.value }))} helperText="Solo ReteICA: 11001 = Bogota. Vacio = Nacional." />
           <FormControl fullWidth>
             <InputLabel>Perfil Vendedor</InputLabel>
@@ -551,42 +413,6 @@ export default function ImpuestosPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ── Dialog Concepto Retencion ──────────────────────────────────────── */}
-      <Dialog open={openConceptoDialog} onClose={() => setOpenConceptoDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editConcepto ? 'Editar Concepto de Retencion' : 'Nuevo Concepto de Retencion'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
-          <TextField
-            id="concepto-nombre"
-            label="Nombre"
-            value={conceptoForm.nombre}
-            onChange={e => setConceptoForm(f => ({ ...f, nombre: e.target.value }))}
-            fullWidth
-            required
-            helperText="Ej: Compras generales, Servicios generales, Honorarios"
-          />
-          <TextField
-            id="concepto-codigo-dian"
-            label="Codigo DIAN"
-            value={conceptoForm.codigoDian}
-            onChange={e => setConceptoForm(f => ({ ...f, codigoDian: e.target.value }))}
-            fullWidth
-            helperText="Ej: 2307 (Compras), 2304 (Servicios), 2301 (Honorarios)"
-          />
-          <TextField
-            id="concepto-porcentaje"
-            label="Porcentaje Sugerido (%)"
-            type="number"
-            value={conceptoForm.porcentajeSugerido}
-            onChange={e => setConceptoForm(f => ({ ...f, porcentajeSugerido: e.target.value }))}
-            fullWidth
-            helperText="Referencia para la interfaz. Ej: 2.5, 4, 11"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenConceptoDialog(false)}>Cancelar</Button>
-          <Button id="btn-guardar-concepto" variant="contained" onClick={guardarConcepto} disabled={!conceptoForm.nombre}>Guardar</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

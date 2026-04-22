@@ -372,7 +372,6 @@ export function VentasPage() {
                 <TableCell align="right">Total</TableCell>
                 <TableCell>Método Pago</TableCell>
                 <TableCell>Estado</TableCell>
-                <TableCell>DIAN</TableCell>
                 <TableCell align="center">ERP</TableCell>
                 <TableCell align="center">Acciones</TableCell>
               </TableRow>
@@ -418,13 +417,6 @@ export function VentasPage() {
                     </TableCell>
                     <TableCell>
                       <Chip label={estadoMeta.label} color={estadoMeta.color} size="small" sx={{ fontWeight: 600 }} />
-                    </TableCell>
-                    <TableCell>
-                      {venta.requiereFacturaElectronica ? (
-                        <Chip label="FE" size="small" color="info" variant="outlined" />
-                      ) : (
-                        <Typography variant="caption" color="text.disabled">—</Typography>
-                      )}
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip

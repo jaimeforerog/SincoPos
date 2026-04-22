@@ -8,7 +8,6 @@ import {
   Assessment,
   Settings,
   Inventory,
-  Article,
   Hub,
   AccountTree,
 } from '@mui/icons-material';
@@ -68,12 +67,6 @@ export const menuSections: MenuSection[] = [
         text: 'Inventario',
         icon: <Inventory />,
         path: '/reportes/gestion-inventario',
-        roles: ['supervisor', 'admin'],
-      },
-      {
-        text: 'Facturación DIAN',
-        icon: <Article />,
-        path: '/facturacion',
         roles: ['supervisor', 'admin'],
       },
     ],
