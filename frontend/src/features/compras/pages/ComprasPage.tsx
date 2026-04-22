@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Paper,
+  Pagination,
   Typography,
   Table,
   TableBody,
@@ -101,6 +102,8 @@ export function ComprasPage() {
   const navigate = useNavigate();
   const activeSucursalId = useAuthStore((s) => s.activeSucursalId);
   const [estadoFiltro, setEstadoFiltro] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
   const [showDetalleDialog, setShowDetalleDialog] = useState(false);
   const [showAprobarDialog, setShowAprobarDialog] = useState(false);
   const [showRechazarDialog, setShowRechazarDialog] = useState(false);
@@ -111,15 +114,18 @@ export function ComprasPage() {
   const queryClient = useQueryClient();
 
   const { data: ordenesPage, isLoading, error, refetch } = useQuery({
-    queryKey: ['compras', { estado: estadoFiltro, sucursalId: activeSucursalId }],
+    queryKey: ['compras', { estado: estadoFiltro, sucursalId: activeSucursalId, page }],
     queryFn: () => comprasApi.getAll({
       estado: estadoFiltro || undefined,
       sucursalId: activeSucursalId ?? undefined,
-      pageSize: 100,
+      page,
+      pageSize,
     }),
     enabled: activeSucursalId != null,
   });
   const ordenes = ordenesPage?.items ?? [];
+  const totalCount = ordenesPage?.totalCount ?? 0;
+  const totalPages = ordenesPage?.totalPages ?? 1;
 
   const { data: erroresErp = [] } = useQuery({
     queryKey: ['erp-outbox-errores'],
@@ -286,14 +292,14 @@ export function ComprasPage() {
               clickable
               variant={estadoFiltro === e.value ? 'filled' : 'outlined'}
               color={estadoFiltro === e.value ? 'primary' : 'default'}
-              onClick={() => setEstadoFiltro(e.value)}
+              onClick={() => { setEstadoFiltro(e.value); setPage(1); }}
               sx={{ fontWeight: estadoFiltro === e.value ? 700 : 400 }}
             />
           ))}
         </Box>
         <Box sx={{ ml: 'auto' }}>
           <Typography variant="caption" color="text.secondary">
-            {ordenes.length} resultado{ordenes.length !== 1 ? 's' : ''}
+            {totalCount} resultado{totalCount !== 1 ? 's' : ''}
           </Typography>
         </Box>
       </Box>
@@ -480,6 +486,20 @@ export function ComprasPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2.5 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, p) => setPage(p)}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       )}
 
       {selectedOrden && (

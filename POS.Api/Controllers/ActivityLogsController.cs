@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using POS.Application.DTOs;
 using POS.Application.Services;
+using POS.Infrastructure.Data;
 
 namespace POS.Api.Controllers;
 
@@ -15,13 +17,16 @@ namespace POS.Api.Controllers;
 public class ActivityLogsController : ControllerBase
 {
     private readonly IActivityLogService _activityLogService;
+    private readonly AppDbContext _context;
     private readonly ILogger<ActivityLogsController> _logger;
 
     public ActivityLogsController(
         IActivityLogService activityLogService,
+        AppDbContext context,
         ILogger<ActivityLogsController> logger)
     {
         _activityLogService = activityLogService;
+        _context = context;
         _logger = logger;
     }
 
@@ -202,5 +207,81 @@ public class ActivityLogsController : ControllerBase
             .ToDictionary(t => (int)t, t => t.ToString());
 
         return Ok(types);
+    }
+
+    /// <summary>
+    /// Consultar logs archivados (histórico más allá de la retención activa)
+    /// </summary>
+    /// <remarks>
+    /// Logs movidos desde activity_logs al archivo histórico. Sin FKs activas,
+    /// por lo que UsuarioNombre y NombreSucursal siempre son null.
+    /// Soporta los mismos filtros que GET /.
+    /// </remarks>
+    [HttpGet("archivo")]
+    [Authorize(Policy = "Supervisor")]
+    public async Task<ActionResult<PaginatedResult<ActivityLogFullDto>>> GetArchive(
+        [FromQuery] DateTime? fechaDesde = null,
+        [FromQuery] DateTime? fechaHasta = null,
+        [FromQuery] string? usuarioEmail = null,
+        [FromQuery] TipoActividad? tipo = null,
+        [FromQuery] string? accion = null,
+        [FromQuery] int? sucursalId = null,
+        [FromQuery] string? tipoEntidad = null,
+        [FromQuery] string? entidadId = null,
+        [FromQuery] bool? exitosa = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        if (pageSize > 100) pageSize = 100;
+
+        var query = _context.ActivityLogsArchivo.AsNoTracking();
+
+        if (fechaDesde.HasValue)   query = query.Where(l => l.FechaHora >= fechaDesde.Value);
+        if (fechaHasta.HasValue)   query = query.Where(l => l.FechaHora <= fechaHasta.Value);
+        if (!string.IsNullOrEmpty(usuarioEmail)) query = query.Where(l => l.UsuarioEmail == usuarioEmail);
+        if (tipo.HasValue)         query = query.Where(l => l.Tipo == tipo.Value);
+        if (!string.IsNullOrEmpty(accion))       query = query.Where(l => l.Accion.Contains(accion));
+        if (sucursalId.HasValue)   query = query.Where(l => l.SucursalId == sucursalId.Value);
+        if (!string.IsNullOrEmpty(tipoEntidad))  query = query.Where(l => l.TipoEntidad == tipoEntidad);
+        if (!string.IsNullOrEmpty(entidadId))    query = query.Where(l => l.EntidadId == entidadId);
+        if (exitosa.HasValue)      query = query.Where(l => l.Exitosa == exitosa.Value);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(l => l.FechaHora)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(l => new ActivityLogFullDto(
+                l.Id,
+                l.UsuarioEmail,
+                null,           // UsuarioNombre — sin FK
+                l.UsuarioId,
+                l.FechaHora,
+                l.Accion,
+                l.Tipo,
+                l.Tipo.ToString(),
+                l.SucursalId,
+                null,           // NombreSucursal — sin FK
+                l.IpAddress,
+                l.UserAgent,
+                l.TipoEntidad,
+                l.EntidadId,
+                l.EntidadNombre,
+                l.Descripcion,
+                l.DatosAnteriores,
+                l.DatosNuevos,
+                l.Metadatos,
+                l.Exitosa,
+                l.MensajeError))
+            .ToListAsync();
+
+        _logger.LogInformation(
+            "Usuario {Email} consultó activity_logs_archivo. Resultados: {Count}/{Total}",
+            User.Identity?.Name ?? "Unknown",
+            items.Count,
+            totalCount);
+
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new PaginatedResult<ActivityLogFullDto>(items, totalCount, pageNumber, pageSize, totalPages));
     }
 }

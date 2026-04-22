@@ -438,8 +438,15 @@ public class VentaService : IVentaService
             foreach (var (sid, evt) in pendingMartenEvents)
                 martenTx.Events.Append(sid, evt);
 
-            if (externalId != null && Guid.TryParse(externalId, out var userStreamId))
+            if (externalId != null)
             {
+                // WorkOS user IDs son "user_xxx" — no GUIDs. Se deriva un stream key
+                // determinístico para que todas las ventas del mismo usuario queden
+                // en el mismo stream y las proyecciones acumulen correctamente.
+                var userStreamId = new Guid(
+                    System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(externalId))[..16]);
+
                 var ventaEvt = new VentaCompletadaEvent(
                     ExternalUserId: externalId,
                     SucursalId:     dto.SucursalId,

@@ -345,6 +345,17 @@ jobs:
           app-name: sincopos-functions
           package: ./functions-output
 
+      - name: Configure Function App Settings
+        run: |
+          az functionapp config appsettings set \
+            --name sincopos-functions \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              ConnectionStrings__Postgres="${{ secrets.DB_CONNECTION_STRING }}" \
+              ActivityLogCleanup__RetentionDays="180" \
+              ActivityLogCleanup__ArchiveRetentionDays="730" \
+              ActivityLogCleanup__BatchSize="1000"
+
   # ── Deploy Frontend: Azure Static Web Apps — rama main ──────────────────────
   deploy-frontend:
     name: Deploy Frontend → Production
