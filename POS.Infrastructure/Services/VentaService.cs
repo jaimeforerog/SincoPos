@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Domain.Aggregates;
+using POS.Domain.Events.Inventario;
 using POS.Domain.Events.Venta;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Data.Entities;
@@ -244,9 +245,18 @@ public class VentaService : IVentaService
             if (aggregate == null)
                 return (null, $"No hay registro de inventario para {producto.Nombre}.");
 
-            var eventoVenta = aggregate.RegistrarSalidaVenta(
-                linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta,
-                usuarioIdVenta, fechaMovimiento: fechaVentaEfectiva);
+            SalidaVentaRegistrada eventoVenta;
+            try
+            {
+                eventoVenta = aggregate.RegistrarSalidaVenta(
+                    linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta,
+                    usuarioIdVenta, fechaMovimiento: fechaVentaEfectiva);
+            }
+            catch (InvalidOperationException)
+            {
+                return (null, $"Stock insuficiente para {producto.Nombre}. " +
+                    $"Disponible: {aggregate.Cantidad}, Solicitado: {linea.Cantidad}");
+            }
             pendingMartenEvents.Add((streamId, eventoVenta));
 
             // Consumir inventario con la estrategia de costeo (delegada a IVentaCosteoService)
