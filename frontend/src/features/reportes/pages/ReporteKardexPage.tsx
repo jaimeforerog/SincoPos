@@ -126,6 +126,7 @@ export function ReporteKardexPage() {
          const val = value as string;
          const mapper: Record<string, string> = {
              'EntradaCompra': 'Compra',
+             'EntradaManual': 'Entrada Manual',
              'SalidaVenta': 'Venta',
              'DevolucionCompra': 'Dev. Compra',
              'Ajuste': 'Ajuste',

@@ -345,6 +345,17 @@ public class InventarioController : ControllerBase
                             e.Timestamp.UtcDateTime);
                         break;
 
+                    case POS.Domain.Events.Inventario.EntradaManualRegistrada manual:
+                        mov = new MovimientoInventarioDto(
+                            (int)e.Version, manual.ProductoId, prodNombre,
+                            manual.SucursalId, sucNombre,
+                            "EntradaManual", manual.Cantidad, manual.CostoUnitario,
+                            manual.CostoTotal, manual.PorcentajeImpuesto, manual.MontoImpuesto,
+                            manual.Referencia, manual.Observaciones,
+                            manual.TerceroId, manual.NombreTercero,
+                            e.Timestamp.UtcDateTime);
+                        break;
+
                     case POS.Domain.Events.Inventario.DevolucionProveedorRegistrada devolucion:
                         mov = new MovimientoInventarioDto(
                             (int)e.Version, devolucion.ProductoId, prodNombre,

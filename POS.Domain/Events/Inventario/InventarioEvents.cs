@@ -41,6 +41,24 @@ public class EntradaCompraRegistrada : BaseEvent
 }
 
 /// <summary>
+/// Entrada manual de mercancía al inventario (no asociada a una orden de compra)
+/// </summary>
+public class EntradaManualRegistrada : BaseEvent
+{
+    public Guid ProductoId { get; set; }
+    public int SucursalId { get; set; }
+    public decimal Cantidad { get; set; }
+    public decimal CostoUnitario { get; set; }
+    public decimal CostoTotal { get; set; }
+    public decimal PorcentajeImpuesto { get; set; }
+    public decimal MontoImpuesto { get; set; }
+    public int? TerceroId { get; set; }
+    public string? NombreTercero { get; set; }
+    public string Referencia { get; set; } = string.Empty;
+    public string? Observaciones { get; set; }
+}
+
+/// <summary>
 /// Devolucion de mercancia a un proveedor
 /// </summary>
 public class DevolucionProveedorRegistrada : BaseEvent

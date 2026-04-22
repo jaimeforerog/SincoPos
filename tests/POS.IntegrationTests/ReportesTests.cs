@@ -382,7 +382,7 @@ public class ReportesTests
         var ultimoMov = kardex.Movimientos.Last();
         ultimoMov.Entrada.Should().Be(5);
         ultimoMov.SaldoAcumulado.Should().Be(13);
-        ultimoMov.TipoMovimiento.Should().Be("EntradaCompra");
+        ultimoMov.TipoMovimiento.Should().Be("EntradaManual");
     }
 }
 

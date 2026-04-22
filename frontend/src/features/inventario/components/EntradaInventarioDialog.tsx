@@ -103,7 +103,7 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
   };
 
   const handleSubmit = () => {
-    if (!productoId || !sucursalId || !cantidad || !costoUnitario) {
+    if (!productoId || !sucursalId || !cantidad || !costoUnitario || !referencia.trim()) {
       enqueueSnackbar('Complete los campos obligatorios', { variant: 'warning' });
       return;
     }
@@ -190,11 +190,11 @@ export function EntradaInventarioDialog({ open, onClose, onSuccess }: Props) {
           />
 
           <TextField
-            label="Referencia"
+            label="Referencia *"
             value={referencia}
             onChange={(e) => setReferencia(e.target.value)}
             fullWidth
-            placeholder="Número de factura, orden, etc."
+            placeholder="Número de factura, remisión, etc."
           />
 
           {mostrarFechaMovimiento && (

@@ -63,23 +63,25 @@ public class InventarioService : IInventarioService
 
         if (aggregate == null)
         {
-            var (newAggregate, newEvento) = InventarioAggregate.RegistrarEntrada(
+            var (newAggregate, newEvento) = InventarioAggregate.RegistrarEntradaManual(
                 streamId, dto.ProductoId, dto.SucursalId,
                 dto.Cantidad, dto.CostoUnitario,
                 dto.PorcentajeImpuesto, montoImpuesto,
                 dto.TerceroId, nombreTercero,
-                dto.Referencia, dto.Observaciones,
-                usuarioId: currentUserId, sucursalUsuarioId: dto.SucursalId);
+                dto.Referencia ?? string.Empty, dto.Observaciones,
+                usuarioId: currentUserId, sucursalUsuarioId: dto.SucursalId,
+                fechaMovimiento: dto.FechaMovimiento);
             aggregate = newAggregate;
             _session.Events.StartStream<InventarioAggregate>(streamId, newEvento);
         }
         else
         {
-            var evento = aggregate.AgregarEntrada(
+            var evento = aggregate.AgregarEntradaManual(
                 dto.Cantidad, dto.CostoUnitario,
                 dto.TerceroId, nombreTercero,
-                dto.Referencia, dto.Observaciones,
-                usuarioId: currentUserId);
+                dto.Referencia ?? string.Empty, dto.Observaciones,
+                usuarioId: currentUserId,
+                fechaMovimiento: dto.FechaMovimiento);
             _session.Events.Append(streamId, evento);
         }
 

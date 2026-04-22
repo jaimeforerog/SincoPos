@@ -103,6 +103,11 @@ public class KardexService : IKardexService
             costoPromedio = RecalcularPromedio(saldo, costoPromedio, ec.Cantidad, ec.CostoUnitario);
             saldo += ec.Cantidad;
         }
+        else if (evtData is EntradaManualRegistrada em)
+        {
+            costoPromedio = RecalcularPromedio(saldo, costoPromedio, em.Cantidad, em.CostoUnitario);
+            saldo += em.Cantidad;
+        }
         else if (evtData is SalidaVentaRegistrada sv) saldo -= sv.Cantidad;
         else if (evtData is DevolucionProveedorRegistrada dp) saldo -= dp.Cantidad;
         else if (evtData is AjusteInventarioRegistrado ai) { saldo = ai.CantidadNueva; costoPromedio = ai.CostoUnitario; }
@@ -133,6 +138,16 @@ public class KardexService : IKardexService
                 costoTotal = ec.CostoTotal;
                 costoPromedio = RecalcularPromedio(saldo, costoPromedio, ec.Cantidad, ec.CostoUnitario);
                 saldo += ec.Cantidad;
+                break;
+            case EntradaManualRegistrada em:
+                tipo = "EntradaManual";
+                referencia = em.Referencia;
+                observaciones = em.Observaciones ?? "";
+                entrada = em.Cantidad;
+                costoUnitario = em.CostoUnitario;
+                costoTotal = em.CostoTotal;
+                costoPromedio = RecalcularPromedio(saldo, costoPromedio, em.Cantidad, em.CostoUnitario);
+                saldo += em.Cantidad;
                 break;
             case SalidaVentaRegistrada sv:
                 tipo = "SalidaVenta";

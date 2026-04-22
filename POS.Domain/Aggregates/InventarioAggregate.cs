@@ -117,6 +117,82 @@ public class InventarioAggregate
         return evento;
     }
 
+    public static (InventarioAggregate aggregate, EntradaManualRegistrada evento) RegistrarEntradaManual(
+        Guid streamId,
+        Guid productoId,
+        int sucursalId,
+        decimal cantidad,
+        decimal costoUnitario,
+        decimal porcentajeImpuesto,
+        decimal montoImpuesto,
+        int? terceroId,
+        string? nombreTercero,
+        string referencia,
+        string? observaciones,
+        int? usuarioId,
+        int? sucursalUsuarioId,
+        DateTime? fechaMovimiento = null)
+    {
+        if (cantidad <= 0)
+            throw new InvalidOperationException("La cantidad debe ser mayor a 0.");
+        if (costoUnitario < 0)
+            throw new InvalidOperationException("El costo no puede ser negativo.");
+
+        var aggregate = new InventarioAggregate();
+        var evento = new EntradaManualRegistrada
+        {
+            ProductoId = productoId,
+            SucursalId = sucursalId,
+            Cantidad = cantidad,
+            CostoUnitario = costoUnitario,
+            CostoTotal = cantidad * costoUnitario,
+            PorcentajeImpuesto = porcentajeImpuesto,
+            MontoImpuesto = montoImpuesto,
+            TerceroId = terceroId,
+            NombreTercero = nombreTercero,
+            Referencia = referencia,
+            Observaciones = observaciones,
+            UsuarioId = usuarioId,
+            Timestamp = fechaMovimiento ?? DateTime.UtcNow
+        };
+
+        aggregate.Apply(evento);
+        aggregate.Id = streamId;
+        return (aggregate, evento);
+    }
+
+    public EntradaManualRegistrada AgregarEntradaManual(
+        decimal cantidad,
+        decimal costoUnitario,
+        int? terceroId,
+        string? nombreTercero,
+        string referencia,
+        string? observaciones,
+        int? usuarioId,
+        DateTime? fechaMovimiento = null)
+    {
+        if (cantidad <= 0)
+            throw new InvalidOperationException("La cantidad debe ser mayor a 0.");
+
+        var evento = new EntradaManualRegistrada
+        {
+            ProductoId = this.ProductoId,
+            SucursalId = this.SucursalId,
+            Cantidad = cantidad,
+            CostoUnitario = costoUnitario,
+            CostoTotal = cantidad * costoUnitario,
+            TerceroId = terceroId,
+            NombreTercero = nombreTercero,
+            Referencia = referencia,
+            Observaciones = observaciones,
+            UsuarioId = usuarioId,
+            Timestamp = fechaMovimiento ?? DateTime.UtcNow
+        };
+
+        Apply(evento);
+        return evento;
+    }
+
     public DevolucionProveedorRegistrada RegistrarDevolucion(
         decimal cantidad,
         int terceroId,
@@ -313,6 +389,22 @@ public class InventarioAggregate
         Cantidad = cantidadTotal;
 
         // Agregar lote — usa Timestamp del evento para garantizar idempotencia en replay
+        _lotes.Add(new LoteInterno(e.Cantidad, e.CostoUnitario, e.Timestamp));
+    }
+
+    public void Apply(EntradaManualRegistrada e)
+    {
+        ProductoId = e.ProductoId;
+        SucursalId = e.SucursalId;
+
+        var costoTotalAnterior = Cantidad * CostoPromedio;
+        var costoEntrada = e.Cantidad * e.CostoUnitario;
+        var cantidadTotal = Cantidad + e.Cantidad;
+        CostoPromedio = cantidadTotal > 0
+            ? (costoTotalAnterior + costoEntrada) / cantidadTotal
+            : e.CostoUnitario;
+
+        Cantidad = cantidadTotal;
         _lotes.Add(new LoteInterno(e.Cantidad, e.CostoUnitario, e.Timestamp));
     }
 

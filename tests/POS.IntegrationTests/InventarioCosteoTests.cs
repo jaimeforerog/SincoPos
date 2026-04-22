@@ -333,8 +333,8 @@ public class InventarioCosteoTests
 
         movimientos.Should().HaveCount(3);
         movimientos[0].TipoMovimiento.Should().Be("DevolucionProveedor");
-        movimientos[1].TipoMovimiento.Should().Be("EntradaCompra");
-        movimientos[2].TipoMovimiento.Should().Be("EntradaCompra");
+        movimientos[1].TipoMovimiento.Should().Be("EntradaManual");
+        movimientos[2].TipoMovimiento.Should().Be("EntradaManual");
         movimientos.Should().OnlyContain(m => m.NombreProducto != "");
     }
 
