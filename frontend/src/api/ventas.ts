@@ -5,6 +5,7 @@ export const ventasApi = {
   getAll: async (params?: {
     sucursalId?: number;
     cajaId?: number;
+    clienteId?: number;
     desde?: string;
     hasta?: string;
     estado?: string;

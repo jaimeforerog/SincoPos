@@ -28,14 +28,16 @@ import {
   type ChipProps,
 } from '@mui/material';
 import UndoIcon2 from '@mui/icons-material/AssignmentReturn';
+import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '@/hooks/useAuth';
 import { ventasApi } from '@/api/ventas';
+import { tercerosApi } from '@/api/terceros';
 import { devolucionesApi } from '@/api/devoluciones';
 import { formatCurrency, formatDate } from '@/utils/format';
 import { useSnackbar } from 'notistack';
 import SearchIcon from '@mui/icons-material/Search';
 import UndoIcon from '@mui/icons-material/Undo';
-import type { VentaDTO , ApiError} from '@/types/api';
+import type { VentaDTO, TerceroDTO, ApiError} from '@/types/api';
 
 interface DevolucionFormData {
   [productoId: string]: number; // productoId -> cantidad a devolver
@@ -62,27 +64,44 @@ const getDaysAgo = (days: number): string => {
 
 export function DevolucionesPage() {
   const { activeSucursalId } = useAuth();
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<TerceroDTO | null>(null);
+  const [busquedaCliente, setBusquedaCliente] = useState('');
   const [ventaSeleccionada, setVentaSeleccionada] = useState<VentaDTO | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [cantidadesDevolver, setCantidadesDevolver] = useState<DevolucionFormData>({});
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [fechaDesde, setFechaDesde] = useState<string>(getDaysAgo(30));
-  const [fechaHasta, setFechaHasta] = useState<string>(formatDateForInput(new Date())); // Hoy
+  const [fechaHasta, setFechaHasta] = useState<string>(formatDateForInput(new Date()));
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
 
-  // Cargar ventas completadas con filtros de fecha y sucursal activa
+  // Paso 1 — buscar clientes que tengan ventas
+  const { data: clientesPage, isLoading: loadingClientes } = useQuery({
+    queryKey: ['clientes-devolucion', busquedaCliente],
+    queryFn: () =>
+      tercerosApi.getAll({
+        q: busquedaCliente || undefined,
+        esCliente: true,
+        pageSize: 50,
+      }),
+    enabled: busquedaCliente.length >= 2 || busquedaCliente === '',
+  });
+  const clientes = clientesPage?.items ?? [];
+
+  // Paso 2 — cargar ventas del cliente seleccionado
   const { data: ventasPage, isLoading: loadingVentas } = useQuery({
-    queryKey: ['ventas-devoluciones', activeSucursalId, fechaDesde, fechaHasta],
+    queryKey: ['ventas-devoluciones', activeSucursalId, clienteSeleccionado?.id, fechaDesde, fechaHasta],
     queryFn: () =>
       ventasApi.getAll({
         sucursalId: activeSucursalId || undefined,
+        clienteId: clienteSeleccionado!.id,
         estado: 'Completada',
         desde: fechaDesde ? new Date(fechaDesde + 'T00:00:00').toISOString() : undefined,
         hasta: fechaHasta ? new Date(fechaHasta + 'T23:59:59').toISOString() : undefined,
         pageSize: 100,
       }),
+    enabled: !!clienteSeleccionado,
   });
   const ventas = ventasPage?.items ?? [];
 
@@ -118,6 +137,13 @@ export function DevolucionesPage() {
       });
     },
   });
+
+  const handleSeleccionarCliente = (tercero: TerceroDTO | null) => {
+    setClienteSeleccionado(tercero);
+    setVentaSeleccionada(null);
+    setCantidadesDevolver({});
+    setValidationErrors({});
+  };
 
   const handleSeleccionarVenta = async (venta: VentaDTO | null) => {
     if (!venta) {
@@ -317,46 +343,32 @@ export function DevolucionesPage() {
             Buscar Venta para Devolución
           </Typography>
 
-          <Stack spacing={1.5}>
-            {/* Fila única: todos los filtros */}
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-              <TextField
-                label="Fecha Desde"
-                type="date"
-                value={fechaDesde}
-                onChange={(e) => { setFechaDesde(e.target.value); setVentaSeleccionada(null); }}
-                size="small"
-                sx={{ minWidth: 155 }}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                label="Fecha Hasta"
-                type="date"
-                value={fechaHasta}
-                onChange={(e) => { setFechaHasta(e.target.value); setVentaSeleccionada(null); }}
-                size="small"
-                sx={{ minWidth: 155 }}
-                InputLabelProps={{ shrink: true }}
-              />
+          <Stack spacing={2}>
+            {/* Paso 1 — Cliente */}
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Paso 1 — Seleccionar cliente
+              </Typography>
               <Autocomplete
-                options={ventas}
-                getOptionLabel={(option) => option.numeroVenta}
-                value={ventaSeleccionada}
-                onChange={(_, newValue) => { handleSeleccionarVenta(newValue); }}
-                loading={loadingVentas}
+                options={clientes}
+                getOptionLabel={(option) => `${option.nombre} (${option.identificacion})`}
+                value={clienteSeleccionado}
+                onChange={(_, newValue) => handleSeleccionarCliente(newValue)}
+                onInputChange={(_, value) => setBusquedaCliente(value)}
+                loading={loadingClientes}
                 size="small"
-                sx={{ minWidth: 220 }}
+                sx={{ maxWidth: 480 }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="N° venta"
-                    placeholder="V-000001"
+                    label="Nombre o identificación del cliente"
+                    placeholder="Escriba para buscar..."
                     InputProps={{
                       ...params.InputProps,
-                      startAdornment: <SearchIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 0.5 }} />,
+                      startAdornment: <PersonIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 0.5 }} />,
                       endAdornment: (
                         <>
-                          {loadingVentas ? <CircularProgress color="inherit" size={16} /> : null}
+                          {loadingClientes ? <CircularProgress color="inherit" size={16} /> : null}
                           {params.InputProps.endAdornment}
                         </>
                       ),
@@ -365,33 +377,102 @@ export function DevolucionesPage() {
                 )}
                 renderOption={(props, option) => {
                   const { key, ...restProps } = props as HTMLAttributes<HTMLLIElement> & { key: string };
-                  const diasTranscurridos = Math.floor(
-                    (new Date().getTime() - new Date(option.fechaVenta).getTime()) / (1000 * 60 * 60 * 24)
-                  );
-                  const fueraDeLimite = diasTranscurridos > 30;
                   return (
-                    <Box component="li" key={key} {...restProps} sx={{ opacity: fueraDeLimite ? 0.5 : 1 }}>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
-                          {option.numeroVenta}
-                        </Typography>
+                    <Box component="li" key={key} {...restProps}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>{option.nombre}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {formatDate(option.fechaVenta)} - {formatCurrency(option.total)}
-                          {fueraDeLimite && ` (${diasTranscurridos} días - fuera de límite)`}
+                          {option.tipoIdentificacion} {option.identificacion}
+                          {option.telefono ? ` · ${option.telefono}` : ''}
                         </Typography>
                       </Box>
-                      <Chip label={option.estado} color={getEstadoColor(option.estado)} size="small" />
                     </Box>
                   );
                 }}
-                noOptionsText={loadingVentas ? 'Cargando ventas...' : 'No se encontraron ventas completadas'}
+                noOptionsText={busquedaCliente.length < 2 ? 'Escriba al menos 2 caracteres' : 'No se encontraron clientes'}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                {loadingVentas ? 'Cargando...' : `${ventas.length} venta(s) encontradas`}
-              </Typography>
             </Box>
 
-            {/* Indicador de selección */}
+            {/* Paso 2 — Venta (solo si hay cliente seleccionado) */}
+            {clienteSeleccionado && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Paso 2 — Seleccionar venta de <strong>{clienteSeleccionado.nombre}</strong>
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <TextField
+                    label="Fecha Desde"
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => { setFechaDesde(e.target.value); setVentaSeleccionada(null); }}
+                    size="small"
+                    sx={{ minWidth: 155 }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <TextField
+                    label="Fecha Hasta"
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => { setFechaHasta(e.target.value); setVentaSeleccionada(null); }}
+                    size="small"
+                    sx={{ minWidth: 155 }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <Autocomplete
+                    options={ventas}
+                    getOptionLabel={(option) => option.numeroVenta}
+                    value={ventaSeleccionada}
+                    onChange={(_, newValue) => handleSeleccionarVenta(newValue)}
+                    loading={loadingVentas}
+                    size="small"
+                    sx={{ minWidth: 220 }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="N° venta"
+                        placeholder="V-000001"
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: <SearchIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 0.5 }} />,
+                          endAdornment: (
+                            <>
+                              {loadingVentas ? <CircularProgress color="inherit" size={16} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                    renderOption={(props, option) => {
+                      const { key, ...restProps } = props as HTMLAttributes<HTMLLIElement> & { key: string };
+                      const diasTranscurridos = Math.floor(
+                        (new Date().getTime() - new Date(option.fechaVenta).getTime()) / (1000 * 60 * 60 * 24)
+                      );
+                      const fueraDeLimite = diasTranscurridos > 30;
+                      return (
+                        <Box component="li" key={key} {...restProps} sx={{ opacity: fueraDeLimite ? 0.5 : 1 }}>
+                          <Box sx={{ flexGrow: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                              {option.numeroVenta}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDate(option.fechaVenta)} · {formatCurrency(option.total)}
+                              {fueraDeLimite && ` · ${diasTranscurridos} días — fuera de límite`}
+                            </Typography>
+                          </Box>
+                          <Chip label={option.estado} color={getEstadoColor(option.estado)} size="small" />
+                        </Box>
+                      );
+                    }}
+                    noOptionsText={loadingVentas ? 'Cargando ventas...' : 'No hay ventas completadas en el período'}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                    {loadingVentas ? 'Cargando...' : `${ventas.length} venta(s)`}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+
             {ventaSeleccionada && (
               <Alert severity="info" icon={<SearchIcon />} sx={{ py: 0.5 }}>
                 Venta seleccionada: <strong>{ventaSeleccionada.numeroVenta}</strong> — {formatDate(ventaSeleccionada.fechaVenta)} — {formatCurrency(ventaSeleccionada.total)}

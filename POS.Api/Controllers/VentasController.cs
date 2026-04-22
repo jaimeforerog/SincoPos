@@ -95,6 +95,7 @@ public class VentasController : ControllerBase
     /// </summary>
     /// <param name="sucursalId">Filtrar por sucursal. Null = todas las sucursales.</param>
     /// <param name="cajaId">Filtrar por caja específica.</param>
+    /// <param name="clienteId">Filtrar por cliente (tercero).</param>
     /// <param name="desde">Fecha de inicio del período (UTC).</param>
     /// <param name="hasta">Fecha fin del período (UTC).</param>
     /// <param name="estado">0 = Completada, 1 = Anulada, 2 = Devuelta. Null = todos.</param>
@@ -105,6 +106,7 @@ public class VentasController : ControllerBase
     public async Task<ActionResult<PaginatedResult<VentaDto>>> ListarVentas(
         [FromQuery] int? sucursalId = null,
         [FromQuery] int? cajaId = null,
+        [FromQuery] int? clienteId = null,
         [FromQuery] DateTime? desde = null,
         [FromQuery] DateTime? hasta = null,
         [FromQuery] EstadoVenta? estado = null,
@@ -123,6 +125,7 @@ public class VentasController : ControllerBase
 
         if (sucursalId.HasValue) query = query.Where(v => v.SucursalId == sucursalId.Value);
         if (cajaId.HasValue) query = query.Where(v => v.CajaId == cajaId.Value);
+        if (clienteId.HasValue) query = query.Where(v => v.ClienteId == clienteId.Value);
         if (desde.HasValue) query = query.Where(v => v.FechaVenta >= desde.Value);
         if (hasta.HasValue) query = query.Where(v => v.FechaVenta <= hasta.Value);
         if (estado.HasValue) query = query.Where(v => v.Estado == estado.Value);
