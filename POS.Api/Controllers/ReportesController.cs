@@ -218,7 +218,8 @@ public class ReportesController : ControllerBase
     [ProducesResponseType(typeof(HistorialEntidadDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<HistorialEntidadDto>> ObtenerHistorialVenta(int ventaId)
     {
-        var historial = await _activityLogService.GetEntityHistoryAsync("Venta", ventaId.ToString());
+        var cambios = await _activityLogService.GetEntityHistoryAsync("Venta", ventaId.ToString());
+        var historial = new HistorialEntidadDto("Venta", ventaId.ToString(), null, cambios.Count, cambios);
         return Ok(historial);
     }
 
@@ -230,7 +231,8 @@ public class ReportesController : ControllerBase
     [ProducesResponseType(typeof(HistorialEntidadDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<HistorialEntidadDto>> ObtenerHistorialOrden(int ordenId)
     {
-        var historial = await _activityLogService.GetEntityHistoryAsync("OrdenCompra", ordenId.ToString());
+        var cambios = await _activityLogService.GetEntityHistoryAsync("OrdenCompra", ordenId.ToString());
+        var historial = new HistorialEntidadDto("OrdenCompra", ordenId.ToString(), null, cambios.Count, cambios);
         return Ok(historial);
     }
 }
