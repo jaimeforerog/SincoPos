@@ -228,6 +228,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                     <TableCell>Vence</TableCell>
                     <TableCell align="right">Disponible</TableCell>
                     <TableCell align="center">Vence en</TableCell>
+                    <TableCell align="center"></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -242,6 +243,13 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                       <TableCell>{a.fechaVencimiento}</TableCell>
                       <TableCell align="right">{a.cantidadDisponible}</TableCell>
                       <TableCell align="center">{chipVencimiento(a.diasParaVencer)}</TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Ver kardex">
+                          <IconButton size="small" onClick={() => setTrazabilidadLoteId(a.loteId)}>
+                            <Timeline fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
