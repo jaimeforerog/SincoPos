@@ -49,10 +49,12 @@ const makePaginatedResult = (items: DocumentoElectronicoDTO[]) => ({
 
 const makeAdminUser = () => ({
   id: 'admin-1',
+  username: 'admin',
   email: 'admin@test.com',
   nombre: 'Admin',
   roles: ['admin'],
   rol: 'admin' as const,
+  sucursalesDisponibles: [] as { id: number; nombre: string; empresaId: number }[],
 });
 
 describe('DocumentosElectronicosPage', () => {

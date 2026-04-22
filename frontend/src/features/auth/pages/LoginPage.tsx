@@ -36,7 +36,8 @@ export function LoginPage() {
       // before navigating. Some browsers (Edge Strict, Chrome with enhanced privacy)
       // clear sessionStorage when returning from a cross-site redirect.
       const explicitRedirectUri = `${window.location.origin}/callback`;
-      const url = await getSignInUrl({ redirectUri: explicitRedirectUri });
+      void explicitRedirectUri; // configured at AuthKitProvider level
+      const url = await getSignInUrl({});
       // The SDK already stored code_verifier in sessionStorage['workos:code-verifier'].
       // Back it up to localStorage so CallbackPage can recover it if sessionStorage is cleared.
       const cv = sessionStorage.getItem('workos:code-verifier');

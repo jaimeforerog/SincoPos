@@ -7,7 +7,6 @@ import {
   KeyboardReturn,
   Assessment,
   Settings,
-  ReceiptLong,
   Inventory,
   Article,
   Hub,

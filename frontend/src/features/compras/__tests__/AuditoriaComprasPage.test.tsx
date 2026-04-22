@@ -22,6 +22,7 @@ const makeAuditoriaResponse = (overrides = {}) => ({
     totalEventos: 12,
     eventosExitosos: 10,
     eventosFallidos: 2,
+    eventosPorAccion: {},
     valorTotalComprado: 5_000_000,
     ordenesConErrorErp: 1,
     totalDevoluciones: 0,
@@ -34,6 +35,8 @@ const makeAuditoriaResponse = (overrides = {}) => ({
         usuarioEmail: 'admin@test.com',
         usuarioNombre: 'Administrador',
         accion: 'CrearOrdenCompra',
+        tipo: 1,
+        tipoNombre: 'OrdenCompra',
         tipoEntidad: 'OrdenCompra',
         entidadId: '42',
         entidadNombre: 'OC-000042',
@@ -46,7 +49,7 @@ const makeAuditoriaResponse = (overrides = {}) => ({
       },
     ],
     totalCount: 1,
-    page: 1,
+    pageNumber: 1,
     pageSize: 50,
     totalPages: 1,
   },
@@ -58,7 +61,7 @@ describe('AuditoriaComprasPage', () => {
     vi.clearAllMocks();
     const { reportesApi } = await import('@/api/reportes');
     vi.mocked(reportesApi.auditoriaCompras).mockResolvedValue(makeAuditoriaResponse());
-    vi.mocked(reportesApi.historialOrden).mockResolvedValue({ cambios: [] });
+    vi.mocked(reportesApi.historialOrden).mockResolvedValue({ cambios: [], tipoEntidad: 'OrdenCompra', entidadId: '42', totalCambios: 0 });
   });
 
   it('muestra el encabezado "Auditoría de Compras"', async () => {
@@ -126,7 +129,7 @@ describe('AuditoriaComprasPage', () => {
   it('muestra mensaje vacío cuando no hay eventos', async () => {
     const { reportesApi } = await import('@/api/reportes');
     vi.mocked(reportesApi.auditoriaCompras).mockResolvedValue(
-      makeAuditoriaResponse({ logs: { items: [], totalCount: 0, page: 1, pageSize: 50, totalPages: 0 } })
+      makeAuditoriaResponse({ logs: { items: [], totalCount: 0, pageNumber: 1, pageSize: 50, totalPages: 0 } })
     );
     renderWithProviders(<AuditoriaComprasPage />);
     expect(await screen.findByText(/no se encontraron eventos/i)).toBeInTheDocument();

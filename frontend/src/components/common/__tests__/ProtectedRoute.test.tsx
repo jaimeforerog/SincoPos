@@ -13,7 +13,7 @@ const makeUser = (roles: string[]): UserInfo => ({
   roles,
   sucursalId: 1,
   sucursalNombre: 'Principal',
-  sucursalesDisponibles: [{ id: 1, nombre: 'Principal' }],
+  sucursalesDisponibles: [{ id: 1, nombre: 'Principal', empresaId: 1 }],
 });
 
 beforeEach(() => {

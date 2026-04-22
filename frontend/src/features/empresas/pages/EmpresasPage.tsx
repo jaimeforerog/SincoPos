@@ -109,7 +109,6 @@ function EmpresaFormDialog({ open, empresa, onClose, onSaved }: EmpresaFormDialo
 export function EmpresasPage() {
   const [dialogOpen, setDialogOpen]         = useState(false);
   const [selected, setSelected]             = useState<EmpresaDTO | undefined>();
-  const { enqueueSnackbar }                 = useSnackbar();
 
   const { data: empresas = [], isLoading, isError } = useQuery({
     queryKey: ['empresas'],

@@ -84,7 +84,7 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
     },
   });
 
-  const selectedSucursalIds = watch('sucursalIds') ?? [];
+  void watch('sucursalIds');
 
   const mutation = useMutation({
     mutationFn: (data: CrearUsuarioFormData) =>
@@ -290,7 +290,7 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
                     value={value ?? ''}
                     onChange={(e) => {
                       const val = e.target.value;
-                      onChange(val === '' ? undefined : Number(val));
+                      onChange(String(val) === '' ? undefined : Number(val));
                     }}
                   >
                     <MenuItem value="">Ninguna</MenuItem>

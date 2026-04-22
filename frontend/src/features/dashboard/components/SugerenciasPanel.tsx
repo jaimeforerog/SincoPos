@@ -39,7 +39,7 @@ export function SugerenciasPanel({ sugerencias }: SugerenciasPanelProps) {
     setDismissed((prev) => new Set([...prev, s.productoId ?? s.description]));
 
   return (
-    <Card sx={{ mb: 3, border: `1px solid ${sincoColors.brand[200]}` }}>
+    <Card sx={{ mb: 3, border: `1px solid ${sincoColors.brand[100]}` }}>
       <CardContent>
         {/* Encabezado */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>

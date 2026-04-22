@@ -11,10 +11,12 @@ interface VoiceInputProps {
 }
 
 // Compatibilidad Chrome/Edge/Safari
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionCtor = new () => any;
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition: SpeechRecognitionCtor;
+    webkitSpeechRecognition: SpeechRecognitionCtor;
   }
 }
 
@@ -27,7 +29,7 @@ declare global {
 export function VoiceInput({ onResult, language = 'es-CO' }: VoiceInputProps) {
   const [listening, setListening]   = useState(false);
   const [error, setError]           = useState<string | null>(null);
-  const recognitionRef              = useRef<SpeechRecognition | null>(null);
+  const recognitionRef              = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
 
   const isSupported =
     typeof window !== 'undefined' &&
@@ -47,13 +49,13 @@ export function VoiceInput({ onResult, language = 'es-CO' }: VoiceInputProps) {
     recognition.maxAlternatives = 3;
     recognition.continuous      = false;
 
-    recognition.onresult = (e) => {
+    recognition.onresult = (e: any) => {
       const transcript = e.results[0][0].transcript.trim().toLowerCase();
       onResult(transcript);
       setListening(false);
     };
 
-    recognition.onerror = (e) => {
+    recognition.onerror = (e: any) => {
       if (e.error === 'not-allowed') {
         setError('Permiso de micrófono denegado');
       } else if (e.error !== 'no-speech') {

@@ -38,7 +38,7 @@ const METODO_PAGO_LABELS: Record<number, string> = {
 
 function calcTotal(venta: OfflineVenta): number {
   return venta.payload.lineas.reduce(
-    (sum, l) => sum + l.precioUnitario * l.cantidad - (l.descuento ?? 0),
+    (sum, l) => sum + (l.precioUnitario ?? 0) * l.cantidad - (l.descuento ?? 0),
     0,
   );
 }

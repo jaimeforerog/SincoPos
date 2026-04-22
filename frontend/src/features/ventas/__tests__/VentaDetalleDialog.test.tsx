@@ -35,6 +35,7 @@ const baseVenta: VentaDTO = {
       montoImpuesto: 1900,
       subtotal: 10000,
       margenGanancia: 50,
+      lotes: [],
     },
   ],
 };

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '@/test/test-utils';
 import { POSPage } from '../pages/POSPage';
 import { useAuthStore } from '@/stores/auth.store';
@@ -45,7 +45,7 @@ const makeCajeroUser = (): UserInfo => ({
   roles: ['cajero'],
   sucursalId: 1,
   sucursalNombre: 'Principal',
-  sucursalesDisponibles: [{ id: 1, nombre: 'Principal' }],
+  sucursalesDisponibles: [{ id: 1, nombre: 'Principal', empresaId: 1 }],
 });
 
 beforeEach(() => {

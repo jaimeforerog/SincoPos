@@ -13,7 +13,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { HeroBanner } from '@/components/common/HeroBanner';
 import { useCartStore } from '@/stores/cart.store';
-import { ventasApi } from '@/api/ventas';
 import { orquestadorApi } from '@/api/orquestador';
 import { cajasApi } from '@/api/cajas';
 import { useConfiguracionVariableIntQuery } from '@/hooks/useConfiguracionVariable';
@@ -36,7 +35,7 @@ export function POSPage() {
   const queryClient = useQueryClient();
   const { operacional, sistema } = useContextualNotification();
   const { user, isCajero, activeSucursalId, activeEmpresaId, isLoading } = useAuth();
-  const { isOnline, pendingCount } = useOfflineSync();
+  const { isOnline } = useOfflineSync();
 
   // Cargar cajas abiertas
   const { data: _cajasAbiertas = [], isLoading: isLoadingCajas, isFetched: isFetchedCajas } = useCajasAbiertas();

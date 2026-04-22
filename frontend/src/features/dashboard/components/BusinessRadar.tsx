@@ -218,10 +218,10 @@ export function BusinessRadar({ metricas, ventasPorHora, stockRisks }: BusinessR
                 width={40}
               />
               <RechartsTooltip
-                formatter={(v: number, name: string) => [
-                  `$${v.toLocaleString('es-CO')}`,
+                formatter={(v: number | undefined, name: string | undefined) => [
+                  `$${(v ?? 0).toLocaleString('es-CO')}`,
                   name === 'actual' ? 'Real' : 'Proyectado',
-                ]}
+                ] as [string, string]}
               />
               {/* Línea "ahora" */}
               <ReferenceLine x={nowLabel} stroke={sincoColors.brand[600]} strokeDasharray="4 4" label="" />

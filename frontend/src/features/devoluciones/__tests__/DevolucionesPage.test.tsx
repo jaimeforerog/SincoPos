@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/test-utils';
 import { DevolucionesPage } from '../pages/DevolucionesPage';
-import type { VentaDTO, PaginatedResult } from '@/types/api';
+import type { VentaDTO, PaginatedResult, TerceroDTO } from '@/types/api';
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ activeSucursalId: 1, user: null, isAuthenticated: true }),
@@ -18,6 +18,7 @@ vi.mock('@/api/ventas', () => ({
 
 vi.mock('@/api/devoluciones', () => ({
   devolucionesApi: {
+    getClientesConVentas: vi.fn(),
     obtenerPorVenta: vi.fn().mockResolvedValue([]),
     crearDevolucionParcial: vi.fn(),
   },
@@ -63,8 +64,25 @@ const makeVenta = (overrides: Partial<VentaDTO> = {}): VentaDTO => ({
       montoImpuesto: 0,
       subtotal: 15000,
       margenGanancia: 50,
+      lotes: [],
     },
   ],
+  ...overrides,
+});
+
+const makeTercero = (overrides: Partial<TerceroDTO> = {}): TerceroDTO => ({
+  id: 10,
+  tipoIdentificacion: 'CC',
+  identificacion: '12345678',
+  nombre: 'Juan Pérez',
+  tipoTercero: 'Cliente',
+  perfilTributario: 'Régimen Simple',
+  esGranContribuyente: false,
+  esAutorretenedor: false,
+  esResponsableIVA: false,
+  origenDatos: 'Manual',
+  activo: true,
+  actividades: [],
   ...overrides,
 });
 
@@ -76,6 +94,15 @@ const makePage = (items: VentaDTO[]): PaginatedResult<VentaDTO> => ({
   totalPages: 1,
 });
 
+
+/** Selecciona el cliente en el paso 1 del flujo de devoluciones. */
+async function seleccionarCliente() {
+  const combobox = screen.getByRole('combobox');
+  await userEvent.click(combobox);
+  const opcion = await screen.findByText('Juan Pérez');
+  await userEvent.click(opcion);
+}
+
 describe('DevolucionesPage', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -83,6 +110,7 @@ describe('DevolucionesPage', () => {
     vi.mocked(ventasApi.getAll).mockResolvedValue(makePage([]));
     vi.mocked(ventasApi.getById).mockResolvedValue(makeVenta());
     const { devolucionesApi } = await import('@/api/devoluciones');
+    vi.mocked(devolucionesApi.getClientesConVentas).mockResolvedValue([makeTercero()]);
     vi.mocked(devolucionesApi.obtenerPorVenta).mockResolvedValue([]);
   });
 
@@ -96,30 +124,35 @@ describe('DevolucionesPage', () => {
     expect(screen.getByText(/buscar venta para devolución/i)).toBeInTheDocument();
   });
 
-  it('muestra conteo de ventas encontradas', async () => {
+  it('muestra conteo de ventas tras seleccionar cliente', async () => {
     const { ventasApi } = await import('@/api/ventas');
     vi.mocked(ventasApi.getAll).mockResolvedValue(makePage([makeVenta(), makeVenta({ id: 2, numeroVenta: 'V-000002' })]));
 
     renderWithProviders(<DevolucionesPage />);
+    await seleccionarCliente();
 
-    expect(await screen.findByText(/2 venta\(s\) encontradas/i)).toBeInTheDocument();
+    expect(await screen.findByText(/2 venta\(s\)/i)).toBeInTheDocument();
   });
 
   it('muestra "0 venta(s)" cuando la API retorna lista vacía', async () => {
     renderWithProviders(<DevolucionesPage />);
-    expect(await screen.findByText(/0 venta\(s\) encontradas/i)).toBeInTheDocument();
+    await seleccionarCliente();
+
+    expect(await screen.findByText(/0 venta\(s\)/i)).toBeInTheDocument();
   });
 
-  it('llama a ventasApi con sucursalId del usuario y estado Completada', async () => {
+  it('llama a ventasApi con sucursalId, clienteId y estado Completada tras seleccionar cliente', async () => {
     const { ventasApi } = await import('@/api/ventas');
 
     renderWithProviders(<DevolucionesPage />);
+    await seleccionarCliente();
 
     await waitFor(() => {
       expect(ventasApi.getAll).toHaveBeenCalledWith(
         expect.objectContaining({
           sucursalId: 1,
           estado: 'Completada',
+          clienteId: 10,
         })
       );
     });
@@ -137,11 +170,14 @@ describe('DevolucionesPage', () => {
     vi.mocked(ventasApi.getById).mockResolvedValue(venta);
 
     renderWithProviders(<DevolucionesPage />);
+
+    // Paso 1 — cliente
+    await seleccionarCliente();
     await screen.findByText(/0 venta\(s\)|1 venta\(s\)/i);
 
-    // Abrir el Autocomplete y seleccionar la opción
-    const input = screen.getByRole('combobox');
-    await userEvent.click(input);
+    // Paso 2 — venta (segundo combobox)
+    const comboboxes = screen.getAllByRole('combobox');
+    await userEvent.click(comboboxes[comboboxes.length - 1]);
     const opcion = await screen.findByText('V-000099');
     await userEvent.click(opcion);
 
@@ -157,8 +193,13 @@ describe('DevolucionesPage', () => {
 
     renderWithProviders(<DevolucionesPage />);
 
-    const input = screen.getByRole('combobox');
-    await userEvent.click(input);
+    // Paso 1 — cliente
+    await seleccionarCliente();
+    await screen.findByText(/0 venta\(s\)|1 venta\(s\)/i);
+
+    // Paso 2 — venta (segundo combobox)
+    const comboboxes = screen.getAllByRole('combobox');
+    await userEvent.click(comboboxes[comboboxes.length - 1]);
     const opcion = await screen.findByText('V-000001');
     await userEvent.click(opcion);
 

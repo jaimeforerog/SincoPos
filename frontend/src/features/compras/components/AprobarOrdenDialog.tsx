@@ -46,8 +46,9 @@ export function AprobarOrdenDialog({
       );
       return { snapshots };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (error: ApiError, _vars, ctx) => {
       ctx?.snapshots.forEach(([key, val]) => queryClient.setQueryData(key, val));
+      enqueueSnackbar(error.message || 'Error al aprobar la orden', { variant: 'error' });
     },
     onSuccess: () => {
       enqueueSnackbar('Orden aprobada exitosamente', { variant: 'success' });
@@ -57,26 +58,6 @@ export function AprobarOrdenDialog({
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
-    },
-    onError: (error: ApiError) => {
-      let mensaje = 'Error al aprobar la orden';
-
-      if (error.response) {
-        const { status, data } = error.response;
-        if (status === 400) {
-          mensaje = data.error || 'No se puede aprobar esta orden. Verifica su estado actual.';
-        } else if (status === 403) {
-          mensaje = 'No tienes permisos para aprobar órdenes. Se requiere rol Supervisor.';
-        } else if (status === 404) {
-          mensaje = 'Orden de compra no encontrada.';
-        } else {
-          mensaje = data.error || data.message || mensaje;
-        }
-      } else if (error.request) {
-        mensaje = 'No se pudo conectar con el servidor.';
-      }
-
-      enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });
 

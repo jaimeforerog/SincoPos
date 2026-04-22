@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { server } from './mocks/server';
 
 // Silence known MUI false-positives in jsdom that are not indicative of real bugs:
@@ -11,7 +11,7 @@ const SUPPRESSED_WARNINGS = [
 ];
 
 function makeFilteredConsole(
-  original: (...args: unknown[]) => void,
+  _original: (...args: unknown[]) => void,
   stderrLabel: string
 ) {
   return (...args: unknown[]) => {

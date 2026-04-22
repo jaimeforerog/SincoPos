@@ -48,7 +48,7 @@ export function ClienteHistorialCard({ clienteId }: ClienteHistorialCardProps) {
         p: 1,
         bgcolor: sincoColors.surface.subtle,
         borderRadius: '8px',
-        borderLeft: `3px solid ${sincoColors.brand[400]}`,
+        borderLeft: `3px solid ${sincoColors.brand[500]}`,
       }}
     >
       {/* Resumen rápido */}

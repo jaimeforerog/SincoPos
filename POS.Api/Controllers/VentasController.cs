@@ -343,6 +343,62 @@ public class VentasController : ControllerBase
     }
 
     /// <summary>
+    /// Clientes distintos que tienen al menos una venta Completada en la sucursal indicada.
+    /// Usado exclusivamente por el flujo de devoluciones para restringir la búsqueda
+    /// a clientes que realmente compraron en esa sucursal.
+    /// </summary>
+    [HttpGet("clientes-con-ventas")]
+    [ProducesResponseType(typeof(List<TerceroDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<TerceroDto>>> ClientesConVentas(
+        [FromQuery] int? sucursalId = null,
+        [FromQuery] string? q = null)
+    {
+        var terceroQuery = _context.Terceros
+            .Include(t => t.Actividades)
+            .Where(t => t.Activo)
+            .Where(t => _context.Ventas.Any(v =>
+                v.ClienteId == t.Id
+                && v.Estado == EstadoVenta.Completada
+                && (sucursalId == null || v.SucursalId == sucursalId)));
+
+        if (!string.IsNullOrWhiteSpace(q))
+            terceroQuery = terceroQuery.Where(t =>
+                t.Nombre.Contains(q) || t.Identificacion.Contains(q));
+
+        var clientes = await terceroQuery
+            .OrderBy(t => t.Nombre)
+            .Take(50)
+            .ToListAsync();
+
+        var dtos = clientes.Select(t => new TerceroDto(
+            t.Id,
+            t.TipoIdentificacion.ToString(),
+            t.Identificacion,
+            t.DigitoVerificacion,
+            t.Nombre,
+            t.TipoTercero.ToString(),
+            t.Telefono,
+            t.Email,
+            t.Direccion,
+            t.Ciudad,
+            t.CodigoDepartamento,
+            t.CodigoMunicipio,
+            t.PerfilTributario,
+            t.EsGranContribuyente,
+            t.EsAutorretenedor,
+            t.EsResponsableIVA,
+            t.OrigenDatos.ToString(),
+            t.ExternalId,
+            t.Activo,
+            t.Actividades
+                .Select(a => new TerceroActividadDto(a.Id, a.CodigoCIIU, a.Descripcion, a.EsPrincipal))
+                .ToList()
+        )).ToList();
+
+        return Ok(dtos);
+    }
+
+    /// <summary>
     /// Obtener todas las devoluciones de una venta específica.
     /// </summary>
     /// <response code="200">Lista de devoluciones (puede ser vacía si no hay devoluciones).</response>

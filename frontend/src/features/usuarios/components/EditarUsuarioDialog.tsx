@@ -246,7 +246,7 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
                     value={value ?? ''}
                     onChange={(e) => {
                       const val = e.target.value;
-                      onChange(val === '' ? undefined : Number(val));
+                      onChange(String(val) === '' ? undefined : Number(val));
                     }}
                   >
                     <MenuItem value="">Ninguna</MenuItem>

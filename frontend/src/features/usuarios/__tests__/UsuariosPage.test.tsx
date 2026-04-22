@@ -48,7 +48,7 @@ const makeUsuario = (overrides: Partial<UsuarioDto> = {}): UsuarioDto => ({
   rol: 'cajero',
   activo: true,
   fechaCreacion: '2026-01-01T00:00:00Z',
-  sucursalesAsignadas: [{ id: 1, nombre: 'Principal' }],
+  sucursalesAsignadas: [{ id: 1, nombre: 'Principal', empresaId: 1 }],
   ...overrides,
 });
 

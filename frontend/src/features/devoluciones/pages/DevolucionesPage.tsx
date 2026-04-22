@@ -31,13 +31,12 @@ import UndoIcon2 from '@mui/icons-material/AssignmentReturn';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '@/hooks/useAuth';
 import { ventasApi } from '@/api/ventas';
-import { tercerosApi } from '@/api/terceros';
 import { devolucionesApi } from '@/api/devoluciones';
 import { formatCurrency, formatDate } from '@/utils/format';
 import { useSnackbar } from 'notistack';
 import SearchIcon from '@mui/icons-material/Search';
 import UndoIcon from '@mui/icons-material/Undo';
-import type { VentaDTO, TerceroDTO, ApiError} from '@/types/api';
+import type { VentaDTO, TerceroDTO, ApiError } from '@/types/api';
 
 interface DevolucionFormData {
   [productoId: string]: number; // productoId -> cantidad a devolver
@@ -76,18 +75,16 @@ export function DevolucionesPage() {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
 
-  // Paso 1 — buscar clientes que tengan ventas
-  const { data: clientesPage, isLoading: loadingClientes } = useQuery({
-    queryKey: ['clientes-devolucion', busquedaCliente],
+  // Paso 1 — clientes con ventas en la sucursal activa
+  const { data: clientes = [], isLoading: loadingClientes } = useQuery({
+    queryKey: ['clientes-con-ventas', activeSucursalId, busquedaCliente],
     queryFn: () =>
-      tercerosApi.getAll({
+      devolucionesApi.getClientesConVentas({
+        sucursalId: activeSucursalId || undefined,
         q: busquedaCliente || undefined,
-        esCliente: true,
-        pageSize: 50,
       }),
     enabled: busquedaCliente.length >= 2 || busquedaCliente === '',
   });
-  const clientes = clientesPage?.items ?? [];
 
   // Paso 2 — cargar ventas del cliente seleccionado
   const { data: ventasPage, isLoading: loadingVentas } = useQuery({

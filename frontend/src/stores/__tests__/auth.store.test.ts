@@ -10,7 +10,7 @@ const makeUser = (overrides: Partial<UserInfo> = {}): UserInfo => ({
   roles: ['cajero'],
   sucursalId: 1,
   sucursalNombre: 'Principal',
-  sucursalesDisponibles: [{ id: 1, nombre: 'Principal' }, { id: 2, nombre: 'Norte' }],
+  sucursalesDisponibles: [{ id: 1, nombre: 'Principal', empresaId: 1 }, { id: 2, nombre: 'Norte', empresaId: 1 }],
   ...overrides,
 });
 

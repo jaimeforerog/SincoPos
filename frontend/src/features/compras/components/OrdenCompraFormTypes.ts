@@ -3,8 +3,8 @@ import type { FieldError } from 'react-hook-form';
 
 export const lineaSchema = z.object({
   productoId: z.string().min(1, 'Seleccione un producto'),
-  cantidad: z.number({ invalid_type_error: 'Ingrese una cantidad válida' }).min(0.01, 'Cantidad debe ser mayor a 0'),
-  precioUnitario: z.number({ invalid_type_error: 'Ingrese un precio válido' }).min(0, 'Precio debe ser mayor o igual a 0'),
+  cantidad: z.number({ message: 'Ingrese una cantidad válida' }).min(0.01, 'Cantidad debe ser mayor a 0'),
+  precioUnitario: z.number({ message: 'Ingrese un precio válido' }).min(0, 'Precio debe ser mayor o igual a 0'),
   impuestoId: z.number().optional(),
 });
 

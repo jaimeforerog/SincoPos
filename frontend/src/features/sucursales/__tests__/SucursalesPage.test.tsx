@@ -30,6 +30,7 @@ const makeSucursal = (overrides: Partial<SucursalDTO> = {}): SucursalDTO => ({
   activa: true,
   metodoCosteo: 'PrecioPonderado',
   centroCosto: 'CC-001',
+  empresaId: 1,
   ...overrides,
 });
 

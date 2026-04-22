@@ -1,7 +1,16 @@
 import { apiClient } from './client';
-import type { DevolucionVentaDTO, CrearDevolucionParcialDTO } from '@/types/api';
+import type { DevolucionVentaDTO, CrearDevolucionParcialDTO, TerceroDTO } from '@/types/api';
 
 export const devolucionesApi = {
+  /**
+   * Clientes que tienen al menos una venta Completada en la sucursal.
+   * Exclusivo para el flujo de devoluciones — no usar desde otros módulos.
+   */
+  getClientesConVentas: async (params: { sucursalId?: number; q?: string }) => {
+    const response = await apiClient.get<TerceroDTO[]>('/ventas/clientes-con-ventas', { params });
+    return response.data;
+  },
+
   /**
    * Crear una devolución parcial de productos de una venta
    */

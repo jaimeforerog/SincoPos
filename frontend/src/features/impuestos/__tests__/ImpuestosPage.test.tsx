@@ -31,12 +31,11 @@ const makeImpuesto = (overrides: Partial<ImpuestoDTO> = {}): ImpuestoDTO => ({
   nombre: 'IVA General',
   tipo: 'IVA',
   porcentaje: 0.19,
-  valorFijo: null,
+  valorFijo: undefined,
   aplicaSobreBase: true,
   codigoCuentaContable: '2408',
   descripcion: 'IVA 19%',
-  activo: true,
-  pais: 'CO',
+  codigoPais: 'CO',
   ...overrides,
 });
 

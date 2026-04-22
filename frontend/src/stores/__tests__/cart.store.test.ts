@@ -14,6 +14,7 @@ const makeProducto = (overrides: Partial<ProductoDTO> = {}): ProductoDTO => ({
   esAlimentoUltraprocesado: false,
   unidadMedida: '94',
   fechaCreacion: '2026-01-01T00:00:00Z',
+  manejaLotes: false,
   ...overrides,
 });
 

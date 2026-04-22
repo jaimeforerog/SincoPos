@@ -5,8 +5,8 @@ import { VoiceInput } from '../VoiceInput';
 
 // ── Mock de SpeechRecognition ─────────────────────────────────────────────────
 
-type ResultCallback  = (e: SpeechRecognitionEvent) => void;
-type ErrorCallback   = (e: SpeechRecognitionErrorEvent) => void;
+type ResultCallback  = (e: any) => void;
+type ErrorCallback   = (e: any) => void;
 type EndCallback     = () => void;
 
 let _onresult: ResultCallback | null  = null;
@@ -47,7 +47,7 @@ function MockSpeechRecognitionCtor(this: any) {
 // Helper para simular eventos de voz
 const simulateResult = (transcript: string) => {
   act(() => {
-    _onresult?.({ results: [[{ transcript, confidence: 0.9 }]] } as unknown as SpeechRecognitionEvent);
+    _onresult?.({ results: [[{ transcript, confidence: 0.9 }]] });
     _onend?.();
   });
 };

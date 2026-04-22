@@ -1,4 +1,4 @@
-import { Container, Typography, Box, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, CircularProgress, Alert } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';

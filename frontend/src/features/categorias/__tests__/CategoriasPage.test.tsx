@@ -34,10 +34,11 @@ const makeCategoriaArbol = (overrides: Partial<CategoriaArbolDTO> = {}): Categor
   id: 1,
   nombre: 'Bebidas',
   rutaCompleta: 'Bebidas',
-  margenObjetivo: 30,
-  activo: true,
+  margenGanancia: 30,
+  activa: true,
   nivel: 0,
-  hijos: [],
+  cantidadProductos: 0,
+  subCategorias: [],
   ...overrides,
 });
 

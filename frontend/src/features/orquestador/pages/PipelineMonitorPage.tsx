@@ -176,7 +176,7 @@ export function PipelineMonitorPage() {
                   <XAxis dataKey="nombre" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} unit="ms" />
                   <RechartTooltip
-                    formatter={(v: number) => [`${v}ms`, 'Promedio']}
+                    formatter={(v: number | undefined) => [`${v ?? 0}ms`, 'Promedio'] as [string, string]}
                     contentStyle={{ fontSize: 12 }}
                   />
                   <Bar dataKey="promedioMs" radius={[4, 4, 0, 0]}>

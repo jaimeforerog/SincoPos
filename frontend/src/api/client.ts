@@ -130,7 +130,7 @@ apiClient.interceptors.response.use(
 
     if (error.response) {
       // Server responded with error
-      const data = error.response.data;
+      const data = error.response.data as any;
       let message = 'An error occurred';
       let errors = data?.errors;
 

@@ -5,9 +5,16 @@ import { ConfiguracionPage } from '../pages/ConfiguracionPage';
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: vi.fn(() => ({
+    user: null,
+    isAuthenticated: true,
+    isLoading: false,
+    activeSucursalId: undefined,
+    activeEmpresaId: undefined,
+    hasRole: () => true,
     hasAnyRole: () => true,
     isAdmin: () => true,
     isSupervisor: () => true,
+    isCajero: () => true,
   })),
 }));
 
@@ -60,9 +67,16 @@ describe('ConfiguracionPage', () => {
   it('supervisor no ve módulos de admin (sin Sucursales)', async () => {
     const { useAuth } = await import('@/hooks/useAuth');
     vi.mocked(useAuth).mockImplementation(() => ({
+      user: null,
+      isAuthenticated: true,
+      isLoading: false,
+      activeSucursalId: undefined,
+      activeEmpresaId: undefined,
+      hasRole: (role: string) => role === 'supervisor',
       hasAnyRole: (roles: string[]) => roles.includes('supervisor'),
       isAdmin: () => false,
       isSupervisor: () => true,
+      isCajero: () => true,
     }));
 
     renderWithProviders(<ConfiguracionPage />);

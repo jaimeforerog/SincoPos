@@ -411,7 +411,7 @@ export interface SucursalDTO {
   centroCosto?: string;
   metodoCosteo: string;
   activa: boolean;
-  fechaCreacion: string;
+  fechaCreacion?: string;
   empresaId: number;
 }
 
@@ -550,6 +550,7 @@ export interface UserInfo {
   email: string;
   nombre: string;
   roles: string[];
+  rol?: string;
   sucursalId?: number;
   sucursalNombre?: string;
   sucursalesDisponibles: SucursalResumenDTO[];
@@ -772,6 +773,8 @@ export interface ApiError {
   title?: string;
   errors?: Record<string, string[]>;
   statusCode: number;
+  response?: { status: number; data: any };
+  request?: unknown;
 }
 
 // ============================================
@@ -1009,6 +1012,7 @@ export interface CrearTrasladoDTO {
   sucursalDestinoId: number;
   observaciones?: string;
   lineas: LineaTrasladoDTO[];
+  fechaTraslado?: string;
 }
 
 export interface LineaTrasladoDTO {
@@ -1048,17 +1052,17 @@ export interface ActivityLogFullDTO {
   tipoNombre: string;
   sucursalId?: number;
   nombreSucursal?: string;
-  ipAddress?: string;
+  ipAddress?: string | null;
   userAgent?: string;
   tipoEntidad?: string;
   entidadId?: string;
   entidadNombre?: string;
-  descripcion?: string;
-  datosAnteriores?: string;
-  datosNuevos?: string;
+  descripcion?: string | null;
+  datosAnteriores?: string | null;
+  datosNuevos?: string | null;
   metadatos?: string;
   exitosa: boolean;
-  mensajeError?: string;
+  mensajeError?: string | null;
 }
 
 export interface PaginatedResult<T> {
@@ -1248,7 +1252,7 @@ export interface KardexMovimientoDTO {
   fecha: string;
   tipoMovimiento: string;
   referencia: string;
-  observaciones: string;
+  observaciones: string | null;
   entrada: number;
   salida: number;
   saldoAcumulado: number;
@@ -1323,8 +1327,8 @@ export interface EmpresaDTO {
   nit?:               string;
   razonSocial?:       string;
   activo:             boolean;
-  fechaCreacion:      string;
-  cantidadSucursales: number;
+  fechaCreacion?:     string;
+  cantidadSucursales?: number;
 }
 
 export interface CrearEmpresaDTO {

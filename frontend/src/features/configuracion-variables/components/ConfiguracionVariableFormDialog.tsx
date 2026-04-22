@@ -76,7 +76,7 @@ export function ConfiguracionVariableFormDialog({ open, onClose, variable }: Pro
     },
     onError: (error: ApiError) => {
       enqueueSnackbar(
-        error.response?.data?.detail || error.response?.data?.title || 'Error al crear la variable',
+        error.message || 'Error al crear la variable',
         { variant: 'error' }
       );
     },
@@ -97,7 +97,7 @@ export function ConfiguracionVariableFormDialog({ open, onClose, variable }: Pro
     },
     onError: (error: ApiError) => {
       enqueueSnackbar(
-        error.response?.data?.detail || error.response?.data?.title || 'Error al actualizar la variable',
+        error.message || 'Error al actualizar la variable',
         { variant: 'error' }
       );
     },

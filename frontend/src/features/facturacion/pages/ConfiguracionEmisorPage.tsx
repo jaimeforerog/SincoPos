@@ -186,37 +186,37 @@ export function ConfiguracionEmisorPage() {
             Datos Fiscales del Emisor
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField fullWidth label="NIT" value={form.nit} onChange={handleChange('nit')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={2}>
+            <Grid size={{ xs: 12, sm: 2 }}>
               <TextField fullWidth label="DV" value={form.digitoVerificacion} onChange={handleChange('digitoVerificacion')} required size="small" inputProps={{ maxLength: 1 }} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Razón Social" value={form.razonSocial} onChange={handleChange('razonSocial')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Nombre Comercial" value={form.nombreComercial} onChange={handleChange('nombreComercial')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Dirección" value={form.direccion} onChange={handleChange('direccion')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Código Municipio (DANE)" value={form.codigoMunicipio} onChange={handleChange('codigoMunicipio')} required size="small" helperText="Ej: 11001 = Bogotá" />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Código Departamento" value={form.codigoDepartamento} onChange={handleChange('codigoDepartamento')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField fullWidth label="Teléfono" value={form.telefono} onChange={handleChange('telefono')} size="small" />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField fullWidth label="Email" type="email" value={form.email} onChange={handleChange('email')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField fullWidth label="Código CIIU" value={form.codigoCiiu} onChange={handleChange('codigoCiiu')} size="small" />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 select fullWidth label="Régimen Tributario"
                 value={form.perfilTributario} onChange={handleChange('perfilTributario')}
@@ -237,30 +237,30 @@ export function ConfiguracionEmisorPage() {
             Resolución de Numeración DIAN
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Número de Resolución" value={form.numeroResolucion} onChange={handleChange('numeroResolucion')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Fecha Resolución" type="date" value={form.fechaResolucion} onChange={handleChange('fechaResolucion')} required size="small" InputLabelProps={{ shrink: true }} />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Prefijo" value={form.prefijo} onChange={handleChange('prefijo')} required size="small" inputProps={{ maxLength: 5 }} helperText="Ej: FV, SETP, etc." />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Número Desde" type="number" value={form.numeroDesde} onChange={handleChange('numeroDesde')} required size="small" />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Número Hasta" type="number" value={form.numeroHasta} onChange={handleChange('numeroHasta')} required size="small" />
             </Grid>
             {config && (
-              <Grid item xs={12} sm={3}>
+              <Grid size={{ xs: 12, sm: 3 }}>
                 <TextField fullWidth label="Número Actual" value={config.numeroActual} size="small" disabled helperText="Gestionado automáticamente" />
               </Grid>
             )}
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Vigencia Desde" type="date" value={form.fechaVigenciaDesde} onChange={handleChange('fechaVigenciaDesde')} required size="small" InputLabelProps={{ shrink: true }} />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid size={{ xs: 12, sm: 3 }}>
               <TextField fullWidth label="Vigencia Hasta" type="date" value={form.fechaVigenciaHasta} onChange={handleChange('fechaVigenciaHasta')} required size="small" InputLabelProps={{ shrink: true }} />
             </Grid>
           </Grid>
@@ -272,7 +272,7 @@ export function ConfiguracionEmisorPage() {
             Software y Ambiente DIAN
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 select fullWidth label="Ambiente"
                 value={form.ambiente} onChange={handleChange('ambiente')}
@@ -282,10 +282,10 @@ export function ConfiguracionEmisorPage() {
                 <MenuItem value="1">Producción</MenuItem>
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField fullWidth label="ID Software (MUISCA)" value={form.idSoftware} onChange={handleChange('idSoftware')} size="small" />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField fullWidth label="PIN Software (MUISCA)" value={form.pinSoftware} onChange={handleChange('pinSoftware')} size="small" type="password" />
             </Grid>
           </Grid>

@@ -45,6 +45,7 @@ public class AppDbContext : DbContext
     public DbSet<DetalleDevolucion> DetallesDevolucion => Set<DetalleDevolucion>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
+    public DbSet<ActivityLogArchivo> ActivityLogsArchivo => Set<ActivityLogArchivo>();
     public DbSet<Traslado> Traslados => Set<Traslado>();
     public DbSet<DetalleTraslado> DetallesTraslado => Set<DetalleTraslado>();
     public DbSet<OrdenCompra> OrdenesCompra => Set<OrdenCompra>();

@@ -16,7 +16,8 @@ function LoadingScreen() {
 }
 
 function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
-  const { user, isLoading, isAuthenticated, signOut, getAccessToken } = useWorkosAuth();
+  const { user, isLoading, signOut, getAccessToken } = useWorkosAuth();
+  const isAuthenticated = !!user;
   const { setUser, setIdpLogout } = useAuthStore();
 
   // Exponer getAccessToken al interceptor de axios para manejo de token expirado
