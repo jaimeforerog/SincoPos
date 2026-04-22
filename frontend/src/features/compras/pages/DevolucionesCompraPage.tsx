@@ -35,9 +35,10 @@ const HERO_COLOR = '#c62828';
 const fmt = (v: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v);
 
-const ESTADO_META: Record<string, { color: 'primary' | 'success'; label: string }> = {
-  RecibidaParcial:  { color: 'primary', label: 'Recibida Parcial' },
-  RecibidaCompleta: { color: 'success', label: 'Recibida Completa' },
+const ESTADO_META: Record<string, { color: 'primary' | 'success' | 'default'; label: string }> = {
+  RecibidaParcial:    { color: 'primary', label: 'Recibida Parcial' },
+  RecibidaCompleta:   { color: 'success', label: 'Recibida Completa' },
+  DevueltaTotalmente: { color: 'default', label: 'Devuelta Totalmente' },
 };
 
 export function DevolucionesCompraPage() {

@@ -48,9 +48,11 @@ export function POSPage() {
 
   // Estado de caja y cliente
   const [selectedCajaId, setSelectedCajaId] = useState<number | null>(null);
+  // Clave de sesión: cambia cada vez que el usuario selecciona caja, forzando re-preload de inventario
+  const [sessionKey, setSessionKey] = useState<string>('');
   // Fecha de la sesión — se fija en SeleccionarCajaDialog y no puede cambiarse
   const nowDatetimeLocal = () => localDateTimeStr();
-  useTurnPreload(selectedCajaId, activeSucursalId ?? null);
+  useTurnPreload(selectedCajaId, activeSucursalId ?? null, sessionKey);
 
   // Cargar detalles de la caja seleccionada
   const { data: cajaActual } = useQuery({
@@ -109,6 +111,8 @@ export function POSPage() {
   const handleSelectCaja = (cajaId: number, sucursalId: number, fechaVentaDialog: string | undefined) => {
     setSelectedCajaId(cajaId);
     setFechaVenta(fechaVentaDialog ?? nowDatetimeLocal());
+    // Forzar re-preload de inventario aunque sea la misma caja/sucursal (p.ej. cambio de fecha)
+    setSessionKey(Date.now().toString());
 
     // Sincronizar empresa primero (puede auto-seleccionar una sucursal), luego forzar la sucursal correcta
     const sucursalInfo = user?.sucursalesDisponibles.find((s) => s.id === sucursalId);
@@ -120,6 +124,9 @@ export function POSPage() {
     if (!activeSucursalId || activeSucursalId !== sucursalId) {
       setActiveSucursal(sucursalId);
     }
+
+    // Refrescar inventario en React Query para que IntentSearch y ProductSearch muestren stock actualizado
+    void queryClient.invalidateQueries({ queryKey: ['inventario'] });
 
     setShowSeleccionarCaja(false);
 

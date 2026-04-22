@@ -133,7 +133,20 @@ public class CompraDevolucionService
             Detalles = detallesDevolucion,
         };
 
-        // ── 8. Persistir ───────────────────────────────────────────────────────
+        // ── 8. Verificar si la devolución cubre todo lo recibido ──────────────
+        // Sumar lo ya devuelto anteriormente + esta devolución por producto
+        var yaDevueltoTotal = new Dictionary<Guid, decimal>(yaDevuelto);
+        foreach (var dd in detallesDevolucion)
+            yaDevueltoTotal[dd.ProductoId] = yaDevueltoTotal.GetValueOrDefault(dd.ProductoId, 0) + dd.CantidadDevuelta;
+
+        var devueltaTotalmente = orden.Detalles
+            .Where(d => d.CantidadRecibida > 0)
+            .All(d => yaDevueltoTotal.GetValueOrDefault(d.ProductoId, 0) >= d.CantidadRecibida);
+
+        if (devueltaTotalmente)
+            orden.Estado = EstadoOrdenCompra.DevueltaTotalmente;
+
+        // ── 9. Persistir ───────────────────────────────────────────────────────
         _context.DevolucionesCompra.Add(devolucion);
         await _context.SaveChangesAsync();
 
@@ -148,7 +161,7 @@ public class CompraDevolucionService
             DatosNuevos: new { OrdenId = ordenId, NumeroDevolucion = numeroDevolucion, dto.Motivo, Total = totalDevolucion }
         ));
 
-        // ── 9. Construir respuesta ─────────────────────────────────────────────
+        // ── 10. Construir respuesta ────────────────────────────────────────────
         return (BuildDto(devolucion, orden.NumeroOrden, null), null);
     }
 

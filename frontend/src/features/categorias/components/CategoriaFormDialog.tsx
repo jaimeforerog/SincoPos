@@ -24,7 +24,7 @@ const categoriaSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').max(100),
   descripcion: z.string().optional(),
   categoriaPadreId: z.number().optional().nullable(),
-  margenGanancia: z.number().min(0, 'No puede ser negativo').max(10, 'No puede superar 1000%'),
+  margenGanancia: z.number({ invalid_type_error: 'Ingrese un margen válido' }).min(0, 'No puede ser negativo').max(10, 'No puede superar 1000%'),
   cuentaInventario: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
   cuentaCosto: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
   cuentaIngreso: z.string().regex(/^\d{4,6}$/, 'Debe ser un código PUC (4 a 6 dígitos numéricos)').nullable().optional().or(z.literal('')),
@@ -223,8 +223,8 @@ export function CategoriaFormDialog({
                   {...field}
                   type="number"
                   label="Margen de ganancia (%)"
-                  value={Math.round(value * 100)}
-                  onChange={(e) => onChange(Number(e.target.value) / 100)}
+                  value={Number.isNaN(value) ? '' : Math.round(value * 100)}
+                  onChange={(e) => onChange(e.target.value === '' ? NaN : Number(e.target.value) / 100)}
                   error={!!errors.margenGanancia}
                   helperText={errors.margenGanancia?.message || 'Fallback cuando el producto no tiene precio configurado. Ej: 30 = 30%'}
                   inputProps={{ min: 0, max: 1000, step: 1 }}

@@ -296,8 +296,8 @@ export function OrdenCompraFormLineas({
                           <TextField
                             {...f}
                             type="number"
-                            value={value}
-                            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+                            value={Number.isNaN(value) ? '' : value}
+                            onChange={(e) => onChange(e.target.value === '' ? NaN : parseFloat(e.target.value))}
                             error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.cantidad}
                             size="small"
                             fullWidth
@@ -314,8 +314,8 @@ export function OrdenCompraFormLineas({
                           <TextField
                             {...f}
                             type="number"
-                            value={value}
-                            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+                            value={Number.isNaN(value) ? '' : value}
+                            onChange={(e) => onChange(e.target.value === '' ? NaN : parseFloat(e.target.value))}
                             error={!!(errors.lineas?.[index] as LineaOrdenError | undefined)?.precioUnitario}
                             size="small"
                             fullWidth

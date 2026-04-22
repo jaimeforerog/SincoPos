@@ -23,7 +23,8 @@ import type { StockCacheItem, PrecioCacheItem } from '@/offline/posIdb';
  */
 export function useTurnPreload(
   selectedCajaId: number | null,
-  activeSucursalId: number | null
+  activeSucursalId: number | null,
+  sessionKey?: string
 ) {
   const lastPreloadKey = useRef<string | null>(null);
   const setContext = useTurnContextStore((s) => s.setContext);
@@ -32,7 +33,7 @@ export function useTurnPreload(
     if (!selectedCajaId || !activeSucursalId) return;
     if (!navigator.onLine) return;
 
-    const key = `${selectedCajaId}-${activeSucursalId}`;
+    const key = `${selectedCajaId}-${activeSucursalId}-${sessionKey ?? ''}`;
     if (lastPreloadKey.current === key) return;
     lastPreloadKey.current = key;
 

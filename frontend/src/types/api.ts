@@ -260,7 +260,7 @@ export interface OrdenCompraDTO {
   nombreSucursal: string;
   proveedorId: number;
   nombreProveedor: string;
-  estado: string; // 'Pendiente' | 'Aprobada' | 'RecibidaParcial' | 'RecibidaCompleta' | 'Rechazada' | 'Cancelada'
+  estado: string; // 'Pendiente' | 'Aprobada' | 'RecibidaParcial' | 'RecibidaCompleta' | 'Rechazada' | 'Cancelada' | 'DevueltaTotalmente'
   formaPago: string; // 'Contado' | 'Credito'
   diasPlazo: number;
   fechaOrden: string;

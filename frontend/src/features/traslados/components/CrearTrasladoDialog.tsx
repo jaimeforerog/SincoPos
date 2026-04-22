@@ -47,7 +47,8 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
   const [observaciones, setObservaciones] = useState('');
   const [lineas, setLineas] = useState<LineaLocal[]>([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoDTO | null>(null);
-  const [cantidad, setCantidad] = useState(1);
+  const [cantidad, setCantidad] = useState<number | ''>(1);
+  const cantidadNum = typeof cantidad === 'number' ? cantidad : 0;
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
@@ -96,7 +97,7 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
     const stock = inventario?.find((s) => s.productoId === productoSeleccionado.id);
     const stockDisponible = stock?.cantidad ?? 0;
 
-    if (cantidad > stockDisponible) {
+    if (cantidadNum > stockDisponible) {
       enqueueSnackbar(`Stock insuficiente. Disponible: ${stockDisponible}`, {
         variant: 'warning',
       });
@@ -113,7 +114,7 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
       ...lineas,
       {
         productoId: productoSeleccionado.id,
-        cantidad,
+        cantidad: cantidadNum,
         producto: productoSeleccionado,
         stockDisponible,
       },
@@ -212,7 +213,7 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
                 const stock = inventario?.find((s) => s.productoId === value.id);
                 const stockDisponible = stock?.cantidad ?? 0;
                 // Si la cantidad actual excede el stock, ajustarla
-                if (cantidad > stockDisponible) {
+                if (cantidadNum > stockDisponible) {
                   setCantidad(Math.min(1, stockDisponible));
                 }
               }
@@ -278,6 +279,7 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
             }
             value={cantidad}
             onChange={(e) => {
+              if (e.target.value === '') { setCantidad(''); return; }
               const valor = Number(e.target.value);
               const stockMax = productoSeleccionado
                 ? (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
@@ -293,11 +295,11 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
             }}
             error={
               !!productoSeleccionado &&
-              cantidad > (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
+              cantidadNum > (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
             }
             helperText={
               productoSeleccionado &&
-              cantidad > (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
+              cantidadNum > (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
                 ? 'Cantidad mayor al stock'
                 : ''
             }
@@ -309,8 +311,8 @@ export function CrearTrasladoDialog({ open, onClose, onSuccess }: Props) {
             onClick={handleAgregarLinea}
             disabled={
               !productoSeleccionado ||
-              cantidad <= 0 ||
-              cantidad > (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
+              cantidadNum <= 0 ||
+              cantidadNum > (inventario?.find((s) => s.productoId === productoSeleccionado.id)?.cantidad ?? 0)
             }
           >
             Agregar

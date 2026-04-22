@@ -8,7 +8,8 @@ public enum EstadoOrdenCompra
     RecibidaParcial = 3,
     RecibidaCompleta = 4,
     Rechazada = 5,
-    Cancelada = 6
+    Cancelada = 6,
+    DevueltaTotalmente = 7
 }
 
 /// <summary>
