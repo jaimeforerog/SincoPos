@@ -354,7 +354,10 @@ public class ActivityLogService : IActivityLogService
                         .FirstOrDefaultAsync();
                     if (emailBd != null) return emailBd;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "No se pudo resolver email por externalId {ExternalId}", externalId);
+                }
             }
 
             return "usuario-autenticado";

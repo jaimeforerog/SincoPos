@@ -32,9 +32,9 @@ public interface IUsuarioService
     Task AsignarSucursalesAsync(int usuarioId, List<int> sucursalIds);
 
     /// <summary>
-    /// Obtiene todos los usuarios con filtros opcionales.
+    /// Obtiene todos los usuarios con filtros opcionales y paginación.
     /// </summary>
-    Task<List<UsuarioDto>> ListarUsuariosAsync(string? busqueda = null, string? rol = null, bool? activo = null, int? sucursalId = null);
+    Task<PaginatedResult<UsuarioDto>> ListarUsuariosAsync(string? busqueda = null, string? rol = null, bool? activo = null, int? sucursalId = null, int page = 1, int pageSize = 50);
 
     /// <summary>
     /// Obtiene un usuario por su ID.

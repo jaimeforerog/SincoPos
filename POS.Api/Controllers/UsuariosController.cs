@@ -39,24 +39,26 @@ public class UsuariosController : ControllerBase
     }
 
     /// <summary>
-    /// Listar todos los usuarios con filtros opcionales
+    /// Listar todos los usuarios con filtros opcionales y paginación
     /// </summary>
     [HttpGet]
     [Authorize(Policy = "Supervisor")]
-    public async Task<ActionResult<List<UsuarioDto>>> ListarUsuarios(
+    public async Task<ActionResult<PaginatedResult<UsuarioDto>>> ListarUsuarios(
         [FromQuery] string? busqueda = null,
         [FromQuery] string? rol = null,
         [FromQuery] bool? activo = null,
-        [FromQuery] int? sucursalId = null)
+        [FromQuery] int? sucursalId = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
-        var dtos = await _usuarioService.ListarUsuariosAsync(
-            busqueda, rol, activo, sucursalId);
+        var resultado = await _usuarioService.ListarUsuariosAsync(
+            busqueda, rol, activo, sucursalId, page, pageSize);
 
         _logger.LogInformation(
-            "Usuario {Email} listó {Count} usuarios con filtros: busqueda={Busqueda}, rol={Rol}, activo={Activo}",
-            User.GetEmail(), dtos.Count, busqueda, rol, activo);
+            "Usuario {Email} listó {Count}/{Total} usuarios con filtros: busqueda={Busqueda}, rol={Rol}, activo={Activo}",
+            User.GetEmail(), resultado.Items.Count, resultado.TotalCount, busqueda, rol, activo);
 
-        return Ok(dtos);
+        return Ok(resultado);
     }
 
     /// <summary>
@@ -83,11 +85,11 @@ public class UsuariosController : ControllerBase
 
         await _usuarioService.ObtenerOCrearUsuarioAsync(externalId, email, nombreCompleto, rolPrincipal);
 
-        var perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
-        // Reintento: puede ocurrir en condición de carrera donde la creación aún no es visible
-        if (perfil == null)
+        // Reintento con back-off: la creación puede aún no ser visible por latencia de BD
+        PerfilUsuarioDto? perfil = null;
+        for (int intento = 0; intento < 3 && perfil == null; intento++)
         {
-            await Task.Delay(100);
+            if (intento > 0) await Task.Delay(150 * intento);
             perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
         }
         if (perfil == null)

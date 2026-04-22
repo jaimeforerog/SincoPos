@@ -169,11 +169,37 @@ public class UsuarioService : IUsuarioService
     }
 
     /// <inheritdoc />
-    async Task<List<UsuarioDto>> IUsuarioService.ListarUsuariosAsync(
-        string? busqueda, string? rol, bool? activo, int? sucursalId)
+    async Task<PaginatedResult<UsuarioDto>> IUsuarioService.ListarUsuariosAsync(
+        string? busqueda, string? rol, bool? activo, int? sucursalId, int page, int pageSize)
     {
-        var usuarios = await ListarUsuariosEntityAsync(busqueda, rol, activo, sucursalId);
-        return usuarios.Select(ToDto).ToList();
+        var query = _context.Usuarios
+            .Include(u => u.SucursalDefault)
+            .Include(u => u.Sucursales).ThenInclude(us => us.Sucursal)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(busqueda))
+            query = query.Where(u => u.NombreCompleto.Contains(busqueda) || u.Email.Contains(busqueda));
+
+        if (!string.IsNullOrWhiteSpace(rol))
+            query = query.Where(u => u.Rol == rol);
+
+        if (activo.HasValue)
+            query = query.Where(u => u.Activo == activo.Value);
+
+        if (sucursalId.HasValue)
+            query = query.Where(u =>
+                u.SucursalDefaultId == sucursalId.Value ||
+                u.Sucursales.Any(us => us.SucursalId == sucursalId.Value));
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(u => u.FechaCreacion)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        return new PaginatedResult<UsuarioDto>(items.Select(ToDto).ToList(), totalCount, page, pageSize, totalPages);
     }
 
     /// <inheritdoc />

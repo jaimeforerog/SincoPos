@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using POS.Application.Services;
 using POS.Infrastructure.Data.Entities;
 using POS.Domain;
@@ -12,16 +13,19 @@ public class AppDbContext : DbContext
 {
     private readonly IHttpContextAccessor? _httpContextAccessor;
     private readonly ICurrentEmpresaProvider? _empresaProvider;
+    private readonly ILogger<AppDbContext>? _logger;
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public AppDbContext(
         DbContextOptions<AppDbContext> options,
         IHttpContextAccessor httpContextAccessor,
-        ICurrentEmpresaProvider empresaProvider) : base(options)
+        ICurrentEmpresaProvider empresaProvider,
+        ILogger<AppDbContext> logger) : base(options)
     {
         _httpContextAccessor = httpContextAccessor;
         _empresaProvider = empresaProvider;
+        _logger = logger;
     }
 
     public DbSet<Empresa> Empresas => Set<Empresa>();
@@ -303,7 +307,10 @@ public class AppDbContext : DbContext
                         .FirstOrDefault();
                     if (emailBd != null) return emailBd;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "No se pudo resolver email por externalId {ExternalId}", externalId);
+                }
             }
 
             return "usuario-autenticado";

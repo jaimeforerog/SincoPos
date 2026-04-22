@@ -73,229 +73,26 @@ public class VentaService : IVentaService
 
     public async Task<(VentaDto? venta, string? error)> CrearVentaAsync(CrearVentaDto dto)
     {
-        // Verificar caja abierta
-        var caja = await _context.Cajas
-            .FirstOrDefaultAsync(c => c.Id == dto.CajaId && c.SucursalId == dto.SucursalId);
-        if (caja == null)
-            return (null, "Caja no encontrada en esta sucursal.");
-        if (caja.Estado != EstadoCaja.Abierta)
-            return (null, "La caja no esta abierta.");
+        var (ctx, ctxError) = await CargarContextoVentaAsync(dto);
+        if (ctx == null) return (null, ctxError);
 
-        // Obtener sucursal para metodo de costeo
-        var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
-        if (sucursal == null)
-            return (null, "Sucursal no encontrada.");
-
-        // Verificar cliente (si aplica)
-        string? nombreCliente = null;
-        string? nitCliente = null;
-        if (dto.ClienteId.HasValue)
-        {
-            var cliente = await _context.Terceros.FindAsync(dto.ClienteId.Value);
-            if (cliente == null) return (null, "Cliente no encontrado.");
-            nombreCliente = cliente.Nombre;
-            nitCliente = cliente.Identificacion;
-        }
-
-        // Generar numero de venta (IgnoreQueryFilters evita colisión de consecutivo entre empresas)
-        var ultimaVenta = await _context.Ventas
-            .IgnoreQueryFilters()
-            .Where(v => v.SucursalId == dto.SucursalId)
-            .OrderByDescending(v => v.Id)
-            .Select(v => v.NumeroVenta)
-            .FirstOrDefaultAsync();
-        var consecutivo = 1;
-        if (ultimaVenta != null && ultimaVenta.Contains('-'))
-        {
-            int.TryParse(ultimaVenta.Split('-').Last(), out consecutivo);
-            consecutivo++;
-        }
-        var numeroVenta = $"V-{consecutivo:D6}";
-
-        // Cargar reglas de retención activas de la sucursal
-        var reglasRetencion = await _context.RetencionesReglas
-            .Where(r => r.Activo)
-            .ToListAsync();
-
-        var hoyVenta = DateOnly.FromDateTime(DateTime.UtcNow);
-        var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
-            .Where(t => t.Activo && t.VigenciaDesde <= hoyVenta)
-            .OrderBy(t => t.MaxGramosPor100ml)
-            .ToListAsync();
-
-        // Perfil del comprador (si aplica)
-        string perfilComprador = "REGIMEN_COMUN";
-        if (dto.ClienteId.HasValue)
-        {
-            var cliente = await _context.Terceros.FindAsync(dto.ClienteId.Value);
-            if (cliente != null) perfilComprador = cliente.PerfilTributario;
-        }
-
-        // Pre-cargar productos y stocks en lote (elimina N+1)
-        var productoIds = dto.Lineas.Select(l => l.ProductoId).Distinct().ToList();
-
-        var productosMap = await _context.Productos
-            .Include(p => p.ConceptoRetencion)
-            .Include(p => p.Categoria)
-            .Where(p => productoIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id);
-
-        // Cargar impuestos con IgnoreQueryFilters para acceder a registros globales (EmpresaId = null)
-        var productoImpuestoIds = productosMap.Values
-            .Where(p => p.ImpuestoId.HasValue)
-            .Select(p => p.ImpuestoId!.Value)
-            .Distinct()
-            .ToList();
-        if (productoImpuestoIds.Count > 0)
-        {
-            var impuestosDict = await _context.Impuestos
-                .IgnoreQueryFilters()
-                .Where(i => productoImpuestoIds.Contains(i.Id))
-                .ToDictionaryAsync(i => i.Id);
-
-            foreach (var p in productosMap.Values)
-                if (p.ImpuestoId.HasValue && impuestosDict.TryGetValue(p.ImpuestoId.Value, out var imp))
-                    p.Impuesto = imp;
-        }
-
-        var stocksMap = await _context.Stock
-            .Where(s => productoIds.Contains(s.ProductoId) && s.SucursalId == dto.SucursalId)
-            .ToDictionaryAsync(s => s.ProductoId);
-
-        // Fecha efectiva de la venta (usuario la puede editar; no puede ser futura)
-        var fechaVentaEfectiva = dto.FechaVenta.HasValue
-            ? DateTime.SpecifyKind(dto.FechaVenta.Value, DateTimeKind.Utc)
-            : DateTime.UtcNow;
-
-        // Resolver usuarioId ANTES del loop — primero por email, fallback por ExternalId (WorkOS sub)
-        var emailCajero = _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("preferred_username")?.Value;
-        var subCajero = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        int? usuarioIdVenta = await _context.ResolverUsuarioIdAsync(emailCajero, subCajero);
-
-        // Procesar cada linea con el TaxEngine
         var detalles = new List<DetalleVenta>();
-        var stocksVerificar = new List<(Stock stock, string nombre)>();
+        var stocksVerificar = new List<(Stock Stock, string Nombre)>();
         var pendingMartenEvents = new List<(Guid StreamId, object Evento)>();
-        decimal subtotal = 0;
-        decimal descuentoTotal = 0;
-        decimal totalImpuestos = 0;
+        decimal subtotal = 0, descuentoTotal = 0, totalImpuestos = 0;
         bool requiereFacturaElectronica = false;
 
         foreach (var linea in dto.Lineas)
         {
-            // Obtener producto con su impuesto (desde cache en memoria)
-            if (!productosMap.TryGetValue(linea.ProductoId, out var producto))
-                return (null, $"Producto {linea.ProductoId} no encontrado.");
-            if (!producto.Activo)
-                return (null, $"Producto {producto.Nombre} esta inactivo.");
-
-            // Verificar stock (desde cache en memoria)
-            if (!stocksMap.TryGetValue(linea.ProductoId, out var stock) || stock.Cantidad < linea.Cantidad)
-                return (null, $"Stock insuficiente para {producto.Nombre}. " +
-                    $"Disponible: {stock?.Cantidad ?? 0}, Solicitado: {linea.Cantidad}");
-
-            // Resolver precio
-            decimal precioUnitario;
-            if (linea.PrecioUnitario.HasValue)
-            {
-                var (valido, errorPrecio) = await _precioService.ValidarPrecio(
-                    linea.ProductoId, dto.SucursalId, linea.PrecioUnitario.Value, producto.Nombre);
-                if (!valido) return (null, errorPrecio);
-                precioUnitario = linea.PrecioUnitario.Value;
-            }
-            else
-            {
-                var precio = await _precioService.ResolverPrecio(linea.ProductoId, dto.SucursalId);
-                precioUnitario = precio.PrecioVenta;
-            }
-
-            // ── Calcular impuestos con el TaxEngine ────────────────────────────
-            var taxResult = _taxEngine.Calcular(new TaxRequest(
-                ProductoId: linea.ProductoId,
-                Cantidad: linea.Cantidad,
-                PrecioUnitario: precioUnitario,
-                Impuesto: producto.Impuesto,
-                EsAlimentoUltraprocesado: producto.EsAlimentoUltraprocesado,
-                GramosAzucarPor100ml: producto.GramosAzucarPor100ml,
-                PerfilVendedor: sucursal.PerfilTributario,
-                PerfilComprador: perfilComprador,
-                CodigoMunicipio: sucursal.CodigoMunicipio ?? string.Empty,
-                ConceptoRetencionId: producto.ConceptoRetencionId,
-                ValorUVT: sucursal.ValorUVT,
-                ReglasRetencion: reglasRetencion,
-                TramosBebidasAzucaradas: tramosBebidasAzucaradas
-            ));
-
-            // Acumular flag de factura electrónica (si cualquier línea lo requiere)
-            if (taxResult.RequiereFacturaElectronica)
-                requiereFacturaElectronica = true;
-
-            // Usar el primer impuesto aplicado para compatibilidad con DetalleVenta
-            var primerImpuesto = taxResult.Impuestos.FirstOrDefault();
-            decimal porcentajeImpuesto = primerImpuesto?.Porcentaje ?? 0;
-            decimal montoImpuesto = taxResult.TotalImpuestos;
-            totalImpuestos += montoImpuesto;
-
-            // Consumir inventario via Event Sourcing
-            var streamId = InventarioAggregate.GenerarStreamId(linea.ProductoId, dto.SucursalId);
-            var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
-            if (aggregate == null)
-                return (null, $"No hay registro de inventario para {producto.Nombre}.");
-
-            SalidaVentaRegistrada eventoVenta;
-            try
-            {
-                eventoVenta = aggregate.RegistrarSalidaVenta(
-                    linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, numeroVenta,
-                    usuarioIdVenta, fechaMovimiento: fechaVentaEfectiva);
-            }
-            catch (InvalidOperationException)
-            {
-                return (null, $"Stock insuficiente para {producto.Nombre}. " +
-                    $"Disponible: {aggregate.Cantidad}, Solicitado: {linea.Cantidad}");
-            }
-            pendingMartenEvents.Add((streamId, eventoVenta));
-
-            // Consumir inventario con la estrategia de costeo (delegada a IVentaCosteoService)
-            var (costoUnitario, loteId, numeroLoteSnapshot, lotesConsumidos) = await _ventaCosteoService.ConsumirAsync(
-                linea.ProductoId, dto.SucursalId, linea.Cantidad,
-                sucursal.MetodoCosteo, producto.ManejaLotes);
-
-            // Actualizar stock en EF Core
-            stock.Cantidad -= linea.Cantidad;
-            stock.UltimaActualizacion = DateTime.UtcNow;
-            stocksVerificar.Add((stock, producto.Nombre));
-
-            // Crear detalle con snapshot del primer lote (compatibilidad)
-            var lineaSubtotal = (precioUnitario * linea.Cantidad) - linea.Descuento;
-            var detalle = new DetalleVenta
-            {
-                ProductoId = linea.ProductoId,
-                NombreProducto = producto.Nombre,
-                LoteInventarioId = loteId,
-                NumeroLote = numeroLoteSnapshot,
-                Cantidad = linea.Cantidad,
-                PrecioUnitario = precioUnitario,
-                CostoUnitario = costoUnitario,
-                Descuento = linea.Descuento,
-                PorcentajeImpuesto = porcentajeImpuesto,
-                MontoImpuesto = montoImpuesto,
-                Subtotal = lineaSubtotal,
-                Lotes = lotesConsumidos.Select(l => new DetalleVentaLote
-                {
-                    LoteInventarioId = l.LoteId,
-                    NumeroLote       = l.NumeroLote,
-                    Cantidad         = l.Cantidad,
-                    CostoUnitario    = l.CostoUnitario,
-                }).ToList()
-            };
-            detalles.Add(detalle);
-
-            subtotal += precioUnitario * linea.Cantidad;
-            descuentoTotal += linea.Descuento;
+            var (procesada, lineaError) = await ProcesarLineaAsync(linea, ctx, dto.SucursalId);
+            if (procesada == null) return (null, lineaError);
+            detalles.Add(procesada.Detalle);
+            stocksVerificar.Add(procesada.StockVerificar);
+            pendingMartenEvents.Add(procesada.MartenEvento);
+            subtotal += procesada.Subtotal;
+            descuentoTotal += procesada.Descuento;
+            totalImpuestos += procesada.TotalImpuestos;
+            if (procesada.RequiereFactura) requiereFacturaElectronica = true;
         }
 
         var total = subtotal - descuentoTotal + totalImpuestos;
@@ -304,26 +101,22 @@ public class VentaService : IVentaService
         if (dto.MontoPagado.HasValue && dto.MontoPagado.Value < total)
             return (null, $"Monto pagado ({dto.MontoPagado.Value}) es menor al total ({total}).");
 
-        // ── Capa 12: Supervisión Ética ────────────────────────────────────
         var lineasEtica = detalles.Select(d =>
         {
-            var prod = productosMap[d.ProductoId];
+            var prod = ctx.ProductosMap[d.ProductoId];
             return new LineaVentaEticaDto(d.ProductoId, d.PrecioUnitario, prod.PrecioVenta, d.Descuento, d.Cantidad);
         }).ToList();
-
-        var guardDto = new EvaluarVentaEticaDto(
-            dto.SucursalId, null, subtotal, descuentoTotal, detalles.Count, lineasEtica);
+        var guardDto = new EvaluarVentaEticaDto(dto.SucursalId, null, subtotal, descuentoTotal, detalles.Count, lineasEtica);
         var (permitido, errorGuard) = await _ethicalGuard.EvaluarVentaAsync(guardDto);
         if (!permitido) return (null, errorGuard);
 
         var asientosVenta = ConstruirAsientosErp(
-            detalles, productosMap, total, numeroVenta, dto.MetodoPago, sucursal.CentroCosto ?? string.Empty);
+            detalles, ctx.ProductosMap, total, ctx.NumeroVenta, dto.MetodoPago, ctx.Sucursal.CentroCosto ?? string.Empty);
 
-        // Crear venta
         var venta = new Venta
         {
-            NumeroVenta = numeroVenta,
-            EmpresaId = sucursal.EmpresaId,
+            NumeroVenta = ctx.NumeroVenta,
+            EmpresaId = ctx.Sucursal.EmpresaId,
             SucursalId = dto.SucursalId,
             CajaId = dto.CajaId,
             ClienteId = dto.ClienteId,
@@ -336,31 +129,28 @@ public class VentaService : IVentaService
             MontoPagado = dto.MontoPagado,
             Cambio = cambio,
             Observaciones = dto.Observaciones,
-            FechaVenta = fechaVentaEfectiva,
+            FechaVenta = ctx.FechaVentaEfectiva,
             RequiereFacturaElectronica = requiereFacturaElectronica,
             Detalles = detalles
         };
         _context.Ventas.Add(venta);
+        ctx.Caja.MontoActual += total;
 
-        // Actualizar monto de caja
-        caja.MontoActual += total;
-
-        // Capa 5 — Anticipación funcional: obtener externalId del cajero autenticado
         var externalId = _httpContextAccessor.HttpContext?.User?.FindFirst("oid")?.Value
             ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
             ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
             ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
 
-        await EjecutarTransaccionAtomicaAsync(venta, pendingMartenEvents, externalId, dto, nitCliente, total, asientosVenta, detalles);
+        await EjecutarTransaccionAtomicaAsync(venta, pendingMartenEvents, externalId, dto, ctx.NitCliente, total, asientosVenta, detalles);
 
         _logger.LogInformation("Venta {NumeroVenta} completada. Total: {Total}, Items: {Items}",
-            numeroVenta, total, detalles.Count);
+            ctx.NumeroVenta, total, detalles.Count);
 
-        await NotificarVentaAsync(venta, dto.SucursalId, numeroVenta, total, subtotal,
+        await NotificarVentaAsync(venta, dto.SucursalId, ctx.NumeroVenta, total, subtotal,
             descuentoTotal, totalImpuestos, dto.MetodoPago, dto.ClienteId, dto.CajaId,
             detalles, stocksVerificar);
 
-        return (MapToDto(venta, sucursal.Nombre, caja.Nombre, nombreCliente), null);
+        return (MapToDto(venta, ctx.Sucursal.Nombre, ctx.Caja.Nombre, ctx.NombreCliente), null);
     }
 
     /// <summary>Delega en <see cref="VentaAnulacionService"/>.</summary>
@@ -375,6 +165,222 @@ public class VentaService : IVentaService
 
 
     // ─── Private helpers ──────────────────────────────
+
+    private sealed record VentaContexto(
+        Caja Caja,
+        Sucursal Sucursal,
+        string? NombreCliente,
+        string? NitCliente,
+        string NumeroVenta,
+        List<RetencionRegla> ReglasRetencion,
+        List<TramoBebidasAzucaradas> TramosBebidasAzucaradas,
+        string PerfilComprador,
+        Dictionary<Guid, Producto> ProductosMap,
+        Dictionary<Guid, Stock> StocksMap,
+        DateTime FechaVentaEfectiva,
+        int? UsuarioIdVenta
+    );
+
+    private sealed record LineaProcessada(
+        DetalleVenta Detalle,
+        (Guid StreamId, object Evento) MartenEvento,
+        (Stock Stock, string Nombre) StockVerificar,
+        decimal Subtotal,
+        decimal Descuento,
+        decimal TotalImpuestos,
+        bool RequiereFactura
+    );
+
+    private async Task<(VentaContexto? ctx, string? error)> CargarContextoVentaAsync(CrearVentaDto dto)
+    {
+        var caja = await _context.Cajas
+            .FirstOrDefaultAsync(c => c.Id == dto.CajaId && c.SucursalId == dto.SucursalId);
+        if (caja == null) return (null, "Caja no encontrada en esta sucursal.");
+        if (caja.Estado != EstadoCaja.Abierta) return (null, "La caja no esta abierta.");
+
+        var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
+        if (sucursal == null) return (null, "Sucursal no encontrada.");
+
+        string? nombreCliente = null, nitCliente = null;
+        string perfilComprador = "REGIMEN_COMUN";
+        if (dto.ClienteId.HasValue)
+        {
+            var cliente = await _context.Terceros.FindAsync(dto.ClienteId.Value);
+            if (cliente == null) return (null, "Cliente no encontrado.");
+            nombreCliente = cliente.Nombre;
+            nitCliente = cliente.Identificacion;
+            perfilComprador = cliente.PerfilTributario;
+        }
+
+        var ultimaVenta = await _context.Ventas
+            .IgnoreQueryFilters()
+            .Where(v => v.SucursalId == dto.SucursalId)
+            .OrderByDescending(v => v.Id)
+            .Select(v => v.NumeroVenta)
+            .FirstOrDefaultAsync();
+        var consecutivo = 1;
+        if (ultimaVenta != null && ultimaVenta.Contains('-'))
+        {
+            int.TryParse(ultimaVenta.Split('-').Last(), out consecutivo);
+            consecutivo++;
+        }
+        var numeroVenta = $"V-{consecutivo:D6}";
+
+        var reglasRetencion = await _context.RetencionesReglas.Where(r => r.Activo).ToListAsync();
+        var hoyVenta = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tramosBebidasAzucaradas = await _context.TramosBebidasAzucaradas
+            .Where(t => t.Activo && t.VigenciaDesde <= hoyVenta)
+            .OrderBy(t => t.MaxGramosPor100ml)
+            .ToListAsync();
+
+        var productoIds = dto.Lineas.Select(l => l.ProductoId).Distinct().ToList();
+        var productosMap = await _context.Productos
+            .Include(p => p.ConceptoRetencion)
+            .Include(p => p.Categoria)
+            .Where(p => productoIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var productoImpuestoIds = productosMap.Values
+            .Where(p => p.ImpuestoId.HasValue)
+            .Select(p => p.ImpuestoId!.Value)
+            .Distinct()
+            .ToList();
+        if (productoImpuestoIds.Count > 0)
+        {
+            var impuestosDict = await _context.Impuestos
+                .IgnoreQueryFilters()
+                .Where(i => productoImpuestoIds.Contains(i.Id))
+                .ToDictionaryAsync(i => i.Id);
+            foreach (var p in productosMap.Values)
+                if (p.ImpuestoId.HasValue && impuestosDict.TryGetValue(p.ImpuestoId.Value, out var imp))
+                    p.Impuesto = imp;
+        }
+
+        var stocksMap = await _context.Stock
+            .Where(s => productoIds.Contains(s.ProductoId) && s.SucursalId == dto.SucursalId)
+            .ToDictionaryAsync(s => s.ProductoId);
+
+        var fechaVentaEfectiva = dto.FechaVenta.HasValue
+            ? DateTime.SpecifyKind(dto.FechaVenta.Value, DateTimeKind.Utc)
+            : DateTime.UtcNow;
+
+        var emailCajero = _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("preferred_username")?.Value;
+        var subCajero = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? usuarioIdVenta = await _context.ResolverUsuarioIdAsync(emailCajero, subCajero);
+
+        return (new VentaContexto(
+            caja, sucursal, nombreCliente, nitCliente, numeroVenta,
+            reglasRetencion, tramosBebidasAzucaradas, perfilComprador,
+            productosMap, stocksMap, fechaVentaEfectiva, usuarioIdVenta), null);
+    }
+
+    private async Task<(LineaProcessada? resultado, string? error)> ProcesarLineaAsync(
+        LineaVentaDto linea, VentaContexto ctx, int sucursalId)
+    {
+        if (!ctx.ProductosMap.TryGetValue(linea.ProductoId, out var producto))
+            return (null, $"Producto {linea.ProductoId} no encontrado.");
+        if (!producto.Activo)
+            return (null, $"Producto {producto.Nombre} esta inactivo.");
+
+        if (!ctx.StocksMap.TryGetValue(linea.ProductoId, out var stock) || stock.Cantidad < linea.Cantidad)
+            return (null, $"Stock insuficiente para {producto.Nombre}. " +
+                $"Disponible: {stock?.Cantidad ?? 0}, Solicitado: {linea.Cantidad}");
+
+        decimal precioUnitario;
+        if (linea.PrecioUnitario.HasValue)
+        {
+            var (valido, errorPrecio) = await _precioService.ValidarPrecio(
+                linea.ProductoId, sucursalId, linea.PrecioUnitario.Value, producto.Nombre);
+            if (!valido) return (null, errorPrecio);
+            precioUnitario = linea.PrecioUnitario.Value;
+        }
+        else
+        {
+            var precio = await _precioService.ResolverPrecio(linea.ProductoId, sucursalId);
+            precioUnitario = precio.PrecioVenta;
+        }
+
+        var taxResult = _taxEngine.Calcular(new TaxRequest(
+            ProductoId: linea.ProductoId,
+            Cantidad: linea.Cantidad,
+            PrecioUnitario: precioUnitario,
+            Impuesto: producto.Impuesto,
+            EsAlimentoUltraprocesado: producto.EsAlimentoUltraprocesado,
+            GramosAzucarPor100ml: producto.GramosAzucarPor100ml,
+            PerfilVendedor: ctx.Sucursal.PerfilTributario,
+            PerfilComprador: ctx.PerfilComprador,
+            CodigoMunicipio: ctx.Sucursal.CodigoMunicipio ?? string.Empty,
+            ConceptoRetencionId: producto.ConceptoRetencionId,
+            ValorUVT: ctx.Sucursal.ValorUVT,
+            ReglasRetencion: ctx.ReglasRetencion,
+            TramosBebidasAzucaradas: ctx.TramosBebidasAzucaradas
+        ));
+
+        var primerImpuesto = taxResult.Impuestos.FirstOrDefault();
+        decimal porcentajeImpuesto = primerImpuesto?.Porcentaje ?? 0;
+        decimal montoImpuesto = taxResult.TotalImpuestos;
+
+        var streamId = InventarioAggregate.GenerarStreamId(linea.ProductoId, sucursalId);
+        var aggregate = await _session.Events.AggregateStreamAsync<InventarioAggregate>(streamId);
+        if (aggregate == null)
+            return (null, $"No hay registro de inventario para {producto.Nombre}.");
+
+        SalidaVentaRegistrada eventoVenta;
+        try
+        {
+            eventoVenta = aggregate.RegistrarSalidaVenta(
+                linea.Cantidad, precioUnitario, porcentajeImpuesto, montoImpuesto, ctx.NumeroVenta,
+                ctx.UsuarioIdVenta, fechaMovimiento: ctx.FechaVentaEfectiva);
+        }
+        catch (InvalidOperationException)
+        {
+            return (null, $"Stock insuficiente para {producto.Nombre}. " +
+                $"Disponible: {aggregate.Cantidad}, Solicitado: {linea.Cantidad}");
+        }
+
+        var (costoUnitario, loteId, numeroLoteSnapshot, lotesConsumidos) = await _ventaCosteoService.ConsumirAsync(
+            linea.ProductoId, sucursalId, linea.Cantidad,
+            ctx.Sucursal.MetodoCosteo, producto.ManejaLotes);
+
+        stock.Cantidad -= linea.Cantidad;
+        stock.UltimaActualizacion = DateTime.UtcNow;
+
+        var lineaSubtotal = (precioUnitario * linea.Cantidad) - linea.Descuento;
+        var detalle = new DetalleVenta
+        {
+            ProductoId = linea.ProductoId,
+            NombreProducto = producto.Nombre,
+            LoteInventarioId = loteId,
+            NumeroLote = numeroLoteSnapshot,
+            Cantidad = linea.Cantidad,
+            PrecioUnitario = precioUnitario,
+            CostoUnitario = costoUnitario,
+            Descuento = linea.Descuento,
+            PorcentajeImpuesto = porcentajeImpuesto,
+            MontoImpuesto = montoImpuesto,
+            Subtotal = lineaSubtotal,
+            Lotes = lotesConsumidos.Select(l => new DetalleVentaLote
+            {
+                LoteInventarioId = l.LoteId,
+                NumeroLote       = l.NumeroLote,
+                Cantidad         = l.Cantidad,
+                CostoUnitario    = l.CostoUnitario,
+            }).ToList()
+        };
+
+        return (new LineaProcessada(
+            detalle,
+            (streamId, eventoVenta),
+            (stock, producto.Nombre),
+            precioUnitario * linea.Cantidad,
+            linea.Descuento,
+            montoImpuesto,
+            taxResult.RequiereFacturaElectronica
+        ), null);
+    }
 
     private List<AsientoContableErp> ConstruirAsientosErp(
         List<DetalleVenta> detalles,

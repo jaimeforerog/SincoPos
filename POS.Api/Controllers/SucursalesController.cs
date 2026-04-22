@@ -110,11 +110,13 @@ public class SucursalesController : ControllerBase
     }
 
     /// <summary>
-    /// Listar sucursales
+    /// Listar sucursales con paginación opcional
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<SucursalDto>>> ObtenerSucursales(
-        [FromQuery] bool incluirInactivas = false)
+    public async Task<ActionResult<PaginatedResult<SucursalDto>>> ObtenerSucursales(
+        [FromQuery] bool incluirInactivas = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
     {
         // IgnoreQueryFilters omite TODOS los filtros (incluido el de empresa).
         // Para incluir inactivas, aplicamos el filtro de empresa explícitamente.
@@ -125,66 +127,19 @@ public class SucursalesController : ControllerBase
                 .AsQueryable()
             : _context.Sucursales.AsQueryable();
 
+        query = query.OrderBy(s => s.Nombre);
+
+        var totalCount = await query.CountAsync();
         var sucursales = await query
-            .OrderBy(s => s.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(s => new SucursalDto(
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
                 s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion, s.EmpresaId))
             .ToListAsync();
 
-        return Ok(sucursales);
-    }
-
-    /// <summary>
-    /// Endpoint de prueba con SQL directo
-    /// </summary>
-    [HttpGet("test-raw")]
-    public async Task<ActionResult> TestRawSql()
-    {
-        var connection = _context.Database.GetDbConnection();
-        await connection.OpenAsync();
-
-        // Verificar base de datos actual
-        using var dbCommand = connection.CreateCommand();
-        dbCommand.CommandText = "SELECT current_database(), current_schema(), version()";
-        var dbInfo = new {
-            Database = "",
-            Schema = "",
-            Version = ""
-        };
-
-        using (var dbReader = await dbCommand.ExecuteReaderAsync())
-        {
-            if (await dbReader.ReadAsync())
-            {
-                dbInfo = new {
-                    Database = dbReader.GetString(0),
-                    Schema = dbReader.GetString(1),
-                    Version = dbReader.GetString(2)
-                };
-            }
-        }
-
-        // Query sucursales
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT \"Id\", nombre, activo FROM public.sucursales ORDER BY \"Id\"";
-
-        var results = new List<object>();
-        using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            results.Add(new {
-                Id = reader.GetInt32(0),
-                Nombre = reader.GetString(1),
-                Activo = reader.GetBoolean(2)
-            });
-        }
-
-        return Ok(new {
-            ConnectionInfo = dbInfo,
-            ConnectionString = _context.Database.GetConnectionString(),
-            Sucursales = results
-        });
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new PaginatedResult<SucursalDto>(sucursales, totalCount, page, pageSize, totalPages));
     }
 
     /// <summary>
