@@ -220,3 +220,35 @@ public record ReporteAuditoriaComprasDto(
     KpisAuditoriaComprasDto Kpis,
     PaginatedResult<ActivityLogFullDto> Logs
 );
+
+// ─── Reporte de Auditoría de Ventas ───────────────────────────────────────
+
+public record ReporteAuditoriaVentasQueryDto(
+    DateTime FechaDesde,
+    DateTime FechaHasta,
+    int? SucursalId = null,
+    int? ClienteId = null,
+    string? UsuarioEmail = null,
+    string? Accion = null,
+    bool? SoloErrores = null,
+    int PageNumber = 1,
+    int PageSize = 50
+);
+
+public record KpisAuditoriaVentasDto(
+    int TotalEventos,
+    int EventosExitosos,
+    int EventosFallidos,
+    Dictionary<string, int> EventosPorAccion,
+    int TotalVentas,
+    int TotalAnulaciones,
+    int TotalDevoluciones,
+    decimal ValorTotalVendido,
+    decimal ValorTotalAnulado,
+    decimal ValorTotalDevuelto
+);
+
+public record ReporteAuditoriaVentasDto(
+    KpisAuditoriaVentasDto Kpis,
+    PaginatedResult<ActivityLogFullDto> Logs
+);

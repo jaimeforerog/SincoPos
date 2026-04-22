@@ -15,4 +15,7 @@ public interface IReportesService
 
     Task<ReporteAuditoriaComprasDto> ObtenerAuditoriaComprasAsync(
         ReporteAuditoriaComprasQueryDto query);
+
+    Task<ReporteAuditoriaVentasDto> ObtenerAuditoriaVentasAsync(
+        ReporteAuditoriaVentasQueryDto query);
 }

@@ -323,6 +323,81 @@ public class ReportesService : IReportesService
         return new ReporteAuditoriaComprasDto(kpis, logsResult);
     }
 
+    public async Task<ReporteAuditoriaVentasDto> ObtenerAuditoriaVentasAsync(
+        ReporteAuditoriaVentasQueryDto query)
+    {
+        var (fechaDesdeUtc, fechaHastaUtc) = NormalizarRangoUtc(query.FechaDesde, query.FechaHasta);
+
+        // ── Logs paginados via IActivityLogService ─────────────────────────────
+        var filter = new ActivityLogFilterDto(
+            FechaDesde: fechaDesdeUtc,
+            FechaHasta: fechaHastaUtc,
+            UsuarioEmail: query.UsuarioEmail,
+            Tipo: TipoActividad.Venta,
+            Accion: query.Accion,
+            SucursalId: query.SucursalId,
+            Exitosa: query.SoloErrores.HasValue ? !query.SoloErrores.Value : null,
+            PageNumber: query.PageNumber,
+            PageSize: query.PageSize
+        );
+        var logsResult = await _activityLogService.GetActivitiesAsync(filter);
+
+        // ── KPIs de conteo desde ActivityLog ──────────────────────────────────
+        var kpiQuery = _context.ActivityLogs
+            .Where(a => a.Tipo == TipoActividad.Venta
+                     && a.FechaHora >= fechaDesdeUtc
+                     && a.FechaHora <= fechaHastaUtc);
+
+        if (query.SucursalId.HasValue)
+            kpiQuery = kpiQuery.Where(a => a.SucursalId == query.SucursalId.Value);
+
+        var kpiRaw = await kpiQuery
+            .Select(a => new { a.Accion, a.Exitosa })
+            .ToListAsync();
+
+        var eventosPorAccion = kpiRaw
+            .GroupBy(a => a.Accion)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // ── KPIs monetarios desde Ventas ──────────────────────────────────────
+        var ventasQuery = _context.Ventas
+            .Where(v => v.FechaVenta >= fechaDesdeUtc && v.FechaVenta <= fechaHastaUtc);
+
+        if (query.SucursalId.HasValue)
+            ventasQuery = ventasQuery.Where(v => v.SucursalId == query.SucursalId.Value);
+
+        if (query.ClienteId.HasValue)
+            ventasQuery = ventasQuery.Where(v => v.ClienteId == query.ClienteId.Value);
+
+        var ventasData = await ventasQuery
+            .Select(v => new { v.Total, v.Estado })
+            .ToListAsync();
+
+        var devolucionesBaseQuery = _context.DevolucionesVenta
+            .Where(d => d.FechaDevolucion >= fechaDesdeUtc && d.FechaDevolucion <= fechaHastaUtc);
+
+        if (query.SucursalId.HasValue)
+            devolucionesBaseQuery = devolucionesBaseQuery
+                .Where(d => _context.Ventas.Any(v => v.Id == d.VentaId && v.SucursalId == query.SucursalId.Value));
+
+        var valorTotalDevuelto = await devolucionesBaseQuery.SumAsync(d => (decimal?)d.TotalDevuelto) ?? 0m;
+
+        var kpis = new KpisAuditoriaVentasDto(
+            TotalEventos: kpiRaw.Count,
+            EventosExitosos: kpiRaw.Count(a => a.Exitosa),
+            EventosFallidos: kpiRaw.Count(a => !a.Exitosa),
+            EventosPorAccion: eventosPorAccion,
+            TotalVentas: ventasData.Count(v => v.Estado == EstadoVenta.Completada),
+            TotalAnulaciones: ventasData.Count(v => v.Estado == EstadoVenta.Anulada),
+            TotalDevoluciones: eventosPorAccion.GetValueOrDefault("DevolucionParcial", 0),
+            ValorTotalVendido: ventasData.Where(v => v.Estado == EstadoVenta.Completada).Sum(v => v.Total),
+            ValorTotalAnulado: ventasData.Where(v => v.Estado == EstadoVenta.Anulada).Sum(v => v.Total),
+            ValorTotalDevuelto: valorTotalDevuelto
+        );
+
+        return new ReporteAuditoriaVentasDto(kpis, logsResult);
+    }
+
     private static (DateTime desde, DateTime hasta) NormalizarRangoUtc(DateTime fechaDesde, DateTime fechaHasta) =>
         (DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc),
          DateTime.SpecifyKind(fechaHasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc));

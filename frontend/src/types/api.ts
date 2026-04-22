@@ -1105,6 +1105,26 @@ export interface ReporteAuditoriaComprasDTO {
   logs: PaginatedResult<ActivityLogFullDTO>;
 }
 
+// ── Auditoría de Ventas ─────────────────────────────────────────────────────
+
+export interface KpisAuditoriaVentasDTO {
+  totalEventos: number;
+  eventosExitosos: number;
+  eventosFallidos: number;
+  eventosPorAccion: Record<string, number>;
+  totalVentas: number;
+  totalAnulaciones: number;
+  totalDevoluciones: number;
+  valorTotalVendido: number;
+  valorTotalAnulado: number;
+  valorTotalDevuelto: number;
+}
+
+export interface ReporteAuditoriaVentasDTO {
+  kpis: KpisAuditoriaVentasDTO;
+  logs: PaginatedResult<ActivityLogFullDTO>;
+}
+
 export interface CambioEntidadDTO {
   id: number;
   fechaHora: string;

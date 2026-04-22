@@ -438,7 +438,7 @@ public class CompraRecepcionService
             TipoEntidad: "OrdenCompra",
             EntidadId: id.ToString(),
             EntidadNombre: orden.NumeroOrden,
-            DatosNuevos: new { orden, dto }
+            DatosNuevos: new { orden.Id, orden.NumeroOrden, orden.Estado, orden.Total, LineasRecibidas = dto.Lineas.Count, dto.FechaRecepcion }
         ));
 
         return (true, null);

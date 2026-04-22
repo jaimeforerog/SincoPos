@@ -113,7 +113,7 @@ public class CompraService : ICompraService
             TipoEntidad: "OrdenCompra",
             EntidadId: orden.Id.ToString(),
             EntidadNombre: numeroOrden,
-            DatosNuevos: new { orden, dto }
+            DatosNuevos: new { orden.Id, orden.NumeroOrden, orden.Estado, orden.Total, orden.SucursalId, orden.ProveedorId, TotalLineas = orden.Detalles.Count, dto.FormaPago, dto.DiasPlazo }
         ));
 
         // Asignar navigations ya cargadas (evitar 2 queries extra)
@@ -230,7 +230,7 @@ public class CompraService : ICompraService
             TipoEntidad: "OrdenCompra",
             EntidadId: id.ToString(),
             EntidadNombre: orden.NumeroOrden,
-            DatosNuevos: new { orden, dto }
+            DatosNuevos: new { orden.Id, orden.NumeroOrden, orden.Estado, dto.Motivo }
         ));
 
         return (true, null);

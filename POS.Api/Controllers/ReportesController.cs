@@ -182,6 +182,47 @@ public class ReportesController : ControllerBase
     }
 
     /// <summary>
+    /// Auditoría de ventas: KPIs del período y log paginado de eventos sobre ventas.
+    /// </summary>
+    [HttpGet("auditoria-ventas")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(ReporteAuditoriaVentasDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ReporteAuditoriaVentasDto>> ObtenerAuditoriaVentas(
+        [FromQuery] DateTime fechaDesde,
+        [FromQuery] DateTime fechaHasta,
+        [FromQuery] int? sucursalId = null,
+        [FromQuery] int? clienteId = null,
+        [FromQuery] string? usuarioEmail = null,
+        [FromQuery] string? accion = null,
+        [FromQuery] bool? soloErrores = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        if (fechaDesde > fechaHasta)
+            return Problem(detail: "La fecha desde no puede ser mayor que la fecha hasta.", statusCode: StatusCodes.Status400BadRequest);
+
+        var query = new ReporteAuditoriaVentasQueryDto(
+            fechaDesde, fechaHasta, sucursalId, clienteId,
+            usuarioEmail, accion, soloErrores, pageNumber, pageSize);
+
+        var reporte = await _reportesService.ObtenerAuditoriaVentasAsync(query);
+        return Ok(reporte);
+    }
+
+    /// <summary>
+    /// Timeline completo de cambios sobre una venta específica.
+    /// </summary>
+    [HttpGet("auditoria-ventas/venta/{ventaId:int}")]
+    [Authorize(Policy = "Supervisor")]
+    [ProducesResponseType(typeof(HistorialEntidadDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HistorialEntidadDto>> ObtenerHistorialVenta(int ventaId)
+    {
+        var historial = await _activityLogService.GetEntityHistoryAsync("Venta", ventaId.ToString());
+        return Ok(historial);
+    }
+
+    /// <summary>
     /// Timeline completo de cambios sobre una orden de compra específica.
     /// </summary>
     [HttpGet("auditoria-compras/orden/{ordenId:int}")]
