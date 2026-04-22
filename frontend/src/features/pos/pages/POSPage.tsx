@@ -622,7 +622,10 @@ export function POSPage() {
         >
           {/* Panel Izquierdo - Búsqueda de Productos */}
           <Paper sx={{ flex: '1.1 1 0', p: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <IntentSearch onSelectProduct={handleSelectProduct} />
+            <IntentSearch
+              onSelectProduct={handleSelectProduct}
+              fechaVenta={mostrarFechaVenta ? new Date(fechaVenta).toISOString() : undefined}
+            />
           </Paper>
 
           {/* Panel Derecho - Carrito y Pago */}

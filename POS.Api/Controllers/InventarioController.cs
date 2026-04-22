@@ -6,6 +6,7 @@ using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Domain.Aggregates;
 using POS.Infrastructure.Data;
+using POS.Infrastructure.Data.Entities;
 
 namespace POS.Api.Controllers;
 
@@ -182,6 +183,76 @@ public class InventarioController : ControllerBase
             .ToListAsync();
 
         return Ok(stock);
+    }
+
+    /// <summary>
+    /// Stock proyectado a una fecha de corte pasada.
+    /// Calcula: stockActual + ventasPostFecha + reversaDeltaMovimientos.
+    /// Usado por el POS cuando se registran ventas con fecha retroactiva.
+    /// </summary>
+    [HttpGet("historico")]
+    [ProducesResponseType(typeof(List<StockDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<StockDto>>> ObtenerStockHistorico(
+        [FromQuery] int sucursalId,
+        [FromQuery] DateTime fecha)
+    {
+        var fechaUtc = DateTime.SpecifyKind(fecha, DateTimeKind.Utc);
+
+        // 1. Stock actual de la sucursal
+        var stockActual = await _context.Stock
+            .Include(s => s.Producto)
+            .Include(s => s.Sucursal)
+            .Where(s => s.SucursalId == sucursalId)
+            .ToListAsync();
+
+        // 2. Ventas no anuladas con fecha efectiva DESPUÉS del corte → reversar (sumar de vuelta)
+        var ventasDelta = await _context.DetalleVentas
+            .Where(dv => dv.Venta.SucursalId == sucursalId
+                      && dv.Venta.FechaVenta > fechaUtc
+                      && dv.Venta.Estado != EstadoVenta.Anulada)
+            .GroupBy(dv => dv.ProductoId)
+            .Select(g => new { ProductoId = g.Key, Cantidad = g.Sum(dv => dv.Cantidad) })
+            .ToDictionaryAsync(x => x.ProductoId, x => x.Cantidad);
+
+        // 3. Movimientos (compras, traslados, ajustes, devoluciones proveedor) DESPUÉS del corte
+        var movimientosDespues = await _context.MovimientosInventario
+            .Where(m => m.SucursalId == sucursalId && m.FechaMovimiento > fechaUtc)
+            .GroupBy(m => new { m.ProductoId, m.TipoMovimiento })
+            .Select(g => new { g.Key.ProductoId, g.Key.TipoMovimiento, Cantidad = g.Sum(m => m.Cantidad) })
+            .ToListAsync();
+
+        var movDelta = new Dictionary<Guid, decimal>();
+        foreach (var mov in movimientosDespues)
+        {
+            // Para cada movimiento ocurrido DESPUÉS del corte, lo reversamos:
+            // entradas (compras, traslados+, ajustes+) → restar; salidas (devoluciones proveedor, traslados-, ajustes-) → sumar
+            var delta = mov.TipoMovimiento switch
+            {
+                TipoMovimiento.EntradaCompra       => -mov.Cantidad,
+                TipoMovimiento.AjustePositivo      => -mov.Cantidad,
+                TipoMovimiento.TransferenciaEntrada => -mov.Cantidad,
+                TipoMovimiento.DevolucionProveedor  =>  mov.Cantidad,
+                TipoMovimiento.AjusteNegativo       =>  mov.Cantidad,
+                TipoMovimiento.TransferenciaSalida  =>  mov.Cantidad,
+                _ => 0m
+            };
+            movDelta[mov.ProductoId] = movDelta.GetValueOrDefault(mov.ProductoId, 0) + delta;
+        }
+
+        // 4. Construir respuesta con cantidades históricas (mínimo 0)
+        var resultado = stockActual.Select(s =>
+        {
+            var ventasReversa = ventasDelta.GetValueOrDefault(s.ProductoId, 0);
+            var movReversa    = movDelta.GetValueOrDefault(s.ProductoId, 0);
+            var cantidadHistorica = Math.Max(0, s.Cantidad + ventasReversa + movReversa);
+
+            return new StockDto(
+                s.Id, s.ProductoId, s.Producto.Nombre, s.Producto.CodigoBarras,
+                s.SucursalId, s.Sucursal.Nombre,
+                cantidadHistorica, s.StockMinimo, s.CostoPromedio, s.UltimaActualizacion);
+        }).ToList();
+
+        return Ok(resultado);
     }
 
     /// <summary>

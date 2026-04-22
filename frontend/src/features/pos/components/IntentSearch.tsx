@@ -31,14 +31,18 @@ import type { ProductoDTO } from '@/types/api';
  */
 interface IntentSearchProps {
   onSelectProduct: (producto: ProductoDTO, quantity?: number) => void;
+  fechaVenta?: string; // ISO UTC. Si está en el pasado, muestra stock histórico en esa fecha.
 }
 
-export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
+export function IntentSearch({ onSelectProduct, fechaVenta }: IntentSearchProps) {
   const [searchTerm, setSearchTerm]   = useState('');
   const [voiceQty, setVoiceQty]       = useState<number | null>(null);
   const debouncedSearch               = useDebounce(searchTerm, 300);
   const searchInputRef                = useRef<HTMLInputElement>(null);
   const { activeSucursalId, activeEmpresaId } = useAuth();
+
+  // Usar stock histórico solo cuando la fecha de sesión es retroactiva (>5 min en el pasado)
+  const usarHistorico = !!fechaVenta && new Date(fechaVenta) < new Date(Date.now() - 5 * 60 * 1000);
 
   // Catálogo paginado con búsqueda debounced
   const { data: productosData, isLoading } = useQuery({
@@ -48,10 +52,12 @@ export function IntentSearch({ onSelectProduct }: IntentSearchProps) {
   });
   const productos = productosData?.items ?? [];
 
-  // Stock de la sucursal activa
+  // Stock de la sucursal activa — histórico si la sesión tiene fecha retroactiva
   const { data: inventarios = [] } = useQuery({
-    queryKey: ['inventario', activeSucursalId],
-    queryFn:  () => inventarioApi.getStock({ sucursalId: activeSucursalId }),
+    queryKey: ['inventario', activeSucursalId, usarHistorico ? fechaVenta : null],
+    queryFn:  () => usarHistorico && activeSucursalId
+      ? inventarioApi.getStockHistorico({ sucursalId: activeSucursalId, fecha: fechaVenta! })
+      : inventarioApi.getStock({ sucursalId: activeSucursalId }),
     enabled:  !!activeSucursalId,
   });
 

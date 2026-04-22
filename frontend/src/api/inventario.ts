@@ -22,6 +22,18 @@ export const inventarioApi = {
   },
 
   /**
+   * Stock proyectado a una fecha de corte (para ventas retroactivas).
+   * Devuelve las mismas cantidades que getStock pero ajustadas al momento del corte.
+   */
+  getStockHistorico: async (params: {
+    sucursalId: number;
+    fecha: string; // ISO UTC string
+  }) => {
+    const response = await apiClient.get<InventarioStockDTO[]>('/inventario/historico', { params });
+    return response.data;
+  },
+
+  /**
    * Alias para getStock
    */
   obtenerStock: async (params?: {
