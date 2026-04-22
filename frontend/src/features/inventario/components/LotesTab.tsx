@@ -18,12 +18,13 @@ import {
   Typography,
   IconButton,
   Tooltip,
+  Autocomplete,
 } from '@mui/material';
 import { Timeline } from '@mui/icons-material';
 import { lotesApi } from '@/api/lotes';
 import { productosApi } from '@/api/productos';
 import { useAuth } from '@/hooks/useAuth';
-import type { SucursalDTO } from '@/types/api';
+import type { ProductoDTO, SucursalDTO } from '@/types/api';
 import { formatCurrency, formatDateOnly } from '@/utils/format';
 import { TrazabilidadLoteModal } from './TrazabilidadLoteModal';
 
@@ -43,34 +44,29 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
   const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId || '');
   const [soloVigentes, setSoloVigentes] = useState(true);
   const [productoQuery, setProductoQuery] = useState('');
+  const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoDTO | null>(null);
   const [trazabilidadLoteId, setTrazabilidadLoteId] = useState<number | null>(null);
   const { activeEmpresaId } = useAuth();
 
-  // Buscar productos para el selector
-  const { data: productosData } = useQuery({
+  const { data: productosData, isFetching: buscandoProductos } = useQuery({
     queryKey: ['productos', 'buscar', productoQuery, activeEmpresaId],
     queryFn: () => productosApi.getAll({ query: productoQuery || undefined }),
-    enabled: true,
+    enabled: productoQuery.length >= 2,
   });
-  const productos = productosData?.items || [];
+  const productos = productosData?.items ?? [];
 
-  const [productoId, setProductoId] = useState<string>('');
+  const productoId = productoSeleccionado?.id ?? '';
 
-  // Cargar lotes (solo si hay producto y sucursal)
   const { data: lotes = [], isLoading } = useQuery({
     queryKey: ['lotes', productoId, sucursalId, soloVigentes],
-    queryFn: () =>
-      lotesApi.obtenerLotes(productoId, sucursalId as number, soloVigentes),
+    queryFn: () => lotesApi.obtenerLotes(productoId, sucursalId as number, soloVigentes),
     enabled: !!productoId && !!sucursalId,
   });
 
-  // Cargar alertas de vencimiento (si no hay producto seleccionado)
   const { data: alertas = [], isLoading: loadingAlertas } = useQuery({
     queryKey: ['lotes', 'proximos-vencer', sucursalId],
     queryFn: () =>
-      sucursalId
-        ? lotesApi.proximosAVencer(sucursalId as number)
-        : lotesApi.obtenerAlertas(),
+      sucursalId ? lotesApi.proximosAVencer(sucursalId as number) : lotesApi.obtenerAlertas(),
     enabled: !productoId,
   });
 
@@ -93,32 +89,25 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
           ))}
         </TextField>
 
-        <TextField
-          label="Buscar producto"
-          value={productoQuery}
-          onChange={(e) => { setProductoQuery(e.target.value); setProductoId(''); }}
+        <Autocomplete
+          options={productos}
+          value={productoSeleccionado}
+          inputValue={productoQuery}
+          loading={buscandoProductos}
+          getOptionLabel={(p) => `${p.nombre}${p.codigoBarras ? ` — ${p.codigoBarras}` : ''}`}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          onInputChange={(_e, value, reason) => {
+            setProductoQuery(value);
+            if (reason === 'clear') setProductoSeleccionado(null);
+          }}
+          onChange={(_e, value) => setProductoSeleccionado(value)}
+          noOptionsText={productoQuery.length < 2 ? 'Escribe al menos 2 caracteres' : 'Sin resultados'}
           size="small"
-          sx={{ minWidth: 220 }}
-          placeholder="Nombre o código..."
+          sx={{ minWidth: 280 }}
+          renderInput={(params) => (
+            <TextField {...params} label="Buscar producto" placeholder="Nombre o código..." />
+          )}
         />
-
-        {productoQuery && productos.length > 0 && (
-          <TextField
-            select
-            label="Producto"
-            value={productoId}
-            onChange={(e) => setProductoId(e.target.value)}
-            size="small"
-            sx={{ minWidth: 250 }}
-          >
-            <MenuItem value="">— Seleccionar —</MenuItem>
-            {productos.slice(0, 20).map((p) => (
-              <MenuItem key={p.id} value={p.id}>
-                {p.nombre} <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>{p.codigoBarras}</Typography>
-              </MenuItem>
-            ))}
-          </TextField>
-        )}
 
         <TextField
           select
@@ -134,7 +123,6 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
       </Stack>
 
       {modoConsulta ? (
-        /* ── Lotes de un producto ── */
         isLoading ? (
           <Box display="flex" justifyContent="center" py={5}><CircularProgress /></Box>
         ) : lotes.length === 0 ? (
@@ -192,7 +180,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                           : <Chip label="Disponible" color="success" size="small" />}
                       </TableCell>
                       <TableCell align="center">
-                        <Tooltip title="Ver trazabilidad">
+                        <Tooltip title="Ver kardex">
                           <IconButton size="small" onClick={() => setTrazabilidadLoteId(lote.id)}>
                             <Timeline fontSize="small" />
                           </IconButton>
@@ -206,7 +194,6 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
           </TableContainer>
         )
       ) : (
-        /* ── Alertas de vencimiento (vista por defecto) ── */
         loadingAlertas ? (
           <Box display="flex" justifyContent="center" py={5}><CircularProgress /></Box>
         ) : alertas.length === 0 ? (
