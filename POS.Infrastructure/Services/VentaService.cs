@@ -202,7 +202,7 @@ public class VentaService : IVentaService
             if (linea.PrecioUnitario.HasValue)
             {
                 var (valido, errorPrecio) = await _precioService.ValidarPrecio(
-                    linea.ProductoId, dto.SucursalId, linea.PrecioUnitario.Value);
+                    linea.ProductoId, dto.SucursalId, linea.PrecioUnitario.Value, producto.Nombre);
                 if (!valido) return (null, errorPrecio);
                 precioUnitario = linea.PrecioUnitario.Value;
             }

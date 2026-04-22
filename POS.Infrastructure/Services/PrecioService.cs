@@ -91,14 +91,16 @@ public class PrecioService : IPrecioService
     /// Valida que el precio solicitado no sea menor al minimo permitido.
     /// </summary>
     public async Task<(bool valido, string? error)> ValidarPrecio(
-        Guid productoId, int sucursalId, decimal precioSolicitado)
+        Guid productoId, int sucursalId, decimal precioSolicitado, string? nombreProducto = null)
     {
+        var nombre = nombreProducto ?? productoId.ToString();
+
         var precioSuc = await _context.PreciosSucursal
             .FirstOrDefaultAsync(p => p.ProductoId == productoId && p.SucursalId == sucursalId);
 
         if (precioSuc?.PrecioMinimo != null && precioSolicitado < precioSuc.PrecioMinimo)
         {
-            return (false, $"Precio {precioSolicitado} es menor al minimo permitido ({precioSuc.PrecioMinimo}).");
+            return (false, $"Precio de '{nombre}' ({precioSolicitado}) es menor al mínimo permitido ({precioSuc.PrecioMinimo}).");
         }
 
         // No permitir vender por debajo del costo
@@ -106,7 +108,7 @@ public class PrecioService : IPrecioService
             .FirstOrDefaultAsync(s => s.ProductoId == productoId && s.SucursalId == sucursalId);
         if (stock != null && precioSolicitado < stock.CostoPromedio)
         {
-            return (false, $"Precio {precioSolicitado} es menor al costo ({stock.CostoPromedio}).");
+            return (false, $"Precio de '{nombre}' ({precioSolicitado}) es menor al costo promedio ({stock.CostoPromedio}).");
         }
 
         return (true, null);
