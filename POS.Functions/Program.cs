@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using POS.Application.Services;
+using POS.Functions.Functions;
 using POS.Infrastructure.Data;
 using POS.Infrastructure.Services.Erp;
 
@@ -30,6 +31,7 @@ var host = new HostBuilder()
             options.UseNpgsql(connectionString));
 
         services.Configure<ErpSincoOptions>(config.GetSection(ErpSincoOptions.SectionName));
+        services.Configure<ActivityLogCleanupOptions>(config.GetSection(ActivityLogCleanupOptions.SectionName));
 
         // ERP client: mock en dev (BaseUrl vacío), real en prod.
         // En local.settings.json, "ErpSinco__BaseUrl" mapea a config["ErpSinco:BaseUrl"].
