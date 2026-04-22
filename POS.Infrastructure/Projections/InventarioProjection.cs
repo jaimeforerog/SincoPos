@@ -41,6 +41,10 @@ public class InventarioProjection : IProjection
                     await ProcesarEntrada(context, costeoService, entrada);
                     break;
 
+                case EntradaManualRegistrada:
+                    // Stock se actualiza directamente en InventarioService.RegistrarEntradaAsync
+                    break;
+
                 case DevolucionProveedorRegistrada devolucion:
                     await ProcesarDevolucion(context, costeoService, devolucion, @event.Timestamp.UtcDateTime);
                     break;

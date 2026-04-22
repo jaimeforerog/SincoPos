@@ -34,6 +34,7 @@ public static class MartenExtensions
 
             // Registrar tipos de eventos - Inventario (unico modulo con Event Sourcing)
             opts.Events.AddEventType<EntradaCompraRegistrada>();
+            opts.Events.AddEventType<EntradaManualRegistrada>();
             opts.Events.AddEventType<DevolucionProveedorRegistrada>();
             opts.Events.AddEventType<AjusteInventarioRegistrado>();
             opts.Events.AddEventType<SalidaVentaRegistrada>();
