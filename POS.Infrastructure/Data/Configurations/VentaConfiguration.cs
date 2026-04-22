@@ -115,6 +115,35 @@ public class DetalleVentaConfiguration : IEntityTypeConfiguration<DetalleVenta>
     }
 }
 
+public class DetalleVentaLoteConfiguration : IEntityTypeConfiguration<DetalleVentaLote>
+{
+    public void Configure(EntityTypeBuilder<DetalleVentaLote> builder)
+    {
+        builder.ToTable("detalle_venta_lotes");
+        builder.HasKey(l => l.Id);
+        builder.Property(l => l.Id).UseIdentityAlwaysColumn();
+
+        builder.Property(l => l.DetalleVentaId).HasColumnName("detalle_venta_id");
+        builder.Property(l => l.LoteInventarioId).HasColumnName("lote_inventario_id");
+        builder.Property(l => l.Cantidad).HasPrecision(18, 4).HasColumnName("cantidad");
+        builder.Property(l => l.CostoUnitario).HasPrecision(18, 4).HasColumnName("costo_unitario");
+        builder.Property(l => l.NumeroLote).HasMaxLength(100).HasColumnName("numero_lote");
+
+        builder.HasIndex(l => l.DetalleVentaId).HasDatabaseName("ix_dvl_detalle_venta_id");
+        builder.HasIndex(l => l.LoteInventarioId).HasDatabaseName("ix_dvl_lote_id");
+
+        builder.HasOne(l => l.DetalleVenta)
+            .WithMany(d => d.Lotes)
+            .HasForeignKey(l => l.DetalleVentaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(l => l.LoteInventario)
+            .WithMany()
+            .HasForeignKey(l => l.LoteInventarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class DevolucionVentaConfiguration : IEntityTypeConfiguration<DevolucionVenta>
 {
     public void Configure(EntityTypeBuilder<DevolucionVenta> builder)

@@ -48,6 +48,13 @@ public record VentaDto(
     string? ErrorSincronizacion = null
 );
 
+public record DetalleVentaLoteDto(
+    int LoteInventarioId,
+    string? NumeroLote,
+    decimal Cantidad,
+    decimal CostoUnitario
+);
+
 public record DetalleVentaDto(
     int Id,
     Guid ProductoId,
@@ -60,7 +67,8 @@ public record DetalleVentaDto(
     decimal PorcentajeImpuesto,
     decimal MontoImpuesto,
     decimal Subtotal,
-    decimal MargenGanancia  // (Precio - Costo) / Precio * 100
+    decimal MargenGanancia,  // (Precio - Costo) / Precio * 100
+    List<DetalleVentaLoteDto> Lotes  // Trazabilidad completa de lotes consumidos
 );
 
 public record ResumenVentaDto(

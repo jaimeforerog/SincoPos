@@ -250,7 +250,7 @@ public class VentaService : IVentaService
             pendingMartenEvents.Add((streamId, eventoVenta));
 
             // Consumir inventario con la estrategia de costeo (delegada a IVentaCosteoService)
-            var (costoUnitario, loteId, numeroLoteSnapshot) = await _ventaCosteoService.ConsumirAsync(
+            var (costoUnitario, loteId, numeroLoteSnapshot, lotesConsumidos) = await _ventaCosteoService.ConsumirAsync(
                 linea.ProductoId, dto.SucursalId, linea.Cantidad,
                 sucursal.MetodoCosteo, producto.ManejaLotes);
 
@@ -259,7 +259,7 @@ public class VentaService : IVentaService
             stock.UltimaActualizacion = DateTime.UtcNow;
             stocksVerificar.Add((stock, producto.Nombre));
 
-            // Crear detalle
+            // Crear detalle con snapshot del primer lote (compatibilidad)
             var lineaSubtotal = (precioUnitario * linea.Cantidad) - linea.Descuento;
             var detalle = new DetalleVenta
             {
@@ -273,7 +273,14 @@ public class VentaService : IVentaService
                 Descuento = linea.Descuento,
                 PorcentajeImpuesto = porcentajeImpuesto,
                 MontoImpuesto = montoImpuesto,
-                Subtotal = lineaSubtotal
+                Subtotal = lineaSubtotal,
+                Lotes = lotesConsumidos.Select(l => new DetalleVentaLote
+                {
+                    LoteInventarioId = l.LoteId,
+                    NumeroLote       = l.NumeroLote,
+                    Cantidad         = l.Cantidad,
+                    CostoUnitario    = l.CostoUnitario,
+                }).ToList()
             };
             detalles.Add(detalle);
 
@@ -544,7 +551,9 @@ public class VentaService : IVentaService
                     d.Id, d.ProductoId, d.NombreProducto, d.NumeroLote,
                     d.Cantidad, d.PrecioUnitario, d.CostoUnitario,
                     d.Descuento, d.PorcentajeImpuesto, d.MontoImpuesto,
-                    d.Subtotal, margen);
+                    d.Subtotal, margen,
+                    d.Lotes.Select(l => new DetalleVentaLoteDto(
+                        l.LoteInventarioId, l.NumeroLote, l.Cantidad, l.CostoUnitario)).ToList());
             }).ToList(),
             v.RequiereFacturaElectronica,
             v.SincronizadoErp,

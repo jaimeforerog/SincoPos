@@ -161,9 +161,13 @@ public class TrasladoService : ITrasladoService
             {
                 // Consumir por FEFO y capturar datos del lote para trazabilidad
                 decimal costoUnitarioFefo;
-                (costoTotal, costoUnitarioFefo, loteId, numeroLote) = await _costeoService.ConsumirLotesFEFO(
+                List<ConsumoLoteItem> lotesFefo;
+                (costoTotal, costoUnitarioFefo, lotesFefo) = await _costeoService.ConsumirLotesFEFO(
                     detalle.ProductoId, traslado.SucursalOrigenId, detalle.CantidadSolicitada);
                 costoUnitario = costoUnitarioFefo;
+                var primerLote = lotesFefo.Count > 0 ? lotesFefo[0] : null;
+                loteId = primerLote?.LoteId;
+                numeroLote = primerLote?.NumeroLote;
 
                 // Capturar fecha de vencimiento del lote consumido
                 if (loteId.HasValue)

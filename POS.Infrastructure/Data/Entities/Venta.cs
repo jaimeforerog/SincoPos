@@ -63,6 +63,24 @@ public class DetalleVenta
     // Navegacion
     public Venta Venta { get; set; } = null!;
     public Producto Producto { get; set; } = null!;
+    public ICollection<DetalleVentaLote> Lotes { get; set; } = new List<DetalleVentaLote>();
+}
+
+/// <summary>
+/// Registro de cada lote consumido en una línea de venta.
+/// Permite trazabilidad completa cuando una venta saca unidades de múltiples lotes.
+/// </summary>
+public class DetalleVentaLote
+{
+    public int Id { get; set; }
+    public int DetalleVentaId { get; set; }
+    public int LoteInventarioId { get; set; }
+    public decimal Cantidad { get; set; }
+    public decimal CostoUnitario { get; set; }
+    public string? NumeroLote { get; set; }
+
+    public DetalleVenta DetalleVenta { get; set; } = null!;
+    public LoteInventario LoteInventario { get; set; } = null!;
 }
 
 public enum EstadoVenta

@@ -136,7 +136,7 @@ public class CosteoService
     /// Usado para productos con ManejaLotes = true.
     /// Retorna el costo total, costo unitario, id del primer lote consumido y su número de lote.
     /// </summary>
-    public async Task<(decimal costoTotal, decimal costoUnitarioPromedio, int? loteId, string? numeroLote)> ConsumirLotesFEFO(
+    public async Task<(decimal costoTotal, decimal costoUnitarioPromedio, List<ConsumoLoteItem> lotesConsumidos)> ConsumirLotesFEFO(
         Guid productoId, int sucursalId, decimal cantidadAConsumir)
     {
         // Primero lotes con vencimiento (FEFO), luego los sin fecha por FechaEntrada (FIFO)
@@ -161,23 +161,18 @@ public class CosteoService
 
         decimal costoTotal = 0;
         decimal cantidadRestante = cantidadAConsumir;
-        int? primerLoteId = null;
-        string? primerNumeroLote = null;
+        var lotesConsumidos = new List<ConsumoLoteItem>();
 
         foreach (var lote in lotes)
         {
             if (cantidadRestante <= 0) break;
 
-            if (primerLoteId == null)
-            {
-                primerLoteId = lote.Id;
-                primerNumeroLote = lote.NumeroLote;
-            }
-
             var cantidadDelLote = Math.Min(lote.CantidadDisponible, cantidadRestante);
             costoTotal += cantidadDelLote * lote.CostoUnitario;
             lote.CantidadDisponible -= cantidadDelLote;
             cantidadRestante -= cantidadDelLote;
+
+            lotesConsumidos.Add(new ConsumoLoteItem(lote.Id, lote.NumeroLote, cantidadDelLote, lote.CostoUnitario));
         }
 
         var costoUnitario = cantidadAConsumir > 0 ? costoTotal / cantidadAConsumir : 0;
@@ -186,10 +181,10 @@ public class CosteoService
             _logger.LogWarning("ConsumirLotesFEFO: Stock insuficiente para Producto {ProductoId} Sucursal {SucursalId}. Faltaron {Faltante} unidades.",
                 productoId, sucursalId, cantidadRestante);
         else
-            _logger.LogDebug("FEFO consumido: Producto {ProductoId} PrimerLote {LoteId} CostoTotal {Costo}",
-                productoId, primerLoteId, costoTotal);
+            _logger.LogDebug("FEFO consumido: Producto {ProductoId} Lotes {Count} CostoTotal {Costo}",
+                productoId, lotesConsumidos.Count, costoTotal);
 
-        return (costoTotal, costoUnitario, primerLoteId, primerNumeroLote);
+        return (costoTotal, costoUnitario, lotesConsumidos);
     }
 
     /// <summary>

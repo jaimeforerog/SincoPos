@@ -79,7 +79,7 @@ public class VentasController : ControllerBase
     public async Task<ActionResult<VentaDto>> ObtenerVenta(int id)
     {
         var venta = await _context.Ventas
-            .Include(v => v.Detalles)
+            .Include(v => v.Detalles).ThenInclude(d => d.Lotes)
             .Include(v => v.Sucursal)
             .Include(v => v.Caja)
             .Include(v => v.Cliente)
@@ -115,7 +115,7 @@ public class VentasController : ControllerBase
         if (page < 1) page = 1;
 
         var query = _context.Ventas
-            .Include(v => v.Detalles)
+            .Include(v => v.Detalles).ThenInclude(d => d.Lotes)
             .Include(v => v.Sucursal)
             .Include(v => v.Caja)
             .Include(v => v.Cliente)

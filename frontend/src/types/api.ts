@@ -189,6 +189,13 @@ export interface VentaDTO {
   errorSincronizacion?: string;
 }
 
+export interface DetalleVentaLoteDTO {
+  loteInventarioId: number;
+  numeroLote?: string;
+  cantidad: number;
+  costoUnitario: number;
+}
+
 export interface LineaVentaDTO {
   id: number;
   productoId: string;
@@ -202,6 +209,7 @@ export interface LineaVentaDTO {
   montoImpuesto: number;
   subtotal: number;
   margenGanancia: number;
+  lotes: DetalleVentaLoteDTO[];
 }
 
 export interface CrearVentaDTO {
