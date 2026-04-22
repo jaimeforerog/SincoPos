@@ -67,7 +67,7 @@ export function DevolucionesPage() {
   const [motivo, setMotivo] = useState('');
   const [cantidadesDevolver, setCantidadesDevolver] = useState<DevolucionFormData>({});
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
-  const [fechaDesde, setFechaDesde] = useState<string>(getDaysAgo(5)); // 5 días atrás
+  const [fechaDesde, setFechaDesde] = useState<string>(getDaysAgo(30));
   const [fechaHasta, setFechaHasta] = useState<string>(formatDateForInput(new Date())); // Hoy
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
