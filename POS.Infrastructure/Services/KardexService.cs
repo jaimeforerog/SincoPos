@@ -49,7 +49,9 @@ public class KardexService : IKardexService
         decimal costoPromedioVigente = 0;
         var movimientos = new List<KardexMovimientoDto>();
 
-        foreach (var martenEvent in eventosMarten.OrderBy(e => e.Timestamp))
+        foreach (var martenEvent in eventosMarten
+            .OrderBy(e => (e.Data as BaseEvent)?.Timestamp ?? e.Timestamp)
+            .ThenBy(e => e.Sequence))
         {
             if (martenEvent.Data is not BaseEvent evtData) continue;
 
