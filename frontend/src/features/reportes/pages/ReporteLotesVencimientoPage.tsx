@@ -5,6 +5,7 @@ import {
   Button,
   Chip,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -30,7 +31,6 @@ import {
   HelpOutline as SinFechaIcon,
   Timeline as TimelineIcon,
 } from '@mui/icons-material';
-import { IconButton } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { lotesApi } from '@/api/lotes';
 import { sucursalesApi } from '@/api/sucursales';
@@ -287,11 +287,11 @@ export function ReporteLotesVencimientoPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>Cargando...</TableCell>
+                  <TableCell colSpan={10} align="center" sx={{ py: 4 }}>Cargando...</TableCell>
                 </TableRow>
               ) : !data || data.items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  <TableCell colSpan={10} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                     No se encontraron lotes con los filtros aplicados.
                   </TableCell>
                 </TableRow>
