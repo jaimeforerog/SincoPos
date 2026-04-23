@@ -302,8 +302,10 @@ public sealed class InventarioController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var desde = (fechaDesde ?? DateTime.UtcNow.AddDays(-30)).ToUniversalTime();
-        var hasta = (fechaHasta ?? DateTime.UtcNow).ToUniversalTime().AddDays(1).AddTicks(-1);
+        var desde = new DateTimeOffset(
+            (fechaDesde ?? DateTime.UtcNow.AddDays(-30)).ToUniversalTime(), TimeSpan.Zero);
+        var hasta = new DateTimeOffset(
+            (fechaHasta ?? DateTime.UtcNow).ToUniversalTime().Date.AddDays(1).AddTicks(-1), TimeSpan.Zero);
 
         var stockQuery = _context.Stock.AsQueryable();
         if (sucursalId.HasValue)
@@ -312,9 +314,10 @@ public sealed class InventarioController : ControllerBase
             stockQuery = stockQuery.Where(s => s.ProductoId == productoId.Value);
 
         var stockRecords = await stockQuery.ToListAsync();
-        var movimientos = new List<MovimientoInventarioDto>();
+        if (stockRecords.Count == 0)
+            return Ok(new PaginatedResult<MovimientoInventarioDto>([], 0, 1, pageSize, 0));
 
-        // Batch-load products and sucursales in 2 queries to avoid N+1
+        // 2 queries: nombres de productos y sucursales
         var productoIds = stockRecords.Select(s => s.ProductoId).Distinct().ToList();
         var sucursalIds = stockRecords.Select(s => s.SucursalId).Distinct().ToList();
 
@@ -326,89 +329,101 @@ public sealed class InventarioController : ControllerBase
             .Where(s => sucursalIds.Contains(s.Id))
             .ToDictionaryAsync(s => s.Id, s => s.Nombre);
 
-        foreach (var sr in stockRecords)
+        // Índice: streamId (Guid) → nombres (evita buscar en dicts por cada evento)
+        var streamMeta = stockRecords.ToDictionary(
+            sr => InventarioAggregate.GenerarStreamId(sr.ProductoId, sr.SucursalId),
+            sr => (
+                ProdNombre: productosDict.GetValueOrDefault(sr.ProductoId, ""),
+                SucNombre: sucursalesDict.GetValueOrDefault(sr.SucursalId, "")
+            )
+        );
+
+        var streamIds = streamMeta.Keys.ToList();
+
+        // 1 query Marten: todos los eventos de todos los streams en el rango de fechas
+        var allEvents = await _session.Events
+            .QueryAllRawEvents()
+            .Where(e => streamIds.Contains(e.StreamId) && e.Timestamp >= desde && e.Timestamp <= hasta)
+            .ToListAsync();
+
+        var movimientos = new List<MovimientoInventarioDto>();
+
+        foreach (var e in allEvents)
         {
-            var streamId = InventarioAggregate.GenerarStreamId(sr.ProductoId, sr.SucursalId);
-            var events = await _session.Events.FetchStreamAsync(streamId);
+            if (!streamMeta.TryGetValue(e.StreamId, out var meta)) continue;
 
-            var prodNombre = productosDict.GetValueOrDefault(sr.ProductoId, "");
-            var sucNombre = sucursalesDict.GetValueOrDefault(sr.SucursalId, "");
-
-            foreach (var e in events.Where(e => e.Timestamp >= desde && e.Timestamp <= hasta))
+            MovimientoInventarioDto? mov = null;
+            switch (e.Data)
             {
-                MovimientoInventarioDto? mov = null;
-                switch (e.Data)
-                {
-                    case POS.Domain.Events.Inventario.EntradaCompraRegistrada entrada:
-                        mov = new MovimientoInventarioDto(
-                            (int)e.Version, entrada.ProductoId, prodNombre,
-                            entrada.SucursalId, sucNombre,
-                            "EntradaCompra", entrada.Cantidad, entrada.CostoUnitario,
-                            entrada.CostoTotal, entrada.PorcentajeImpuesto, entrada.MontoImpuesto,
-                            entrada.Referencia, entrada.Observaciones,
-                            entrada.TerceroId, entrada.NombreTercero,
-                            e.Timestamp.UtcDateTime);
-                        break;
+                case POS.Domain.Events.Inventario.EntradaCompraRegistrada entrada:
+                    mov = new MovimientoInventarioDto(
+                        (int)e.Version, entrada.ProductoId, meta.ProdNombre,
+                        entrada.SucursalId, meta.SucNombre,
+                        "EntradaCompra", entrada.Cantidad, entrada.CostoUnitario,
+                        entrada.CostoTotal, entrada.PorcentajeImpuesto, entrada.MontoImpuesto,
+                        entrada.Referencia, entrada.Observaciones,
+                        entrada.TerceroId, entrada.NombreTercero,
+                        e.Timestamp.UtcDateTime);
+                    break;
 
-                    case POS.Domain.Events.Inventario.EntradaManualRegistrada manual:
-                        mov = new MovimientoInventarioDto(
-                            (int)e.Version, manual.ProductoId, prodNombre,
-                            manual.SucursalId, sucNombre,
-                            "EntradaManual", manual.Cantidad, manual.CostoUnitario,
-                            manual.CostoTotal, manual.PorcentajeImpuesto, manual.MontoImpuesto,
-                            manual.Referencia, manual.Observaciones,
-                            manual.TerceroId, manual.NombreTercero,
-                            e.Timestamp.UtcDateTime);
-                        break;
+                case POS.Domain.Events.Inventario.EntradaManualRegistrada manual:
+                    mov = new MovimientoInventarioDto(
+                        (int)e.Version, manual.ProductoId, meta.ProdNombre,
+                        manual.SucursalId, meta.SucNombre,
+                        "EntradaManual", manual.Cantidad, manual.CostoUnitario,
+                        manual.CostoTotal, manual.PorcentajeImpuesto, manual.MontoImpuesto,
+                        manual.Referencia, manual.Observaciones,
+                        manual.TerceroId, manual.NombreTercero,
+                        e.Timestamp.UtcDateTime);
+                    break;
 
-                    case POS.Domain.Events.Inventario.DevolucionProveedorRegistrada devolucion:
-                        mov = new MovimientoInventarioDto(
-                            (int)e.Version, devolucion.ProductoId, prodNombre,
-                            devolucion.SucursalId, sucNombre,
-                            "DevolucionProveedor", devolucion.Cantidad, devolucion.CostoUnitario,
-                            devolucion.CostoTotal, 0, 0,
-                            devolucion.Referencia, devolucion.Observaciones,
-                            devolucion.TerceroId, devolucion.NombreTercero,
-                            e.Timestamp.UtcDateTime);
-                        break;
+                case POS.Domain.Events.Inventario.DevolucionProveedorRegistrada devolucion:
+                    mov = new MovimientoInventarioDto(
+                        (int)e.Version, devolucion.ProductoId, meta.ProdNombre,
+                        devolucion.SucursalId, meta.SucNombre,
+                        "DevolucionProveedor", devolucion.Cantidad, devolucion.CostoUnitario,
+                        devolucion.CostoTotal, 0, 0,
+                        devolucion.Referencia, devolucion.Observaciones,
+                        devolucion.TerceroId, devolucion.NombreTercero,
+                        e.Timestamp.UtcDateTime);
+                    break;
 
-                    case POS.Domain.Events.Inventario.AjusteInventarioRegistrado ajuste:
-                        mov = new MovimientoInventarioDto(
-                            (int)e.Version, ajuste.ProductoId, prodNombre,
-                            ajuste.SucursalId, sucNombre,
-                            ajuste.EsPositivo ? "AjustePositivo" : "AjusteNegativo",
-                            Math.Abs(ajuste.Diferencia), ajuste.CostoUnitario,
-                            ajuste.CostoTotal, 0, 0,
-                            null, ajuste.Observaciones,
-                            null, null,
-                            e.Timestamp.UtcDateTime);
-                        break;
+                case POS.Domain.Events.Inventario.AjusteInventarioRegistrado ajuste:
+                    mov = new MovimientoInventarioDto(
+                        (int)e.Version, ajuste.ProductoId, meta.ProdNombre,
+                        ajuste.SucursalId, meta.SucNombre,
+                        ajuste.EsPositivo ? "AjustePositivo" : "AjusteNegativo",
+                        Math.Abs(ajuste.Diferencia), ajuste.CostoUnitario,
+                        ajuste.CostoTotal, 0, 0,
+                        null, ajuste.Observaciones,
+                        null, null,
+                        e.Timestamp.UtcDateTime);
+                    break;
 
-                    case POS.Domain.Events.Inventario.SalidaVentaRegistrada salida:
-                        mov = new MovimientoInventarioDto(
-                            (int)e.Version, salida.ProductoId, prodNombre,
-                            salida.SucursalId, sucNombre,
-                            "SalidaVenta", salida.Cantidad, salida.CostoUnitario,
-                            salida.CostoTotal, salida.PorcentajeImpuesto, salida.MontoImpuesto,
-                            salida.ReferenciaVenta, null,
-                            null, null,
-                            e.Timestamp.UtcDateTime);
-                        break;
+                case POS.Domain.Events.Inventario.SalidaVentaRegistrada salida:
+                    mov = new MovimientoInventarioDto(
+                        (int)e.Version, salida.ProductoId, meta.ProdNombre,
+                        salida.SucursalId, meta.SucNombre,
+                        "SalidaVenta", salida.Cantidad, salida.CostoUnitario,
+                        salida.CostoTotal, salida.PorcentajeImpuesto, salida.MontoImpuesto,
+                        salida.ReferenciaVenta, null,
+                        null, null,
+                        e.Timestamp.UtcDateTime);
+                    break;
 
-                    case POS.Domain.Events.Inventario.StockMinimoActualizado minimo:
-                        mov = new MovimientoInventarioDto(
-                            (int)e.Version, minimo.ProductoId, prodNombre,
-                            minimo.SucursalId, sucNombre,
-                            "StockMinimoActualizado", 0, 0, 0, 0, 0, null,
-                            $"Stock minimo: {minimo.StockMinimoAnterior} → {minimo.StockMinimoNuevo}",
-                            null, null,
-                            e.Timestamp.UtcDateTime);
-                        break;
-                }
-
-                if (mov != null)
-                    movimientos.Add(mov);
+                case POS.Domain.Events.Inventario.StockMinimoActualizado minimo:
+                    mov = new MovimientoInventarioDto(
+                        (int)e.Version, minimo.ProductoId, meta.ProdNombre,
+                        minimo.SucursalId, meta.SucNombre,
+                        "StockMinimoActualizado", 0, 0, 0, 0, 0, null,
+                        $"Stock minimo: {minimo.StockMinimoAnterior} → {minimo.StockMinimoNuevo}",
+                        null, null,
+                        e.Timestamp.UtcDateTime);
+                    break;
             }
+
+            if (mov != null)
+                movimientos.Add(mov);
         }
 
         var sorted = movimientos.OrderByDescending(m => m.FechaMovimiento).ToList();
