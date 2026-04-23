@@ -42,6 +42,8 @@ public sealed class TerceroLocalService : ITerceroService
 
         if (incluirInactivos)
             q = q.IgnoreQueryFilters();
+        else
+            q = q.Where(t => t.Activo); // el filtro empresa reemplaza el soft-delete global
 
         if (!string.IsNullOrWhiteSpace(query))
             q = q.Where(t =>
