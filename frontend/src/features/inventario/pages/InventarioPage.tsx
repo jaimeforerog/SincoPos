@@ -73,16 +73,18 @@ export function InventarioPage() {
   const [ajusteDialogOpen, setAjusteDialogOpen] = useState(false);
 
   // Movimientos date filters
-  const hoy = new Date().toISOString().slice(0, 10);
-  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-  const [movFechaDesde, setMovFechaDesde] = useState(hace30);
-  const [movFechaHasta, setMovFechaHasta] = useState(hoy);
-  const [movApplied, setMovApplied] = useState({
+  const [movFechaDesde, setMovFechaDesde] = useState(() =>
+    new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  );
+  const [movFechaHasta, setMovFechaHasta] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [movApplied, setMovApplied] = useState(() => ({
     sucursalId: activeSucursalId || ('' as number | ''),
-    fechaDesde: hace30,
-    fechaHasta: hoy,
+    fechaDesde: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
+    fechaHasta: new Date().toISOString().slice(0, 10),
     page: 1,
-  });
+  }));
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],

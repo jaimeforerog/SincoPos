@@ -91,9 +91,10 @@ public class InventarioCosteoTests
     private async Task<List<MovimientoInventarioDto>> ObtenerMovimientos(
         Guid productoId, int sucursalId)
     {
-        return await _client.GetFromJsonAsync<List<MovimientoInventarioDto>>(
-            $"/api/v1/Inventario/movimientos?productoId={productoId}&sucursalId={sucursalId}",
-            _jsonOptions) ?? [];
+        var result = await _client.GetFromJsonAsync<PaginatedResult<MovimientoInventarioDto>>(
+            $"/api/v1/Inventario/movimientos?productoId={productoId}&sucursalId={sucursalId}&pageSize=500",
+            _jsonOptions);
+        return result?.Items ?? [];
     }
 
     // ═══════════════════════════════════════════════════════

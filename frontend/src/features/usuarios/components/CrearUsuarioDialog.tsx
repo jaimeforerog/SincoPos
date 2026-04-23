@@ -70,7 +70,6 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
     control,
     handleSubmit,
     reset,
-    watch,
     formState: { errors },
   } = useForm<CrearUsuarioFormData>({
     resolver: zodResolver(crearUsuarioSchema),
@@ -83,8 +82,6 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
       sucursalIds: [],
     },
   });
-
-  void watch('sucursalIds');
 
   const mutation = useMutation({
     mutationFn: (data: CrearUsuarioFormData) =>
