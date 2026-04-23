@@ -95,10 +95,10 @@ export const usuariosApi = {
   },
 
   listar: async (filtros?: FiltrosUsuario): Promise<UsuarioDto[]> => {
-    const response = await apiClient.get<UsuarioDto[]>('/usuarios', {
+    const response = await apiClient.get<{ items: UsuarioDto[] }>('/usuarios', {
       params: filtros,
     });
-    return response.data;
+    return response.data.items ?? [];
   },
 
   actualizarSucursal: async (id: number, sucursalId: number): Promise<void> => {
