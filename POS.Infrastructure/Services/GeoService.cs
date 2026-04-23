@@ -9,7 +9,7 @@ namespace POS.Infrastructure.Services;
 /// Servicio para obtener información geográfica (países, departamentos, ciudades)
 /// Usa REST Countries API y datos estáticos para ciudades de Colombia
 /// </summary>
-public class GeoService
+public sealed class GeoService
 {
     private readonly HttpClient _httpClient;
     private readonly IMemoryCache _cache;

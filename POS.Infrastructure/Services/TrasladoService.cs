@@ -9,7 +9,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class TrasladoService : ITrasladoService
+public sealed class TrasladoService : ITrasladoService
 {
     private readonly global::Marten.IDocumentSession _session;
     private readonly AppDbContext _context;

@@ -10,7 +10,7 @@ namespace POS.Infrastructure.Services;
 /// Servicio de background que procesa la emisión de facturas electrónicas
 /// de forma asíncrona (fire-and-forget) sin bloquear el flujo de ventas.
 /// </summary>
-public class FacturacionBackgroundService : BackgroundService
+public sealed class FacturacionBackgroundService : BackgroundService
 {
     private readonly Channel<int> _channel;
     private readonly IServiceScopeFactory _scopeFactory;

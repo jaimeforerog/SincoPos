@@ -9,7 +9,7 @@ namespace POS.Infrastructure.Services;
 /// Capa 4 — Dependencias inteligentes.
 /// Lee el documento ClienteHistorial (Marten) acumulado por ClienteHistorialProjection.
 /// </summary>
-public class ClienteHistorialService : IClienteHistorialService
+public sealed class ClienteHistorialService : IClienteHistorialService
 {
     private readonly IDocumentStore _store;
 

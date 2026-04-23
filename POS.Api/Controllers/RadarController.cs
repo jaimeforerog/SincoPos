@@ -13,7 +13,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class RadarController : ControllerBase
+public sealed class RadarController : ControllerBase
 {
     private readonly IRadarNegocioService _radarService;
 

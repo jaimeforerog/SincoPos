@@ -21,7 +21,4 @@ public interface ITerceroService
     Task<(bool Success, string? Error)> EliminarActividadAsync(int terceroId, int actividadId);
     Task<(bool Success, string? Error)> EstablecerPrincipalAsync(int terceroId, int actividadId);
 
-    // Importación Excel
-    Task<ResultadoImportacionTercerosDto> ImportarDesdeExcelAsync(Stream stream);
-    byte[] GenerarPlantillaExcel();
 }

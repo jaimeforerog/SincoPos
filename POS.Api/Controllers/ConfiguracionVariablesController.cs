@@ -12,7 +12,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/configuracion-variables")]
-public class ConfiguracionVariablesController : ControllerBase
+public sealed class ConfiguracionVariablesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ILogger<ConfiguracionVariablesController> _logger;

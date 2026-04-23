@@ -9,7 +9,7 @@ namespace POS.Infrastructure.Services;
 /// Capa 13 — Inteligencia colectiva (implementación local).
 /// Lee ProductoCombo y StorePattern desde Marten + nombres de sucursales desde EF Core.
 /// </summary>
-public class ColectivaService : IColectivaService
+public sealed class ColectivaService : IColectivaService
 {
     private readonly global::Marten.IDocumentSession _session;
     private readonly AppDbContext _context;

@@ -13,7 +13,7 @@ namespace POS.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
-public class ColectivaController : ControllerBase
+public sealed class ColectivaController : ControllerBase
 {
     private readonly IColectivaService _colectiva;
 

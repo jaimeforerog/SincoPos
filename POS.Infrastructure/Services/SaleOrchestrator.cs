@@ -19,7 +19,7 @@ namespace POS.Infrastructure.Services;
 /// Modo degradado: si el paso de ProcesarVenta falla, el trace se registra igual
 /// con el error, permitiendo auditoría post-mortem.
 /// </summary>
-public class SaleOrchestrator : ISaleOrchestrator
+public sealed class SaleOrchestrator : ISaleOrchestrator
 {
     private readonly IVentaService _ventaService;
     private readonly IPipelineMetricsService _metrics;

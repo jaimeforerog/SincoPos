@@ -7,7 +7,7 @@ using POS.Infrastructure.Data;
 
 namespace POS.Infrastructure.Services;
 
-public class KardexService : IKardexService
+public sealed class KardexService : IKardexService
 {
     private readonly AppDbContext _context;
     private readonly IActivityLogService _activityLogService;

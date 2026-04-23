@@ -10,7 +10,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class FacturacionController : ControllerBase
+public sealed class FacturacionController : ControllerBase
 {
     private readonly IFacturacionService _facturacion;
     private readonly ILogger<FacturacionController> _logger;

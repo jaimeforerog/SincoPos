@@ -12,7 +12,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class ImpuestosController : ControllerBase
+public sealed class ImpuestosController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ICurrentEmpresaProvider _empresaProvider;

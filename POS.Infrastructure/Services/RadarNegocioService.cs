@@ -6,7 +6,7 @@ using POS.Infrastructure.Data;
 
 namespace POS.Infrastructure.Services;
 
-public class RadarNegocioService : IRadarNegocioService
+public sealed class RadarNegocioService : IRadarNegocioService
 {
     private readonly global::Marten.IDocumentSession _session;
     private readonly AppDbContext _context;

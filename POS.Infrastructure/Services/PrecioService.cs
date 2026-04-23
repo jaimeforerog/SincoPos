@@ -9,7 +9,7 @@ namespace POS.Infrastructure.Services;
 /// <summary>
 /// Resuelve precio con cascada: PrecioSucursal -> Producto.PrecioVenta -> Costo × (1 + Margen)
 /// </summary>
-public class PrecioService : IPrecioService
+public sealed class PrecioService : IPrecioService
 {
     private readonly AppDbContext _context;
 

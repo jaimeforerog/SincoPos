@@ -99,12 +99,21 @@ export function usePOSSession() {
     });
   };
 
+  const [cambiarCajaConfirmOpen, setCambiarCajaConfirmOpen] = useState(false);
+
   const handleCambiarCaja = () => {
     if (items.length > 0) {
-      if (!window.confirm('¿Estás seguro? Se perderá el carrito actual')) return;
-      clearCart();
+      setCambiarCajaConfirmOpen(true);
+      return;
     }
     setShowSeleccionarCaja(true);
+  };
+
+  const cambiarCajaConfirmProps = {
+    open: cambiarCajaConfirmOpen,
+    mensaje: '¿Estás seguro? Se perderá el carrito actual',
+    onAceptar: () => { clearCart(); setCambiarCajaConfirmOpen(false); setShowSeleccionarCaja(true); },
+    onCancelar: () => setCambiarCajaConfirmOpen(false),
   };
 
   return {
@@ -118,5 +127,6 @@ export function usePOSSession() {
     setShowSeleccionarCaja,
     handleSelectCaja,
     handleCambiarCaja,
+    cambiarCajaConfirmProps,
   };
 }

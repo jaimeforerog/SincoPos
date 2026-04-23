@@ -14,7 +14,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class CategoriasController : ControllerBase
+public sealed class CategoriasController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ILogger<CategoriasController> _logger;

@@ -14,7 +14,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class ActivityLogsController : ControllerBase
+public sealed class ActivityLogsController : ControllerBase
 {
     private readonly IActivityLogService _activityLogService;
     private readonly AppDbContext _context;

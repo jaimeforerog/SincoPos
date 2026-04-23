@@ -12,7 +12,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class PosController : ControllerBase
+public sealed class PosController : ControllerBase
 {
     private readonly IPosContextoService _posContexto;
 

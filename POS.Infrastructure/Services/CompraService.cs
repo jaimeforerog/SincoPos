@@ -11,7 +11,7 @@ using POS.Infrastructure.Services.Erp;
 
 namespace POS.Infrastructure.Services;
 
-public class CompraService : ICompraService
+public sealed class CompraService : ICompraService
 {
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;

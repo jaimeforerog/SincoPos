@@ -8,7 +8,7 @@ namespace POS.Infrastructure.Services;
 /// Implementación de IVentaCosteoService.
 /// Encapsula ConsumirLotesFEFO y ConsumirStock, que antes vivían inline en VentaService.
 /// </summary>
-public class VentaCosteoService : IVentaCosteoService
+public sealed class VentaCosteoService : IVentaCosteoService
 {
     private readonly CosteoService _costeoService;
 

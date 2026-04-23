@@ -12,7 +12,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class MigracionesController : ControllerBase
+public sealed class MigracionesController : ControllerBase
 {
     private readonly MigracionLogService _migracionLogService;
     private readonly ILogger<MigracionesController> _logger;

@@ -11,7 +11,7 @@ namespace POS.Infrastructure.Services;
 /// Lee y escribe productos directamente en la base de datos del POS.
 /// Para ERP, se crea una ProductoErpService que consulta al ERP externo.
 /// </summary>
-public class ProductoLocalService : IProductoService
+public sealed class ProductoLocalService : IProductoService
 {
     private readonly AppDbContext _context;
     private readonly ICurrentEmpresaProvider _empresaProvider;

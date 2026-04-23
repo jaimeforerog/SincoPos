@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using POS.Application.DTOs;
@@ -7,8 +8,10 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class FacturacionService : IFacturacionService
+public sealed class FacturacionService : IFacturacionService
 {
+    private static readonly ActivitySource _tracer = new("SincoPos.Facturacion");
+
     private readonly AppDbContext _context;
     private readonly IUblBuilderService _ublBuilder;
     private readonly IFirmaDigitalService _firmaDigital;
@@ -34,6 +37,9 @@ public class FacturacionService : IFacturacionService
 
     public async Task<(DocumentoElectronicoDto? doc, string? error)> EmitirFacturaVentaAsync(int ventaId)
     {
+        using var span = _tracer.StartActivity("FacturacionService.EmitirFactura");
+        span?.SetTag("venta.id", ventaId);
+
         // 1. Cargar venta con todas sus relaciones
         var venta = await _context.Ventas
             .Include(v => v.Detalles)

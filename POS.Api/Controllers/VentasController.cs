@@ -15,7 +15,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class VentasController : ControllerBase
+public sealed class VentasController : ControllerBase
 {
     private readonly IVentaService _ventaService;
     private readonly AppDbContext _context;

@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineSync } from '@/offline/useOfflineSync';
 import { useContextualNotification } from '@/hooks/useContextualNotification';
 import { useCartStore } from '@/stores/cart.store';
+import { logger } from '@/utils/logger';
 import type { ProductoDTO } from '@/types/api';
 
 export function usePOSStock() {
   const { operacional, sistema } = useContextualNotification();
+  const [limpiarConfirmOpen, setLimpiarConfirmOpen] = useState(false);
   const { activeSucursalId, user } = useAuth();
   const { isOnline } = useOfflineSync();
   const { items, addItem, updateQuantity, clearCart } = useCartStore();
@@ -52,13 +55,13 @@ export function usePOSStock() {
         const precioResuelto = await preciosApi.resolver(producto.id, activeSucursalId);
         if (precioResuelto && precioResuelto.precioVenta > 0) precioSucursal = precioResuelto.precioVenta;
       } catch (error) {
-        console.warn('No se pudo resolver precio de sucursal, usando precio base:', error);
+        logger.warn('No se pudo resolver precio de sucursal, usando precio base:', error);
       }
 
       addItem(producto, precioSucursal);
       if (qty > 1) updateQuantity(producto.id, cantidadEnCarrito + qty);
     } catch (error) {
-      console.error('Error al verificar stock:', error);
+      logger.error('Error al verificar stock:', error);
       sistema('Error al verificar stock del producto');
     }
   };
@@ -91,15 +94,22 @@ export function usePOSStock() {
 
       updateQuantity(productoId, nuevaCantidad);
     } catch (error) {
-      console.error('Error al verificar stock:', error);
+      logger.error('Error al verificar stock:', error);
       sistema('Error al verificar stock');
     }
   };
 
   const handleClearCart = () => {
     if (items.length === 0) return;
-    if (window.confirm('¿Estás seguro de limpiar el carrito?')) clearCart();
+    setLimpiarConfirmOpen(true);
   };
 
-  return { handleSelectProduct, handleUpdateQuantity, handleClearCart };
+  const limpiarConfirmProps = {
+    open: limpiarConfirmOpen,
+    mensaje: '¿Estás seguro de limpiar el carrito?',
+    onAceptar: () => { clearCart(); setLimpiarConfirmOpen(false); },
+    onCancelar: () => setLimpiarConfirmOpen(false),
+  };
+
+  return { handleSelectProduct, handleUpdateQuantity, handleClearCart, limpiarConfirmProps };
 }

@@ -39,6 +39,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { ActividadesDialog } from '../components/ActividadesDialog';
 import { TerceroFormDialog } from '../components/TerceroFormDialog';
 import { ImportarTercerosDialog } from '../components/ImportarTercerosDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 const HERO_COLOR = '#1565c0';
 const TIPOS_TERCERO = ['Cliente', 'Proveedor', 'Ambos'];
@@ -66,6 +67,8 @@ export default function TercerosPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<TerceroDTO | null>(null);
+  const [confirmState, setConfirmState] = useState<{ open: boolean; mensaje: string; onAceptar: () => void }>({ open: false, mensaje: '', onAceptar: () => {} });
+  const confirmar = (mensaje: string, onAceptar: () => void) => setConfirmState({ open: true, mensaje, onAceptar });
   const [actividadesOpen, setActividadesOpen] = useState(false);
   const [terceroActividades, setTerceroActividades] = useState<TerceroDTO | null>(null);
   const [importarOpen, setImportarOpen] = useState(false);
@@ -95,16 +98,12 @@ export default function TercerosPage() {
   const handleNuevo = () => { setEditando(null); setFormOpen(true); };
   const handleEditar = (t: TerceroDTO) => { setEditando(t); setFormOpen(true); };
 
-  const handleDesactivar = async (t: TerceroDTO) => {
-    if (!window.confirm(`¿Desactivar "${t.nombre}"?`)) return;
-    await tercerosApi.deactivate(t.id);
-    cargar();
+  const handleDesactivar = (t: TerceroDTO) => {
+    confirmar(`¿Desactivar "${t.nombre}"?`, async () => { await tercerosApi.deactivate(t.id); cargar(); });
   };
 
-  const handleActivar = async (t: TerceroDTO) => {
-    if (!window.confirm(`¿Activar "${t.nombre}"?`)) return;
-    await tercerosApi.activate(t.id);
-    cargar();
+  const handleActivar = (t: TerceroDTO) => {
+    confirmar(`¿Activar "${t.nombre}"?`, async () => { await tercerosApi.activate(t.id); cargar(); });
   };
 
   const handleAbrirActividades = async (t: TerceroDTO) => {
@@ -338,6 +337,13 @@ export default function TercerosPage() {
         open={importarOpen}
         onClose={() => setImportarOpen(false)}
         onImportado={cargar}
+      />
+
+      <ConfirmDialog
+        open={confirmState.open}
+        mensaje={confirmState.mensaje}
+        onAceptar={() => { confirmState.onAceptar(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancelar={() => setConfirmState(s => ({ ...s, open: false }))}
       />
     </Box>
   );

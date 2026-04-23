@@ -13,7 +13,7 @@ namespace POS.Infrastructure.Services;
 /// Implementa IUsuarioService (DTO-based) y expone metodos adicionales con entidades
 /// para uso interno (CajasController).
 /// </summary>
-public class UsuarioService : IUsuarioService
+public sealed class UsuarioService : IUsuarioService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<UsuarioService> _logger;

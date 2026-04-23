@@ -26,6 +26,7 @@ builder.Services.AddAppDbContext(builder.Configuration);
 
 // Services (ANTES de Marten - las projections usan BuildServiceProvider y necesitan estos servicios)
 builder.Services.AddScoped<POS.Application.Services.ITerceroService, POS.Infrastructure.Services.TerceroLocalService>();
+builder.Services.AddScoped<POS.Application.Services.ITerceroImportService, POS.Infrastructure.Services.TerceroImportService>();
 builder.Services.AddScoped<POS.Application.Services.IProductoService, POS.Infrastructure.Services.ProductoLocalService>();
 builder.Services.AddScoped<POS.Application.Services.IProductoAnticipacionService, POS.Infrastructure.Services.ProductoAnticipacionService>();
 builder.Services.AddScoped<POS.Application.Services.IAprendizajeService, POS.Infrastructure.Services.AprendizajeService>();
@@ -162,6 +163,8 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
         tracing
+            .AddSource("SincoPos.Ventas")
+            .AddSource("SincoPos.Facturacion")
             .AddAspNetCoreInstrumentation(opts =>
             {
                 opts.RecordException = true;

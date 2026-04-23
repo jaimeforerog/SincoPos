@@ -12,20 +12,23 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class TercerosController : ControllerBase
+public sealed class TercerosController : ControllerBase
 {
     private readonly ITerceroService _service;
+    private readonly ITerceroImportService _importService;
     private readonly IClienteHistorialService _historialService;
     private readonly ILogger<TercerosController> _logger;
     private readonly IActivityLogService _activityLogService;
 
     public TercerosController(
         ITerceroService service,
+        ITerceroImportService importService,
         IClienteHistorialService historialService,
         ILogger<TercerosController> logger,
         IActivityLogService activityLogService)
     {
         _service = service;
+        _importService = importService;
         _historialService = historialService;
         _logger = logger;
         _activityLogService = activityLogService;
@@ -207,7 +210,7 @@ public class TercerosController : ControllerBase
     [AllowAnonymous]
     public IActionResult DescargarPlantilla()
     {
-        var bytes = _service.GenerarPlantillaExcel();
+        var bytes = _importService.GenerarPlantillaExcel();
         return File(bytes,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "plantilla_terceros.xlsx");
@@ -226,7 +229,7 @@ public class TercerosController : ControllerBase
             return Problem(detail: "Solo se aceptan archivos .xlsx o .xls.", statusCode: StatusCodes.Status400BadRequest);
 
         using var stream = archivo.OpenReadStream();
-        var resultado = await _service.ImportarDesdeExcelAsync(stream);
+        var resultado = await _importService.ImportarDesdeExcelAsync(stream);
 
         _logger.LogInformation(
             "Importación Excel terceros: {Importados} importados, {Omitidos} omitidos, {Errores} errores.",

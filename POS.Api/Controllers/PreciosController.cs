@@ -14,7 +14,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class PreciosController : ControllerBase
+public sealed class PreciosController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IPrecioService _precioService;

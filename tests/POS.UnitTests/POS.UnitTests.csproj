@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\POS.Domain\POS.Domain.csproj" />
+    <ProjectReference Include="..\..\POS.Infrastructure\POS.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

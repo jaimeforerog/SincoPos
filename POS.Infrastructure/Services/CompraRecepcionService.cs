@@ -16,7 +16,7 @@ namespace POS.Infrastructure.Services;
 /// aplica costeo (PEPS/UEPS/PP), genera asientos contables y registra en el ERP Outbox.
 /// Extraído de CompraService para mantener responsabilidad única.
 /// </summary>
-public class CompraRecepcionService
+public sealed class CompraRecepcionService
 {
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;

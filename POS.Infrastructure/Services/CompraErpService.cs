@@ -11,7 +11,7 @@ namespace POS.Infrastructure.Services;
 /// Construye los asientos contables, registra el DocumentoContable y emite el ErpOutboxMessage.
 /// Antes toda esta lógica estaba inline en CompraService.RecibirOrdenAsync.
 /// </summary>
-public class CompraErpService : ICompraErpService
+public sealed class CompraErpService : ICompraErpService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<CompraErpService> _logger;

@@ -10,7 +10,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class InventarioService : IInventarioService
+public sealed class InventarioService : IInventarioService
 {
     private readonly global::Marten.IDocumentSession _session;
     private readonly AppDbContext _context;

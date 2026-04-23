@@ -7,7 +7,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class UsuarioAdminService : IUsuarioAdminService
+public sealed class UsuarioAdminService : IUsuarioAdminService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<UsuarioAdminService> _logger;

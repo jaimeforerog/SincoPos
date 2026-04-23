@@ -81,7 +81,11 @@ function LogRow({ log }: { log: ActivityLogFullDTO }) {
         <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
           {formatDateTime(log.fechaHora)}
         </TableCell>
-        <TableCell sx={{ fontSize: '0.8rem' }}>{log.usuarioEmail}</TableCell>
+        <TableCell sx={{ fontSize: '0.8rem' }}>
+          <Tooltip title={log.usuarioEmail}>
+            <span>{log.usuarioNombre ?? log.usuarioEmail}</span>
+          </Tooltip>
+        </TableCell>
         <TableCell sx={{ fontSize: '0.8rem', fontWeight: 500 }}>{log.accion}</TableCell>
         <TableCell>
           <Chip

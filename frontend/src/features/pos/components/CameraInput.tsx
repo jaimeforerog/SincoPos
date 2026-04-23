@@ -15,6 +15,7 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import CloseIcon from '@mui/icons-material/Close';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { NotFoundException } from '@zxing/library';
+import { logger } from '@/utils/logger';
 
 interface CameraInputProps {
   onDetected: (code: string) => void;
@@ -60,8 +61,7 @@ export function CameraInput({ onDetected }: CameraInputProps) {
             setOpen(false);
             onDetected(code);
           } else if (err && !(err instanceof NotFoundException)) {
-            // NotFoundException es normal entre frames — ignorar
-            console.warn('[CameraInput]', err);
+            logger.warn('[CameraInput]', err);
           }
         }
       );

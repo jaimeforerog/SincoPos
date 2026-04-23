@@ -6,7 +6,7 @@ using POS.Infrastructure.Data;
 
 namespace POS.Infrastructure.Services;
 
-public class SugerenciasService : ISugerenciasService
+public sealed class SugerenciasService : ISugerenciasService
 {
     private readonly global::Marten.IDocumentSession _session;
     private readonly AppDbContext _context;

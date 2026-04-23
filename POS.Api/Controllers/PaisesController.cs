@@ -10,7 +10,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class PaisesController : ControllerBase
+public sealed class PaisesController : ControllerBase
 {
     private readonly GeoService _geoService;
     private readonly ILogger<PaisesController> _logger;

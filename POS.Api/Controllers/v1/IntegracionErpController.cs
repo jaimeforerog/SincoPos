@@ -15,7 +15,7 @@ namespace POS.Api.Controllers.v1;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/integracion-erp")]
 [Authorize(Policy = "Admin")]
-public class IntegracionErpController : ControllerBase
+public sealed class IntegracionErpController : ControllerBase
 {
     private readonly AppDbContext _context;
 

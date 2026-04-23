@@ -9,7 +9,7 @@ namespace POS.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
-public class EticasController : ControllerBase
+public sealed class EticasController : ControllerBase
 {
     private readonly IEthicalGuardService _guard;
 

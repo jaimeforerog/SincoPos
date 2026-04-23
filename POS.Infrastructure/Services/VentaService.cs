@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,8 +14,10 @@ using POS.Infrastructure.Services.Erp;
 
 namespace POS.Infrastructure.Services;
 
-public class VentaService : IVentaService
+public sealed class VentaService : IVentaService
 {
+    private static readonly ActivitySource _tracer = new("SincoPos.Ventas");
+
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;
     private readonly global::Marten.IDocumentStore _store;
@@ -73,6 +76,11 @@ public class VentaService : IVentaService
 
     public async Task<(VentaDto? venta, string? error)> CrearVentaAsync(CrearVentaDto dto)
     {
+        using var span = _tracer.StartActivity("VentaService.CrearVenta");
+        span?.SetTag("caja.id", dto.CajaId);
+        span?.SetTag("sucursal.id", dto.SucursalId);
+        span?.SetTag("lineas.count", dto.Lineas.Count);
+
         var (ctx, ctxError) = await CargarContextoVentaAsync(dto);
         if (ctx == null) return (null, ctxError);
 
@@ -143,6 +151,8 @@ public class VentaService : IVentaService
 
         await EjecutarTransaccionAtomicaAsync(venta, pendingMartenEvents, externalId, dto, ctx.NitCliente, total, asientosVenta, detalles);
 
+        span?.SetTag("venta.id", venta.Id);
+        span?.SetTag("venta.total", total);
         _logger.LogInformation("Venta {NumeroVenta} completada. Total: {Total}, Items: {Items}",
             ctx.NumeroVenta, total, detalles.Count);
 

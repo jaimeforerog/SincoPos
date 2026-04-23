@@ -16,7 +16,7 @@ namespace POS.Infrastructure.Services;
 ///
 /// Diseño: inyección de dependencias, sin estado interno → idempotente.
 /// </summary>
-public class TaxEngine : ITaxEngine
+public sealed class TaxEngine : ITaxEngine
 {
 
     public TaxResult Calcular(TaxRequest req)

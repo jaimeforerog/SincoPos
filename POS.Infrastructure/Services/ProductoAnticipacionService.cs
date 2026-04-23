@@ -6,7 +6,7 @@ using POS.Infrastructure.Data;
 
 namespace POS.Infrastructure.Services;
 
-public class ProductoAnticipacionService : IProductoAnticipacionService
+public sealed class ProductoAnticipacionService : IProductoAnticipacionService
 {
     private readonly global::Marten.IDocumentSession _session;
     private readonly AppDbContext                    _context;

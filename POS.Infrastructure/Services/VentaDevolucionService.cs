@@ -15,7 +15,7 @@ namespace POS.Infrastructure.Services;
 /// Gestiona las devoluciones parciales de ventas: valida cantidades, restaura inventario
 /// (Event Sourcing + costeo), ajusta caja y genera nota crédito contable en el ERP Outbox.
 /// </summary>
-public class VentaDevolucionService
+public sealed class VentaDevolucionService
 {
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;

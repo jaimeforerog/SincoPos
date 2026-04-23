@@ -10,7 +10,7 @@ namespace POS.Infrastructure.Services;
 /// Gestiona devoluciones de mercancía a proveedores originadas en órdenes de compra.
 /// Una devolución reduce el stock en la sucursal y queda registrada como trazabilidad.
 /// </summary>
-public class CompraDevolucionService
+public sealed class CompraDevolucionService
 {
     private readonly AppDbContext _context;
     private readonly IActivityLogService _activityLogService;

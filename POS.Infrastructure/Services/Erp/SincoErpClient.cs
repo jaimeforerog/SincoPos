@@ -6,7 +6,7 @@ using POS.Application.Services;
 
 namespace POS.Infrastructure.Services.Erp;
 
-public class SincoErpClient : IErpClient
+public sealed class SincoErpClient : IErpClient
 {
     private readonly HttpClient _httpClient;
     private readonly ErpSincoOptions _options;

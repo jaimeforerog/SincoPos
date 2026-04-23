@@ -6,7 +6,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class DashboardService : IDashboardService
+public sealed class DashboardService : IDashboardService
 {
     private readonly AppDbContext _context;
     private readonly IActivityLogService _activityLogService;

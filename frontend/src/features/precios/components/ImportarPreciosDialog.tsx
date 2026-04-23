@@ -23,6 +23,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useSnackbar } from 'notistack';
+import { logger } from '@/utils/logger';
 import type { ProductoDTO } from '@/types/api';
 
 interface PrecioImportar {
@@ -137,7 +138,7 @@ export function ImportarPreciosDialog({
         { variant: validos > 0 ? 'success' : 'warning' }
       );
     } catch (error) {
-      console.error('Error al leer archivo:', error);
+      logger.error('Error al leer archivo:', error);
       enqueueSnackbar('Error al leer el archivo Excel', { variant: 'error' });
     }
 
@@ -242,7 +243,7 @@ export function ImportarPreciosDialog({
         { variant: 'success' }
       );
     } catch (error) {
-      console.error('Error al generar plantilla:', error);
+      logger.error('Error al generar plantilla:', error);
       enqueueSnackbar('Error al generar la plantilla', { variant: 'error' });
     }
   };

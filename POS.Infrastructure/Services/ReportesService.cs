@@ -6,7 +6,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class ReportesService : IReportesService
+public sealed class ReportesService : IReportesService
 {
     private readonly AppDbContext _context;
     private readonly IActivityLogService _activityLogService;

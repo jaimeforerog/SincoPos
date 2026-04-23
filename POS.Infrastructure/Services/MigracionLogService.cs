@@ -8,7 +8,7 @@ namespace POS.Infrastructure.Services;
 /// <summary>
 /// Servicio para registrar migraciones de base de datos en el log de auditoría
 /// </summary>
-public class MigracionLogService
+public sealed class MigracionLogService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<MigracionLogService> _logger;
@@ -189,7 +189,7 @@ public class MigracionLogService
 /// <summary>
 /// DTO para mapear resultados de __ef_migrations_history
 /// </summary>
-public class EfMigrationHistory
+public sealed class EfMigrationHistory
 {
     public string MigrationId { get; set; } = string.Empty;
     public string ProductVersion { get; set; } = string.Empty;

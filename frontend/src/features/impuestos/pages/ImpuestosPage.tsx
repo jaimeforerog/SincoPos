@@ -16,6 +16,7 @@ import {
 import { impuestosApi, retencionesApi } from '@/api/impuestos';
 import type { ImpuestoDTO, RetencionReglaDTO } from '@/types/api';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,9 @@ export default function ImpuestosPage() {
   const [openRetDialog, setOpenRetDialog] = useState(false);
   const [editRetencion, setEditRetencion] = useState<RetencionReglaDTO | null>(null);
   const [retForm, setRetForm] = useState({ nombre: '', tipo: 'ReteFuente', porcentaje: '', baseMinUVT: '4', codigoMunicipio: '', perfilVendedor: 'REGIMEN_ORDINARIO', perfilComprador: 'GRAN_CONTRIBUYENTE', cuentaContable: '' });
+
+  const [confirmState, setConfirmState] = useState<{ open: boolean; mensaje: string; onAceptar: () => void }>({ open: false, mensaje: '', onAceptar: () => {} });
+  const confirmar = (mensaje: string, onAceptar: () => void) => setConfirmState({ open: true, mensaje, onAceptar });
 
   useEffect(() => { cargarImpuestos(); cargarRetenciones(); }, []);
 
@@ -118,16 +122,18 @@ export default function ImpuestosPage() {
     } catch { setError('Error al guardar el impuesto'); }
   };
 
-  const desactivarImpuesto = async (id: number) => {
-    if (!window.confirm('Desactivar este impuesto?')) return;
-    try { await impuestosApi.deactivate(id); await cargarImpuestos(); }
-    catch (e: any) { setError(e?.response?.data ?? 'No se puede desactivar'); }
+  const desactivarImpuesto = (id: number) => {
+    confirmar('¿Desactivar este impuesto?', async () => {
+      try { await impuestosApi.deactivate(id); await cargarImpuestos(); }
+      catch (e: any) { setError(e?.response?.data ?? 'No se puede desactivar'); }
+    });
   };
 
-  const activarImpuesto = async (id: number) => {
-    if (!window.confirm('¿Activar este impuesto?')) return;
-    try { await impuestosApi.activate(id); await cargarImpuestos(); }
-    catch { setError('No se puede activar el impuesto'); }
+  const activarImpuesto = (id: number) => {
+    confirmar('¿Activar este impuesto?', async () => {
+      try { await impuestosApi.activate(id); await cargarImpuestos(); }
+      catch { setError('No se puede activar el impuesto'); }
+    });
   };
 
   // ── Retenciones handlers ──────────────────────────────────────────────────
@@ -170,16 +176,18 @@ export default function ImpuestosPage() {
     } catch { setError('Error al guardar la retencion'); }
   };
 
-  const desactivarRetencion = async (id: number) => {
-    if (!window.confirm('Desactivar esta regla de retencion?')) return;
-    try { await retencionesApi.deactivate(id); await cargarRetenciones(); }
-    catch { setError('No se puede desactivar la retencion'); }
+  const desactivarRetencion = (id: number) => {
+    confirmar('¿Desactivar esta regla de retención?', async () => {
+      try { await retencionesApi.deactivate(id); await cargarRetenciones(); }
+      catch { setError('No se puede desactivar la retencion'); }
+    });
   };
 
-  const activarRetencion = async (id: number) => {
-    if (!window.confirm('¿Activar esta regla de retención?')) return;
-    try { await retencionesApi.activate(id); await cargarRetenciones(); }
-    catch { setError('No se puede activar la retención'); }
+  const activarRetencion = (id: number) => {
+    confirmar('¿Activar esta regla de retención?', async () => {
+      try { await retencionesApi.activate(id); await cargarRetenciones(); }
+      catch { setError('No se puede activar la retención'); }
+    });
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -413,6 +421,12 @@ export default function ImpuestosPage() {
         </DialogActions>
       </Dialog>
 
+      <ConfirmDialog
+        open={confirmState.open}
+        mensaje={confirmState.mensaje}
+        onAceptar={() => { confirmState.onAceptar(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancelar={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </Box>
   );
 }

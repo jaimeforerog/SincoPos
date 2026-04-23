@@ -15,7 +15,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/auth")]
-public class AuthController : ControllerBase
+public sealed class AuthController : ControllerBase
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly WorkOsOptions _workos;

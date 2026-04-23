@@ -1,6 +1,6 @@
 namespace POS.Infrastructure.Services.Erp;
 
-public class ErpSincoOptions
+public sealed class ErpSincoOptions
 {
     public const string SectionName = "ErpSinco";
 

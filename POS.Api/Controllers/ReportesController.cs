@@ -9,7 +9,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class ReportesController : ControllerBase
+public sealed class ReportesController : ControllerBase
 {
     private readonly IReportesService _reportesService;
     private readonly IDashboardService _dashboardService;

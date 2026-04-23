@@ -5,7 +5,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class EthicalGuardService : IEthicalGuardService
+public sealed class EthicalGuardService : IEthicalGuardService
 {
     private readonly AppDbContext _context;
 

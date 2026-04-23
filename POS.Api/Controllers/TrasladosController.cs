@@ -13,7 +13,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class TrasladosController : ControllerBase
+public sealed class TrasladosController : ControllerBase
 {
     private readonly ITrasladoService _trasladoService;
     private readonly AppDbContext _context;

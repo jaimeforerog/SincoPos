@@ -14,7 +14,7 @@ namespace POS.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
-public class OrquestadorController : ControllerBase
+public sealed class OrquestadorController : ControllerBase
 {
     private readonly ISaleOrchestrator _orchestrator;
     private readonly IPipelineMetricsService _metrics;

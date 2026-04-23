@@ -6,7 +6,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class PosContextoService : IPosContextoService
+public sealed class PosContextoService : IPosContextoService
 {
     private readonly AppDbContext _context;
 

@@ -6,7 +6,7 @@ using POS.Application.Services;
 
 namespace POS.Infrastructure.Services;
 
-public class DianSoapService : IDianSoapService
+public sealed class DianSoapService : IDianSoapService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<DianSoapService> _logger;

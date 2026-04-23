@@ -37,6 +37,7 @@ import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
 import { ProductoFormDialog } from '../components/ProductoFormDialog';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import type { ProductoDTO , ApiError} from '@/types/api';
 
 export function ProductosPage() {
@@ -47,6 +48,8 @@ export function ProductosPage() {
 
   const [selectedProducto, setSelectedProducto] = useState<ProductoDTO | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [confirmState, setConfirmState] = useState<{ open: boolean; mensaje: string; onAceptar: () => void }>({ open: false, mensaje: '', onAceptar: () => {} });
+  const confirmar = (mensaje: string, onAceptar: () => void) => setConfirmState({ open: true, mensaje, onAceptar });
   const [busqueda, setBusqueda] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<number | undefined>(undefined);
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
@@ -117,15 +120,11 @@ export function ProductosPage() {
   };
 
   const handleDesactivar = (producto: ProductoDTO) => {
-    if (window.confirm(`¿Estás seguro de desactivar el producto "${producto.nombre}"?`)) {
-      desactivarMutation.mutate(producto);
-    }
+    confirmar(`¿Estás seguro de desactivar el producto "${producto.nombre}"?`, () => desactivarMutation.mutate(producto));
   };
 
   const handleActivar = (producto: ProductoDTO) => {
-    if (window.confirm(`¿Estás seguro de activar el producto "${producto.nombre}"?`)) {
-      activarMutation.mutate(producto);
-    }
+    confirmar(`¿Estás seguro de activar el producto "${producto.nombre}"?`, () => activarMutation.mutate(producto));
   };
 
   const handleSuccess = () => {
@@ -374,6 +373,13 @@ export function ProductosPage() {
         producto={selectedProducto}
         onClose={() => setFormOpen(false)}
         onSuccess={handleSuccess}
+      />
+
+      <ConfirmDialog
+        open={confirmState.open}
+        mensaje={confirmState.mensaje}
+        onAceptar={() => { confirmState.onAceptar(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancelar={() => setConfirmState(s => ({ ...s, open: false }))}
       />
     </Container>
   );

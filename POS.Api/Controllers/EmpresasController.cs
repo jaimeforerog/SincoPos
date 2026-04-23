@@ -10,7 +10,7 @@ namespace POS.Api.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize(Policy = "Admin")]
-public class EmpresasController : ControllerBase
+public sealed class EmpresasController : ControllerBase
 {
     private readonly IEmpresaService _service;
 

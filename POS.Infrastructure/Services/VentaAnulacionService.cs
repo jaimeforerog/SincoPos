@@ -15,7 +15,7 @@ namespace POS.Infrastructure.Services;
 /// Gestiona la anulación de ventas: revierte inventario (Event Sourcing),
 /// actualiza caja, genera asientos contables inversos y registra en el ERP Outbox.
 /// </summary>
-public class VentaAnulacionService
+public sealed class VentaAnulacionService
 {
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;

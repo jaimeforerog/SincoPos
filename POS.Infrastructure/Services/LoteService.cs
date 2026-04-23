@@ -5,7 +5,7 @@ using POS.Infrastructure.Data;
 
 namespace POS.Infrastructure.Services;
 
-public class LoteService : ILoteService
+public sealed class LoteService : ILoteService
 {
     private readonly AppDbContext _context;
 

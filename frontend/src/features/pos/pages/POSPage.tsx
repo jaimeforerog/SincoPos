@@ -10,6 +10,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { HeroBanner } from '@/components/common/HeroBanner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useCartStore } from '@/stores/cart.store';
 import { useOfflineSync } from '@/offline/useOfflineSync';
 import { IntentSearch } from '../components/IntentSearch';
@@ -37,9 +38,10 @@ export function POSPage() {
     showSeleccionarCaja,
     handleSelectCaja,
     handleCambiarCaja,
+    cambiarCajaConfirmProps,
   } = usePOSSession();
 
-  const { handleSelectProduct, handleUpdateQuantity, handleClearCart } = usePOSStock();
+  const { handleSelectProduct, handleUpdateQuantity, handleClearCart, limpiarConfirmProps } = usePOSStock();
 
   // Estado de pago y cliente (permanece en el page porque conecta session ↔ venta)
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
@@ -247,6 +249,9 @@ export function POSPage() {
         venta={lastVenta}
         onClose={() => setShowConfirmDialog(false)}
       />
+
+      <ConfirmDialog {...limpiarConfirmProps} />
+      <ConfirmDialog {...cambiarCajaConfirmProps} />
     </Box>
   );
 }

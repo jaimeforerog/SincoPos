@@ -10,7 +10,7 @@ namespace POS.Infrastructure.Services;
 /// para los lotes que estén próximos a vencer en cada sucursal.
 /// Usa la configuración DiasAlertaVencimientoLotes de cada sucursal.
 /// </summary>
-public class AlertaVencimientoBackgroundService : BackgroundService
+public sealed class AlertaVencimientoBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AlertaVencimientoBackgroundService> _logger;

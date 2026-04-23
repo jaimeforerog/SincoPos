@@ -8,7 +8,7 @@ namespace POS.Infrastructure.Services;
 /// Implementacion local del proveedor de identidad para desarrollo.
 /// Genera GUIDs como ExternalId y contrasenas aleatorias.
 /// </summary>
-public class LocalIdentityProviderService : IIdentityProviderService
+public sealed class LocalIdentityProviderService : IIdentityProviderService
 {
     private readonly ILogger<LocalIdentityProviderService> _logger;
 

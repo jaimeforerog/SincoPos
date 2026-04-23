@@ -6,7 +6,7 @@ using POS.Infrastructure.Data.Entities;
 
 namespace POS.Infrastructure.Services;
 
-public class EmpresaService : IEmpresaService
+public sealed class EmpresaService : IEmpresaService
 {
     private readonly AppDbContext _context;
 

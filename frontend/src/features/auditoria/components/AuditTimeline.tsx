@@ -34,7 +34,7 @@ export function activityLogToAuditEntry(log: ActivityLogFullDTO): AuditEntry {
   return {
     id:          String(log.id),
     timestamp:   log.fechaHora,
-    actor:       log.usuarioEmail,
+    actor:       log.usuarioNombre ?? log.usuarioEmail,
     actorType:   isAutomated ? 'system' : 'human',
     action:      log.accion,
     details,

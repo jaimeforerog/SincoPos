@@ -11,7 +11,7 @@ namespace POS.Infrastructure.Services;
 /// Construye el DocumentoContable y emite el ErpOutboxMessage para ventas/anulaciones.
 /// Patrón idéntico a CompraErpService.
 /// </summary>
-public class VentaErpService : IVentaErpService
+public sealed class VentaErpService : IVentaErpService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<VentaErpService> _logger;

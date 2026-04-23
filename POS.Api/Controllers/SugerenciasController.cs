@@ -13,7 +13,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class SugerenciasController : ControllerBase
+public sealed class SugerenciasController : ControllerBase
 {
     private readonly ISugerenciasService _sugerencias;
 

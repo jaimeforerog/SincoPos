@@ -16,7 +16,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class UsuariosController : ControllerBase
+public sealed class UsuariosController : ControllerBase
 {
     private readonly IUsuarioService _usuarioService;
     private readonly IUsuarioAdminService _usuarioAdminService;

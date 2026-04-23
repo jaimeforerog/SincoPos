@@ -17,7 +17,7 @@ namespace POS.Infrastructure.Services;
 /// Implementación del servicio de Activity Log con Channel-based background processing.
 /// Usa un patrón fire-and-forget para no bloquear operaciones de usuario.
 /// </summary>
-public class ActivityLogService : IActivityLogService
+public sealed class ActivityLogService : IActivityLogService
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;

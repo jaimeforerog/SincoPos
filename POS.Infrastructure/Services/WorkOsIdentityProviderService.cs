@@ -12,7 +12,7 @@ namespace POS.Infrastructure.Services;
 /// Implementación de IIdentityProviderService usando WorkOS User Management API.
 /// Docs: https://workos.com/docs/reference/user-management
 /// </summary>
-public class WorkOsIdentityProviderService : IIdentityProviderService
+public sealed class WorkOsIdentityProviderService : IIdentityProviderService
 {
     private readonly HttpClient _httpClient;
     private readonly WorkOsOptions _options;

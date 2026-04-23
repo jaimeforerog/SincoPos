@@ -9,7 +9,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class LotesController : ControllerBase
+public sealed class LotesController : ControllerBase
 {
     private readonly ILoteService _loteService;
 

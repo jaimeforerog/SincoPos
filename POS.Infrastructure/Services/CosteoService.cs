@@ -11,7 +11,7 @@ namespace POS.Infrastructure.Services;
 /// - PEPS (FIFO): consume lotes del mas antiguo al mas reciente
 /// - UEPS (LIFO): consume lotes del mas reciente al mas antiguo
 /// </summary>
-public class CosteoService
+public sealed class CosteoService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<CosteoService> _logger;

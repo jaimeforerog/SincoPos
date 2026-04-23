@@ -11,7 +11,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class ProductosController : ControllerBase
+public sealed class ProductosController : ControllerBase
 {
     private readonly IProductoService _productoService;
     private readonly ILoteService _loteService;

@@ -14,7 +14,7 @@ namespace POS.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class AprendizajeController : ControllerBase
+public sealed class AprendizajeController : ControllerBase
 {
     private readonly IAprendizajeService _aprendizajeService;
 

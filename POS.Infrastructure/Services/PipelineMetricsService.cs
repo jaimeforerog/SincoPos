@@ -10,7 +10,7 @@ namespace POS.Infrastructure.Services;
 /// es monitoreo en tiempo real, no histórico permanente).
 /// Además emite métricas OTLP via System.Diagnostics.Metrics (integración OpenTelemetry).
 /// </summary>
-public class PipelineMetricsService : IPipelineMetricsService
+public sealed class PipelineMetricsService : IPipelineMetricsService
 {
     public const string MeterName = "sincopos.pipeline";
 

@@ -3,7 +3,7 @@ using POS.Domain.Aggregates;
 
 namespace POS.Infrastructure.Services;
 
-public class AprendizajeService : IAprendizajeService
+public sealed class AprendizajeService : IAprendizajeService
 {
     private readonly global::Marten.IDocumentSession _session;
 

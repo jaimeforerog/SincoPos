@@ -6,7 +6,7 @@ using POS.Application.Services;
 
 namespace POS.Infrastructure.Services;
 
-public class FirmaDigitalService : IFirmaDigitalService
+public sealed class FirmaDigitalService : IFirmaDigitalService
 {
     public string FirmarXml(string xmlSinFirmar, string certificadoBase64, string password)
     {
