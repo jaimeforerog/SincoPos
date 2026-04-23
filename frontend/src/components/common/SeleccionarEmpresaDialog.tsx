@@ -50,14 +50,13 @@ export function SeleccionarEmpresaDialog() {
       .map(s => ({ id: s.id, nombre: s.nombre }));
   }, [sucursalesApi_data, selectedEmpresa, user?.sucursalesDisponibles]);
 
-  // Auto-seleccionar si hay exactamente 1 sucursal
+  // Auto-seleccionar si hay exactamente 1 sucursal.
+  // No resetear a null para length > 1: handleEmpresaChange ya lo hace al cambiar empresa.
+  // Resetear aquí causaría que la selección del usuario sea descartada si React 19
+  // recalcula el useMemo (nueva referencia, mismo contenido) al re-renderizar.
   useEffect(() => {
-    if (!loadingSucursales) {
-      if (sucursalesDeEmpresa.length === 1) {
-        setSelectedSucursal(sucursalesDeEmpresa[0]);
-      } else if (sucursalesDeEmpresa.length > 1) {
-        setSelectedSucursal(null);
-      }
+    if (!loadingSucursales && sucursalesDeEmpresa.length === 1) {
+      setSelectedSucursal(sucursalesDeEmpresa[0]);
     }
   }, [sucursalesDeEmpresa, loadingSucursales]);
 
