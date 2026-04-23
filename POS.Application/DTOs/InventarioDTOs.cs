@@ -350,7 +350,11 @@ public record ReporteLotesQueryDto(
     int? SucursalId = null,
     Guid? ProductoId = null,
     bool SoloConStock = true,
-    string? EstadoVencimiento = null   // "Vencido" | "Critico" | "Proximo" | "Vigente" | "SinFecha"
+    string? EstadoVencimiento = null,          // "Vencido" | "Critico" | "Proximo" | "Vigente" | "SinFecha"
+    DateOnly? FechaVencimientoDesde = null,
+    DateOnly? FechaVencimientoHasta = null,
+    int Page = 1,
+    int PageSize = 100
 );
 
 public record LoteReporteItemDto(
@@ -372,7 +376,7 @@ public record LoteReporteItemDto(
 );
 
 public record ReporteLotesDto(
-    int TotalLotes,
+    int TotalLotes,           // total sin filtro de estado (para KPIs)
     decimal TotalUnidades,
     decimal ValorTotalInventario,
     int LotesVencidos,
@@ -380,5 +384,8 @@ public record ReporteLotesDto(
     int LotesProximos,
     int LotesVigentes,
     int LotesSinFecha,
+    int TotalItems,           // total con filtro de estado aplicado (para paginación)
+    int TotalPaginas,
+    int PaginaActual,
     List<LoteReporteItemDto> Items
 );

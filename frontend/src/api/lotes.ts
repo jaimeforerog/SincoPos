@@ -48,6 +48,10 @@ export const lotesApi = {
     productoId?: string;
     soloConStock?: boolean;
     estadoVencimiento?: string;
+    fechaVencimientoDesde?: string;
+    fechaVencimientoHasta?: string;
+    page?: number;
+    pageSize?: number;
   }) => {
     const response = await apiClient.get<ReporteLotesDTO>('/lotes/reporte', { params });
     return response.data;

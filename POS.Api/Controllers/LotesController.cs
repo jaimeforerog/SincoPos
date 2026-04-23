@@ -107,9 +107,14 @@ public sealed class LotesController : ControllerBase
         [FromQuery] int? sucursalId = null,
         [FromQuery] Guid? productoId = null,
         [FromQuery] bool soloConStock = true,
-        [FromQuery] string? estadoVencimiento = null)
+        [FromQuery] string? estadoVencimiento = null,
+        [FromQuery] DateOnly? fechaVencimientoDesde = null,
+        [FromQuery] DateOnly? fechaVencimientoHasta = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
     {
-        var query = new ReporteLotesQueryDto(sucursalId, productoId, soloConStock, estadoVencimiento);
+        var query = new ReporteLotesQueryDto(sucursalId, productoId, soloConStock, estadoVencimiento,
+            fechaVencimientoDesde, fechaVencimientoHasta, page, pageSize);
         var reporte = await _loteService.ObtenerReporteAsync(query);
         return Ok(reporte);
     }

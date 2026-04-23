@@ -34,6 +34,9 @@ const makeLotesResponse = (overrides = {}) => ({
   lotesProximos: 1,
   lotesVigentes: 3,
   lotesSinFecha: 1,
+  totalItems: 2,
+  totalPaginas: 1,
+  paginaActual: 1,
   items: [
     {
       id: 1,

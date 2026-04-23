@@ -977,6 +977,9 @@ export interface ReporteLotesDTO {
   lotesProximos: number;
   lotesVigentes: number;
   lotesSinFecha: number;
+  totalItems: number;
+  totalPaginas: number;
+  paginaActual: number;
   items: LoteReporteItemDTO[];
 }
 

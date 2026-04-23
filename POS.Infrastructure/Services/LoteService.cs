@@ -212,23 +212,62 @@ public sealed class LoteService : ILoteService
     public async Task<ReporteLotesDto> ObtenerReporteAsync(ReporteLotesQueryDto query)
     {
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+        var en7  = hoy.AddDays(7);
+        var en30 = hoy.AddDays(30);
 
-        var q = _context.LotesInventario
+        // Query base: sucursal / stock / producto / rango de fechas de vencimiento
+        var qBase = _context.LotesInventario
             .Include(l => l.Producto)
             .Include(l => l.Sucursal)
             .Where(l => l.Producto.ManejaLotes)
             .AsQueryable();
 
         if (query.SoloConStock)
-            q = q.Where(l => l.CantidadDisponible > 0);
-
+            qBase = qBase.Where(l => l.CantidadDisponible > 0);
         if (query.SucursalId.HasValue)
-            q = q.Where(l => l.SucursalId == query.SucursalId.Value);
-
+            qBase = qBase.Where(l => l.SucursalId == query.SucursalId.Value);
         if (query.ProductoId.HasValue)
-            q = q.Where(l => l.ProductoId == query.ProductoId.Value);
+            qBase = qBase.Where(l => l.ProductoId == query.ProductoId.Value);
 
-        var lotes = await q.OrderBy(l => l.FechaVencimiento).ThenBy(l => l.Producto.Nombre).ToListAsync();
+        // Filtro de rango de fechas: excluye lotes sin fecha si el usuario acotó el rango
+        if (query.FechaVencimientoDesde.HasValue)
+            qBase = qBase.Where(l => l.FechaVencimiento.HasValue && l.FechaVencimiento >= query.FechaVencimientoDesde.Value);
+        if (query.FechaVencimientoHasta.HasValue)
+            qBase = qBase.Where(l => l.FechaVencimiento.HasValue && l.FechaVencimiento <= query.FechaVencimientoHasta.Value);
+
+        // KPIs del set completo (sin filtro de estado) — SQL COUNT/SUM, sin traer datos a memoria
+        var totalLotes    = await qBase.CountAsync();
+        var totalUnidades = totalLotes > 0 ? await qBase.SumAsync(l => l.CantidadDisponible) : 0m;
+        var valorTotal    = totalLotes > 0 ? await qBase.SumAsync(l => l.CantidadDisponible * l.CostoUnitario) : 0m;
+        var kpiVencidos   = await qBase.CountAsync(l => l.FechaVencimiento.HasValue && l.FechaVencimiento < hoy);
+        var kpiCriticos   = await qBase.CountAsync(l => l.FechaVencimiento.HasValue && l.FechaVencimiento >= hoy && l.FechaVencimiento <= en7);
+        var kpiProximos   = await qBase.CountAsync(l => l.FechaVencimiento.HasValue && l.FechaVencimiento > en7 && l.FechaVencimiento <= en30);
+        var kpiVigentes   = await qBase.CountAsync(l => l.FechaVencimiento.HasValue && l.FechaVencimiento > en30);
+        var kpiSinFecha   = await qBase.CountAsync(l => !l.FechaVencimiento.HasValue);
+
+        // Filtro de estado en SQL (antes era in-memory)
+        var qItems = qBase;
+        if (!string.IsNullOrEmpty(query.EstadoVencimiento))
+            qItems = query.EstadoVencimiento switch
+            {
+                "Vencido"  => qItems.Where(l => l.FechaVencimiento.HasValue && l.FechaVencimiento.Value < hoy),
+                "Critico"  => qItems.Where(l => l.FechaVencimiento.HasValue && l.FechaVencimiento.Value >= hoy && l.FechaVencimiento.Value <= en7),
+                "Proximo"  => qItems.Where(l => l.FechaVencimiento.HasValue && l.FechaVencimiento.Value > en7  && l.FechaVencimiento.Value <= en30),
+                "Vigente"  => qItems.Where(l => l.FechaVencimiento.HasValue && l.FechaVencimiento.Value > en30),
+                "SinFecha" => qItems.Where(l => !l.FechaVencimiento.HasValue),
+                _          => qItems
+            };
+
+        var pageSize   = Math.Clamp(query.PageSize, 1, 500);
+        var page       = Math.Max(1, query.Page);
+        var totalItems = await qItems.CountAsync();
+        var totalPags  = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+        var lotes = await qItems
+            .OrderBy(l => l.FechaVencimiento).ThenBy(l => l.Producto.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
 
         var items = lotes.Select(l =>
         {
@@ -238,11 +277,11 @@ public sealed class LoteService : ILoteService
 
             string estado = dias switch
             {
-                null        => "SinFecha",
-                <= 0        => "Vencido",
-                <= 7        => "Critico",
-                <= 30       => "Proximo",
-                _           => "Vigente"
+                null  => "SinFecha",
+                <= 0  => "Vencido",
+                <= 7  => "Critico",
+                <= 30 => "Proximo",
+                _     => "Vigente"
             };
 
             return new LoteReporteItemDto(
@@ -254,18 +293,18 @@ public sealed class LoteService : ILoteService
                 l.Referencia, l.FechaEntrada, estado);
         }).ToList();
 
-        if (!string.IsNullOrEmpty(query.EstadoVencimiento))
-            items = items.Where(i => i.EstadoVencimiento == query.EstadoVencimiento).ToList();
-
         return new ReporteLotesDto(
-            TotalLotes: items.Count,
-            TotalUnidades: items.Sum(i => i.CantidadDisponible),
-            ValorTotalInventario: items.Sum(i => i.ValorTotal),
-            LotesVencidos: items.Count(i => i.EstadoVencimiento == "Vencido"),
-            LotesCriticos: items.Count(i => i.EstadoVencimiento == "Critico"),
-            LotesProximos: items.Count(i => i.EstadoVencimiento == "Proximo"),
-            LotesVigentes: items.Count(i => i.EstadoVencimiento == "Vigente"),
-            LotesSinFecha: items.Count(i => i.EstadoVencimiento == "SinFecha"),
+            TotalLotes: totalLotes,
+            TotalUnidades: totalUnidades,
+            ValorTotalInventario: valorTotal,
+            LotesVencidos: kpiVencidos,
+            LotesCriticos: kpiCriticos,
+            LotesProximos: kpiProximos,
+            LotesVigentes: kpiVigentes,
+            LotesSinFecha: kpiSinFecha,
+            TotalItems: totalItems,
+            TotalPaginas: totalPags,
+            PaginaActual: page,
             Items: items
         );
     }

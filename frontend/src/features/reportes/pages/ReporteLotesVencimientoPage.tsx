@@ -8,6 +8,7 @@ import {
   IconButton,
   InputLabel,
   MenuItem,
+  Pagination,
   Paper,
   Select,
   Switch,
@@ -17,6 +18,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -138,12 +140,17 @@ export function ReporteLotesVencimientoPage() {
   const [sucursalId, setSucursalId] = useState<number | ''>(activeSucursalId ?? '');
   const [estadoVencimiento, setEstadoVencimiento] = useState('');
   const [soloConStock, setSoloConStock] = useState(true);
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
   const [kardexLoteId, setKardexLoteId] = useState<number | null>(null);
 
   const [applied, setApplied] = useState({
     sucursalId: activeSucursalId ?? ('' as number | ''),
     estadoVencimiento: '',
     soloConStock: true,
+    fechaDesde: '',
+    fechaHasta: '',
+    page: 1,
   });
 
   const { data: sucursales = [] } = useQuery({
@@ -158,11 +165,18 @@ export function ReporteLotesVencimientoPage() {
         sucursalId: applied.sucursalId !== '' ? (applied.sucursalId as number) : undefined,
         estadoVencimiento: applied.estadoVencimiento || undefined,
         soloConStock: applied.soloConStock,
+        fechaVencimientoDesde: applied.fechaDesde || undefined,
+        fechaVencimientoHasta: applied.fechaHasta || undefined,
+        page: applied.page,
+        pageSize: 100,
       }),
   });
 
   const handleBuscar = () =>
-    setApplied({ sucursalId, estadoVencimiento, soloConStock });
+    setApplied({ sucursalId, estadoVencimiento, soloConStock, fechaDesde, fechaHasta, page: 1 });
+
+  const handlePageChange = (_: React.ChangeEvent<unknown>, p: number) =>
+    setApplied(prev => ({ ...prev, page: p }));
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
@@ -247,6 +261,26 @@ export function ReporteLotesVencimientoPage() {
             </Select>
           </FormControl>
 
+          <TextField
+            label="Vence desde"
+            type="date"
+            size="small"
+            value={fechaDesde}
+            onChange={e => setFechaDesde(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ minWidth: 160 }}
+          />
+
+          <TextField
+            label="Vence hasta"
+            type="date"
+            size="small"
+            value={fechaHasta}
+            onChange={e => setFechaHasta(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ minWidth: 160 }}
+          />
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Switch
               checked={soloConStock}
@@ -300,11 +334,20 @@ export function ReporteLotesVencimientoPage() {
             </TableBody>
           </Table>
         </TableContainer>
-        {data && data.items.length > 0 && (
-          <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
+        {data && data.totalItems > 0 && (
+          <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="caption" color="text.secondary">
-              {data.items.length} lote{data.items.length !== 1 ? 's' : ''} — Valor total: <strong>{COP(data.valorTotalInventario)}</strong>
+              {data.totalItems} lote{data.totalItems !== 1 ? 's' : ''} — Valor total (página): <strong>{COP(data.valorTotalInventario)}</strong>
             </Typography>
+            {data.totalPaginas > 1 && (
+              <Pagination
+                count={data.totalPaginas}
+                page={data.paginaActual}
+                onChange={handlePageChange}
+                size="small"
+                color="primary"
+              />
+            )}
           </Box>
         )}
       </Paper>
