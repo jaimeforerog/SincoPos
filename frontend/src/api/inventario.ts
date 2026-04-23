@@ -6,6 +6,7 @@ import type {
   EntradaInventarioDTO,
   AjusteInventarioDTO,
   DevolucionProveedorDTO,
+  PaginatedResult,
 } from '@/types/api';
 
 export const inventarioApi = {
@@ -61,9 +62,12 @@ export const inventarioApi = {
   getMovimientos: async (params?: {
     sucursalId?: number;
     productoId?: string;
-    limite?: number;
+    fechaDesde?: string;
+    fechaHasta?: string;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const response = await apiClient.get<MovimientoInventarioDTO[]>(
+    const response = await apiClient.get<PaginatedResult<MovimientoInventarioDTO>>(
       '/inventario/movimientos',
       { params }
     );

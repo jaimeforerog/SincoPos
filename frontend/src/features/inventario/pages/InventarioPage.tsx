@@ -22,6 +22,7 @@ import {
   Button,
   Alert,
   Tooltip,
+  Pagination,
 } from '@mui/material';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import { inventarioApi } from '@/api/inventario';
@@ -71,6 +72,18 @@ export function InventarioPage() {
   const [entradaDialogOpen, setEntradaDialogOpen] = useState(false);
   const [ajusteDialogOpen, setAjusteDialogOpen] = useState(false);
 
+  // Movimientos date filters
+  const hoy = new Date().toISOString().slice(0, 10);
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const [movFechaDesde, setMovFechaDesde] = useState(hace30);
+  const [movFechaHasta, setMovFechaHasta] = useState(hoy);
+  const [movApplied, setMovApplied] = useState({
+    sucursalId: activeSucursalId || ('' as number | ''),
+    fechaDesde: hace30,
+    fechaHasta: hoy,
+    page: 1,
+  });
+
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales'],
     queryFn: () => sucursalesApi.getAll(),
@@ -100,14 +113,18 @@ export function InventarioPage() {
   });
 
   // Cargar movimientos
-  const { data: movimientos = [], isLoading: loadingMovimientos } = useQuery({
-    queryKey: ['inventario', 'movimientos', sucursalId],
+  const { data: movData, isLoading: loadingMovimientos } = useQuery({
+    queryKey: ['inventario', 'movimientos', movApplied],
     queryFn: () =>
       inventarioApi.getMovimientos({
-        sucursalId: sucursalId || undefined,
-        limite: 100,
+        sucursalId: movApplied.sucursalId !== '' ? (movApplied.sucursalId as number) : undefined,
+        fechaDesde: movApplied.fechaDesde ? `${movApplied.fechaDesde}T00:00:00Z` : undefined,
+        fechaHasta: movApplied.fechaHasta ? `${movApplied.fechaHasta}T23:59:59Z` : undefined,
+        page: movApplied.page,
+        pageSize: 50,
       }),
   });
+  const movimientos = movData?.items ?? [];
 
   const getTipoMovimientoColor = (tipo: string) => {
     switch (tipo) {
@@ -355,51 +372,96 @@ export function InventarioPage() {
 
         {/* Tab 3: Movimientos */}
         <TabPanel value={tabValue} index={2}>
+          <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap" alignItems="center">
+            <TextField
+              label="Desde"
+              type="date"
+              size="small"
+              value={movFechaDesde}
+              onChange={(e) => setMovFechaDesde(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ minWidth: 160 }}
+            />
+            <TextField
+              label="Hasta"
+              type="date"
+              size="small"
+              value={movFechaHasta}
+              onChange={(e) => setMovFechaHasta(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ minWidth: 160 }}
+            />
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setMovApplied({ sucursalId, fechaDesde: movFechaDesde, fechaHasta: movFechaHasta, page: 1 })}
+            >
+              Buscar
+            </Button>
+            {movData && (
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                {movData.totalCount} movimiento{movData.totalCount !== 1 ? 's' : ''}
+              </Typography>
+            )}
+          </Stack>
           {loadingMovimientos ? (
             <Box display="flex" justifyContent="center" py={5}>
               <CircularProgress />
             </Box>
           ) : movimientos.length === 0 ? (
-            <Alert severity="info">No hay movimientos de inventario</Alert>
+            <Alert severity="info">No hay movimientos en el período seleccionado</Alert>
           ) : (
-            <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 600 }}>
-              <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell>Producto</TableCell>
-                    <TableCell>Sucursal</TableCell>
-                    <TableCell align="right">Cantidad</TableCell>
-                    <TableCell align="right">Costo Unit.</TableCell>
-                    <TableCell align="right">Costo Total</TableCell>
-                    <TableCell>Referencia</TableCell>
-                    <TableCell>Tercero</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {movimientos.map((mov) => (
-                    <TableRow key={mov.id}>
-                      <TableCell>{formatDate(mov.fechaMovimiento)}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getTipoMovimientoLabel(mov.tipoMovimiento)}
-                          color={getTipoMovimientoColor(mov.tipoMovimiento)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{mov.nombreProducto}</TableCell>
-                      <TableCell>{mov.nombreSucursal}</TableCell>
-                      <TableCell align="right">{formatNumber(mov.cantidad, 0)}</TableCell>
-                      <TableCell align="right">{formatCurrency(mov.costoUnitario)}</TableCell>
-                      <TableCell align="right">{formatCurrency(mov.costoTotal)}</TableCell>
-                      <TableCell>{mov.referencia || '-'}</TableCell>
-                      <TableCell>{mov.nombreTercero || '-'}</TableCell>
+            <>
+              <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 560 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell>Producto</TableCell>
+                      <TableCell>Sucursal</TableCell>
+                      <TableCell align="right">Cantidad</TableCell>
+                      <TableCell align="right">Costo Unit.</TableCell>
+                      <TableCell align="right">Costo Total</TableCell>
+                      <TableCell>Referencia</TableCell>
+                      <TableCell>Tercero</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {movimientos.map((mov) => (
+                      <TableRow key={`${mov.productoId}-${mov.sucursalId}-${mov.id}-${mov.fechaMovimiento}`}>
+                        <TableCell>{formatDate(mov.fechaMovimiento)}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={getTipoMovimientoLabel(mov.tipoMovimiento)}
+                            color={getTipoMovimientoColor(mov.tipoMovimiento)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{mov.nombreProducto}</TableCell>
+                        <TableCell>{mov.nombreSucursal}</TableCell>
+                        <TableCell align="right">{formatNumber(mov.cantidad, 0)}</TableCell>
+                        <TableCell align="right">{formatCurrency(mov.costoUnitario)}</TableCell>
+                        <TableCell align="right">{formatCurrency(mov.costoTotal)}</TableCell>
+                        <TableCell>{mov.referencia || '-'}</TableCell>
+                        <TableCell>{mov.nombreTercero || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {movData && movData.totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2 }}>
+                  <Pagination
+                    count={movData.totalPages}
+                    page={movApplied.page}
+                    onChange={(_, p) => setMovApplied(prev => ({ ...prev, page: p }))}
+                    size="small"
+                    color="primary"
+                  />
+                </Box>
+              )}
+            </>
           )}
         </TabPanel>
 

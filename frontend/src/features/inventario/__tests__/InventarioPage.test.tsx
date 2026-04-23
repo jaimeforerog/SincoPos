@@ -76,7 +76,7 @@ describe('InventarioPage', () => {
     const { inventarioApi } = await import('@/api/inventario');
     vi.mocked(inventarioApi.getStock).mockResolvedValue([]);
     vi.mocked(inventarioApi.getAlertas).mockResolvedValue([]);
-    vi.mocked(inventarioApi.getMovimientos).mockResolvedValue([]);
+    vi.mocked(inventarioApi.getMovimientos).mockResolvedValue({ items: [], totalCount: 0, pageNumber: 1, pageSize: 50, totalPages: 0 });
   });
 
   it('muestra el título Gestión de Inventario', () => {

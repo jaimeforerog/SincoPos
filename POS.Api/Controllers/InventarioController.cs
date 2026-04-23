@@ -292,14 +292,19 @@ public sealed class InventarioController : ControllerBase
     /// <c>StockMinimoActualizado</c>, <c>TrasladoSalida</c>, <c>TrasladoEntrada</c>.<br/>
     /// Los movimientos provienen del Event Store (Marten), no de la tabla EF Core.
     /// </remarks>
-    /// <param name="limite">Máximo de resultados. Default 50.</param>
     [HttpGet("movimientos")]
-    [ProducesResponseType(typeof(List<MovimientoInventarioDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<MovimientoInventarioDto>>> ObtenerMovimientos(
+    [ProducesResponseType(typeof(PaginatedResult<MovimientoInventarioDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<MovimientoInventarioDto>>> ObtenerMovimientos(
         [FromQuery] int? sucursalId = null,
         [FromQuery] Guid? productoId = null,
-        [FromQuery] int limite = 50)
+        [FromQuery] DateTime? fechaDesde = null,
+        [FromQuery] DateTime? fechaHasta = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
+        var desde = (fechaDesde ?? DateTime.UtcNow.AddDays(-30)).ToUniversalTime();
+        var hasta = (fechaHasta ?? DateTime.UtcNow).ToUniversalTime().AddDays(1).AddTicks(-1);
+
         var stockQuery = _context.Stock.AsQueryable();
         if (sucursalId.HasValue)
             stockQuery = stockQuery.Where(s => s.SucursalId == sucursalId.Value);
@@ -329,7 +334,7 @@ public sealed class InventarioController : ControllerBase
             var prodNombre = productosDict.GetValueOrDefault(sr.ProductoId, "");
             var sucNombre = sucursalesDict.GetValueOrDefault(sr.SucursalId, "");
 
-            foreach (var e in events.OrderByDescending(e => e.Timestamp))
+            foreach (var e in events.Where(e => e.Timestamp >= desde && e.Timestamp <= hasta))
             {
                 MovimientoInventarioDto? mov = null;
                 switch (e.Data)
@@ -406,10 +411,14 @@ public sealed class InventarioController : ControllerBase
             }
         }
 
-        return Ok(movimientos
-            .OrderByDescending(m => m.FechaMovimiento)
-            .Take(limite)
-            .ToList());
+        var sorted = movimientos.OrderByDescending(m => m.FechaMovimiento).ToList();
+        var ps = Math.Clamp(pageSize, 1, 500);
+        var pg = Math.Max(1, page);
+        var totalCount = sorted.Count;
+        var totalPages = (int)Math.Ceiling((double)totalCount / ps);
+        var items = sorted.Skip((pg - 1) * ps).Take(ps).ToList();
+
+        return Ok(new PaginatedResult<MovimientoInventarioDto>(items, totalCount, pg, ps, totalPages));
     }
 
 }

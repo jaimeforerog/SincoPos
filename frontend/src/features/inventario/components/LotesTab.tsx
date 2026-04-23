@@ -46,6 +46,8 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
   const [productoQuery, setProductoQuery] = useState('');
   const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoDTO | null>(null);
   const [trazabilidadLoteId, setTrazabilidadLoteId] = useState<number | null>(null);
+  const [fechaEntradaDesde, setFechaEntradaDesde] = useState('');
+  const [fechaEntradaHasta, setFechaEntradaHasta] = useState('');
   const { activeEmpresaId } = useAuth();
 
   const { data: productosData, isFetching: buscandoProductos } = useQuery({
@@ -71,6 +73,12 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
   });
 
   const modoConsulta = !!productoId && !!sucursalId;
+
+  const lotesFiltrados = modoConsulta ? lotes.filter((l) => {
+    if (fechaEntradaDesde && l.fechaEntrada < fechaEntradaDesde) return false;
+    if (fechaEntradaHasta && l.fechaEntrada.slice(0, 10) > fechaEntradaHasta) return false;
+    return true;
+  }) : [];
 
   return (
     <Box>
@@ -120,12 +128,35 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
           <MenuItem value="vigentes">Solo vigentes</MenuItem>
           <MenuItem value="todos">Todos</MenuItem>
         </TextField>
+
+        {modoConsulta && (
+          <>
+            <TextField
+              label="Entrada desde"
+              type="date"
+              size="small"
+              value={fechaEntradaDesde}
+              onChange={(e) => setFechaEntradaDesde(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ minWidth: 160 }}
+            />
+            <TextField
+              label="Entrada hasta"
+              type="date"
+              size="small"
+              value={fechaEntradaHasta}
+              onChange={(e) => setFechaEntradaHasta(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ minWidth: 160 }}
+            />
+          </>
+        )}
       </Stack>
 
       {modoConsulta ? (
         isLoading ? (
           <Box display="flex" justifyContent="center" py={5}><CircularProgress /></Box>
-        ) : lotes.length === 0 ? (
+        ) : lotesFiltrados.length === 0 ? (
           <Alert severity="info">No hay lotes para este producto en la sucursal seleccionada.</Alert>
         ) : (
           <TableContainer component={Paper} variant="outlined">
@@ -144,7 +175,7 @@ export function LotesTab({ sucursales, activeSucursalId }: Props) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {lotes.map((lote) => {
+                {lotesFiltrados.map((lote) => {
                   const hoy = new Date();
                   const vence = lote.fechaVencimiento ? new Date(lote.fechaVencimiento) : null;
                   const dias = vence ? Math.floor((vence.getTime() - hoy.getTime()) / 86400000) : null;
