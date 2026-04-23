@@ -139,19 +139,8 @@ public class InventarioProjection : IProjection
     private Task ProcesarSalidaVenta(AppDbContext context, CosteoService costeoService,
         SalidaVentaRegistrada e, DateTime timestamp)
     {
-        // IMPORTANTE: Este método NO procesa el stock para evitar doble consumo.
-        //
-        // El consumo de stock se realiza directamente en VentasController porque:
-        // 1. El controller necesita el costo inmediatamente para crear el DetalleVenta
-        // 2. Evita doble consumo (antes se consumía aquí Y en el controller)
-        // 3. Los eventos SalidaVentaRegistrada se guardan solo para AUDITORÍA
-        //
-        // El flujo correcto es:
-        // - VentasController: Consume stock + lotes, registra evento, crea venta
-        // - InventarioProjection: Solo registra evento para auditoría (este método)
-        //
-        // Ver documentación: PROYECTO_SINCOPOS.md sección "Doble Consumo de Stock"
-
+        // El consumo de stock ocurre en VentaService (necesita el costo inmediato para el DetalleVenta).
+        // Este evento solo se conserva para auditoría del Event Store.
         return Task.CompletedTask;
     }
 

@@ -1,8 +1,8 @@
 # ── .NET / ASP.NET Core ─────────────────────────────────────────────────────
 # Secretos locales — usar: dotnet user-secrets set "WorkOs:ApiKey" "..."
 **/appsettings.Development.json
-bin/
-obj/
+**/bin/
+**/obj/
 /packages/
 /_ReSharper.Caches/
 *.user
@@ -27,7 +27,7 @@ POS.Functions/local.settings.json
 logs/
 
 # ── IDE / Editores ──────────────────────────────────────────────────────────
-.idea/
+**/.idea/
 .vscode/
 !.vscode/extensions.json
 *.sln.DotSettings.user
@@ -36,6 +36,7 @@ logs/
 .claude/
 
 # ── Frontend ────────────────────────────────────────────────────────────────
+**/node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/

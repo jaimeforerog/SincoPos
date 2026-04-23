@@ -360,44 +360,23 @@ El sistema usa **Event Sourcing** SOLO para el módulo de **Inventario**, mientr
 ```
 1. Cliente → POST /api/Ventas
    ↓
-2. VentasController.Crear()
+2. VentasController.Crear() → VentaService.CrearAsync()
    ↓
 3. Para cada línea de venta:
    a. Cargar InventarioAggregate
    b. aggregate.RegistrarSalidaVenta() → crea SalidaVentaRegistrada
    c. _session.Events.Append(streamId, evento)
-   d. costeoService.ConsumirStock() → obtiene costo real según método
-   e. Actualizar stock.Cantidad
+   d. VentaCosteoService.ConsumirAsync() → consume lotes y retorna costo
+   e. stock.Cantidad -= linea.Cantidad
    ↓
 4. Crear Venta en EF Core con detalles
    ↓
-5. _session.SaveChangesAsync() → Dispara projection
+5. _session.SaveChangesAsync() → Dispara projection (auditoría)
    ↓
-6. InventarioProjection.ProcesarSalidaVenta()
-   - costeoService.ConsumirStock() OTRA VEZ (⚠️ BUG POTENCIAL)
-   - stock.Cantidad -= cantidad
+6. InventarioProjection.ProcesarSalidaVenta() → no-op (solo auditoría)
    ↓
 7. _context.SaveChangesAsync() → Guarda venta y stock
 ```
-
-### ⚠️ PROBLEMA CONOCIDO: Doble Consumo de Stock
-
-**Ubicación**: `VentasController.Crear()` + `InventarioProjection.ProcesarSalidaVenta()`
-
-**Descripción**:
-- El controller llama a `ConsumirStock()` y actualiza `stock.Cantidad`
-- La projection TAMBIÉN llama a `ConsumirStock()` y actualiza `stock.Cantidad`
-- Esto causa que el stock se actualice dos veces, pero solo una se guarda
-
-**Impacto**:
-- Los lotes se consumen dos veces en memoria
-- La actualización del controller sobreescribe la de la projection
-- Puede causar inconsistencias en inventarios con alto tráfico
-
-**Solución Propuesta**:
-- Opción 1: Eliminar la lógica de consumo del controller, dejar solo en projection
-- Opción 2: Eliminar la projection de SalidaVentaRegistrada, dejar solo en controller
-- Opción 3: Usar el patrón Saga para coordinar ambas operaciones
 
 ---
 
