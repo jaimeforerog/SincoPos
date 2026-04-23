@@ -64,7 +64,7 @@ export function AjusteInventarioDialog({ open, onClose, onSuccess }: Props) {
 
   const mutation = useMutation({
     mutationFn: inventarioApi.ajustarInventario,
-    onSuccess: (data: any) => {
+    onSuccess: (data: { diferencia: number }) => {
       enqueueSnackbar(
         `Inventario ajustado. Diferencia: ${data.diferencia > 0 ? '+' : ''}${data.diferencia}`,
         { variant: 'success' }

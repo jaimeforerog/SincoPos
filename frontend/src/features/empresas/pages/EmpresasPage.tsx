@@ -50,8 +50,8 @@ function EmpresaFormDialog({ open, empresa, onClose, onSaved }: EmpresaFormDialo
       enqueueSnackbar(isEdit ? 'Empresa actualizada' : 'Empresa creada', { variant: 'success' });
       onSaved();
     },
-    onError: (err: any) => {
-      setError(err?.message ?? 'Error al guardar');
+    onError: (err: unknown) => {
+      setError((err as { message?: string })?.message ?? 'Error al guardar');
     },
   });
 

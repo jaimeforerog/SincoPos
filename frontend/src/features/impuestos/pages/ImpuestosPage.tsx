@@ -125,7 +125,7 @@ export default function ImpuestosPage() {
   const desactivarImpuesto = (id: number) => {
     confirmar('¿Desactivar este impuesto?', async () => {
       try { await impuestosApi.deactivate(id); await cargarImpuestos(); }
-      catch (e: any) { setError(e?.response?.data ?? 'No se puede desactivar'); }
+      catch (e: unknown) { setError((e as { response?: { data?: string } })?.response?.data ?? 'No se puede desactivar'); }
     });
   };
 

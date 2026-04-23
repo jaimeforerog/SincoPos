@@ -1,3 +1,4 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using System.IO.Compression;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
@@ -190,6 +191,12 @@ builder.Services.AddOpenTelemetry()
         if (!string.IsNullOrEmpty(otlpEndpoint))
             metrics.AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint));
     });
+
+// Azure Monitor (Application Insights) — activo solo cuando la connection string está configurada
+var azureMonitorConnStr = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrEmpty(azureMonitorConnStr))
+    builder.Services.AddOpenTelemetry().UseAzureMonitor(opts =>
+        opts.ConnectionString = azureMonitorConnStr);
 
 // Activity Log Service (Singleton para Channel-based background processing)
 builder.Services.AddSingleton<POS.Application.Services.IActivityLogService, POS.Infrastructure.Services.ActivityLogService>();

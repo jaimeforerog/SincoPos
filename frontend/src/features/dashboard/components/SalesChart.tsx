@@ -23,9 +23,14 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
+interface RechartsPayloadItem {
+  value: number;
+  payload: { hora: number; total: number; cantidad: number };
+}
+
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: RechartsPayloadItem[] }) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload as { hora: number; total: number; cantidad: number };
+    const data = payload[0].payload;
     return (
       <Box
         sx={{
@@ -41,7 +46,7 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] 
           {data.hora}:00
         </Typography>
         <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
-          {formatCurrency(payload[0].value as number)}
+          {formatCurrency(payload[0].value)}
         </Typography>
         <Typography variant="caption" color="text.secondary">
           {data.cantidad} venta(s)

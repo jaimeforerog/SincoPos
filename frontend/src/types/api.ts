@@ -773,7 +773,7 @@ export interface ApiError {
   title?: string;
   errors?: Record<string, string[]>;
   statusCode: number;
-  response?: { status: number; data: any };
+  response?: { status: number; data: { detail?: string; error?: string; title?: string; errors?: Record<string, string[]> } };
   request?: unknown;
 }
 

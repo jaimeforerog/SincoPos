@@ -5,8 +5,8 @@ import { VoiceInput } from '../VoiceInput';
 
 // ── Mock de SpeechRecognition ─────────────────────────────────────────────────
 
-type ResultCallback  = (e: any) => void;
-type ErrorCallback   = (e: any) => void;
+type ResultCallback  = (e: { results: Array<Array<{ transcript: string; confidence?: number }>> }) => void;
+type ErrorCallback   = (e: { error: string }) => void;
 type EndCallback     = () => void;
 
 let _onresult: ResultCallback | null  = null;
@@ -16,7 +16,7 @@ const startSpy = vi.fn();
 const stopSpy  = vi.fn();
 let capturedLang = '';
 
-function MockSpeechRecognitionCtor(this: any) {
+function MockSpeechRecognitionCtor(this: Record<string, unknown>) {
   this.lang            = '';
   this.interimResults  = false;
   this.maxAlternatives = 1;
@@ -37,7 +37,7 @@ function MockSpeechRecognitionCtor(this: any) {
     configurable: true,
   });
   this.start = startSpy.mockImplementation(() => {
-    capturedLang = this.lang;
+    capturedLang = String(this.lang);
   });
   this.stop = stopSpy.mockImplementation(() => {
     _onend?.();

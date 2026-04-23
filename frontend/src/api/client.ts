@@ -130,28 +130,27 @@ apiClient.interceptors.response.use(
 
     if (error.response) {
       // Server responded with error
-      const data = error.response.data as any;
+      const data: unknown = error.response.data;
       let message = 'An error occurred';
-      let errors = data?.errors;
+      let errors: Record<string, string[]> | undefined;
+
+      type ServerError = { detail?: string; error?: string; message?: string; title?: string; errors?: Record<string, string[]> };
+      const obj = (typeof data === 'object' && data !== null) ? (data as ServerError) : null;
 
       if (typeof data === 'string') {
         message = data;
       } else if (Array.isArray(data)) {
-        // FluentValidation returns array of error strings
-        message = data.join('. ');
-        errors = data;
-      } else if (data?.detail) {
-        // ASP.NET ProblemDetails RFC 7807: detail is the human-readable explanation
-        message = data.detail;
-        errors = data.errors;
-      } else if (data?.error) {
-        message = data.error;
-      } else if (data?.message) {
-        message = data.message;
-      } else if (data?.title) {
-        // ASP.NET ProblemDetails format
-        message = data.title;
-        errors = data.errors;
+        message = (data as string[]).join('. ');
+      } else if (obj?.detail) {
+        message = obj.detail;
+        errors = obj.errors;
+      } else if (obj?.error) {
+        message = obj.error;
+      } else if (obj?.message) {
+        message = obj.message;
+      } else if (obj?.title) {
+        message = obj.title;
+        errors = obj.errors;
       }
 
       const apiError: ApiError = {

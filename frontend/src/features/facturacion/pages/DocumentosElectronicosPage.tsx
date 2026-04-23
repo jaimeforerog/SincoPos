@@ -38,7 +38,7 @@ import type { DocumentoElectronicoDTO } from '@/types/api';
 
 const HERO_COLOR = '#1565c0';
 
-const ESTADO_LABELS: Record<number, { label: string; color: any }> = {
+const ESTADO_LABELS: Record<number, { label: string; color: 'default' | 'info' | 'warning' | 'success' | 'error' }> = {
   0: { label: 'Pendiente', color: 'default' },
   1: { label: 'Generado', color: 'info' },
   2: { label: 'Firmado', color: 'info' },
@@ -89,8 +89,9 @@ export function DocumentosElectronicosPage() {
       queryClient.invalidateQueries({ queryKey: ['documentos-electronicos'] });
       setConfirmReintentar(null);
     },
-    onError: (err: any) => {
-      enqueueSnackbar(err.response?.data?.error ?? 'Error reenviando documento', { variant: 'error' });
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      enqueueSnackbar(e.response?.data?.error ?? 'Error reenviando documento', { variant: 'error' });
       setConfirmReintentar(null);
     },
   });

@@ -69,10 +69,11 @@ export function ImportarPreciosDialog({
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
+      type XlsxRow = Record<string, unknown>;
+      const jsonData = XLSX.utils.sheet_to_json<XlsxRow>(worksheet);
 
       // Validar y mapear datos
-      const preciosImportados: PrecioImportar[] = jsonData.map((row: any) => {
+      const preciosImportados: PrecioImportar[] = jsonData.map((row: XlsxRow) => {
         const codigoBarras = String(
           row['Código de Barras'] ||
           row['Codigo de Barras'] ||
@@ -81,27 +82,21 @@ export function ImportarPreciosDialog({
           ''
         ).trim();
 
-        const precioVenta = parseFloat(
+        const precioVenta = parseFloat(String(
           row['P. Venta'] ||
           row['Precio Venta'] ||
           row['PrecioVenta'] ||
           row['Precio'] ||
           0
-        );
+        ));
 
-        const precioMinimo = (
+        const minimoRaw =
           row['P. Mínimo'] ||
           row['P. Minimo'] ||
           row['Precio Mínimo'] ||
           row['Precio Minimo'] ||
-          row['PrecioMinimo']
-        ) ? parseFloat(
-          row['P. Mínimo'] ||
-          row['P. Minimo'] ||
-          row['Precio Mínimo'] ||
-          row['Precio Minimo'] ||
-          row['PrecioMinimo']
-        ) : undefined;
+          row['PrecioMinimo'];
+        const precioMinimo = minimoRaw ? parseFloat(String(minimoRaw)) : undefined;
 
         // Buscar producto
         const producto = productos.find(
@@ -171,9 +166,9 @@ export function ImportarPreciosDialog({
         { variant: 'success' }
       );
       handleClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       enqueueSnackbar(
-        error.message || 'Error al importar precios',
+        (error instanceof Error ? error.message : null) || 'Error al importar precios',
         { variant: 'error' }
       );
     } finally {

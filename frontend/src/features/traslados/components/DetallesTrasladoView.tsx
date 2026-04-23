@@ -27,6 +27,9 @@ import { trasladosApi } from '@/api/traslados';
 
 const HERO_COLOR = '#1565c0';
 
+const apiMsg = (e: unknown, fallback: string) =>
+  (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
+
 const ESTADO_META: Record<string, { color: 'warning' | 'info' | 'success' | 'error' | 'default'; label: string }> = {
   Pendiente:  { color: 'warning', label: 'Pendiente' },
   EnTransito: { color: 'info',    label: 'En Tránsito' },
@@ -74,8 +77,8 @@ export function DetallesTrasladoView({ trasladoId, onBack }: Props) {
       invalidar();
       setAccion(null);
     },
-    onError: (e: any) =>
-      enqueueSnackbar(e?.response?.data?.error || 'Error al enviar el traslado', { variant: 'error' }),
+    onError: (e: unknown) =>
+      enqueueSnackbar(apiMsg(e, 'Error al enviar el traslado'), { variant: 'error' }),
   });
 
   const recibirMutation = useMutation({
@@ -96,8 +99,8 @@ export function DetallesTrasladoView({ trasladoId, onBack }: Props) {
       setAccion(null);
       onBack();
     },
-    onError: (e: any) =>
-      enqueueSnackbar(e?.response?.data?.error || 'Error al recibir el traslado', { variant: 'error' }),
+    onError: (e: unknown) =>
+      enqueueSnackbar(apiMsg(e, 'Error al recibir el traslado'), { variant: 'error' }),
   });
 
   const rechazarMutation = useMutation({
@@ -109,8 +112,8 @@ export function DetallesTrasladoView({ trasladoId, onBack }: Props) {
       setMotivoRechazo('');
       onBack();
     },
-    onError: (e: any) =>
-      enqueueSnackbar(e?.response?.data?.error || 'Error al rechazar el traslado', { variant: 'error' }),
+    onError: (e: unknown) =>
+      enqueueSnackbar(apiMsg(e, 'Error al rechazar el traslado'), { variant: 'error' }),
   });
 
   const cancelarMutation = useMutation({
@@ -122,8 +125,8 @@ export function DetallesTrasladoView({ trasladoId, onBack }: Props) {
       setMotivoCancelacion('');
       onBack();
     },
-    onError: (e: any) =>
-      enqueueSnackbar(e?.response?.data?.error || 'Error al cancelar el traslado', { variant: 'error' }),
+    onError: (e: unknown) =>
+      enqueueSnackbar(apiMsg(e, 'Error al cancelar el traslado'), { variant: 'error' }),
   });
 
   const isPending =

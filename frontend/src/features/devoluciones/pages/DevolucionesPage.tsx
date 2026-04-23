@@ -36,7 +36,7 @@ import { formatCurrency, formatDate } from '@/utils/format';
 import { useSnackbar } from 'notistack';
 import SearchIcon from '@mui/icons-material/Search';
 import UndoIcon from '@mui/icons-material/Undo';
-import type { VentaDTO, TerceroDTO, ApiError } from '@/types/api';
+import type { VentaDTO, TerceroDTO, ApiError, CrearDevolucionParcialDTO } from '@/types/api';
 
 interface DevolucionFormData {
   [productoId: string]: number; // productoId -> cantidad a devolver
@@ -111,7 +111,7 @@ export function DevolucionesPage() {
 
   // Mutación para crear devolución
   const crearDevolucionMutation = useMutation({
-    mutationFn: (data: { ventaId: number; dto: any }) =>
+    mutationFn: (data: { ventaId: number; dto: CrearDevolucionParcialDTO }) =>
       devolucionesApi.crearDevolucionParcial(data.ventaId, data.dto),
     onSuccess: (data) => {
       enqueueSnackbar(

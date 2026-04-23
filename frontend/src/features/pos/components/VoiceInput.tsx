@@ -10,9 +10,11 @@ interface VoiceInputProps {
   language?: string;
 }
 
-// Compatibilidad Chrome/Edge/Safari
+// Compatibilidad Chrome/Edge/Safari — Web Speech API no tiene tipos oficiales en lib.dom
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SpeechRecognitionCtor = new () => any;
+interface SpeechResultEvent { results: Array<Array<{ transcript: string }>> }
+interface SpeechErrorEvent { error: string }
 declare global {
   interface Window {
     SpeechRecognition: SpeechRecognitionCtor;
@@ -49,13 +51,13 @@ export function VoiceInput({ onResult, language = 'es-CO' }: VoiceInputProps) {
     recognition.maxAlternatives = 3;
     recognition.continuous      = false;
 
-    recognition.onresult = (e: any) => {
+    recognition.onresult = (e: SpeechResultEvent) => {
       const transcript = e.results[0][0].transcript.trim().toLowerCase();
       onResult(transcript);
       setListening(false);
     };
 
-    recognition.onerror = (e: any) => {
+    recognition.onerror = (e: SpeechErrorEvent) => {
       if (e.error === 'not-allowed') {
         setError('Permiso de micrófono denegado');
       } else if (e.error !== 'no-speech') {
