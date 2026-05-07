@@ -6,6 +6,7 @@ import { usuariosApi } from '@/api/usuarios';
 import { setWorkosTokenGetter } from '@/api/tokenRef';
 import { CircularProgress, Box } from '@mui/material';
 import { WORKOS_CLIENT_ID } from './workosConfig';
+import { logger } from '@/utils/logger';
 
 function LoadingScreen() {
   return (
@@ -31,7 +32,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading) return; // SDK already done — no timer needed
     const t = setTimeout(() => {
-      console.error('[WorkOS] SDK no inicializó en 10s. Verifica VITE_WORKOS_CLIENT_ID y la red.');
+      logger.error('[WorkOS] SDK no inicializó en 10s. Verifica VITE_WORKOS_CLIENT_ID y la red.');
       setInitTimeout(true);
     }, 10000);
     return () => clearTimeout(t);
@@ -105,7 +106,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
           const userInfo = await usuariosApi.me();
           setUser(userInfo);
         } catch (error) {
-          console.error('[Auth] Backend /me falló, usando datos del token:', error);
+          logger.error('[Auth] Backend /me falló, usando datos del token:', error);
           backendFetchedRef.current = false;
           const currentUser = useAuthStore.getState().user;
           if (!currentUser) {
@@ -151,7 +152,7 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (!WORKOS_CLIENT_ID) {
-    console.error('[WorkOS] VITE_WORKOS_CLIENT_ID no está definido. El login no funcionará.');
+    logger.error('[WorkOS] VITE_WORKOS_CLIENT_ID no está definido. El login no funcionará.');
   }
 
   // Redirect URI explícito con /callback para coincidir con lo registrado en WorkOS dashboard.

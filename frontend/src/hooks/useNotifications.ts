@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { useSnackbar } from 'notistack';
 import { useAuthStore } from '@/stores/auth.store';
+import { logger } from '@/utils/logger';
 import type { NotificacionDto } from '@/types/notifications';
 
 const MAX_NOTIFICATIONS = 50;
@@ -50,14 +51,14 @@ export function useNotifications() {
       .then(() => {
         if (!isMounted) return;
         if (activeSucursalId != null) {
-          connection.invoke('JoinSucursal', activeSucursalId).catch(console.error);
+          connection.invoke('JoinSucursal', activeSucursalId).catch(logger.error);
           prevSucursalRef.current = activeSucursalId;
         }
       })
       .catch((err: unknown) => {
         // En React StrictMode el cleanup desmonta antes de que start() complete → ignorar
         if (!isMounted) return;
-        console.error('SignalR connection error:', err);
+        logger.error('SignalR connection error:', err);
       });
 
     connectionRef.current = connection;
@@ -79,10 +80,10 @@ export function useNotifications() {
     if (prev === activeSucursalId) return;
 
     if (prev != null) {
-      conn.invoke('LeaveSucursal', prev).catch(console.error);
+      conn.invoke('LeaveSucursal', prev).catch(logger.error);
     }
     if (activeSucursalId != null) {
-      conn.invoke('JoinSucursal', activeSucursalId).catch(console.error);
+      conn.invoke('JoinSucursal', activeSucursalId).catch(logger.error);
     }
     prevSucursalRef.current = activeSucursalId;
   }, [activeSucursalId]);

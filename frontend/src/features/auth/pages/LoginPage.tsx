@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { LoginOutlined } from '@mui/icons-material';
 import { APP_NAME } from '@/utils/constants';
+import { logger } from '@/utils/logger';
 import { useAuth } from '@/hooks/useAuth';
 
 export function LoginPage() {
@@ -44,7 +45,7 @@ export function LoginPage() {
       if (cv) localStorage.setItem('workos:pkce-cv-backup', cv);
       window.location.assign(url);
     } catch (err: unknown) {
-      console.error('[WorkOS] Error al iniciar sesión:', err);
+      logger.error('[WorkOS] Error al iniciar sesión:', err);
       setError(err instanceof Error ? err.message : 'Error inesperado al iniciar sesión');
       setLoading(false);
     }

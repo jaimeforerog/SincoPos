@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/stores/auth.store';
 import { usuariosApi } from '@/api/usuarios';
 import { setRefreshToken } from '@/api/tokenRef';
+import { logger } from '@/utils/logger';
 
 // Captured at MODULE LOAD TIME — before React renders, before AuthKitProvider's
 // useEffect runs, before the SDK cleans the URL and sessionStorage.
@@ -36,7 +37,7 @@ export function CallbackPage() {
       const msg = _capturedErrorDesc
         ? `WorkOS error: ${_capturedError} — ${_capturedErrorDesc}`
         : `WorkOS error: ${_capturedError}`;
-      console.error('[Callback]', msg);
+      logger.error('[Callback]', msg);
       setError(msg);
       return;
     }
@@ -45,7 +46,7 @@ export function CallbackPage() {
     const codeVerifier = _capturedVerifier;
 
     if (!code || !codeVerifier) {
-      console.error('[Callback] Faltan parámetros:', { code: !!code, codeVerifier: !!codeVerifier });
+      logger.error('[Callback] Faltan parámetros:', { code: !!code, codeVerifier: !!codeVerifier });
       if (!codeVerifier) {
         setError('El code_verifier no se encontró en sessionStorage. Intenta de nuevo desde el botón de login.');
         return;
@@ -97,7 +98,7 @@ export function CallbackPage() {
 
         navigate('/', { replace: true });
       } catch (err: unknown) {
-        console.error('[Callback] Error al intercambiar código:', err);
+        logger.error('[Callback] Error al intercambiar código:', err);
         if (axios.isAxiosError(err)) {
           const status = err.response?.status;
           const detail = err.response?.data?.message ?? err.response?.data ?? err.message;
