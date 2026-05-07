@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -17,50 +16,22 @@ import {
   Select,
   MenuItem,
   Box,
-  IconButton,
-  Tooltip,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import { useSnackbar } from 'notistack';
 import { useAuthStore } from '@/stores/auth.store';
 import { productosApi } from '@/api/productos';
 import { categoriasApi } from '@/api/categorias';
 import { conceptosRetencionApi, impuestosApi } from '@/api/impuestos';
-import type { ProductoDTO, CrearProductoDTO, ActualizarProductoDTO , ApiError} from '@/types/api';
-
-const UNIDADES_MEDIDA = [
-  { codigo: '94',  label: 'Unidad (94)' },
-  { codigo: 'NIU', label: 'Artículo (NIU)' },
-  { codigo: 'KGM', label: 'Kilogramo (KGM)' },
-  { codigo: 'GRM', label: 'Gramo (GRM)' },
-  { codigo: 'LTR', label: 'Litro (LTR)' },
-  { codigo: 'MLT', label: 'Mililitro (MLT)' },
-  { codigo: 'MTR', label: 'Metro (MTR)' },
-  { codigo: 'CMT', label: 'Centímetro (CMT)' },
-  { codigo: 'GLL', label: 'Galón (GLL)' },
-  { codigo: 'BX',  label: 'Caja (BX)' },
-];
-
-const crearProductoSchema = z.object({
-  codigoBarras: z.string().min(1, 'Código de barras es requerido').max(50, 'Máximo 50 caracteres'),
-  nombre: z.string().min(1, 'Nombre es requerido').max(200, 'Máximo 200 caracteres'),
-  descripcion: z.string().max(500, 'Máximo 500 caracteres').optional(),
-  categoriaId: z.number().min(1, 'Categoría es requerida'),
-  precioCosto: z.number({ message: 'Ingrese un precio válido' }).min(0, 'Debe ser mayor o igual a 0'),
-  unidadMedida: z.string().min(1, 'Unidad de medida es requerida'),
-});
-
-const actualizarProductoSchema = z.object({
-  nombre: z.string().min(1, 'Nombre es requerido').max(200, 'Máximo 200 caracteres'),
-  descripcion: z.string().max(500, 'Máximo 500 caracteres').optional(),
-  precioCosto: z.number({ message: 'Ingrese un precio válido' }).min(0, 'Debe ser mayor o igual a 0'),
-  unidadMedida: z.string().min(1, 'Unidad de medida es requerida'),
-});
-
-type CrearProductoFormData = z.infer<typeof crearProductoSchema>;
-type ActualizarProductoFormData = z.infer<typeof actualizarProductoSchema>;
+import type { ProductoDTO, CrearProductoDTO, ActualizarProductoDTO, ApiError } from '@/types/api';
+import {
+  UNIDADES_MEDIDA,
+  crearProductoSchema,
+  actualizarProductoSchema,
+  type CrearProductoFormData,
+  type ActualizarProductoFormData,
+} from './productoSchema';
+import { CategoriaSelectorField } from './CategoriaSelectorField';
+import { ProductoExtrasFields } from './ProductoExtrasFields';
 
 interface ProductoFormDialogProps {
   open: boolean;
@@ -78,8 +49,6 @@ export function ProductoFormDialog({
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
   const { activeEmpresaId } = useAuthStore();
-  const [showCategoriaInput, setShowCategoriaInput] = useState(false);
-  const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [backendError, setBackendError] = useState<string | null>(null);
   const [conceptoRetencionId, setConceptoRetencionId] = useState<number | ''>('');
   const [impuestoId, setImpuestoId] = useState<number | ''>('');
@@ -88,7 +57,6 @@ export function ProductoFormDialog({
 
   const isEdit = !!producto;
 
-  // Cargar categorias
   const { data: categorias = [] } = useQuery({
     queryKey: ['categorias', activeEmpresaId],
     queryFn: () => categoriasApi.getAll(false),
@@ -96,7 +64,6 @@ export function ProductoFormDialog({
     enabled: open,
   });
 
-  // Cargar impuestos (IVA/INC) disponibles para el producto
   const { data: impuestos = [] } = useQuery({
     queryKey: ['impuestos', activeEmpresaId],
     queryFn: () => impuestosApi.getAll(),
@@ -104,7 +71,6 @@ export function ProductoFormDialog({
     staleTime: 0,
   });
 
-  // Cargar conceptos de retencion
   const { data: conceptosRetencion = [] } = useQuery({
     queryKey: ['conceptos-retencion'],
     queryFn: () => conceptosRetencionApi.getAll(),
@@ -143,7 +109,6 @@ export function ProductoFormDialog({
     },
   });
 
-  // Reset form cuando cambia el producto o se abre el dialogo
   useEffect(() => {
     if (open) {
       setBackendError(null);
@@ -167,36 +132,16 @@ export function ProductoFormDialog({
           precioCosto: 0,
           unidadMedida: '94',
         });
-        
-        // Buscar el concepto "Compras generales" (codigoDian: 2307) para asignarlo por defecto
+        // "Compras generales" (codigoDian: 2307) por defecto
         const conceptoComprasDefault = conceptosRetencion.find(c => c.codigoDian === '2307');
         setConceptoRetencionId(conceptoComprasDefault ? conceptoComprasDefault.id : '');
         setImpuestoId('');
         setManejaLotes(false);
         setDiasVidaUtil('');
       }
-      setShowCategoriaInput(false);
-      setNuevaCategoria('');
     }
   }, [open, producto, resetCrear, resetActualizar, conceptosRetencion]);
 
-  // Mutación para crear categoría
-  const crearCategoriaMutation = useMutation({
-    mutationFn: (nombre: string) => categoriasApi.create({ nombre }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categorias'] });
-      enqueueSnackbar('Categoría creada exitosamente', { variant: 'success' });
-      setShowCategoriaInput(false);
-      setNuevaCategoria('');
-    },
-    onError: (error: ApiError) => {
-      const mensaje =
-        error.message || 'Error al crear la categoría';
-      enqueueSnackbar(mensaje, { variant: 'error' });
-    },
-  });
-
-  // Mutación para crear/actualizar producto
   const mutation = useMutation({
     mutationFn: async (data: CrearProductoFormData | ActualizarProductoFormData) => {
       if (isEdit) {
@@ -225,43 +170,23 @@ export function ProductoFormDialog({
     onSuccess: () => {
       setBackendError(null);
       queryClient.invalidateQueries({ queryKey: ['productos'] });
-      enqueueSnackbar(
-        `Producto ${isEdit ? 'actualizado' : 'creado'} exitosamente`,
-        { variant: 'success' }
-      );
+      enqueueSnackbar(`Producto ${isEdit ? 'actualizado' : 'creado'} exitosamente`, { variant: 'success' });
       onSuccess();
       onClose();
     },
     onError: (error: ApiError) => {
-      const mensaje =
-        error.message ||
-        `Error al ${isEdit ? 'actualizar' : 'crear'} el producto`;
+      const mensaje = error.message || `Error al ${isEdit ? 'actualizar' : 'crear'} el producto`;
       setBackendError(mensaje);
       enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });
 
-  const onSubmitCrear = (data: CrearProductoFormData) => {
-    mutation.mutate(data);
-  };
-
-  const onSubmitActualizar = (data: ActualizarProductoFormData) => {
-    mutation.mutate(data);
-  };
-
-  const handleCrearCategoria = () => {
-    if (nuevaCategoria.trim()) {
-      crearCategoriaMutation.mutate(nuevaCategoria.trim());
-    }
-  };
-
-  // const errors = isEdit ? errorsActualizar : errorsCrear; // TODO: usar para mostrar errores
+  const onSubmitCrear = (data: CrearProductoFormData) => mutation.mutate(data);
+  const onSubmitActualizar = (data: ActualizarProductoFormData) => mutation.mutate(data);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        {isEdit ? 'Editar Producto' : 'Nuevo Producto'}
-      </DialogTitle>
+      <DialogTitle>{isEdit ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
 
       <form onSubmit={isEdit ? handleSubmitActualizar(onSubmitActualizar) : handleSubmitCrear(onSubmitCrear)}>
         <DialogContent>
@@ -272,8 +197,8 @@ export function ProductoFormDialog({
           )}
 
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-            {/* Código de Barras - SOLO en creación */}
-            {!isEdit && (
+            {/* Código de Barras */}
+            {!isEdit ? (
               <Controller
                 name="codigoBarras"
                 control={controlCrear}
@@ -288,10 +213,7 @@ export function ProductoFormDialog({
                   />
                 )}
               />
-            )}
-
-            {/* Mostrar código de barras en modo solo lectura cuando se edita */}
-            {isEdit && (
+            ) : (
               <TextField
                 label="Código de Barras"
                 value={producto?.codigoBarras}
@@ -368,82 +290,15 @@ export function ProductoFormDialog({
               />
             )}
 
-            {/* Categoría - SOLO en creación */}
+            {/* Categoría — sólo en creación */}
             {!isEdit && (
-              <>
-                {!showCategoriaInput ? (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Controller
-                      name="categoriaId"
-                      control={controlCrear}
-                      render={({ field: { value, onChange, ...field } }) => (
-                        <FormControl fullWidth error={!!errorsCrear.categoriaId}>
-                          <InputLabel>Categoría *</InputLabel>
-                          <Select
-                            {...field}
-                            value={value || ''}
-                            onChange={(e) => onChange(Number(e.target.value))}
-                            label="Categoría *"
-                          >
-                            <MenuItem value="">
-                              <em>Selecciona una categoría</em>
-                            </MenuItem>
-                            {categorias
-                              .sort((a, b) => a.rutaCompleta.localeCompare(b.rutaCompleta))
-                              .map((cat) => (
-                                <MenuItem
-                                  key={cat.id}
-                                  value={cat.id}
-                                  sx={{ pl: cat.nivel * 2 + 2 }}
-                                >
-                                  {cat.rutaCompleta}
-                                </MenuItem>
-                              ))}
-                          </Select>
-                          {errorsCrear.categoriaId && (
-                            <Box component="span" sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
-                              {errorsCrear.categoriaId.message}
-                            </Box>
-                          )}
-                        </FormControl>
-                      )}
-                    />
-                    <Tooltip title="Crear nueva categoría">
-                      <IconButton
-                        onClick={() => setShowCategoriaInput(true)}
-                        color="primary"
-                      >
-                        <AddIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                ) : (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                      label="Nueva Categoría"
-                      value={nuevaCategoria}
-                      onChange={(e) => setNuevaCategoria(e.target.value)}
-                      fullWidth
-                      autoFocus
-                    />
-                    <Button
-                      onClick={handleCrearCategoria}
-                      variant="contained"
-                      disabled={
-                        !nuevaCategoria.trim() || crearCategoriaMutation.isPending
-                      }
-                    >
-                      Crear
-                    </Button>
-                    <Button onClick={() => setShowCategoriaInput(false)}>
-                      Cancelar
-                    </Button>
-                  </Box>
-                )}
-              </>
+              <CategoriaSelectorField
+                control={controlCrear}
+                errors={errorsCrear}
+                categorias={categorias}
+              />
             )}
 
-            {/* Mostrar categoría en modo solo lectura cuando se edita */}
             {isEdit && (
               <TextField
                 label="Categoría"
@@ -470,9 +325,7 @@ export function ProductoFormDialog({
                     helperText={errorsActualizar.precioCosto?.message}
                     fullWidth
                     InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">$</InputAdornment>
-                      ),
+                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
                     }}
                   />
                 )}
@@ -489,12 +342,10 @@ export function ProductoFormDialog({
                     value={Number.isNaN(value) ? '' : value}
                     onChange={(e) => onChange(e.target.value === '' ? NaN : parseFloat(e.target.value))}
                     error={!!errorsCrear.precioCosto}
-                    helperText={errorsCrear.precioCosto?.message || "Los precios de venta se configuran por sucursal"}
+                    helperText={errorsCrear.precioCosto?.message || 'Los precios de venta se configuran por sucursal'}
                     fullWidth
                     InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">$</InputAdornment>
-                      ),
+                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
                     }}
                   />
                 )}
@@ -534,61 +385,15 @@ export function ProductoFormDialog({
               />
             )}
 
-            {/* IVA / Impuesto del producto */}
-            <FormControl fullWidth>
-              <InputLabel id="impuesto-label">IVA / Impuesto *</InputLabel>
-              <Select
-                labelId="impuesto-label"
-                label="IVA / Impuesto *"
-                value={impuestoId}
-                onChange={(e) => setImpuestoId(e.target.value as number | '')}
-              >
-                <MenuItem value="">
-                  <em>Exento (sin IVA)</em>
-                </MenuItem>
-                {impuestos.map((imp) => (
-                  <MenuItem key={imp.id} value={imp.id}>
-                    {imp.nombre}
-                    {imp.porcentaje != null && imp.porcentaje > 0 ? ` — ${(imp.porcentaje * 100).toFixed(0)}%` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Manejo de Lotes */}
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={manejaLotes}
-                  onChange={(e) => { setManejaLotes(e.target.checked); if (!e.target.checked) setDiasVidaUtil(''); }}
-                  color="primary"
-                />
-              }
-              label={
-                <Box>
-                  <Box component="span" sx={{ fontWeight: 500 }}>Maneja lotes y vencimiento</Box>
-                  <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>
-                    Activa el control FEFO por número de lote y fecha de vencimiento
-                  </Box>
-                </Box>
-              }
+            <ProductoExtrasFields
+              impuestos={impuestos}
+              impuestoId={impuestoId}
+              onImpuestoChange={setImpuestoId}
+              manejaLotes={manejaLotes}
+              onManejaLotesChange={setManejaLotes}
+              diasVidaUtil={diasVidaUtil}
+              onDiasVidaUtilChange={setDiasVidaUtil}
             />
-
-            {/* Plazo de vencimiento — solo visible cuando manejaLotes = true */}
-            {manejaLotes && (
-              <TextField
-                type="number"
-                label="Plazo de vencimiento (días)"
-                value={diasVidaUtil}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setDiasVidaUtil(isNaN(val) || val <= 0 ? '' : val);
-                }}
-                fullWidth
-                inputProps={{ min: 1 }}
-                helperText="Vida útil en días. Al recibir un lote sin fecha explícita, se calcula automáticamente."
-              />
-            )}
 
             <Alert severity="info">
               Los precios de venta se configuran en el modulo de <strong>Precios por Sucursal</strong>.
@@ -598,27 +403,15 @@ export function ProductoFormDialog({
 
           {mutation.isError && (
             <Alert severity="error" sx={{ mt: 2 }}>
-              {mutation.error instanceof Error
-                ? mutation.error.message
-                : 'Error al procesar la solicitud'}
+              {mutation.error instanceof Error ? mutation.error.message : 'Error al procesar la solicitud'}
             </Alert>
           )}
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={onClose} disabled={mutation.isPending}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending
-              ? 'Guardando...'
-              : isEdit
-              ? 'Actualizar'
-              : 'Crear'}
+          <Button onClick={onClose} disabled={mutation.isPending}>Cancelar</Button>
+          <Button type="submit" variant="contained" disabled={mutation.isPending}>
+            {mutation.isPending ? 'Guardando...' : isEdit ? 'Actualizar' : 'Crear'}
           </Button>
         </DialogActions>
       </form>
