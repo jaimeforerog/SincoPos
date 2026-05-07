@@ -8,40 +8,10 @@ import {
   Select,
   FormControl,
   InputLabel,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
-  Typography,
   Alert,
-  CircularProgress,
-  Checkbox,
-  FormControlLabel,
-  FormGroup,
-  alpha,
 } from '@mui/material';
-
-const HERO_COLOR = '#1565c0';
-import {
-  Search,
-  StoreMallDirectory,
-  CheckCircle,
-  Cancel,
-  Domain,
-  Edit,
-  Add,
-} from '@mui/icons-material';
+import { Search, Add } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { usuariosApi, type UsuarioDto } from '@/api/usuarios';
@@ -49,192 +19,15 @@ import { sucursalesApi } from '@/api/sucursales';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import { useAuthStore } from '@/stores/auth.store';
 import { useAuth } from '@/hooks/useAuth';
-import type { SucursalDTO } from '@/types/api';
 import { CrearUsuarioDialog } from '../components/CrearUsuarioDialog';
 import { EditarUsuarioDialog } from '../components/EditarUsuarioDialog';
-
-const ROL_LABELS: Record<string, { label: string; color: 'error' | 'warning' | 'info' | 'success' }> = {
-  admin:      { label: 'Admin',      color: 'error' },
-  supervisor: { label: 'Supervisor', color: 'warning' },
-  cajero:     { label: 'Cajero',     color: 'info' },
-  vendedor:   { label: 'Vendedor',   color: 'success' },
-};
+import { AsignarSucursalDialog } from '../components/AsignarSucursalDialog';
+import { AsignarSucursalesDialog } from '../components/AsignarSucursalesDialog';
+import { CambiarEstadoDialog } from '../components/CambiarEstadoDialog';
+import { UsuariosTable } from '../components/UsuariosTable';
 
 const ROLES_FILTRO = ['admin', 'supervisor', 'cajero', 'vendedor'];
 
-function formatFecha(fecha?: string): string {
-  if (!fecha) return '—';
-  return new Date(fecha).toLocaleString('es-CO', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  });
-}
-
-// ─── Diálogo Asignar Sucursal Default ────────────────────────────────────────
-interface AsignarSucursalDialogProps {
-  usuario: UsuarioDto | null;
-  sucursales: SucursalDTO[];
-  onClose: () => void;
-  onConfirm: (sucursalId: number) => void;
-  loading: boolean;
-}
-
-function AsignarSucursalDialog({ usuario, sucursales, onClose, onConfirm, loading }: AsignarSucursalDialogProps) {
-  const [sucursalId, setSucursalId] = useState<number | ''>(usuario?.sucursalDefaultId ?? '');
-
-  if (!usuario) return null;
-
-  return (
-    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Asignar Sucursal Default</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Usuario: <strong>{usuario.nombreCompleto}</strong> ({usuario.email})
-        </Typography>
-        <FormControl fullWidth>
-          <InputLabel id="sucursal-label">Sucursal</InputLabel>
-          <Select
-            labelId="sucursal-label"
-            label="Sucursal"
-            value={sucursalId}
-            onChange={(e) => setSucursalId(e.target.value as number)}
-          >
-            {sucursales.map((s) => (
-              <MenuItem key={s.id} value={s.id}>
-                {s.nombre}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
-        <Button
-          variant="contained"
-          onClick={() => sucursalId !== '' && onConfirm(sucursalId as number)}
-          disabled={sucursalId === '' || loading}
-        >
-          {loading ? <CircularProgress size={20} /> : 'Guardar'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ─── Diálogo Asignar Múltiples Sucursales ────────────────────────────────────
-interface AsignarSucursalesDialogProps {
-  usuario: UsuarioDto | null;
-  sucursales: SucursalDTO[];
-  onClose: () => void;
-  onConfirm: (sucursalIds: number[]) => void;
-  loading: boolean;
-}
-
-function AsignarSucursalesDialog({ usuario, sucursales, onClose, onConfirm, loading }: AsignarSucursalesDialogProps) {
-  const [selected, setSelected] = useState<Set<number>>(
-    () => new Set(usuario?.sucursalesAsignadas?.map(s => s.id) ?? [])
-  );
-
-  if (!usuario) return null;
-
-  const toggle = (id: number) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  return (
-    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Sucursales asignadas</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Usuario: <strong>{usuario.nombreCompleto}</strong> ({usuario.email})
-        </Typography>
-        <FormGroup>
-          {sucursales.map((s) => (
-            <FormControlLabel
-              key={s.id}
-              control={
-                <Checkbox
-                  checked={selected.has(s.id)}
-                  onChange={() => toggle(s.id)}
-                />
-              }
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {s.nombre}
-                  {s.id === usuario.sucursalDefaultId && (
-                    <Chip label="default" size="small" variant="outlined" />
-                  )}
-                </Box>
-              }
-            />
-          ))}
-        </FormGroup>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
-        <Button
-          variant="contained"
-          onClick={() => onConfirm(Array.from(selected))}
-          disabled={loading}
-        >
-          {loading ? <CircularProgress size={20} /> : 'Guardar'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ─── Diálogo Cambiar Estado ───────────────────────────────────────────────────
-interface CambiarEstadoDialogProps {
-  usuario: UsuarioDto | null;
-  onClose: () => void;
-  onConfirm: (motivo: string) => void;
-  loading: boolean;
-}
-
-function CambiarEstadoDialog({ usuario, onClose, onConfirm, loading }: CambiarEstadoDialogProps) {
-  const [motivo, setMotivo] = useState('');
-
-  if (!usuario) return null;
-  const accion = usuario.activo ? 'desactivar' : 'activar';
-
-  return (
-    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ textTransform: 'capitalize' }}>{accion} usuario</DialogTitle>
-      <DialogContent>
-        <Alert severity={usuario.activo ? 'warning' : 'info'} sx={{ mb: 2 }}>
-          ¿Seguro que deseas {accion} a <strong>{usuario.nombreCompleto}</strong>?
-        </Alert>
-        <TextField
-          fullWidth
-          label="Motivo (opcional)"
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          multiline
-          rows={2}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
-        <Button
-          variant="contained"
-          color={usuario.activo ? 'error' : 'success'}
-          onClick={() => onConfirm(motivo)}
-          disabled={loading}
-        >
-          {loading ? <CircularProgress size={20} /> : `Confirmar`}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ─── Página principal ─────────────────────────────────────────────────────────
 export function UsuariosPage() {
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
@@ -253,7 +46,6 @@ export function UsuariosPage() {
   const [crearDialogOpen, setCrearDialogOpen] = useState(false);
   const [usuarioEditar, setUsuarioEditar] = useState<UsuarioDto | null>(null);
 
-  // Queries
   const { data: usuarios = [], isLoading, error } = useQuery({
     queryKey: ['usuarios', busqueda, rolFiltro, activoFiltro],
     queryFn: () => usuariosApi.listar({
@@ -273,7 +65,6 @@ export function UsuariosPage() {
     (s) => activeEmpresaId == null || s.empresaId === activeEmpresaId
   );
 
-  // Mutations
   const mutSucursal = useMutation({
     mutationFn: ({ id, sucursalId }: { id: number; sucursalId: number }) =>
       usuariosApi.actualizarSucursal(id, sucursalId),
@@ -286,9 +77,7 @@ export function UsuariosPage() {
         setUser(perfil);
       }
     },
-    onError: () => {
-      enqueueSnackbar('Error al asignar sucursal', { variant: 'error' });
-    },
+    onError: () => enqueueSnackbar('Error al asignar sucursal', { variant: 'error' }),
   });
 
   const mutSucursales = useMutation({
@@ -303,9 +92,7 @@ export function UsuariosPage() {
         setUser(perfil);
       }
     },
-    onError: () => {
-      enqueueSnackbar('Error al asignar sucursales', { variant: 'error' });
-    },
+    onError: () => enqueueSnackbar('Error al asignar sucursales', { variant: 'error' }),
   });
 
   const mutEstado = useMutation({
@@ -316,9 +103,7 @@ export function UsuariosPage() {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       setUsuarioEstado(null);
     },
-    onError: () => {
-      enqueueSnackbar('Error al cambiar estado', { variant: 'error' });
-    },
+    onError: () => enqueueSnackbar('Error al cambiar estado', { variant: 'error' }),
   });
 
   if (error) {
@@ -362,7 +147,6 @@ export function UsuariosPage() {
         }
       />
 
-      {/* Filtros */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
         <TextField
           placeholder="Buscar por nombre o email…"
@@ -399,126 +183,16 @@ export function UsuariosPage() {
         </FormControl>
       </Box>
 
-      {/* Tabla */}
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow
-              sx={{
-                background: `linear-gradient(90deg, ${alpha(HERO_COLOR, 0.08)} 0%, ${alpha(HERO_COLOR, 0.04)} 100%)`,
-                '& .MuiTableCell-head': {
-                  color: HERO_COLOR, fontWeight: 700,
-                  fontSize: '0.75rem', textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  borderBottom: `2px solid ${alpha(HERO_COLOR, 0.2)}`,
-                },
-              }}
-            >
-              <TableCell>Nombre</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Rol</TableCell>
-              <TableCell>Sucursales</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Último acceso</TableCell>
-              <TableCell align="center">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                  <CircularProgress size={32} />
-                </TableCell>
-              </TableRow>
-            ) : usuarios.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                  No se encontraron usuarios
-                </TableCell>
-              </TableRow>
-            ) : (
-              usuarios.map((u) => {
-                const rolInfo = ROL_LABELS[u.rol.toLowerCase()] ?? { label: u.rol, color: 'default' as const };
-                const sucursalesAsignadas = u.sucursalesAsignadas ?? [];
-                const visibles = sucursalesAsignadas.slice(0, 2);
-                const extra = sucursalesAsignadas.length - 2;
-                return (
-                  <TableRow key={u.id} hover>
-                    <TableCell sx={{ fontWeight: 500 }}>{u.nombreCompleto}</TableCell>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell>
-                      <Chip label={rolInfo.label} color={rolInfo.color} size="small" />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        {sucursalesAsignadas.length === 0 ? (
-                          <Typography variant="caption" color="text.disabled">Sin sucursal</Typography>
-                        ) : (
-                          <>
-                            {visibles.map(s => (
-                              <Chip
-                                key={s.id}
-                                label={s.nombre}
-                                size="small"
-                                variant={s.id === u.sucursalDefaultId ? 'filled' : 'outlined'}
-                                color={s.id === u.sucursalDefaultId ? 'primary' : 'default'}
-                              />
-                            ))}
-                            {extra > 0 && (
-                              <Chip label={`+${extra}`} size="small" variant="outlined" />
-                            )}
-                          </>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={u.activo ? 'Activo' : 'Inactivo'}
-                        color={u.activo ? 'success' : 'default'}
-                        size="small"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                      {formatFecha(u.ultimoAcceso)}
-                    </TableCell>
-                    <TableCell align="center">
-                      {isAdmin() && (
-                        <Tooltip title="Editar usuario">
-                          <IconButton size="small" onClick={() => setUsuarioEditar(u)}>
-                            <Edit fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      <Tooltip title="Asignar sucursal default">
-                        <IconButton size="small" onClick={() => setUsuarioSucursal(u)}>
-                          <StoreMallDirectory fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Gestionar sucursales asignadas">
-                        <IconButton size="small" onClick={() => setUsuarioSucursales(u)}>
-                          <Domain fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={u.activo ? 'Desactivar usuario' : 'Activar usuario'}>
-                        <IconButton
-                          size="small"
-                          color={u.activo ? 'error' : 'success'}
-                          onClick={() => setUsuarioEstado(u)}
-                        >
-                          {u.activo ? <Cancel fontSize="small" /> : <CheckCircle fontSize="small" />}
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <UsuariosTable
+        usuarios={usuarios}
+        isLoading={isLoading}
+        isAdmin={isAdmin()}
+        onEditar={setUsuarioEditar}
+        onAsignarSucursal={setUsuarioSucursal}
+        onAsignarSucursales={setUsuarioSucursales}
+        onCambiarEstado={setUsuarioEstado}
+      />
 
-      {/* Diálogo asignar sucursal default */}
       {usuarioSucursal && (
         <AsignarSucursalDialog
           usuario={usuarioSucursal}
@@ -529,7 +203,6 @@ export function UsuariosPage() {
         />
       )}
 
-      {/* Diálogo gestionar múltiples sucursales */}
       {usuarioSucursales && (
         <AsignarSucursalesDialog
           usuario={usuarioSucursales}
@@ -540,7 +213,6 @@ export function UsuariosPage() {
         />
       )}
 
-      {/* Diálogo cambiar estado */}
       {usuarioEstado && (
         <CambiarEstadoDialog
           usuario={usuarioEstado}
@@ -550,13 +222,11 @@ export function UsuariosPage() {
         />
       )}
 
-      {/* Diálogo crear usuario */}
       <CrearUsuarioDialog
         open={crearDialogOpen}
         onClose={() => setCrearDialogOpen(false)}
       />
 
-      {/* Diálogo editar usuario */}
       <EditarUsuarioDialog
         key={usuarioEditar?.id ?? 'new'}
         open={!!usuarioEditar}
