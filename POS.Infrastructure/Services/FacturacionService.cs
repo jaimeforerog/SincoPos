@@ -306,6 +306,11 @@ public sealed partial class FacturacionService : IFacturacionService
         if (string.IsNullOrEmpty(emisor.CertificadoBase64))
             return;
 
+        using var span = _tracer.StartActivity("FacturacionService.EnviarADian");
+        span?.SetTag("dian.numero", numeroCompleto);
+        span?.SetTag("dian.cufe", cufe);
+        span?.SetTag("dian.ambiente", emisor.Ambiente);
+
         try
         {
             var respuesta = await _dianSoap.EnviarDocumentoAsync(xmlFirmado, cufe, emisor.Nit, emisor.Ambiente);
@@ -335,6 +340,8 @@ public sealed partial class FacturacionService : IFacturacionService
         }
         catch (Exception ex)
         {
+            span?.AddException(ex);
+            span?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "Error enviando documento {Numero} a DIAN", numeroCompleto);
             documento.Estado = EstadoDocumento.Rechazado;
             documento.MensajeRespuestaDian = ex.Message;

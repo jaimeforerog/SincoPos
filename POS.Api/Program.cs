@@ -167,6 +167,8 @@ builder.Services.AddOpenTelemetry()
             .AddSource("SincoPos.Ventas")
             .AddSource("SincoPos.Compras")
             .AddSource("SincoPos.Facturacion")
+            .AddSource("SincoPos.Dian")
+            .AddSource("SincoPos.ErpOutbox")
             .AddAspNetCoreInstrumentation(opts =>
             {
                 opts.RecordException = true;

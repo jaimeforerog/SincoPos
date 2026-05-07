@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,8 @@ namespace POS.Infrastructure.Services.Erp;
 
 public sealed class ErpOutboxProcessor : IErpOutboxProcessor
 {
+    private static readonly ActivitySource _tracer = new("SincoPos.ErpOutbox");
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNameCaseInsensitive = true
@@ -35,37 +38,61 @@ public sealed class ErpOutboxProcessor : IErpOutboxProcessor
 
     public async Task<IReadOnlyList<OutboxNotification>> ProcesarLoteAsync(int batchSize = 10)
     {
+        using var span = _tracer.StartActivity("ErpOutbox.ProcesarLote");
+        span?.SetTag("outbox.batch_size", batchSize);
+
         var notifications = new List<OutboxNotification>();
 
-        var mensajes = await _db.ErpOutboxMessages
-            .Where(m => m.Estado == EstadoOutbox.Pendiente ||
-                       (m.Estado == EstadoOutbox.Error && m.Intentos < _options.MaxReintentos))
-            .OrderBy(m => m.FechaCreacion)
-            .Take(batchSize)
-            .ToListAsync();
-
-        if (mensajes.Count == 0)
+        try
         {
-            _logger.LogDebug("Sin mensajes Outbox pendientes.");
+            var mensajes = await _db.ErpOutboxMessages
+                .Where(m => m.Estado == EstadoOutbox.Pendiente ||
+                           (m.Estado == EstadoOutbox.Error && m.Intentos < _options.MaxReintentos))
+                .OrderBy(m => m.FechaCreacion)
+                .Take(batchSize)
+                .ToListAsync();
+
+            span?.SetTag("outbox.messages_count", mensajes.Count);
+
+            if (mensajes.Count == 0)
+            {
+                _logger.LogDebug("Sin mensajes Outbox pendientes.");
+                return notifications;
+            }
+
+            _logger.LogInformation("Procesando {Count} mensajes Outbox.", mensajes.Count);
+
+            int procesados = 0, errores = 0, descartados = 0;
+            foreach (var mensaje in mensajes)
+            {
+                mensaje.Intentos++;
+
+                if (mensaje.TipoDocumento is "VentaCompletada" or "AnulacionVenta")
+                    await ProcesarVentaAsync(mensaje, notifications);
+                else if (mensaje.TipoDocumento is "CompraRecibida" or "NotaCreditoVenta")
+                    await ProcesarCompraAsync(mensaje, notifications);
+                else
+                    MarcarComoError(mensaje, $"Tipo '{mensaje.TipoDocumento}' no soportado.");
+
+                if (mensaje.Estado == EstadoOutbox.Procesado) procesados++;
+                else if (mensaje.Estado == EstadoOutbox.Descartado) descartados++;
+                else if (mensaje.Estado == EstadoOutbox.Error) errores++;
+            }
+
+            await _db.SaveChangesAsync();
+
+            span?.SetTag("outbox.procesados", procesados);
+            span?.SetTag("outbox.errores", errores);
+            span?.SetTag("outbox.descartados", descartados);
+
             return notifications;
         }
-
-        _logger.LogInformation("Procesando {Count} mensajes Outbox.", mensajes.Count);
-
-        foreach (var mensaje in mensajes)
+        catch (Exception ex)
         {
-            mensaje.Intentos++;
-
-            if (mensaje.TipoDocumento is "VentaCompletada" or "AnulacionVenta")
-                await ProcesarVentaAsync(mensaje, notifications);
-            else if (mensaje.TipoDocumento is "CompraRecibida" or "NotaCreditoVenta")
-                await ProcesarCompraAsync(mensaje, notifications);
-            else
-                MarcarComoError(mensaje, $"Tipo '{mensaje.TipoDocumento}' no soportado.");
+            span?.AddException(ex);
+            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
         }
-
-        await _db.SaveChangesAsync();
-        return notifications;
     }
 
     private async Task ProcesarVentaAsync(ErpOutboxMessage mensaje, List<OutboxNotification> notifications)

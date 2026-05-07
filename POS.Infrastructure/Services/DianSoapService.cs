@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
 using System.Xml.Linq;
@@ -8,6 +9,8 @@ namespace POS.Infrastructure.Services;
 
 public sealed class DianSoapService : IDianSoapService
 {
+    private static readonly ActivitySource _tracer = new("SincoPos.Dian");
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<DianSoapService> _logger;
 
@@ -25,20 +28,29 @@ public sealed class DianSoapService : IDianSoapService
     public async Task<DianRespuesta> EnviarDocumentoAsync(string xmlFirmado, string cufe,
         string nitEmisor, string ambiente)
     {
+        using var span = _tracer.StartActivity("Dian.EnviarDocumento");
+        span?.SetTag("dian.cufe", cufe);
+        span?.SetTag("dian.ambiente", ambiente == "1" ? "produccion" : "habilitador");
+        span?.SetTag("dian.nit_emisor", nitEmisor);
+
         var endpoint = ambiente == "1" ? EndpointProduccion : EndpointPruebas;
-
-        // Empaquetar XML en ZIP, nombre del archivo = cufe.xml
         var zipBase64 = EmpaquetarEnZip(xmlFirmado, $"{cufe}.xml");
-
         var soapEnvelope = BuildSendBillSyncEnvelope($"{cufe}.zip", zipBase64);
 
         try
         {
             var response = await EnviarSoapAsync(endpoint, SoapActionEnviar, soapEnvelope);
-            return ParsearRespuestaEnvio(response);
+            var respuesta = ParsearRespuestaEnvio(response);
+            span?.SetTag("dian.is_valid", respuesta.EsValido);
+            span?.SetTag("dian.status_code", respuesta.Codigo);
+            if (!respuesta.EsValido)
+                span?.SetStatus(ActivityStatusCode.Error, respuesta.Descripcion);
+            return respuesta;
         }
         catch (Exception ex)
         {
+            span?.AddException(ex);
+            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "Error enviando documento CUFE={Cufe} a DIAN {Ambiente}", cufe, ambiente);
             return new DianRespuesta(false, "ERROR_CONEXION", ex.Message);
         }
@@ -46,16 +58,25 @@ public sealed class DianSoapService : IDianSoapService
 
     public async Task<DianRespuesta> ConsultarEstadoAsync(string cufe, string ambiente)
     {
+        using var span = _tracer.StartActivity("Dian.ConsultarEstado");
+        span?.SetTag("dian.cufe", cufe);
+        span?.SetTag("dian.ambiente", ambiente == "1" ? "produccion" : "habilitador");
+
         var endpoint = ambiente == "1" ? EndpointProduccion : EndpointPruebas;
         var soapEnvelope = BuildGetStatusZipEnvelope(cufe);
 
         try
         {
             var response = await EnviarSoapAsync(endpoint, SoapActionConsultar, soapEnvelope);
-            return ParsearRespuestaConsulta(response);
+            var respuesta = ParsearRespuestaConsulta(response);
+            span?.SetTag("dian.is_valid", respuesta.EsValido);
+            span?.SetTag("dian.status_code", respuesta.Codigo);
+            return respuesta;
         }
         catch (Exception ex)
         {
+            span?.AddException(ex);
+            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "Error consultando estado CUFE={Cufe} en DIAN", cufe);
             return new DianRespuesta(false, "ERROR_CONEXION", ex.Message);
         }
