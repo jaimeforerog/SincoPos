@@ -165,6 +165,7 @@ builder.Services.AddOpenTelemetry()
     {
         tracing
             .AddSource("SincoPos.Ventas")
+            .AddSource("SincoPos.Compras")
             .AddSource("SincoPos.Facturacion")
             .AddAspNetCoreInstrumentation(opts =>
             {

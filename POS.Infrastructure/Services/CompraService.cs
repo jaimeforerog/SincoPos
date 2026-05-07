@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,8 @@ namespace POS.Infrastructure.Services;
 
 public sealed class CompraService : ICompraService
 {
+    private static readonly ActivitySource _tracer = new("SincoPos.Compras");
+
     private readonly AppDbContext _context;
     private readonly global::Marten.IDocumentSession _session;
     private readonly global::Marten.IDocumentStore _store;
@@ -53,6 +56,11 @@ public sealed class CompraService : ICompraService
 
     public async Task<(OrdenCompraDto? orden, string? error)> CrearOrdenAsync(CrearOrdenCompraDto dto)
     {
+        using var span = _tracer.StartActivity("CompraService.CrearOrden");
+        span?.SetTag("sucursal.id", dto.SucursalId);
+        span?.SetTag("proveedor.id", dto.ProveedorId);
+        span?.SetTag("lineas.count", dto.Lineas.Count);
+
         var sucursal = await _context.Sucursales.FindAsync(dto.SucursalId);
         if (sucursal == null) return (null, "Sucursal no encontrada");
 
@@ -126,6 +134,9 @@ public sealed class CompraService : ICompraService
     public async Task<(bool success, string? error)> AprobarOrdenAsync(
         int id, AprobarOrdenCompraDto? dto, string? emailUsuario)
     {
+        using var span = _tracer.StartActivity("CompraService.AprobarOrden");
+        span?.SetTag("orden.id", id);
+
         var orden = await _context.OrdenesCompra
             .Include(o => o.Proveedor)
             .FirstOrDefaultAsync(o => o.Id == id);
@@ -165,6 +176,9 @@ public sealed class CompraService : ICompraService
 
     public async Task<(bool success, string? error)> RechazarOrdenAsync(int id, RechazarOrdenCompraDto dto)
     {
+        using var span = _tracer.StartActivity("CompraService.RechazarOrden");
+        span?.SetTag("orden.id", id);
+
         var orden = await _context.OrdenesCompra.FindAsync(id);
 
         if (orden == null) return (false, "NOT_FOUND");
@@ -199,6 +213,9 @@ public sealed class CompraService : ICompraService
 
     public async Task<(bool success, string? error)> CancelarOrdenAsync(int id, CancelarOrdenCompraDto dto)
     {
+        using var span = _tracer.StartActivity("CompraService.CancelarOrden");
+        span?.SetTag("orden.id", id);
+
         var orden = await _context.OrdenesCompra
             .Include(o => o.Detalles)
             .FirstOrDefaultAsync(o => o.Id == id);
@@ -238,6 +255,9 @@ public sealed class CompraService : ICompraService
 
     public async Task<(OrdenCompraDto? orden, string? error)> ActualizarOrdenAsync(int id, ActualizarOrdenCompraDto dto)
     {
+        using var span = _tracer.StartActivity("CompraService.ActualizarOrden");
+        span?.SetTag("orden.id", id);
+
         var orden = await _context.OrdenesCompra
             .Include(o => o.Sucursal)
             .Include(o => o.Proveedor)
