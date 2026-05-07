@@ -96,8 +96,9 @@ public sealed class SucursalesController : ControllerBase
     public async Task<ActionResult<SucursalDto>> ObtenerSucursal(int id)
     {
         var sucursal = await _context.Sucursales
-            .IgnoreQueryFilters() // Permitir ver por ID incluso si está inactiva
-            .Where(s => s.Id == id)
+            .IgnoreQueryFilters() // Permitir ver por ID incluso si está inactiva (filtro de empresa re-aplicado abajo)
+            .Where(s => s.Id == id
+                && (_empresaProvider.EmpresaId == null || s.EmpresaId == _empresaProvider.EmpresaId))
             .Select(s => new SucursalDto(
                 s.Id, s.Nombre, s.Direccion, s.CodigoPais, s.NombrePais, s.Ciudad,
                 s.Telefono, s.Email, s.CentroCosto, s.MetodoCosteo.ToString(), s.Activo, s.FechaCreacion, s.EmpresaId))

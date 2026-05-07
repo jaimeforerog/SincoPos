@@ -317,7 +317,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
     options.Authority = "https://api.workos.com";
-    options.Audience = workosClientId;
     options.RequireHttpsMetadata = true;
 
     // RefreshOnIssuerKeyNotFound = true: cuando llega un token firmado con una key que no
@@ -333,8 +332,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             "https://api.workos.com/",
             $"https://api.workos.com/user_management/{workosClientId}"
         },
+        // ValidateAudience = false: los access tokens de WorkOS AuthKit no incluyen un claim
+        // `aud` que matchee el clientId. La validación de tenant se da por dos vías:
+        //   1. IssuerSigningKeys cargadas desde /sso/jwks/{clientId} → tokens firmados para
+        //      otra app no validan firma (JWKS es per-cliente).
+        //   2. ValidIssuers incluye el path /user_management/{clientId}.
         ValidateAudience = false,
-        ValidAudiences = new[] { workosClientId },
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         IssuerSigningKeys = signingKeys,

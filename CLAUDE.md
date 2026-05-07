@@ -45,7 +45,6 @@ POS.Application     → DTOs, interfaces de servicios, validadores (FluentValida
 POS.Infrastructure  → EF Core, Marten, implementaciones de servicios, clientes externos
 POS.Api             → Controllers, Middleware, SignalR Hubs, Program.cs
 POS.Functions       → Azure Functions (solo ErpSyncFunction por ahora)
-DbMigrator          → Utilidad CLI para aplicar migraciones en staging/prod
 tests/POS.UnitTests          → xUnit + FluentAssertions, solo referencia POS.Domain
 tests/POS.IntegrationTests   → xUnit + WebApplicationFactory + Testcontainers (PostgreSQL real)
 frontend/           → React 19 + TypeScript + Vite + MUI v7
