@@ -107,7 +107,12 @@ public sealed class TaxEngine : ITaxEngine
         // ── 5. Retenciones ─────────────────────────────────────────────────────
         decimal totalRetenciones = 0m;
 
-        // Régimen Simple está exento de retención en la fuente de renta
+        // Régimen Simple no está sujeto a retención en la fuente (Art. 911 ET, Ley 2277/2022).
+        // Cubre ReteFuente y ReteIVA cuando el RST es vendedor. ReteICA se omite también
+        // porque la mayoría de municipios (Bogotá Decreto 271/2022 entre otros) exoneran al
+        // RST que paga ICA vía la tarifa unificada del SIMPLE; si en el futuro hace falta
+        // retener ICA al RST en algún municipio, esta regla debe volverse configurable por
+        // RetencionRegla en lugar de bloquear el loop entero.
         if (req.PerfilVendedor != "REGIMEN_SIMPLE")
         {
             foreach (var regla in req.ReglasRetencion.Where(r => r.Activo))
