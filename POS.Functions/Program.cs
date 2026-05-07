@@ -50,6 +50,8 @@ var host = new HostBuilder()
                 client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
             });
         }
+
+        services.AddScoped<IErpOutboxProcessor, ErpOutboxProcessor>();
     })
     .Build();
 
