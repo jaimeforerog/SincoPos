@@ -56,5 +56,12 @@ public interface IUsuarioService
     /// </summary>
     Task<EstadisticasUsuariosDto> ObtenerEstadisticasAsync();
 
-
+    /// <summary>
+    /// Construye el perfil completo del usuario a partir de los claims del IdP:
+    /// auto-crea si no existe, aplica fallback de sucursales para admin/supervisor,
+    /// resuelve empresa activa y empresas disponibles. Encapsula la orquestación
+    /// que antes vivía en UsuariosController.ObtenerPerfil.
+    /// </summary>
+    Task<PerfilUsuarioDto?> ConstruirPerfilCompletoAsync(
+        string externalId, string email, string nombreCompleto, IReadOnlyList<string> idpRoles);
 }

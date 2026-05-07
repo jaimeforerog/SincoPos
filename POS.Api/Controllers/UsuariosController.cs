@@ -1,11 +1,9 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using POS.Api.Extensions;
 using POS.Application.DTOs;
 using POS.Application.Services;
-using POS.Infrastructure.Data;
 
 namespace POS.Api.Controllers;
 
@@ -22,20 +20,17 @@ public sealed class UsuariosController : ControllerBase
     private readonly IUsuarioAdminService _usuarioAdminService;
     private readonly ILogger<UsuariosController> _logger;
     private readonly IActivityLogService _activityLogService;
-    private readonly AppDbContext _db;
 
     public UsuariosController(
         IUsuarioService usuarioService,
         IUsuarioAdminService usuarioAdminService,
         ILogger<UsuariosController> logger,
-        IActivityLogService activityLogService,
-        AppDbContext db)
+        IActivityLogService activityLogService)
     {
         _usuarioService = usuarioService;
         _usuarioAdminService = usuarioAdminService;
         _logger = logger;
         _activityLogService = activityLogService;
-        _db = db;
     }
 
     /// <summary>
@@ -75,91 +70,11 @@ public sealed class UsuariosController : ControllerBase
         var nombreCompleto = User.GetNombreCompleto() ?? email;
         var idpRoles = User.GetRoles().ToList();
 
-        var rolPrincipal = idpRoles.Count > 0
-            ? DeterminarRolPrincipal(idpRoles)
-            : null;
+        var dto = await _usuarioService.ConstruirPerfilCompletoAsync(
+            externalId, email, nombreCompleto, idpRoles);
 
-        _logger.LogInformation(
-            "ObtenerPerfil: externalId={Id}, roles=[{Roles}], rolDeterminado={Rol}",
-            externalId, string.Join(",", idpRoles), rolPrincipal ?? "(sin rol)");
-
-        await _usuarioService.ObtenerOCrearUsuarioAsync(externalId, email, nombreCompleto, rolPrincipal);
-
-        // Reintento con back-off: la creación puede aún no ser visible por latencia de BD
-        PerfilUsuarioDto? perfil = null;
-        for (int intento = 0; intento < 3 && perfil == null; intento++)
-        {
-            if (intento > 0) await Task.Delay(150 * intento);
-            perfil = await _usuarioService.ObtenerPerfilPorExternalIdAsync(externalId);
-        }
-        if (perfil == null)
+        if (dto == null)
             return StatusCode(500, "Error al obtener perfil de usuario");
-
-        var permisos = ObtenerPermisosPorRol(perfil.Rol);
-        var sucursalesAsignadas = perfil.SucursalesAsignadas;
-
-        // Si el usuario es admin o supervisor y no tiene sucursales asignadas,
-        // darle acceso a todas las sucursales activas
-        if (sucursalesAsignadas.Count == 0 &&
-            (perfil.Rol.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
-             perfil.Rol.Equals("supervisor", StringComparison.OrdinalIgnoreCase)))
-        {
-            sucursalesAsignadas = await _usuarioService.ObtenerTodasSucursalesActivasAsync();
-
-            _logger.LogInformation(
-                "Usuario {Email} ({Rol}) sin sucursales asignadas, usando todas las activas ({Count})",
-                perfil.Email, perfil.Rol, sucursalesAsignadas.Count);
-        }
-
-        // Resolver empresa a partir de las sucursales asignadas
-        var sucursalIds = sucursalesAsignadas.Select(s => s.Id).ToList();
-        var empresaInfo = sucursalIds.Any()
-            ? await _db.Sucursales
-                .IgnoreQueryFilters()
-                .Where(s => sucursalIds.Contains(s.Id))
-                .Select(s => new { s.EmpresaId, s.Empresa!.Nombre })
-                .FirstOrDefaultAsync()
-            : null;
-
-        // Empresas disponibles: para admin/supervisor incluir TODAS las empresas activas
-        // (incluso las que no tienen sucursales aún, para que puedan crearlas).
-        // Para otros roles, derivar únicamente de sus sucursales asignadas.
-        List<EmpresaResumenDto> empresasDisponibles;
-        if (perfil.Rol.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
-            perfil.Rol.Equals("supervisor", StringComparison.OrdinalIgnoreCase))
-        {
-            empresasDisponibles = await _db.Empresas
-                .IgnoreQueryFilters()
-                .Where(e => e.Activo)
-                .OrderBy(e => e.Nombre)
-                .Select(e => new EmpresaResumenDto(e.Id, e.Nombre))
-                .ToListAsync();
-        }
-        else
-        {
-            empresasDisponibles = sucursalesAsignadas
-                .Where(s => s.EmpresaId != null)
-                .GroupBy(s => s.EmpresaId!)
-                .Select(g => new EmpresaResumenDto(g.Key!.Value, g.First().EmpresaNombre ?? $"Empresa {g.Key}"))
-                .ToList();
-        }
-
-        // Rebuild with permisos and potentially expanded sucursales
-        var dto = new PerfilUsuarioDto(
-            perfil.Id,
-            perfil.Email,
-            perfil.NombreCompleto,
-            perfil.Telefono,
-            perfil.Rol,
-            perfil.SucursalDefaultId,
-            perfil.SucursalDefaultNombre,
-            perfil.UltimoAcceso,
-            permisos,
-            sucursalesAsignadas,
-            empresaInfo?.EmpresaId,
-            empresaInfo?.Nombre,
-            empresasDisponibles
-        );
 
         return Ok(dto);
     }
@@ -560,87 +475,9 @@ public sealed class UsuariosController : ControllerBase
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Obtiene el rol del usuario actual desde los claims.
-    /// </summary>
     private string ObtenerRolActual()
     {
         var roles = User.GetRoles().ToList();
-        return roles.Count > 0 ? DeterminarRolPrincipal(roles) : "vendedor";
-    }
-
-    private static string DeterminarRolPrincipal(List<string> roles)
-    {
-        if (roles.Any(r => r.Equals("admin", StringComparison.OrdinalIgnoreCase)))
-            return "admin";
-
-        if (roles.Any(r => r.Equals("supervisor", StringComparison.OrdinalIgnoreCase)))
-            return "supervisor";
-
-        if (roles.Any(r => r.Equals("cajero", StringComparison.OrdinalIgnoreCase)))
-            return "cajero";
-
-        return "vendedor";
-    }
-
-    private static IEnumerable<string> ObtenerPermisosPorRol(string rol)
-    {
-        return rol.ToLower() switch
-        {
-            "admin" => new[]
-            {
-                "usuarios.listar",
-                "usuarios.ver",
-                "usuarios.activar",
-                "usuarios.estadisticas",
-                "sucursales.crear",
-                "sucursales.modificar",
-                "sucursales.eliminar",
-                "impuestos.crear",
-                "impuestos.modificar",
-                "impuestos.eliminar",
-                "categorias.crear",
-                "categorias.modificar",
-                "categorias.eliminar",
-                "productos.crear",
-                "productos.modificar",
-                "productos.eliminar",
-                "inventario.ajustar",
-                "precios.modificar",
-                "ventas.crear",
-                "ventas.anular",
-                "reportes.ver"
-            },
-            "supervisor" => new[]
-            {
-                "usuarios.listar",
-                "categorias.crear",
-                "categorias.modificar",
-                "productos.crear",
-                "productos.modificar",
-                "inventario.ajustar",
-                "precios.modificar",
-                "ventas.crear",
-                "ventas.anular",
-                "reportes.ver"
-            },
-            "cajero" => new[]
-            {
-                "productos.ver",
-                "ventas.crear",
-                "cajas.abrir",
-                "cajas.cerrar",
-                "terceros.crear",
-                "terceros.modificar"
-            },
-            "vendedor" => new[]
-            {
-                "productos.ver",
-                "categorias.ver",
-                "terceros.ver",
-                "inventario.ver"
-            },
-            _ => Array.Empty<string>()
-        };
+        return roles.Count > 0 ? RolPermisos.DeterminarRolPrincipal(roles) : "vendedor";
     }
 }
