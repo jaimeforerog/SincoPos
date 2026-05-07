@@ -649,4 +649,104 @@ public class DevolucionesTests
         devolucionDb.ErpReferencia.Should().BeNull();
         devolucionDb.ErrorSincronizacion.Should().BeNull();
     }
+
+    // ═══════════════════════════════════════════════════════
+    //  LÍMITE DE 30 DÍAS
+    // ═══════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task DevolucionParcial_VentaMayorA30Dias_Rechaza()
+    {
+        // Arrange — venta normal
+        var producto = await CrearProductoTest($"DEV-30D-{Guid.NewGuid():N}"[..15], 1000m, 500m);
+        await RegistrarEntradaInventario(producto, SucPp, 20, 500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"Caja30D-{Guid.NewGuid():N}"[..20]);
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 5) }, 10_000m);
+
+        // Forzar FechaVenta a 31 días atrás
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+            var ventaDb = await db.Ventas.IgnoreQueryFilters()
+                .FirstAsync(v => v.Id == venta.Id);
+            ventaDb.FechaVenta = DateTime.UtcNow.AddDays(-31);
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial",
+            new { motivo = "Tarde", lineas = new[] { new { productoId = producto, cantidad = 1m } } });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("30 días");
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  IVA — REVERSIÓN PROPORCIONAL EN ASIENTOS
+    // ═══════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task DevolucionParcial_IVA19_AsientoReversionIvaEsProporcional()
+    {
+        // Arrange — producto con IVA 19% asignado
+        int ivaId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+            var iva = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .FirstAsync(db.Impuestos.IgnoreQueryFilters()
+                    .Where(i => i.Nombre == "IVA 19%" && i.Activo));
+            ivaId = iva.Id;
+        }
+
+        var crearProd = await _client.PostAsJsonAsync("/api/v1/Productos", new
+        {
+            codigoBarras = $"DEV-IVA19-{Guid.NewGuid():N}"[..15],
+            nombre = "Prod IVA 19%",
+            categoriaId = CatId,
+            precioVenta = 5000m,
+            precioCosto = 2500m,
+            impuestoId = ivaId
+        });
+        crearProd.EnsureSuccessStatusCode();
+        var producto = (await crearProd.Content.ReadFromJsonAsync<ProductoDto>(_jsonOptions))!.Id;
+
+        await RegistrarEntradaInventario(producto, SucPp, 50, 2500m);
+        var caja = await CrearYAbrirCaja(SucPp, $"CajaIVA19-{Guid.NewGuid():N}"[..20], 200_000m);
+
+        // Vender 10 unidades: subtotal = 50.000, IVA 19% = 9.500, total = 59.500
+        var venta = await CrearVentaTest(SucPp, caja, new() { (producto, 10) }, 100_000m);
+
+        // Act — devolver 4 unidades: subtotal devuelto = 20.000, IVA reversado esperado = 3.800
+        var resp = await _client.PostAsJsonAsync(
+            $"/api/v1/Ventas/{venta.Id}/devolucion-parcial",
+            new { motivo = "Defectuoso", lineas = new[] { new { productoId = producto, cantidad = 4m } } });
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var devolucion = await resp.Content.ReadFromJsonAsync<DevolucionVentaDto>(_jsonOptions);
+
+        // Assert — los asientos del payload outbox reflejan el IVA proporcional
+        using var scope2 = _factory.Services.CreateScope();
+        var db2 = scope2.ServiceProvider.GetRequiredService<POS.Infrastructure.Data.AppDbContext>();
+        var outbox = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+            .FirstAsync(db2.ErpOutboxMessages
+                .Where(m => m.TipoDocumento == "NotaCreditoVenta" && m.EntidadId == devolucion!.Id));
+
+        var payload = JsonSerializer.Deserialize<POS.Application.DTOs.CompraErpPayload>(
+            outbox.Payload, _jsonOptions)!;
+
+        var debitoIngreso = payload.Asientos
+            .Single(a => a.Naturaleza == "Debito" && a.Nota.Contains("Ingreso"));
+        debitoIngreso.Valor.Should().Be(20_000m, "subtotal devuelto = 4 × 5000");
+
+        var debitoIva = payload.Asientos
+            .Single(a => a.Naturaleza == "Debito" && a.Nota.Contains("IVA"));
+        debitoIva.Cuenta.Should().Be("2408");
+        debitoIva.Valor.Should().Be(3_800m, "19% de 20.000");
+
+        var creditoCaja = payload.Asientos.Single(a => a.Naturaleza == "Credito");
+        creditoCaja.Valor.Should().Be(23_800m, "20.000 + 3.800");
+    }
 }
