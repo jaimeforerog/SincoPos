@@ -9,7 +9,7 @@ Sistema de Punto de Venta (POS) para Colombia con:
 - **Tiempo real**: SignalR WebSocket
 - **DIAN**: Facturación electrónica UBL 2.1 + CUFE
 
-**Estado del proyecto**: ✅ Production-ready · Calificación técnica: **8.2/10**
+**Estado del proyecto**: ✅ Production-ready · Calificación técnica: **9.2/10**
 
 ---
 

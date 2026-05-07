@@ -6,9 +6,12 @@ Sistema de Punto de Venta moderno para Colombia con facturación electrónica DI
 
 - **Clean Architecture**: Api → Application → Domain → Infrastructure
 - **Event Sourcing** con Marten para inventario (entradas, salidas, ajustes)
+- **Patrón Outbox** para sincronización con ERP Sinco — `IErpOutboxProcessor` desacopla la lógica de la `ErpSyncFunction` para tests unitarios
+- **Partial classes por responsabilidad** en servicios grandes (`VentaService.Contexto.cs`, `.Erp.cs`, `.Notificaciones.cs`, `.Mappers.cs`) — todos los archivos del proyecto bajo 500 líneas
 - **PostgreSQL 16** para persistencia relacional y eventos
 - **WorkOS** para autenticación OAuth2/OIDC (User Management API)
 - **SignalR** para notificaciones en tiempo real (WebSocket)
+- **OpenTelemetry + Azure Monitor** para trazas distribuidas (Ventas y Compras instrumentadas con `ActivitySource`)
 - **.NET 9** + **React 19 + TypeScript + MUI v7**
 
 ## Módulos implementados
@@ -38,7 +41,7 @@ Sistema de Punto de Venta moderno para Colombia con facturación electrónica DI
 | CI/CD (GitHub Actions + Docker + Azure) | ✅ | - |
 | Cart store (POS) | - | ✅ 25 tests |
 
-**Suite de tests: 363/363 backend · 423/423 frontend — 0 Skips · 0 Warnings**
+**Suite de tests: 507 backend (81 unit + 426 integration) · 446 frontend — 0 Skips · 0 Warnings**
 
 ## Inicio rápido
 
@@ -91,14 +94,17 @@ Los usuarios se autentican vía WorkOS. Para desarrollo local, crear con:
 ## Tests
 
 ```bash
-# Backend — suite completa (363 tests)
+# Backend — unit tests con NSubstitute + EF Core InMemory (rápidos, sin Docker)
+dotnet test tests/POS.UnitTests/POS.UnitTests.csproj
+
+# Backend — integration tests con Testcontainers PostgreSQL (requiere Docker)
 dotnet test tests/POS.IntegrationTests/POS.IntegrationTests.csproj
 
 # Backend — grupo específico
 dotnet test --filter "VentasTests"
-dotnet test --filter "TaxEngineUnitTests"
+dotnet test --filter "ErpOutboxProcessor"
 
-# Frontend — Vitest (424 tests, 0 warnings)
+# Frontend — Vitest (446 tests, 0 warnings)
 cd frontend && npm run test:run
 ```
 
@@ -118,11 +124,13 @@ SincoPos/
 │   ├── Data/Entities/          # Entidades + configuraciones EF (45 tablas)
 │   ├── Migrations/             # Migraciones EF Core
 │   └── Services/               # Implementaciones de IXxxService
-│       ├── VentaService.cs           # Venta principal (504 líneas)
-│       ├── VentaAnulacionService.cs  # Anulación extraída
-│       ├── VentaDevolucionService.cs # Devolución extraída
-│       ├── CompraRecepcionService.cs # Recepción de compras (extraída de CompraService)
-│       └── TaxEngine.cs             # Motor tributario DIAN
+│       ├── VentaService.{cs,Contexto.cs,Erp.cs,Notificaciones.cs,Mappers.cs}  # Servicio dividido en partial classes por responsabilidad
+│       ├── VentaAnulacionService.cs   # Anulación extraída
+│       ├── VentaDevolucionService.cs  # Devolución extraída
+│       ├── UsuarioService.{cs,Entity.cs,Perfil.cs}  # Partial classes: API DTO, helpers entidad, ConstruirPerfilCompleto
+│       ├── CompraRecepcionService.cs  # Recepción de compras (extraída de CompraService)
+│       ├── Erp/ErpOutboxProcessor.cs  # Procesa erp_outbox_messages → IErpClient (testeable, llamado por la function)
+│       └── TaxEngine.cs               # Motor tributario DIAN
 ├── frontend/                   # React 19 + TypeScript + MUI v7
 │   └── src/
 │       ├── features/           # Módulos por dominio (23 features)
