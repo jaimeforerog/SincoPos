@@ -359,6 +359,62 @@ public class TaxEngineTests
         r.TotalRetenciones.Should().Be(3000); // 2500 + 500
     }
 
+    // ─── ReteIVA ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ReteIVA_PerfilesCoinciden_Aplica()
+    {
+        var regla = Retencion(TipoRetencion.ReteIVA, 0.15m);
+        var r = _engine.Calcular(Req(100000, 1, retenciones: [regla]));
+
+        r.TotalRetenciones.Should().Be(15000);
+        r.Retenciones.Should().ContainSingle(rt => rt.Tipo == TipoRetencion.ReteIVA && rt.Monto == 15000);
+    }
+
+    [Fact]
+    public void ReteIVA_BajoUmbralUVT_NoAplica()
+    {
+        // Umbral = 4 × $47065 = $188.260. Venta de $50.000 → no retiene
+        var regla = Retencion(TipoRetencion.ReteIVA, 0.15m, baseMinUVT: 4);
+        var r = _engine.Calcular(Req(50000, 1, uvt: 47065m, retenciones: [regla]));
+
+        r.TotalRetenciones.Should().Be(0);
+        r.Retenciones.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ReteIVA_RegimenSimpleVendedor_NoAplica()
+    {
+        // Aunque la regla matchea el perfil REGIMEN_SIMPLE, el engine omite TODAS
+        // las retenciones cuando el vendedor está en Régimen Simple (línea 111 del TaxEngine).
+        var regla = Retencion(TipoRetencion.ReteIVA, 0.15m,
+            vendedor: "REGIMEN_SIMPLE", comprador: "GRAN_CONTRIBUYENTE");
+
+        var r = _engine.Calcular(Req(100000, 1,
+            vendedor: "REGIMEN_SIMPLE",
+            comprador: "GRAN_CONTRIBUYENTE",
+            retenciones: [regla]));
+
+        r.TotalRetenciones.Should().Be(0);
+    }
+
+    [Fact]
+    public void ReteIVA_CombinadoConIVAYReteFuente_TodosSeAplican()
+    {
+        var retenciones = new List<RetencionRegla>
+        {
+            Retencion(TipoRetencion.ReteFuente, 0.025m),
+            Retencion(TipoRetencion.ReteIVA, 0.15m),
+        };
+
+        // Base 100.000 + IVA 19.000 - ReteFuente 2.500 - ReteIVA 15.000 = 101.500
+        var r = _engine.Calcular(Req(100000, 1, Iva(0.19m), retenciones: retenciones));
+
+        r.TotalImpuestos.Should().Be(19000);
+        r.TotalRetenciones.Should().Be(17500);
+        r.TotalNeto.Should().Be(101500);
+    }
+
     [Fact]
     public void RetencionInactiva_NoAplica()
     {
