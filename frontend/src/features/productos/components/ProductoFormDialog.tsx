@@ -54,6 +54,9 @@ export function ProductoFormDialog({
   const [impuestoId, setImpuestoId] = useState<number | ''>('');
   const [manejaLotes, setManejaLotes] = useState(false);
   const [diasVidaUtil, setDiasVidaUtil] = useState<number | ''>('');
+  const [esAlimentoUltraprocesado, setEsAlimentoUltraprocesado] = useState(false);
+  const [gramosAzucarPor100ml, setGramosAzucarPor100ml] = useState<number | ''>('');
+  const [cantidadMlPorUnidad, setCantidadMlPorUnidad] = useState<number | ''>('');
 
   const isEdit = !!producto;
 
@@ -125,6 +128,9 @@ export function ProductoFormDialog({
         setImpuestoId(producto.impuestoId ?? '');
         setManejaLotes(producto.manejaLotes ?? false);
         setDiasVidaUtil(producto.diasVidaUtil ?? '');
+        setEsAlimentoUltraprocesado(producto.esAlimentoUltraprocesado ?? false);
+        setGramosAzucarPor100ml(producto.gramosAzucarPor100ml ?? '');
+        setCantidadMlPorUnidad(producto.cantidadMlPorUnidad ?? '');
       } else {
         resetCrear({
           codigoBarras: '',
@@ -140,6 +146,9 @@ export function ProductoFormDialog({
         setImpuestoId('');
         setManejaLotes(false);
         setDiasVidaUtil('');
+        setEsAlimentoUltraprocesado(false);
+        setGramosAzucarPor100ml('');
+        setCantidadMlPorUnidad('');
       }
     }
   }, [open, producto, resetCrear, resetActualizar, conceptosRetencion]);
@@ -154,6 +163,9 @@ export function ProductoFormDialog({
           conceptoRetencionId: conceptoRetencionId || undefined,
           manejaLotes,
           diasVidaUtil: diasVidaUtil !== '' ? diasVidaUtil : undefined,
+          esAlimentoUltraprocesado,
+          gramosAzucarPor100ml: gramosAzucarPor100ml !== '' ? gramosAzucarPor100ml : undefined,
+          cantidadMlPorUnidad: cantidadMlPorUnidad !== '' ? cantidadMlPorUnidad : undefined,
         };
         await productosApi.update(producto!.id, updateData);
         return null;
@@ -165,6 +177,9 @@ export function ProductoFormDialog({
           conceptoRetencionId: conceptoRetencionId || undefined,
           manejaLotes,
           diasVidaUtil: diasVidaUtil !== '' ? diasVidaUtil : undefined,
+          esAlimentoUltraprocesado,
+          gramosAzucarPor100ml: gramosAzucarPor100ml !== '' ? gramosAzucarPor100ml : undefined,
+          cantidadMlPorUnidad: cantidadMlPorUnidad !== '' ? cantidadMlPorUnidad : undefined,
         };
         return await productosApi.create(createData);
       }
@@ -399,6 +414,12 @@ export function ProductoFormDialog({
               onManejaLotesChange={setManejaLotes}
               diasVidaUtil={diasVidaUtil}
               onDiasVidaUtilChange={setDiasVidaUtil}
+              esAlimentoUltraprocesado={esAlimentoUltraprocesado}
+              onEsAlimentoUltraprocesadoChange={setEsAlimentoUltraprocesado}
+              gramosAzucarPor100ml={gramosAzucarPor100ml}
+              onGramosAzucarPor100mlChange={setGramosAzucarPor100ml}
+              cantidadMlPorUnidad={cantidadMlPorUnidad}
+              onCantidadMlPorUnidadChange={setCantidadMlPorUnidad}
             />
 
             <Alert severity="info">

@@ -17,6 +17,7 @@ export interface ProductoDTO {
   porcentajeImpuesto?: number;   // 0.19 — usar en estimación del carrito
   esAlimentoUltraprocesado: boolean;
   gramosAzucarPor100ml?: number;
+  cantidadMlPorUnidad?: number;  // ml por unidad (escala Imp. Saludable de bebidas)
   unidadMedida: string;          // Código DIAN: "94"=Unidad, "KGM"=Kg, etc.
   // Concepto Retención DIAN
   conceptoRetencionId?: number;
@@ -36,6 +37,7 @@ export interface CrearProductoDTO {
   impuestoId?: number;
   esAlimentoUltraprocesado?: boolean;
   gramosAzucarPor100ml?: number;
+  cantidadMlPorUnidad?: number;  // ml por unidad (escala Imp. Saludable de bebidas)
   unidadMedida?: string;
   conceptoRetencionId?: number;
   manejaLotes?: boolean;
@@ -50,11 +52,14 @@ export interface ActualizarProductoDTO {
   impuestoId?: number;
   esAlimentoUltraprocesado?: boolean;
   gramosAzucarPor100ml?: number;
+  cantidadMlPorUnidad?: number;  // ml por unidad (escala Imp. Saludable de bebidas)
   unidadMedida?: string;
   conceptoRetencionId?: number;
   manejaLotes?: boolean;
   diasVidaUtil?: number;
 }
+
+
 
 export interface CategoriaDTO {
   id: number;

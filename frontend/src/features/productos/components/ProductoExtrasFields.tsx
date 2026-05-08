@@ -7,6 +7,7 @@ import {
   Select,
   MenuItem,
   Switch,
+  Typography,
 } from '@mui/material';
 import type { ImpuestoDTO } from '@/types/api';
 
@@ -18,6 +19,12 @@ interface ProductoExtrasFieldsProps {
   onManejaLotesChange: (value: boolean) => void;
   diasVidaUtil: number | '';
   onDiasVidaUtilChange: (value: number | '') => void;
+  esAlimentoUltraprocesado: boolean;
+  onEsAlimentoUltraprocesadoChange: (value: boolean) => void;
+  gramosAzucarPor100ml: number | '';
+  onGramosAzucarPor100mlChange: (value: number | '') => void;
+  cantidadMlPorUnidad: number | '';
+  onCantidadMlPorUnidadChange: (value: number | '') => void;
 }
 
 export function ProductoExtrasFields({
@@ -28,6 +35,12 @@ export function ProductoExtrasFields({
   onManejaLotesChange,
   diasVidaUtil,
   onDiasVidaUtilChange,
+  esAlimentoUltraprocesado,
+  onEsAlimentoUltraprocesadoChange,
+  gramosAzucarPor100ml,
+  onGramosAzucarPor100mlChange,
+  cantidadMlPorUnidad,
+  onCantidadMlPorUnidadChange,
 }: ProductoExtrasFieldsProps) {
   return (
     <>
@@ -86,6 +99,59 @@ export function ProductoExtrasFields({
           helperText="Vida útil en días. Al recibir un lote sin fecha explícita, se calcula automáticamente."
         />
       )}
+
+      {/* ── Impuesto Saludable (Ley 2277/2022) ──────────────────────────── */}
+      <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 2, mt: 1 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+          Impuesto Saludable (Ley 2277/2022)
+        </Typography>
+
+        <FormControlLabel
+          control={
+            <Switch
+              checked={esAlimentoUltraprocesado}
+              onChange={(e) => onEsAlimentoUltraprocesadoChange(e.target.checked)}
+              color="primary"
+            />
+          }
+          label={
+            <Box>
+              <Box component="span" sx={{ fontWeight: 500 }}>Es alimento ultraprocesado</Box>
+              <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>
+                Aplica la tarifa de Impuesto Saludable sobre la base imponible.
+              </Box>
+            </Box>
+          }
+          sx={{ mb: 1 }}
+        />
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+          <TextField
+            type="number"
+            label="Azúcar (g / 100 ml)"
+            value={gramosAzucarPor100ml}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              onGramosAzucarPor100mlChange(isNaN(val) || val < 0 ? '' : val);
+            }}
+            inputProps={{ min: 0, step: 0.1 }}
+            helperText="Solo bebidas azucaradas. Vacío = no aplica."
+            fullWidth
+          />
+          <TextField
+            type="number"
+            label="Volumen por unidad (ml)"
+            value={cantidadMlPorUnidad}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              onCantidadMlPorUnidadChange(isNaN(val) || val <= 0 ? '' : val);
+            }}
+            inputProps={{ min: 1, step: 1 }}
+            helperText="Escala el impuesto por (ml / 100). Vacío = se asume 100 ml."
+            fullWidth
+          />
+        </Box>
+      </Box>
     </>
   );
 }
