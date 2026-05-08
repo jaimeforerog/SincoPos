@@ -35,6 +35,7 @@ public sealed class ProductoLocalService : IProductoService
         p.Impuesto?.Porcentaje,
         p.EsAlimentoUltraprocesado,
         p.GramosAzucarPor100ml,
+        p.CantidadMlPorUnidad,
         p.UnidadMedida,
         // Concepto Retención
         p.ConceptoRetencionId,
@@ -143,6 +144,7 @@ public sealed class ProductoLocalService : IProductoService
             ImpuestoId = dto.ImpuestoId,
             EsAlimentoUltraprocesado = dto.EsAlimentoUltraprocesado,
             GramosAzucarPor100ml = dto.GramosAzucarPor100ml,
+            CantidadMlPorUnidad = dto.CantidadMlPorUnidad,
             UnidadMedida = dto.UnidadMedida,
             ConceptoRetencionId = dto.ConceptoRetencionId,
             ManejaLotes = dto.ManejaLotes,
@@ -185,6 +187,7 @@ public sealed class ProductoLocalService : IProductoService
         producto.ImpuestoId = dto.ImpuestoId;
         producto.EsAlimentoUltraprocesado = dto.EsAlimentoUltraprocesado;
         producto.GramosAzucarPor100ml = dto.GramosAzucarPor100ml;
+        producto.CantidadMlPorUnidad = dto.CantidadMlPorUnidad;
         producto.UnidadMedida = dto.UnidadMedida;
         producto.ConceptoRetencionId = dto.ConceptoRetencionId;
         producto.ManejaLotes = dto.ManejaLotes;

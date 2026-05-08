@@ -61,13 +61,15 @@ public class TaxEngineTests
         List<TramoBebidasAzucaradas>? tramos = null,
         bool esUltraprocesado = false,
         decimal? gramosAzucar = null,
-        int? conceptoRetencionId = null) =>
+        int? conceptoRetencionId = null,
+        decimal? cantidadMlPorUnidad = null) =>
         new(ProdId, cantidad, precio,
             impuesto, esUltraprocesado, gramosAzucar,
             vendedor, comprador, municipio,
             conceptoRetencionId, uvt,
             retenciones ?? [],
-            tramos ?? []);
+            tramos ?? [],
+            cantidadMlPorUnidad);
 
     // ─── Sin impuesto ─────────────────────────────────────────────────────────
 
@@ -203,6 +205,32 @@ public class TaxEngineTests
         var r = _engine.Calcular(Req(100, 1, gramosAzucar: null, tramos: tramos));
 
         r.TotalImpuestos.Should().Be(0);
+    }
+
+    [Fact]
+    public void BebidasAzucaradas_ConCantidadMl_EscalaTarifaPorVolumen()
+    {
+        var tramos = new List<TramoBebidasAzucaradas> { Tramo(null, 35m) };
+
+        // 35 $/100ml × (500 ml / 100) × 2 unidades = 35 × 5 × 2 = 350
+        var r = _engine.Calcular(
+            Req(1500, 2, gramosAzucar: 10m, tramos: tramos, cantidadMlPorUnidad: 500m));
+
+        r.TotalImpuestos.Should().Be(350);
+        r.Impuestos.Should().ContainSingle(i => i.Tipo == TipoImpuesto.Saludable && i.ValorFijo == 35m);
+    }
+
+    [Fact]
+    public void BebidasAzucaradas_SinCantidadMl_FallbackLegacy()
+    {
+        var tramos = new List<TramoBebidasAzucaradas> { Tramo(null, 35m) };
+
+        // Sin CantidadMlPorUnidad: comportamiento legacy (1 unidad ≈ 100 ml)
+        // 35 × 2 = 70
+        var r = _engine.Calcular(
+            Req(1500, 2, gramosAzucar: 10m, tramos: tramos, cantidadMlPorUnidad: null));
+
+        r.TotalImpuestos.Should().Be(70);
     }
 
     // ─── Impuesto a la Bolsa ──────────────────────────────────────────────────

@@ -207,7 +207,8 @@ public sealed class CompraRecepcionService
                 ConceptoRetencionId: productoCompleto.ConceptoRetencionId,
                 ValorUVT: orden.Sucursal!.ValorUVT,
                 ReglasRetencion: reglasRetencion,
-                TramosBebidasAzucaradas: tramosBebidasAzucaradas
+                TramosBebidasAzucaradas: tramosBebidasAzucaradas,
+                CantidadMlPorUnidad: productoCompleto.CantidadMlPorUnidad
             ));
 
             foreach (var ret in taxResultRecepcion.Retenciones)

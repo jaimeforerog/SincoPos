@@ -77,9 +77,13 @@ public sealed class TaxEngine : ITaxEngine
             && req.TramosBebidasAzucaradas.Count > 0)
         {
             var tarifa = ObtenerTarifaBebidaAzucarada(req.GramosAzucarPor100ml.Value, req.TramosBebidasAzucaradas);
-            // Se asume que PrecioUnitario equivale a 100ml para el cálculo;
-            // en producción el volumen vendría del sku del producto.
-            var monto = Math.Round(tarifa * req.Cantidad, 2);
+            // La tarifa está expresada en pesos por 100 ml. Si el producto declara
+            // CantidadMlPorUnidad, escalamos por (ml/100). Si no (legacy), se cobra
+            // 1 tarifa × cantidad asumiendo 1 unidad = 100 ml.
+            var factorVolumen = req.CantidadMlPorUnidad.HasValue && req.CantidadMlPorUnidad.Value > 0
+                ? req.CantidadMlPorUnidad.Value / 100m
+                : 1m;
+            var monto = Math.Round(tarifa * factorVolumen * req.Cantidad, 2);
             impuestosAplicados.Add(new ImpuestoAplicado(
                 $"Bebida Azucarada ({req.GramosAzucarPor100ml:N1} g/100ml)",
                 TipoImpuesto.Saludable,

@@ -394,7 +394,8 @@ public sealed class CompraService : ICompraService
                 ConceptoRetencionId: producto.ConceptoRetencionId,
                 ValorUVT: sucursal.ValorUVT,
                 ReglasRetencion: reglasRetencion,
-                TramosBebidasAzucaradas: tramosBebidasAzucaradas
+                TramosBebidasAzucaradas: tramosBebidasAzucaradas,
+                CantidadMlPorUnidad: producto.CantidadMlPorUnidad
             ));
 
             var primerImpuesto = taxResult.Impuestos.FirstOrDefault();

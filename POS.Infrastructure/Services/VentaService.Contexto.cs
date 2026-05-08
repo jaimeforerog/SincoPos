@@ -160,7 +160,8 @@ public sealed partial class VentaService
             ConceptoRetencionId: producto.ConceptoRetencionId,
             ValorUVT: ctx.Sucursal.ValorUVT,
             ReglasRetencion: ctx.ReglasRetencion,
-            TramosBebidasAzucaradas: ctx.TramosBebidasAzucaradas
+            TramosBebidasAzucaradas: ctx.TramosBebidasAzucaradas,
+            CantidadMlPorUnidad: producto.CantidadMlPorUnidad
         ));
 
         var primerImpuesto = taxResult.Impuestos.FirstOrDefault();

@@ -64,6 +64,7 @@ public sealed class ProductoAnticipacionService : IProductoAnticipacionService
                 p.Impuesto?.Porcentaje,
                 p.EsAlimentoUltraprocesado,
                 p.GramosAzucarPor100ml,
+                p.CantidadMlPorUnidad,
                 p.UnidadMedida,
                 p.ConceptoRetencionId,
                 p.ConceptoRetencion?.Nombre,

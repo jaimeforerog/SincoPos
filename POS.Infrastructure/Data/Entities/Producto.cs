@@ -53,6 +53,14 @@ public class Producto : ISoftDelete
     /// </summary>
     public decimal? GramosAzucarPor100ml { get; set; }
 
+    /// <summary>
+    /// Solo para bebidas azucaradas: volumen en ml por cada unidad vendida.
+    /// El TaxEngine escala la tarifa por tramo (que está en pesos / 100 ml) por
+    /// (CantidadMlPorUnidad / 100). Null = se factura por unidad sin escalado
+    /// (compatibilidad con productos legacy donde 1 unidad ≈ 100 ml).
+    /// </summary>
+    public decimal? CantidadMlPorUnidad { get; set; }
+
     // Auditoría
     public string CreadoPor { get; set; } = string.Empty;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;

@@ -50,7 +50,15 @@ public record TaxRequest(
     // ── Parámetros DIAN ────────────────────────────────────────────────────────
     decimal ValorUVT,                 // Valor UVT vigente (ej. 47065 en 2026)
     List<RetencionRegla> ReglasRetencion,    // Catálogo de reglas activas de la sucursal
-    List<TramoBebidasAzucaradas> TramosBebidasAzucaradas  // Tramos Ley 2277/2022 vigentes
+    List<TramoBebidasAzucaradas> TramosBebidasAzucaradas,  // Tramos Ley 2277/2022 vigentes
+
+    // ── Volumen para Impuesto Saludable de bebidas ─────────────────────────────
+    /// <summary>
+    /// Volumen en ml por unidad. Si se indica, el monto del Impuesto Saludable de
+    /// bebidas se escala por (CantidadMlPorUnidad / 100). Null = se aplica la
+    /// tarifa por unidad sin escalado (legacy, asume 1 unidad = 100 ml).
+    /// </summary>
+    decimal? CantidadMlPorUnidad = null
 );
 
 /// <summary>
