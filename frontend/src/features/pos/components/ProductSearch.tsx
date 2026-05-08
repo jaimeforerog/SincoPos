@@ -105,6 +105,8 @@ export function ProductSearch({ onSelectProduct, fechaVenta }: ProductSearchProp
               </InputAdornment>
             ),
           }}
+          // POS UX: búsqueda principal recibe foco al cargar la pantalla (workflow caja)
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
         />
       </Box>

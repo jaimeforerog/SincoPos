@@ -147,7 +147,7 @@ export function ComprasPage() {
     enabled: activeSucursalId != null,
     staleTime: 60000,
   });
-  const allOrdenes = todasOrdenes?.items ?? [];
+  const allOrdenes = useMemo(() => todasOrdenes?.items ?? [], [todasOrdenes]);
 
   const stats = useMemo(() => ({
     total: allOrdenes.length,

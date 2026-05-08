@@ -69,6 +69,8 @@ export function CrearTrasladoView({ onBack, onSuccess }: Props) {
   useEffect(() => {
     if (activeSucursalId && sucursales.length > 0 && !sucursalOrigen) {
       const activa = sucursales.find(s => s.id === activeSucursalId);
+      // sync inicial: pre-cargar sucursal origen con la activa de sesión
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (activa) setSucursalOrigen(activa);
     }
   }, [activeSucursalId, sucursales]); // eslint-disable-line react-hooks/exhaustive-deps

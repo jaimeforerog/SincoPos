@@ -29,4 +29,6 @@ export function renderWithProviders(
   );
 }
 
+// re-export utilities — fast refresh no aplica a archivos de test.
+// eslint-disable-next-line react-refresh/only-export-components
 export * from '@testing-library/react';

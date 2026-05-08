@@ -76,12 +76,14 @@ function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
     });
   }, [signOut, setIdpLogout]);
 
-  // Mantener access_token en localStorage para el interceptor de axios
+  // Mantener access_token en localStorage para el interceptor de axios.
+  // user.id como dep evita re-correr ante cambios irrelevantes de otras props del user.
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     getAccessToken().then((token) => {
       if (token) localStorage.setItem('access_token', token);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user?.id, getAccessToken]);
 
   // Refresh periódico del token cada 4 minutos

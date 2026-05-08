@@ -23,6 +23,8 @@ export interface AuditEntry {
 
 const SYSTEM_ACTIONS = ['Ajuste automático', 'Sync ERP', 'Sistema', 'Background'];
 
+// helper convive en el archivo para mantener la lógica del adaptador junto al timeline.
+// eslint-disable-next-line react-refresh/only-export-components
 export function activityLogToAuditEntry(log: ActivityLogFullDTO): AuditEntry {
   const isAutomated = SYSTEM_ACTIONS.some(s => log.accion.includes(s)) || log.tipo === 99;
   const details = [

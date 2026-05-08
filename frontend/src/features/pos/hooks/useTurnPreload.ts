@@ -79,5 +79,5 @@ export function useTurnPreload(
         // Falla silenciosa — el POS sigue funcionando online
       }
     })();
-  }, [selectedCajaId, activeSucursalId, setContext]);
+  }, [selectedCajaId, activeSucursalId, sessionKey, setContext]);
 }

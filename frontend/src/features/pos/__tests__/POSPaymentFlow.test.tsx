@@ -87,7 +87,7 @@ describe('POS Payment Flow', () => {
             const iniciarBtn = await screen.findByRole('button', { name: /Iniciar Ventas/i });
             fireEvent.click(iniciarBtn);
         }
-    } catch (e) {
+    } catch {
         console.log('El diálogo de caja no apareció o falló la selección, continuando...');
     }
     

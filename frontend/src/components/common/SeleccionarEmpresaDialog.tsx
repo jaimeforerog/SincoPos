@@ -67,6 +67,8 @@ export function SeleccionarEmpresaDialog() {
   // recalcula el useMemo (nueva referencia, mismo contenido) al re-renderizar.
   useEffect(() => {
     if (!loadingSucursales && sucursalesDeEmpresa.length === 1) {
+      // auto-selección al detectar única sucursal disponible
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedSucursal(sucursalesDeEmpresa[0]);
     }
   }, [sucursalesDeEmpresa, loadingSucursales]);
@@ -74,6 +76,8 @@ export function SeleccionarEmpresaDialog() {
   // Auto-seleccionar empresa si solo hay una disponible
   useEffect(() => {
     if (empresas.length === 1 && !selectedEmpresa) {
+      // auto-selección al detectar única empresa disponible
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedEmpresa(empresas[0]);
     }
   }, [empresas]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -139,6 +143,8 @@ export function SeleccionarEmpresaDialog() {
                 <TextField
                   {...params}
                   label="Empresa"
+                  // dialog UX: primer input (selector empresa) recibe foco
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                   slotProps={{
                     input: {
@@ -173,6 +179,8 @@ export function SeleccionarEmpresaDialog() {
                     <TextField
                       {...params}
                       label="Sucursal"
+                      // dialog UX: input sucursal recibe foco al cargar opciones múltiples
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
                       autoFocus={sucursalesDeEmpresa.length > 1}
                       slotProps={{
                         input: {

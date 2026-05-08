@@ -126,6 +126,8 @@ export function IntentSearch({ onSelectProduct, fechaVenta }: IntentSearchProps)
           placeholder="Nombre, código, cámara o voz… (Ctrl+K)"
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
+          // POS UX: búsqueda principal recibe foco al cargar la pantalla (workflow caja)
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           sx={{
             '& .MuiOutlinedInput-root': {

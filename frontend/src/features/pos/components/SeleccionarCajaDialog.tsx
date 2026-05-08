@@ -60,11 +60,12 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
   // Resetear selecciones cada vez que el diálogo se abre
   useEffect(() => {
     if (open) {
+      // dialog reset: limpia selecciones al abrir
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedSucursalId(null);
       setSelectedCajaId(null);
       setFechaVenta(nowDatetimeLocal());
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Cargar cajas de la sucursal seleccionada
@@ -99,6 +100,8 @@ export function SeleccionarCajaDialog({ open, onSelect, onClose }: SeleccionarCa
   useEffect(() => {
     if (activeSucursalId && !selectedSucursalId && open && sucursales.length > 0) {
       if (sucursales.some((s) => s.id === activeSucursalId)) {
+        // auto-selección: pre-cargar sucursal activa cuando aparece como opción
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedSucursalId(activeSucursalId);
       }
     }

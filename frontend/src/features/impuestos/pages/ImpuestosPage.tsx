@@ -71,8 +71,6 @@ export default function ImpuestosPage() {
   const [confirmState, setConfirmState] = useState<{ open: boolean; mensaje: string; onAceptar: () => void }>({ open: false, mensaje: '', onAceptar: () => {} });
   const confirmar = (mensaje: string, onAceptar: () => void) => setConfirmState({ open: true, mensaje, onAceptar });
 
-  useEffect(() => { cargarImpuestos(); cargarRetenciones(); }, []);
-
   const cargarImpuestos = async () => {
     try { setImpuestos(await impuestosApi.getAll()); }
     catch { setError('Error al cargar impuestos'); }
@@ -82,6 +80,10 @@ export default function ImpuestosPage() {
     try { setRetenciones(await retencionesApi.getAll()); }
     catch { setError('Error al cargar retenciones'); }
   };
+
+  // carga inicial: lanza fetch de impuestos y retenciones al montar (los setX viven dentro de las funciones async)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { cargarImpuestos(); cargarRetenciones(); }, []);
 
   // ── Impuestos handlers ────────────────────────────────────────────────────
 

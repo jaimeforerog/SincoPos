@@ -114,6 +114,8 @@ export function RecibirOrdenDialog({
         })),
       });
     }
+    // defaultFechaRecepcion se deriva de orden, no se necesita como dep separada
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, orden, reset]);
 
   const lineas = watch('lineas');

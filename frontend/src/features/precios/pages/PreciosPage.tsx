@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -60,11 +60,15 @@ export function PreciosPage() {
 
   // Resetear página cuando cambia la sucursal o la búsqueda
   useEffect(() => {
+    // reset al cambiar sucursal: limpia búsqueda y página
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBusqueda('');
     setPage(0);
   }, [selectedSucursalId]);
 
   useEffect(() => {
+    // reset al cambiar búsqueda: vuelve a página 0
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(0);
   }, [busqueda]);
 
@@ -94,7 +98,7 @@ export function PreciosPage() {
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });
-  const productos = productosData?.items || [];
+  const productos = useMemo(() => productosData?.items || [], [productosData]);
 
   // Cargar precios resueltos para los productos visibles
   const [productosConPrecios, setProductosConPrecios] = useState<ProductoConPrecio[]>([]);
@@ -104,6 +108,8 @@ export function PreciosPage() {
     // Limpiar productos si no hay sucursal seleccionada
     if (!selectedSucursalId) {
       if (productosConPrecios.length > 0 || lastLoadKeyRef.current !== '') {
+        // limpieza condicional al deseleccionar sucursal
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setProductosConPrecios([]);
         lastLoadKeyRef.current = '';
       }
@@ -199,7 +205,7 @@ export function PreciosPage() {
           origenDato: 'Migrado',  // Marcar como migrado desde Excel
         });
         importados++;
-      } catch (error) {
+      } catch {
         errores++;
       }
     }

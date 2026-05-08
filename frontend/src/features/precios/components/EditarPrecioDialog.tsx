@@ -172,6 +172,8 @@ export function EditarPrecioDialog({
                     (margen !== 0 ? `Margen: ${margen.toFixed(1)}%` : undefined)
                   }
                   fullWidth
+                  // dialog UX: primer input recibe foco
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                   InputProps={{
                     startAdornment: (

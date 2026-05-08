@@ -66,6 +66,8 @@ export function ConfiguracionEmisorPage() {
   // Poblar formulario cuando se carga la config
   useEffect(() => {
     if (config) {
+      // sync inicial: cargar el formulario con la configuración remota al recibirla
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         nit: config.nit,
         digitoVerificacion: config.digitoVerificacion,

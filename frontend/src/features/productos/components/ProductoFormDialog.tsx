@@ -111,6 +111,8 @@ export function ProductoFormDialog({
 
   useEffect(() => {
     if (open) {
+      // dialog reset: limpia error backend al abrir el dialog
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBackendError(null);
       if (producto) {
         resetActualizar({
@@ -209,6 +211,8 @@ export function ProductoFormDialog({
                     error={!!errorsCrear.codigoBarras}
                     helperText={errorsCrear.codigoBarras?.message}
                     fullWidth
+                    // dialog UX: primer input (modo crear) recibe foco
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
                     autoFocus
                   />
                 )}
@@ -235,6 +239,8 @@ export function ProductoFormDialog({
                     error={!!errorsActualizar.nombre}
                     helperText={errorsActualizar.nombre?.message}
                     fullWidth
+                    // dialog UX: primer input editable (modo editar) recibe foco
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
                     autoFocus
                   />
                 )}

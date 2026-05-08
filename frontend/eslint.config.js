@@ -28,6 +28,9 @@ export default defineConfig([
       'react-hooks/set-state-in-effect': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'react-hooks/immutability': 'warn',
+      // React Compiler (experimental, eslint-plugin-react-hooks v7): solo
+      // informativo, no accionable — apagado para no contaminar el lint.
+      'react-hooks/incompatible-library': 'off',
       // jsx-a11y: degradadas a warn para no bloquear CI; auditoría visible mientras se limpia.
       'jsx-a11y/no-autofocus': 'warn',
       'jsx-a11y/click-events-have-key-events': 'warn',

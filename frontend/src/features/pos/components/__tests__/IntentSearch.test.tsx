@@ -196,9 +196,9 @@ describe('IntentSearch', () => {
     // Re-mock ProductCard para invocar onClick al hacer click
     vi.mock('../ProductCard', () => ({
       ProductCard: ({ producto, onClick }: { producto: ProductoDTO; onClick: (p: ProductoDTO) => void }) => (
-        <div data-testid="product-card" onClick={() => onClick(producto)}>
+        <button type="button" data-testid="product-card" onClick={() => onClick(producto)}>
           {producto.nombre}
-        </div>
+        </button>
       ),
     }));
 

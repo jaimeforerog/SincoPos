@@ -91,6 +91,9 @@ export default function TercerosPage() {
     } finally {
       setLoading(false);
     }
+    // activeEmpresaId no entra al cuerpo, pero el header X-Empresa-Id va por interceptor;
+    // dejarlo en deps fuerza recarga al cambiar de empresa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busqueda, tipoFiltro, incluirInactivos, page, pageSize, activeEmpresaId]);
 
   useEffect(() => { cargar(); }, [cargar]);

@@ -56,6 +56,8 @@ export function CajasPage() {
 
   // Resetear selección cuando cambia la empresa activa
   useEffect(() => {
+    // reset al cambiar empresa activa
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedSucursalId(null);
   }, [activeEmpresaId]);
 
@@ -64,6 +66,8 @@ export function CajasPage() {
   useEffect(() => {
     if (sucursales.length === 0 || selectedSucursalId !== null) return;
     const enLista = sucursales.find(s => s.id === activeSucursalId);
+    // auto-selección de sucursal cuando no hay una elegida
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedSucursalId(enLista ? enLista.id : sucursales[0].id);
   }, [sucursales, activeSucursalId, selectedSucursalId]);
 

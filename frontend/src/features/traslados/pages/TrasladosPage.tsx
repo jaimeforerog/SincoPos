@@ -97,7 +97,7 @@ export function TrasladosPage() {
     queryKey: ['traslados'],
     queryFn: () => trasladosApi.listar(),
   });
-  const traslados = trasladosPage?.items ?? [];
+  const traslados = useMemo(() => trasladosPage?.items ?? [], [trasladosPage]);
 
   const stats = useMemo(() => ({
     total:      traslados.length,

@@ -84,6 +84,8 @@ export function SucursalFormDialog({ open, onClose, sucursal }: SucursalFormDial
   useEffect(() => {
     if (sucursal) {
       const codigoPais = sucursal.codigoPais || 'CO';
+      // dialog reset: sincroniza estado país con la sucursal en edición
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedCodigoPais(codigoPais);
       reset({
         nombre: sucursal.nombre,

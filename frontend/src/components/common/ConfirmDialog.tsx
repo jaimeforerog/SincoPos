@@ -17,6 +17,8 @@ export function ConfirmDialog({ open, mensaje, titulo = 'Confirmar', onAceptar, 
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancelar}>Cancelar</Button>
+        {/* dialog UX: botón principal de confirmación recibe foco */}
+        {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
         <Button onClick={onAceptar} variant="contained" color="error" autoFocus>
           Aceptar
         </Button>

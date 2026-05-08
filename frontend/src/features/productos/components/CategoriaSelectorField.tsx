@@ -57,6 +57,8 @@ export function CategoriaSelectorField({ control, errors, categorias }: Categori
           value={nuevaCategoria}
           onChange={(e) => setNuevaCategoria(e.target.value)}
           fullWidth
+          // UX: input recibe foco al activarse el modo "crear nueva categoría"
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
         />
         <Button

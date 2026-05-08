@@ -49,6 +49,8 @@ export function AppLayout() {
 
   // Cerrar sidebar automáticamente al entrar al POS
   useEffect(() => {
+    // UX: cerrar drawer al entrar a POS para maximizar área
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isPOS) setDrawerOpen(false);
   }, [isPOS]);
   const { activeSucursalId, setActiveSucursal, activeEmpresaId, empresasDisponibles, setActiveEmpresa, logout } = useAuthStore(

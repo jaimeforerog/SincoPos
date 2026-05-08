@@ -226,6 +226,7 @@ describe('POSPage — offline', () => {
     setOnlineState({
       isOnline:      true,
       failedCount:   2,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       syncStatus:    'error' as any,
       lastSyncError: 'Stock insuficiente',
     });
@@ -245,6 +246,7 @@ describe('POSPage — offline', () => {
 
   it('no muestra el banner cuando está online sin pendientes ni errores', () => {
     setOnlineState({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       isOnline: true, pendingCount: 0, failedCount: 0, syncStatus: 'idle' as any,
     });
 
@@ -265,6 +267,7 @@ describe('POSPage — offline', () => {
     setOnlineState({
       isOnline:    true,
       failedCount: 1,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       syncStatus:  'error' as any,
     });
 

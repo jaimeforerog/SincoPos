@@ -69,7 +69,7 @@ export function ReporteKardexPage() {
     queryKey: ['productos', activeEmpresaId],
     queryFn: () => productosApi.getAll({ incluirInactivos: false }),
   });
-  const productos = productosData?.items || [];
+  const productos = useMemo(() => productosData?.items || [], [productosData]);
 
   // Cargar stock de la sucursal seleccionada para filtrar productos
   const { data: stockSucursal = [] } = useQuery({

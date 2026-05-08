@@ -142,6 +142,8 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
         sucursalDefaultId: undefined,
         sucursalIds: [],
       });
+      // dialog reset: limpia error y resultado al abrir
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBackendError(null);
       setResultado(null);
     }

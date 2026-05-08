@@ -64,6 +64,8 @@ export function MoverCategoriaDialog({
 
   useEffect(() => {
     if (open && categoria) {
+      // dialog reset: pre-cargar el padre actual al abrir
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNuevoPadreId(categoria.categoriaPadreId || null);
     }
   }, [open, categoria]);

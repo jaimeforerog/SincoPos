@@ -22,6 +22,7 @@ describe('RecibirOrdenDialog', () => {
           manejaLotes: false,
         }
       ]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any,
     onClose: vi.fn(),
     onSuccess: vi.fn(),

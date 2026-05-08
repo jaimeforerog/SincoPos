@@ -195,6 +195,8 @@ export function CategoriaFormDialog({
                   error={!!errors.nombre}
                   helperText={errors.nombre?.message}
                   required
+                  // dialog UX: primer input recibe foco
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                 />
               )}
