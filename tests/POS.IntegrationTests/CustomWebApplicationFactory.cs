@@ -117,6 +117,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         {
             try
             {
+                // schema es literal hardcoded ("events" o "pos"), sin riesgo de SQL injection
+#pragma warning disable EF1002
                 await context.Database.ExecuteSqlRawAsync($@"
                     DO $$
                     DECLARE r record;
@@ -127,6 +129,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                         END LOOP;
                     END $$;
                 ");
+#pragma warning restore EF1002
             }
             catch { /* El schema puede no existir en el primer run */ }
         }
