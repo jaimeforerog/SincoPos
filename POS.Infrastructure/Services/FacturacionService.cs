@@ -118,9 +118,9 @@ public sealed partial class FacturacionService : IFacturacionService
         var (xmlSinFirmar, cufe) = _ublBuilder.GenerarFacturaVenta(ublData, ToEmisorData(emisor));
 
         // 6. Firmar XML
-        var xmlFirmado = FirmarXmlSafe(xmlSinFirmar, emisor);
+        var firma = FirmarXmlSafe(xmlSinFirmar, emisor);
 
-        // 7. Guardar documento en estado Firmado
+        // 7. Guardar documento. Si la firma falló con certificado real, rechazar y NO enviar a DIAN.
         var documento = new DocumentoElectronico
         {
             VentaId = ventaId,
@@ -132,14 +132,18 @@ public sealed partial class FacturacionService : IFacturacionService
             NumeroCompleto = numeroCompleto,
             Cufe = cufe,
             FechaEmision = venta.FechaVenta,
-            XmlUbl = xmlFirmado,
-            Estado = EstadoDocumento.Firmado
+            XmlUbl = firma.Xml,
+            Estado = firma.ErrorFirma != null ? EstadoDocumento.Rechazado : EstadoDocumento.Firmado,
+            MensajeRespuestaDian = firma.ErrorFirma != null ? $"Firma local falló: {firma.ErrorFirma}" : null,
         };
         _context.DocumentosElectronicos.Add(documento);
         await _context.SaveChangesAsync();
 
+        if (firma.ErrorFirma != null)
+            return (MapToDto(documento, venta.Sucursal.Nombre), $"FIRMA_FALLO: {firma.ErrorFirma}");
+
         // 8. Enviar a DIAN
-        await EnviarADianAsync(documento, xmlFirmado, cufe, emisor, numeroCompleto, enviarNotificacion: true);
+        await EnviarADianAsync(documento, firma.Xml, cufe, emisor, numeroCompleto, enviarNotificacion: true);
 
         return (MapToDto(documento, venta.Sucursal.Nombre), null);
     }
@@ -219,7 +223,7 @@ public sealed partial class FacturacionService : IFacturacionService
         );
 
         var (xmlSinFirmar, cufe) = _ublBuilder.GenerarNotaCredito(ublData, ToEmisorData(emisor));
-        var xmlFirmado = FirmarXmlSafe(xmlSinFirmar, emisor);
+        var firma = FirmarXmlSafe(xmlSinFirmar, emisor);
 
         var documento = new DocumentoElectronico
         {
@@ -232,13 +236,17 @@ public sealed partial class FacturacionService : IFacturacionService
             NumeroCompleto = numeroCompleto,
             Cufe = cufe,
             FechaEmision = devolucion.FechaDevolucion,
-            XmlUbl = xmlFirmado,
-            Estado = EstadoDocumento.Firmado
+            XmlUbl = firma.Xml,
+            Estado = firma.ErrorFirma != null ? EstadoDocumento.Rechazado : EstadoDocumento.Firmado,
+            MensajeRespuestaDian = firma.ErrorFirma != null ? $"Firma local falló: {firma.ErrorFirma}" : null,
         };
         _context.DocumentosElectronicos.Add(documento);
         await _context.SaveChangesAsync();
 
-        await EnviarADianAsync(documento, xmlFirmado, cufe, emisor, numeroCompleto, enviarNotificacion: false);
+        if (firma.ErrorFirma != null)
+            return (MapToDto(documento, venta.Sucursal.Nombre), $"FIRMA_FALLO: {firma.ErrorFirma}");
+
+        await EnviarADianAsync(documento, firma.Xml, cufe, emisor, numeroCompleto, enviarNotificacion: false);
 
         return (MapToDto(documento, venta.Sucursal.Nombre), null);
     }
@@ -277,21 +285,26 @@ public sealed partial class FacturacionService : IFacturacionService
         }
     }
 
-    private string FirmarXmlSafe(string xmlSinFirmar, ConfiguracionEmisor emisor)
+    /// <summary>
+    /// Firma el XML cuando hay certificado configurado.
+    /// Retorna ErrorFirma != null cuando falla la firma con certificado real (caller debe rechazar el documento).
+    /// </summary>
+    private (string Xml, string? ErrorFirma) FirmarXmlSafe(string xmlSinFirmar, ConfiguracionEmisor emisor)
     {
         if (string.IsNullOrEmpty(emisor.CertificadoBase64))
         {
             _logger.LogInformation("Generando XML en modo prueba (sin certificado digital)");
-            return xmlSinFirmar;
+            return (xmlSinFirmar, null);
         }
         try
         {
-            return _firmaDigital.FirmarXml(xmlSinFirmar, emisor.CertificadoBase64, emisor.CertificadoPassword);
+            var firmado = _firmaDigital.FirmarXml(xmlSinFirmar, emisor.CertificadoBase64, emisor.CertificadoPassword);
+            return (firmado, null);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error firmando XML, guardando sin firma");
-            return xmlSinFirmar;
+            _logger.LogError(ex, "Error firmando XML para emisor {EmisorId}", emisor.Id);
+            return (xmlSinFirmar, ex.Message);
         }
     }
 
