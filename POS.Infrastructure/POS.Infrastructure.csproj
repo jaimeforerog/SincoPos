@@ -21,7 +21,9 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
+    <!-- Marten 8 trae Microsoft.CodeAnalysis.Workspaces.MSBuild 4.8 con constraint exact-version a Common 4.8;
+         el resolver elige Common 4.14 (compat hacia atrás) y dispara NU1608. Silenciado intencionalmente. -->
+    <NoWarn>$(NoWarn);NU1608</NoWarn>
   </PropertyGroup>
 
 </Project>
