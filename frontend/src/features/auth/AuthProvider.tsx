@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AuthKitProvider, useAuth as useWorkosAuth } from '@workos-inc/authkit-react';
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 import { usuariosApi } from '@/api/usuarios';
 import { setWorkosTokenGetter } from '@/api/tokenRef';
 import { CircularProgress, Box } from '@mui/material';
@@ -19,7 +20,12 @@ function LoadingScreen() {
 function WorkOsAuthInitializer({ children }: { children: ReactNode }) {
   const { user, isLoading, signOut, getAccessToken } = useWorkosAuth();
   const isAuthenticated = !!user;
-  const { setUser, setIdpLogout } = useAuthStore();
+  const { setUser, setIdpLogout } = useAuthStore(
+    useShallow(s => ({
+      setUser: s.setUser,
+      setIdpLogout: s.setIdpLogout,
+    })),
+  );
 
   // Exponer getAccessToken al interceptor de axios para manejo de token expirado
   useEffect(() => {

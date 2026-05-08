@@ -25,7 +25,7 @@ let _exchanged = false;
 
 export function CallbackPage() {
   const navigate = useNavigate();
-  const { setUser } = useAuthStore();
+  const setUser = useAuthStore(s => s.setUser);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

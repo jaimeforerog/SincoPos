@@ -16,10 +16,21 @@ import BusinessIcon from '@mui/icons-material/Business';
 import StoreIcon from '@mui/icons-material/Store';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 import { sucursalesApi } from '@/api/sucursales';
 
 export function SeleccionarEmpresaDialog() {
-  const { isAuthenticated, isLoading, activeEmpresaId, setActiveEmpresa, setActiveSucursal, user, empresasDisponibles } = useAuthStore();
+  const { isAuthenticated, isLoading, activeEmpresaId, setActiveEmpresa, setActiveSucursal, user, empresasDisponibles } = useAuthStore(
+    useShallow(s => ({
+      isAuthenticated: s.isAuthenticated,
+      isLoading: s.isLoading,
+      activeEmpresaId: s.activeEmpresaId,
+      setActiveEmpresa: s.setActiveEmpresa,
+      setActiveSucursal: s.setActiveSucursal,
+      user: s.user,
+      empresasDisponibles: s.empresasDisponibles,
+    })),
+  );
 
   const [selectedEmpresa, setSelectedEmpresa] = useState<{ id: number; nombre: string } | null>(null);
   const [selectedSucursal, setSelectedSucursal] = useState<{ id: number; nombre: string } | null>(null);

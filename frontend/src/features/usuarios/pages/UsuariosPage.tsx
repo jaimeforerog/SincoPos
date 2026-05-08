@@ -18,6 +18,7 @@ import { usuariosApi, type UsuarioDto } from '@/api/usuarios';
 import { sucursalesApi } from '@/api/sucursales';
 import { ReportePageHeader } from '@/features/reportes/components/ReportePageHeader';
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from '@/hooks/useAuth';
 import { CrearUsuarioDialog } from '../components/CrearUsuarioDialog';
 import { EditarUsuarioDialog } from '../components/EditarUsuarioDialog';
@@ -31,7 +32,13 @@ const ROLES_FILTRO = ['admin', 'supervisor', 'cajero', 'vendedor'];
 export function UsuariosPage() {
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
-  const { user: currentUser, setUser, activeEmpresaId } = useAuthStore();
+  const { user: currentUser, setUser, activeEmpresaId } = useAuthStore(
+    useShallow(s => ({
+      user: s.user,
+      setUser: s.setUser,
+      activeEmpresaId: s.activeEmpresaId,
+    })),
+  );
   const { isAdmin } = useAuth();
 
   // Filtros

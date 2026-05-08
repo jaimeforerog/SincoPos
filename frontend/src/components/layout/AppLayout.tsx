@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 import { useUiConfig } from '@/hooks/useUiConfig';
 import { sincoColors } from '@/theme/tokens';
 import { APP_NAME } from '@/utils/constants';
@@ -50,7 +51,16 @@ export function AppLayout() {
   useEffect(() => {
     if (isPOS) setDrawerOpen(false);
   }, [isPOS]);
-  const { activeSucursalId, setActiveSucursal, activeEmpresaId, empresasDisponibles, setActiveEmpresa, logout } = useAuthStore();
+  const { activeSucursalId, setActiveSucursal, activeEmpresaId, empresasDisponibles, setActiveEmpresa, logout } = useAuthStore(
+    useShallow(s => ({
+      activeSucursalId: s.activeSucursalId,
+      setActiveSucursal: s.setActiveSucursal,
+      activeEmpresaId: s.activeEmpresaId,
+      empresasDisponibles: s.empresasDisponibles,
+      setActiveEmpresa: s.setActiveEmpresa,
+      logout: s.logout,
+    })),
+  );
 
   // Fuente de verdad: sucursales de la empresa activa desde la API.
   // Esto garantiza que la sucursal seleccionada en el diálogo siempre sea encontrable,

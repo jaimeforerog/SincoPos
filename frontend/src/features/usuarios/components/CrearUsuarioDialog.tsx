@@ -53,7 +53,7 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
   const queryClient = useQueryClient();
   const [backendError, setBackendError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CrearUsuarioResult | null>(null);
-  const { activeEmpresaId } = useAuthStore();
+  const activeEmpresaId = useAuthStore(s => s.activeEmpresaId);
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales', activeEmpresaId],

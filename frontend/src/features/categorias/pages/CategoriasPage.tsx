@@ -30,7 +30,7 @@ export function CategoriasPage() {
   const [incluirInactivas, setIncluirInactivas] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
-  const { activeEmpresaId } = useAuthStore();
+  const activeEmpresaId = useAuthStore(s => s.activeEmpresaId);
 
   // Cargar árbol de categorías
   const { data: categorias = [], isLoading } = useQuery({

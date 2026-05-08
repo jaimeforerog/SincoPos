@@ -48,7 +48,7 @@ export function ProductoFormDialog({
 }: ProductoFormDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
-  const { activeEmpresaId } = useAuthStore();
+  const activeEmpresaId = useAuthStore(s => s.activeEmpresaId);
   const [backendError, setBackendError] = useState<string | null>(null);
   const [conceptoRetencionId, setConceptoRetencionId] = useState<number | ''>('');
   const [impuestoId, setImpuestoId] = useState<number | ''>('');

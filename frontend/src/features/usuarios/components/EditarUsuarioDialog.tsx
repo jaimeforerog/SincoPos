@@ -56,7 +56,7 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
   const queryClient = useQueryClient();
   const [backendError, setBackendError] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const { activeEmpresaId } = useAuthStore();
+  const activeEmpresaId = useAuthStore(s => s.activeEmpresaId);
 
   const { data: todasSucursales = [] } = useQuery({
     queryKey: ['sucursales', activeEmpresaId],

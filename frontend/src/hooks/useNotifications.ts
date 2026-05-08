@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { useSnackbar } from 'notistack';
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/utils/logger';
 import type { NotificacionDto } from '@/types/notifications';
 
@@ -9,7 +10,12 @@ const MAX_NOTIFICATIONS = 50;
 
 export function useNotifications() {
   const { enqueueSnackbar } = useSnackbar();
-  const { isAuthenticated, activeSucursalId } = useAuthStore();
+  const { isAuthenticated, activeSucursalId } = useAuthStore(
+    useShallow(s => ({
+      isAuthenticated: s.isAuthenticated,
+      activeSucursalId: s.activeSucursalId,
+    })),
+  );
   const [notifications, setNotifications] = useState<NotificacionDto[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const connectionRef = useRef<signalR.HubConnection | null>(null);

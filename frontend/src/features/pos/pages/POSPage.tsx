@@ -9,6 +9,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 import { HeroBanner } from '@/components/common/HeroBanner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useCartStore } from '@/stores/cart.store';
@@ -27,7 +28,12 @@ export function POSPage() {
   const navigate = useNavigate();
   const { user, isCajero, activeSucursalId } = useAuth();
   const { isOnline } = useOfflineSync();
-  const { empresasDisponibles, activeEmpresaId } = useAuthStore();
+  const { empresasDisponibles, activeEmpresaId } = useAuthStore(
+    useShallow(s => ({
+      empresasDisponibles: s.empresasDisponibles,
+      activeEmpresaId: s.activeEmpresaId,
+    })),
+  );
 
   const {
     selectedCajaId,

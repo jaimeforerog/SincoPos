@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 import { useOfflineSync } from '@/offline/useOfflineSync';
 import { useContextualNotification } from '@/hooks/useContextualNotification';
 import { useCartStore } from '@/stores/cart.store';
@@ -16,7 +17,12 @@ export function usePOSSession() {
   const queryClient = useQueryClient();
   const { operacional } = useContextualNotification();
   const { user, activeSucursalId, activeEmpresaId, isLoading } = useAuth();
-  const { setActiveSucursal, setActiveEmpresa } = useAuthStore();
+  const { setActiveSucursal, setActiveEmpresa } = useAuthStore(
+    useShallow(s => ({
+      setActiveSucursal: s.setActiveSucursal,
+      setActiveEmpresa: s.setActiveEmpresa,
+    })),
+  );
   const { isOnline } = useOfflineSync();
   const { items, clearCart } = useCartStore();
 

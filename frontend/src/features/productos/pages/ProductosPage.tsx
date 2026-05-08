@@ -43,7 +43,7 @@ import type { ProductoDTO , ApiError} from '@/types/api';
 export function ProductosPage() {
   const { enqueueSnackbar } = useSnackbar();
   const { isSupervisor, isAdmin } = useAuth();
-  const { activeEmpresaId } = useAuthStore();
+  const activeEmpresaId = useAuthStore(s => s.activeEmpresaId);
   const queryClient = useQueryClient();
 
   const [selectedProducto, setSelectedProducto] = useState<ProductoDTO | null>(null);

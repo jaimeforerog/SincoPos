@@ -51,7 +51,7 @@ function tipoColor(tipo: string): 'primary' | 'secondary' | 'default' {
 }
 
 export default function TercerosPage() {
-  const { activeEmpresaId } = useAuthStore();
+  const activeEmpresaId = useAuthStore(s => s.activeEmpresaId);
   const [terceros, setTerceros] = useState<TerceroDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

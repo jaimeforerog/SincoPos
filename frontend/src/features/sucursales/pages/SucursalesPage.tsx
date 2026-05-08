@@ -31,7 +31,7 @@ export function SucursalesPage() {
   const [incluirInactivas, setIncluirInactivas] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
-  const { activeEmpresaId } = useAuthStore();
+  const activeEmpresaId = useAuthStore(s => s.activeEmpresaId);
 
   const { data: todasSucursales, isLoading } = useQuery({
     queryKey: ['sucursales', incluirInactivas],

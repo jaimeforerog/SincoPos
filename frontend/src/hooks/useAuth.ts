@@ -1,7 +1,16 @@
 import { useAuthStore } from '@/stores/auth.store';
+import { useShallow } from 'zustand/react/shallow';
 
 export const useAuth = () => {
-  const { user, isAuthenticated, isLoading, activeSucursalId, activeEmpresaId } = useAuthStore();
+  const { user, isAuthenticated, isLoading, activeSucursalId, activeEmpresaId } = useAuthStore(
+    useShallow(s => ({
+      user: s.user,
+      isAuthenticated: s.isAuthenticated,
+      isLoading: s.isLoading,
+      activeSucursalId: s.activeSucursalId,
+      activeEmpresaId: s.activeEmpresaId,
+    })),
+  );
 
   const hasRole = (role: string): boolean => {
     return user?.roles?.some(r => r.toLowerCase() === role.toLowerCase()) ?? false;
