@@ -8,9 +8,12 @@ import {
 import AddIcon      from '@mui/icons-material/Add';
 import EditIcon     from '@mui/icons-material/Edit';
 import BusinessIcon from '@mui/icons-material/Business';
+import SyncIcon     from '@mui/icons-material/Sync';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { empresasApi } from '@/api/empresas';
+import { workosSyncApi } from '@/api/workosSync';
+import { useAuth } from '@/hooks/useAuth';
 import type { EmpresaDTO, CrearEmpresaDTO, ActualizarEmpresaDTO } from '@/types/api';
 
 // ── Formulario (crear / editar) ────────────────────────────────────────────
@@ -109,10 +112,29 @@ function EmpresaFormDialog({ open, empresa, onClose, onSaved }: EmpresaFormDialo
 export function EmpresasPage() {
   const [dialogOpen, setDialogOpen]         = useState(false);
   const [selected, setSelected]             = useState<EmpresaDTO | undefined>();
+  const { isAdmin }                          = useAuth();
+  const { enqueueSnackbar }                  = useSnackbar();
+  const queryClient                          = useQueryClient();
 
   const { data: empresas = [], isLoading, isError } = useQuery({
     queryKey: ['empresas'],
     queryFn:  empresasApi.getAll,
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: workosSyncApi.sincronizar,
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      enqueueSnackbar(
+        `Sincronización completada: ${r.empresasSincronizadas} empresa(s), ${r.usuariosSincronizados} usuario(s)` +
+          (r.empresasFallidas > 0 ? `. Fallaron ${r.empresasFallidas} empresa(s) — revisar logs.` : ''),
+        { variant: r.empresasFallidas > 0 ? 'warning' : 'success' },
+      );
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { message?: string })?.message ?? 'Error al sincronizar con WorkOS';
+      enqueueSnackbar(msg, { variant: 'error' });
+    },
   });
 
   const openCreate = () => { setSelected(undefined); setDialogOpen(true); };
@@ -139,14 +161,31 @@ export function EmpresasPage() {
             </Typography>
           </Box>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={openCreate}
-          sx={{ bgcolor: 'rgba(255,255,255,0.15)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }, color: '#fff' }}
-        >
-          Nueva empresa
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {isAdmin() && (
+            <Tooltip title="Sincroniza Empresas y Usuarios con Organizations + Memberships de WorkOS. Idempotente.">
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={<SyncIcon />}
+                  onClick={() => syncMutation.mutate()}
+                  disabled={syncMutation.isPending}
+                  sx={{ borderColor: 'rgba(255,255,255,0.5)', color: '#fff', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' } }}
+                >
+                  {syncMutation.isPending ? 'Sincronizando…' : 'Sincronizar WorkOS'}
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreate}
+            sx={{ bgcolor: 'rgba(255,255,255,0.15)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }, color: '#fff' }}
+          >
+            Nueva empresa
+          </Button>
+        </Box>
       </Box>
 
       {/* Tabla */}
