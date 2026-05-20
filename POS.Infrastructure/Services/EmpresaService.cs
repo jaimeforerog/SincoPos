@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using POS.Application.DTOs;
 using POS.Application.Services;
 using POS.Infrastructure.Data;
@@ -9,8 +10,18 @@ namespace POS.Infrastructure.Services;
 public sealed class EmpresaService : IEmpresaService
 {
     private readonly AppDbContext _context;
+    private readonly IIdentityProviderService _identityProvider;
+    private readonly ILogger<EmpresaService> _logger;
 
-    public EmpresaService(AppDbContext context) => _context = context;
+    public EmpresaService(
+        AppDbContext context,
+        IIdentityProviderService identityProvider,
+        ILogger<EmpresaService> logger)
+    {
+        _context = context;
+        _identityProvider = identityProvider;
+        _logger = logger;
+    }
 
     public async Task<List<EmpresaDto>> ObtenerTodasAsync()
     {
@@ -57,6 +68,21 @@ public sealed class EmpresaService : IEmpresaService
         _context.Empresas.Add(empresa);
         await _context.SaveChangesAsync();
 
+        // Sincronizar con WorkOS Organization
+        var (orgId, orgError) = await _identityProvider.CrearOrganizacionAsync(empresa.Nombre);
+        if (orgId != null)
+        {
+            empresa.WorkOsOrganizationId = orgId;
+            await _context.SaveChangesAsync();
+        }
+        else
+        {
+            _logger.LogWarning(
+                "No se pudo crear Organization en WorkOS para empresa {Id} ({Nombre}): {Error}. " +
+                "Se puede sincronizar luego via /admin/sync-workos.",
+                empresa.Id, empresa.Nombre, orgError);
+        }
+
         return (ToDto(empresa), null);
     }
 
@@ -77,13 +103,59 @@ public sealed class EmpresaService : IEmpresaService
                 .AnyAsync(e => e.Nit == dto.Nit && e.Id != id))
             return (null, "Ya existe otra empresa con ese NIT.");
 
+        var nombreCambio = empresa.Nombre != dto.Nombre.Trim();
+
         empresa.Nombre      = dto.Nombre.Trim();
         empresa.Nit         = dto.Nit?.Trim();
         empresa.RazonSocial = dto.RazonSocial?.Trim();
         empresa.Activo      = dto.Activo;
 
         await _context.SaveChangesAsync();
+
+        if (nombreCambio && !string.IsNullOrEmpty(empresa.WorkOsOrganizationId))
+        {
+            var (_, err) = await _identityProvider.ActualizarOrganizacionAsync(
+                empresa.WorkOsOrganizationId, empresa.Nombre);
+            if (err != null)
+                _logger.LogWarning(
+                    "No se pudo actualizar Organization {OrgId} en WorkOS: {Error}",
+                    empresa.WorkOsOrganizationId, err);
+        }
+
         return (ToDto(empresa), null);
+    }
+
+    public async Task<(int Sincronizadas, int Fallidas)> SincronizarOrganizacionesAsync()
+    {
+        var pendientes = await _context.Empresas
+            .IgnoreQueryFilters()
+            .Where(e => e.WorkOsOrganizationId == null)
+            .ToListAsync();
+
+        int ok = 0, fail = 0;
+        foreach (var empresa in pendientes)
+        {
+            var (orgId, err) = await _identityProvider.CrearOrganizacionAsync(empresa.Nombre);
+            if (orgId != null)
+            {
+                empresa.WorkOsOrganizationId = orgId;
+                ok++;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Backfill: no se pudo crear Organization para empresa {Id} ({Nombre}): {Error}",
+                    empresa.Id, empresa.Nombre, err);
+                fail++;
+            }
+        }
+        if (ok > 0)
+            await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Backfill Organizations: {Ok} sincronizadas, {Fail} fallidas (de {Total} pendientes)",
+            ok, fail, pendientes.Count);
+        return (ok, fail);
     }
 
     private static EmpresaDto ToDto(Empresa e) => new(

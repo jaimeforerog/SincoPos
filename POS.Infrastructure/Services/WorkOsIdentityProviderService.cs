@@ -192,4 +192,195 @@ public sealed class WorkOsIdentityProviderService : IIdentityProviderService
             return (null, ex.Message);
         }
     }
+
+    // ── Organizations ───────────────────────────────────────────────────────
+
+    public async Task<(string? OrganizationId, string? Error)> CrearOrganizacionAsync(string nombre)
+    {
+        try
+        {
+            var body = JsonSerializer.Serialize(new { name = nombre }, _json);
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("organizations", content);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "[WorkOS] Error al crear organization '{Nombre}': {Status} {Body}",
+                    nombre, response.StatusCode, responseBody);
+                return (null, $"Error WorkOS {(int)response.StatusCode}");
+            }
+
+            var doc = JsonDocument.Parse(responseBody);
+            var id = doc.RootElement.GetProperty("id").GetString();
+            _logger.LogInformation("[WorkOS] Organization creada: {Nombre} → {Id}", nombre, id);
+            return (id, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[WorkOS] Excepción al crear organization '{Nombre}'", nombre);
+            return (null, ex.Message);
+        }
+    }
+
+    public async Task<(bool Success, string? Error)> ActualizarOrganizacionAsync(string organizationId, string nombre)
+    {
+        try
+        {
+            var body = JsonSerializer.Serialize(new { name = nombre }, _json);
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Put, $"organizations/{organizationId}")
+            {
+                Content = content,
+            };
+            var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var respBody = await response.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "[WorkOS] Error al actualizar organization {Id}: {Status} {Body}",
+                    organizationId, response.StatusCode, respBody);
+                return (false, $"Error WorkOS {(int)response.StatusCode}");
+            }
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[WorkOS] Excepción al actualizar organization {Id}", organizationId);
+            return (false, ex.Message);
+        }
+    }
+
+    public async Task<(string? MembershipId, string? Error)> CrearMembresiaAsync(string externalUserId, string organizationId)
+    {
+        try
+        {
+            var body = JsonSerializer.Serialize(new
+            {
+                user_id = externalUserId,
+                organization_id = organizationId,
+            }, _json);
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("user_management/organization_memberships", content);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var doc = JsonDocument.Parse(responseBody);
+                var id = doc.RootElement.GetProperty("id").GetString();
+                _logger.LogInformation(
+                    "[WorkOS] Membership creada: user={UserId} org={OrgId} → {Id}",
+                    externalUserId, organizationId, id);
+                return (id, null);
+            }
+
+            // 422/409: WorkOS rechaza memberships duplicadas; lo tratamos como éxito idempotente
+            if (response.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity ||
+                response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                if (responseBody.Contains("already", StringComparison.OrdinalIgnoreCase) ||
+                    responseBody.Contains("exists", StringComparison.OrdinalIgnoreCase) ||
+                    responseBody.Contains("duplicate", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug(
+                        "[WorkOS] Membership ya existe para user={UserId} org={OrgId}",
+                        externalUserId, organizationId);
+                    return (null, null);
+                }
+            }
+
+            _logger.LogError(
+                "[WorkOS] Error al crear membership user={UserId} org={OrgId}: {Status} {Body}",
+                externalUserId, organizationId, response.StatusCode, responseBody);
+            return (null, $"Error WorkOS {(int)response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[WorkOS] Excepción al crear membership user={UserId} org={OrgId}",
+                externalUserId, organizationId);
+            return (null, ex.Message);
+        }
+    }
+
+    public async Task<(bool Success, string? Error)> EliminarMembresiaAsync(string externalUserId, string organizationId)
+    {
+        try
+        {
+            // Hay que listar memberships para obtener el membership_id, no se puede borrar por user_id+org_id directo.
+            var (ids, listError) = await ListarMembershipIdsAsync(externalUserId);
+            if (listError != null)
+                return (false, listError);
+
+            foreach (var (membershipId, orgId) in ids)
+            {
+                if (orgId != organizationId) continue;
+                var response = await _httpClient.DeleteAsync($"user_management/organization_memberships/{membershipId}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    _logger.LogError(
+                        "[WorkOS] Error al eliminar membership {Id}: {Status} {Body}",
+                        membershipId, response.StatusCode, body);
+                    return (false, $"Error WorkOS {(int)response.StatusCode}");
+                }
+                _logger.LogInformation(
+                    "[WorkOS] Membership eliminada: user={UserId} org={OrgId}", externalUserId, organizationId);
+                return (true, null);
+            }
+            // No existía: tratamos como éxito idempotente
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[WorkOS] Excepción al eliminar membership user={UserId} org={OrgId}",
+                externalUserId, organizationId);
+            return (false, ex.Message);
+        }
+    }
+
+    public async Task<(IReadOnlyList<string> OrganizationIds, string? Error)> ListarMembresiasAsync(string externalUserId)
+    {
+        var (ids, error) = await ListarMembershipIdsAsync(externalUserId);
+        if (error != null)
+            return (Array.Empty<string>(), error);
+        return (ids.Select(p => p.OrgId).ToList(), null);
+    }
+
+    private async Task<(List<(string MembershipId, string OrgId)> Items, string? Error)> ListarMembershipIdsAsync(string externalUserId)
+    {
+        try
+        {
+            var url = $"user_management/organization_memberships?user_id={Uri.EscapeDataString(externalUserId)}&limit=100";
+            var response = await _httpClient.GetAsync(url);
+            var body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "[WorkOS] Error al listar memberships de {UserId}: {Status} {Body}",
+                    externalUserId, response.StatusCode, body);
+                return (new(), $"Error WorkOS {(int)response.StatusCode}");
+            }
+
+            var doc = JsonDocument.Parse(body);
+            var items = new List<(string, string)>();
+            if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var m in data.EnumerateArray())
+                {
+                    var membershipId = m.GetProperty("id").GetString();
+                    var orgId = m.GetProperty("organization_id").GetString();
+                    if (membershipId != null && orgId != null)
+                        items.Add((membershipId, orgId));
+                }
+            }
+            return (items, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[WorkOS] Excepción al listar memberships de {UserId}", externalUserId);
+            return (new(), ex.Message);
+        }
+    }
 }

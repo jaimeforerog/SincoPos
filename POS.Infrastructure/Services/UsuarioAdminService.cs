@@ -62,6 +62,8 @@ public sealed class UsuarioAdminService : IUsuarioAdminService
         if (idsConDefault.Count > 0)
             await AsignarSucursalesInternalAsync(usuario.Id, idsConDefault.ToList());
 
+        await SincronizarMembershipsWorkOsAsync(usuario.Id);
+
         _logger.LogInformation(
             "Usuario creado por admin: Id={Id}, Email={Email}, Rol={Rol}, ExternalId={ExternalId}",
             usuario.Id, usuario.Email, usuario.Rol, externalId);
@@ -122,11 +124,15 @@ public sealed class UsuarioAdminService : IUsuarioAdminService
         usuario.FechaModificacion = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        if (dto.Rol != null && dto.Rol.ToLower() != rolAnterior)
-            await SincronizarRolIdpAsync(usuario.ExternalId, usuario.Email, dto.Rol);
+        var rolCambio = dto.Rol != null && dto.Rol.ToLower() != rolAnterior;
+        if (rolCambio)
+            await SincronizarRolIdpAsync(usuario.ExternalId, usuario.Email, dto.Rol!);
 
         if (dto.SucursalIds != null)
             await AsignarSucursalesInternalAsync(id, dto.SucursalIds);
+
+        if (rolCambio || dto.SucursalIds != null)
+            await SincronizarMembershipsWorkOsAsync(id);
 
         _logger.LogInformation("Usuario actualizado: Id={Id}, Email={Email}", id, usuario.Email);
 
@@ -151,6 +157,7 @@ public sealed class UsuarioAdminService : IUsuarioAdminService
         await _context.SaveChangesAsync();
 
         await SincronizarRolIdpAsync(usuario.ExternalId, usuario.Email, nuevoRol);
+        await SincronizarMembershipsWorkOsAsync(id);
 
         _logger.LogInformation(
             "Rol de usuario {Email} cambiado: {RolAnterior} -> {RolNuevo}",
@@ -203,5 +210,78 @@ public sealed class UsuarioAdminService : IUsuarioAdminService
             _context.UsuarioSucursales.Add(new UsuarioSucursal { UsuarioId = usuarioId, SucursalId = sid });
 
         await _context.SaveChangesAsync();
+    }
+
+    public Task SincronizarMembershipsAsync(int usuarioId) => SincronizarMembershipsWorkOsAsync(usuarioId);
+
+    /// <summary>
+    /// Sincroniza memberships del usuario en WorkOS con las empresas accesibles.
+    /// - admin: todas las empresas activas con WorkOsOrganizationId.
+    /// - otros: empresas derivadas de las sucursales asignadas.
+    /// Idempotente: crea las faltantes, elimina las sobrantes.
+    /// </summary>
+    private async Task SincronizarMembershipsWorkOsAsync(int usuarioId)
+    {
+        var usuario = await _context.Usuarios
+            .Include(u => u.Sucursales)
+            .FirstOrDefaultAsync(u => u.Id == usuarioId);
+        if (usuario == null || string.IsNullOrEmpty(usuario.ExternalId)) return;
+
+        IReadOnlyList<string> orgsEsperadas;
+        if (usuario.Rol == Roles.Admin)
+        {
+            orgsEsperadas = await _context.Empresas
+                .IgnoreQueryFilters()
+                .Where(e => e.Activo && e.WorkOsOrganizationId != null)
+                .Select(e => e.WorkOsOrganizationId!)
+                .ToListAsync();
+        }
+        else
+        {
+            var sucursalIds = usuario.Sucursales.Select(us => us.SucursalId).ToList();
+            orgsEsperadas = await _context.Sucursales
+                .IgnoreQueryFilters()
+                .Where(s => sucursalIds.Contains(s.Id))
+                .Select(s => s.EmpresaId)
+                .Distinct()
+                .Join(_context.Empresas.IgnoreQueryFilters().Where(e => e.WorkOsOrganizationId != null),
+                    sid => sid, e => e.Id, (sid, e) => e.WorkOsOrganizationId!)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        var (orgsActuales, listError) = await _identityProvider.ListarMembresiasAsync(usuario.ExternalId);
+        if (listError != null)
+        {
+            _logger.LogWarning(
+                "No se pudieron listar memberships de {Email}: {Error}",
+                usuario.Email, listError);
+            return;
+        }
+
+        var aAgregar = orgsEsperadas.Except(orgsActuales).ToList();
+        var aQuitar = orgsActuales.Except(orgsEsperadas).ToList();
+
+        foreach (var orgId in aAgregar)
+        {
+            var (_, err) = await _identityProvider.CrearMembresiaAsync(usuario.ExternalId, orgId);
+            if (err != null)
+                _logger.LogWarning(
+                    "No se pudo crear membership {OrgId} para {Email}: {Error}",
+                    orgId, usuario.Email, err);
+        }
+        foreach (var orgId in aQuitar)
+        {
+            var (_, err) = await _identityProvider.EliminarMembresiaAsync(usuario.ExternalId, orgId);
+            if (err != null)
+                _logger.LogWarning(
+                    "No se pudo eliminar membership {OrgId} para {Email}: {Error}",
+                    orgId, usuario.Email, err);
+        }
+
+        if (aAgregar.Count > 0 || aQuitar.Count > 0)
+            _logger.LogInformation(
+                "Memberships sincronizadas para {Email}: +{Agregadas}/-{Quitadas}",
+                usuario.Email, aAgregar.Count, aQuitar.Count);
     }
 }

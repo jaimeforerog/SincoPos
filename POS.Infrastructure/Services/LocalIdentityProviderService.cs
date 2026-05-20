@@ -66,6 +66,40 @@ public sealed class LocalIdentityProviderService : IIdentityProviderService
         return Task.FromResult<(string? TempPassword, string? Error)>((password, null));
     }
 
+    public Task<(string? OrganizationId, string? Error)> CrearOrganizacionAsync(string nombre)
+    {
+        var orgId = $"local-org-{Guid.NewGuid()}";
+        _logger.LogInformation("[LocalIdP] Organization creada: {Nombre} → {Id}", nombre, orgId);
+        return Task.FromResult<(string?, string?)>((orgId, null));
+    }
+
+    public Task<(bool Success, string? Error)> ActualizarOrganizacionAsync(string organizationId, string nombre)
+    {
+        _logger.LogInformation("[LocalIdP] Organization actualizada: {Id} → {Nombre}", organizationId, nombre);
+        return Task.FromResult<(bool, string?)>((true, null));
+    }
+
+    public Task<(string? MembershipId, string? Error)> CrearMembresiaAsync(string externalUserId, string organizationId)
+    {
+        var id = $"local-membership-{Guid.NewGuid()}";
+        _logger.LogInformation(
+            "[LocalIdP] Membership creada: user={UserId} org={OrgId} → {Id}",
+            externalUserId, organizationId, id);
+        return Task.FromResult<(string?, string?)>((id, null));
+    }
+
+    public Task<(bool Success, string? Error)> EliminarMembresiaAsync(string externalUserId, string organizationId)
+    {
+        _logger.LogInformation(
+            "[LocalIdP] Membership eliminada: user={UserId} org={OrgId}", externalUserId, organizationId);
+        return Task.FromResult<(bool, string?)>((true, null));
+    }
+
+    public Task<(IReadOnlyList<string> OrganizationIds, string? Error)> ListarMembresiasAsync(string externalUserId)
+    {
+        return Task.FromResult<(IReadOnlyList<string>, string?)>((Array.Empty<string>(), null));
+    }
+
     private static string GenerateRandomPassword(int length)
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*";
