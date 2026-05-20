@@ -34,8 +34,10 @@ public sealed class UsuarioAdminService : IUsuarioAdminService
         if (emailExiste)
             return (null, $"Ya existe un usuario con el email '{dto.Email}'");
 
+        var passwordTemporal = PasswordGenerator.Generate();
+
         var (externalId, idpError) = await _identityProvider.CrearUsuarioAsync(
-            dto.Email, dto.NombreCompleto, null);
+            dto.Email, dto.NombreCompleto, passwordTemporal);
         if (externalId == null)
             return (null, $"Error al crear usuario en proveedor de identidad: {idpError}");
 
@@ -64,16 +66,26 @@ public sealed class UsuarioAdminService : IUsuarioAdminService
             "Usuario creado por admin: Id={Id}, Email={Email}, Rol={Rol}, ExternalId={ExternalId}",
             usuario.Id, usuario.Email, usuario.Rol, externalId);
 
-        var (tempPassword, _) = await _identityProvider.ResetPasswordAsync(externalId);
+        // Disparar email para que el invitado configure su propia contrasena.
+        // ResetPasswordAsync settea un password fresco en WorkOS y dispara el email.
+        // Si tiene exito devuelve el password real (el initial queda reemplazado);
+        // si falla, devolvemos el initial — que tambien quedo seteado al crear.
+        var (passwordReset, resetError) = await _identityProvider.ResetPasswordAsync(externalId);
+        if (resetError != null)
+            _logger.LogWarning(
+                "No se pudo enviar email de configuracion de contrasena a {Email} (Id={Id}): {Error}. " +
+                "El admin debera compartir manualmente el password temporal generado.",
+                usuario.Email, usuario.Id, resetError);
 
         return (new CrearUsuarioResultDto(
             usuario.Id,
             usuario.Email,
             usuario.NombreCompleto,
             usuario.Rol,
-            tempPassword
+            passwordReset ?? passwordTemporal
         ), null);
     }
+
 
     public async Task<(bool Success, string? Error)> ActualizarUsuarioAsync(int id, ActualizarUsuarioDto dto, string creadorRol)
     {

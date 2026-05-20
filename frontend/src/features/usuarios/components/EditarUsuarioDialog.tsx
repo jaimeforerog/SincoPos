@@ -124,10 +124,10 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
     mutationFn: () => usuariosApi.resetPassword(usuario!.id),
     onSuccess: (result) => {
       setTempPassword(result.passwordTemporal);
-      enqueueSnackbar('Contrasena reseteada exitosamente', { variant: 'success' });
+      enqueueSnackbar('Se envio correo de invitacion y se genero contrasena temporal', { variant: 'success' });
     },
     onError: (error: ApiError) => {
-      const mensaje = error?.message || 'Error al resetear la contrasena';
+      const mensaje = error?.message || 'Error al reenviar invitacion';
       enqueueSnackbar(mensaje, { variant: 'error' });
     },
   });
@@ -295,11 +295,11 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
               </Box>
             )}
 
-            {/* Reset password section */}
+            {/* Reset password / Reenviar invitacion */}
             <Divider sx={{ my: 1 }} />
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Contrasena
+                Acceso
               </Typography>
               <Button
                 variant="outlined"
@@ -308,13 +308,16 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
                 onClick={() => resetPasswordMutation.mutate()}
                 disabled={resetPasswordMutation.isPending}
               >
-                Resetear contrasena
+                Reenviar invitacion / resetear contrasena
               </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Envia un correo al usuario y genera una contrasena temporal como respaldo.
+              </Typography>
               {tempPassword && (
                 <Box sx={{ mt: 2 }}>
                   <TextField
                     fullWidth
-                    label="Contrasena temporal"
+                    label="Contrasena temporal (fallback)"
                     value={tempPassword}
                     InputProps={{
                       readOnly: true,
@@ -329,7 +332,7 @@ export function EditarUsuarioDialog({ open, usuario, onClose }: EditarUsuarioDia
                     sx={{ fontFamily: 'monospace' }}
                   />
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    Comparta esta contrasena con el usuario. Solo se muestra una vez.
+                    Si el invitado no recibe el correo, comparta esta contrasena manualmente. Solo se muestra una vez.
                   </Typography>
                 </Box>
               )}

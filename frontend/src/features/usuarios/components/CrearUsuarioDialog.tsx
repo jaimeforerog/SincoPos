@@ -157,11 +157,12 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
         <DialogContent>
           <Alert severity="success" sx={{ mb: 2 }}>
             El usuario <strong>{resultado.email}</strong> ha sido creado con el rol <strong>{resultado.rol}</strong>.
+            Se le envio un correo para que configure su contrasena.
           </Alert>
           {resultado.passwordTemporal && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
-                Contrasena temporal:
+                Contrasena temporal (fallback):
               </Typography>
               <TextField
                 fullWidth
@@ -179,7 +180,7 @@ export function CrearUsuarioDialog({ open, onClose }: CrearUsuarioDialogProps) {
                 sx={{ fontFamily: 'monospace' }}
               />
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Comparta esta contrasena con el usuario. Solo se muestra una vez.
+                Si el invitado no recibe el correo, comparta esta contrasena manualmente. Solo se muestra una vez.
               </Typography>
             </Box>
           )}

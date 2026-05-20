@@ -128,13 +128,20 @@ public sealed class WorkOsIdentityProviderService : IIdentityProviderService
 
     public async Task<(string? TempPassword, string? Error)> ResetPasswordAsync(string externalId)
     {
-        // WorkOS envía un email de restablecimiento de contraseña al usuario
-        // Primero necesitamos el email del usuario
+        // Flujo: GET user para email → PUT password nuevo → POST password_reset/send.
+        // Settear un password fresco asegura que usuarios creados antes con password:null
+        // tengan credenciales válidas aunque el email de reset no llegue.
         try
         {
             var userResponse = await _httpClient.GetAsync($"user_management/users/{externalId}");
             if (!userResponse.IsSuccessStatusCode)
+            {
+                var errBody = await userResponse.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "[WorkOS] No se pudo obtener usuario {Id}: {Status} {Body}",
+                    externalId, userResponse.StatusCode, errBody);
                 return (null, "Usuario no encontrado en WorkOS");
+            }
 
             var userBody = await userResponse.Content.ReadAsStringAsync();
             var userDoc = JsonDocument.Parse(userBody);
@@ -143,19 +150,41 @@ public sealed class WorkOsIdentityProviderService : IIdentityProviderService
             if (string.IsNullOrEmpty(email))
                 return (null, "No se pudo obtener el email del usuario");
 
-            var body = JsonSerializer.Serialize(new { email }, _json);
-            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var nuevoPassword = PasswordGenerator.Generate();
 
-            var response = await _httpClient.PostAsync("user_management/password_reset/send", content);
-            if (!response.IsSuccessStatusCode)
+            var putBody = JsonSerializer.Serialize(new { password = nuevoPassword }, _json);
+            var putContent = new StringContent(putBody, Encoding.UTF8, "application/json");
+            var putRequest = new HttpRequestMessage(HttpMethod.Put, $"user_management/users/{externalId}")
             {
-                var responseBody = await response.Content.ReadAsStringAsync();
-                _logger.LogError("[WorkOS] Error al enviar reset de contraseña: {Body}", responseBody);
-                return (null, $"Error WorkOS {(int)response.StatusCode}");
+                Content = putContent,
+            };
+            var putResponse = await _httpClient.SendAsync(putRequest);
+            if (!putResponse.IsSuccessStatusCode)
+            {
+                var putRespBody = await putResponse.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "[WorkOS] Error al actualizar password de {Email} (Id={Id}): {Status} {Body}",
+                    email, externalId, putResponse.StatusCode, putRespBody);
+                return (null, $"Error WorkOS al actualizar password ({(int)putResponse.StatusCode})");
             }
 
-            _logger.LogInformation("[WorkOS] Email de reset de contraseña enviado a {Email}", email);
-            return ("EMAIL_ENVIADO", null); // WorkOS envía email, no retorna contraseña
+            var sendBody = JsonSerializer.Serialize(new { email }, _json);
+            var sendContent = new StringContent(sendBody, Encoding.UTF8, "application/json");
+            var sendResponse = await _httpClient.PostAsync("user_management/password_reset/send", sendContent);
+            var sendRespBody = await sendResponse.Content.ReadAsStringAsync();
+            if (!sendResponse.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "[WorkOS] Password reseteado para {Email} pero fallo el envio de email: {Status} {Body}. " +
+                    "El admin debera compartir el password manualmente.",
+                    email, sendResponse.StatusCode, sendRespBody);
+                return (nuevoPassword, null);
+            }
+
+            _logger.LogInformation(
+                "[WorkOS] Password reseteado y email solicitado para {Email}. SendStatus={Status}",
+                email, sendResponse.StatusCode);
+            return (nuevoPassword, null);
         }
         catch (Exception ex)
         {
