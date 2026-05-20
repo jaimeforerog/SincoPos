@@ -13,12 +13,23 @@ import {
   TuneOutlined,
   Shield,
   SettingsSuggest,
+  Business,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfigCard } from '../components/ConfigCard';
 import type { ConfigModule } from '../components/ConfigCard';
 
 const configModules: ConfigModule[] = [
+  {
+    id: 'empresas',
+    title: 'Empresas',
+    description: 'Tenants del sistema y sincronización con WorkOS Organizations',
+    icon: <Business fontSize="large" />,
+    path: '/empresas',
+    roles: ['admin'],
+    category: 'negocio',
+    color: '#0d47a1',
+  },
   {
     id: 'sucursales',
     title: 'Sucursales',
