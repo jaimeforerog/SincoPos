@@ -140,9 +140,7 @@ export function ProductoFormDialog({
           precioCosto: 0,
           unidadMedida: '94',
         });
-        // "Compras generales" (codigoDian: 2307) por defecto
-        const conceptoComprasDefault = conceptosRetencion.find(c => c.codigoDian === '2307');
-        setConceptoRetencionId(conceptoComprasDefault ? conceptoComprasDefault.id : '');
+        setConceptoRetencionId('');
         setImpuestoId('');
         setManejaLotes(false);
         setDiasVidaUtil('');
@@ -151,7 +149,22 @@ export function ProductoFormDialog({
         setCantidadMlPorUnidad('');
       }
     }
-  }, [open, producto, resetCrear, resetActualizar, conceptosRetencion]);
+    // El default de conceptoRetencionId en modo crear lo aplica un effect aparte
+    // (depende de conceptosRetencion, cuya referencia cambia mientras la query carga
+    // y dispararía resetCrear() en loop).
+  }, [open, producto, resetCrear, resetActualizar]);
+
+  // Aplica "Compras generales" (codigoDian: 2307) como default en modo crear
+  // una vez que las conceptosRetencion estén cargadas. Independiente del effect
+  // de reset para no re-ejecutar resetCrear cuando el array cambia de referencia.
+  useEffect(() => {
+    if (!open || producto || conceptosRetencion.length === 0) return;
+    const def = conceptosRetencion.find(c => c.codigoDian === '2307');
+    // sincroniza estado local con data async cargada por React Query: aplica el
+    // default solo si el usuario aún no eligió otro valor.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (def) setConceptoRetencionId(prev => (prev === '' ? def.id : prev));
+  }, [open, producto, conceptosRetencion]);
 
   const mutation = useMutation({
     mutationFn: async (data: CrearProductoFormData | ActualizarProductoFormData) => {

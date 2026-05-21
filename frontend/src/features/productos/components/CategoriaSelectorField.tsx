@@ -80,11 +80,12 @@ export function CategoriaSelectorField({ control, errors, categorias }: Categori
         control={control}
         render={({ field: { value, onChange, ...field } }) => (
           <FormControl fullWidth error={!!errors.categoriaId}>
-            <InputLabel>Categoría *</InputLabel>
+            <InputLabel id="categoria-label">Categoría *</InputLabel>
             <Select
               {...field}
               value={value || ''}
               onChange={(e) => onChange(Number(e.target.value))}
+              labelId="categoria-label"
               label="Categoría *"
             >
               <MenuItem value="">

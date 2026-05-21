@@ -31,10 +31,11 @@ export default defineConfig([
       // React Compiler (experimental, eslint-plugin-react-hooks v7): solo
       // informativo, no accionable — apagado para no contaminar el lint.
       'react-hooks/incompatible-library': 'off',
-      // jsx-a11y: degradadas a warn para no bloquear CI; auditoría visible mientras se limpia.
-      'jsx-a11y/no-autofocus': 'warn',
-      'jsx-a11y/click-events-have-key-events': 'warn',
-      'jsx-a11y/no-static-element-interactions': 'warn',
+      // jsx-a11y: subidas a error tras cleanup completo. Casos legítimos van con
+      // // eslint-disable-next-line + comentario justificando (ej. autoFocus en MUI dialogs).
+      'jsx-a11y/no-autofocus': 'error',
+      'jsx-a11y/click-events-have-key-events': 'error',
+      'jsx-a11y/no-static-element-interactions': 'error',
     },
   },
 ])
