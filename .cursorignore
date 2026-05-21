@@ -1,0 +1,53 @@
+# ── .NET / ASP.NET Core ─────────────────────────────────────────────────────
+# Secretos locales — usar: dotnet user-secrets set "WorkOs:ApiKey" "..."
+**/appsettings.Development.json
+**/bin/
+**/obj/
+/packages/
+/_ReSharper.Caches/
+*.user
+*.suo
+*.DotSettings.user
+riderModule.iml
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# ── Azure Functions local settings (contienen secrets) ──────────────────────
+POS.Functions/local.settings.json
+
+# ── Variables de entorno (NUNCA al repo) ────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── IDE / Editores ──────────────────────────────────────────────────────────
+**/.idea/
+.vscode/
+!.vscode/extensions.json
+*.sln.DotSettings.user
+
+# ── Claude Code ─────────────────────────────────────────────────────────────
+.claude/
+
+# ── Frontend ────────────────────────────────────────────────────────────────
+**/node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# ── Artefactos de deploy manual ─────────────────────────────────────────────
+deploy_api_unix.zip
+publish/
+
+# ── Docker ──────────────────────────────────────────────────────────────────
+.dockerignore.local
+
+# ── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
